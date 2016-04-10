@@ -56,13 +56,13 @@ myprocess = do
      state <- get
      let n = doc_serial state
      r <- findBegin "us-patent-grant" $ do
-       liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
+       -- liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
        singlepatent
      if r
        then do
          state' <- get
-         liftIO $ print state'
-         liftIO (putStrLn "==========================================================")
+         -- liftIO $ print state'
+         liftIO (putStrLn ("==============" ++ show n ++ ":" ++ T.unpack (doc_id state') ++ "======================================"))
          put (def { doc_serial = n+1 })
          myprocess
        else return ()
@@ -78,12 +78,12 @@ docNumber = findBegin "doc-number" $ findEnd "doc-number" getDocNumber
 
 applicationRef :: (MonadIO m) => StateT ParserState (Sink Event m) Bool
 applicationRef = findBegin "application-reference" $ do
-                   liftIO (print "application-reference")  
+                   -- liftIO (print "application-reference")  
                    findEnd "application-reference" (\_ -> return ())
 
 description :: (MonadIO m) => StateT ParserState (Sink Event m) Bool
 description = findBegin "description" $ do
-                liftIO $ print "found description"
+                -- liftIO $ print "found description"
                 findEnd "description" getDescription
           
 getDocNumber :: (MonadIO m) => Event -> StateT ParserState (Sink Event m) ()
