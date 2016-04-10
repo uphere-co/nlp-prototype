@@ -38,42 +38,35 @@ findEnd tag inner = do
         EventEndElement nm -> do
           if nameLocalName nm == tag then return True else findEnd tag inner
         _ -> inner x >> findEnd tag inner
- 
+
 myprocess n = do
      r <- findBegin "us-patent-grant" $ do
        liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
        singlepatent n
      if r then myprocess (n+1) else return ()
 
+singlepatent n = do
+  docNumber 
+  applicationRef
+  description
+
+docNumber = findBegin "doc-number" $ findEnd "doc-number" getDocNumber 
+
 applicationRef = findBegin "application-reference" $ do
                    liftIO (print "application-reference")  
                    findEnd "application-reference" (\_ -> return ())
+
+description = findBegin "description" $ do
+                liftIO $ print "found description"
+                findEnd "description" getDescription
           
-singlepatent n = do
-  findBegin "doc-number" $
-    findEnd "doc-number" getDocNumber 
-  applicationRef
-  -- singleDescription
-
-{- 
-singleDescription = 
-  findBegin "description" (liftIO (print "description")) singleDescription
--}
-
 getDocNumber :: (MonadIO m) => Event -> Sink Event m ()
 getDocNumber x = 
   case x of
     EventContent (ContentText dn) ->  liftIO (print dn)
     _ -> return ()
-
-
-{-  
-getDescription = do
-  mx <- await
-  case mx of
-    Nothing -> return ()
-    Just x -> do
-      case x of
-        EventEndElement "description" -> liftIO (print "description") >> return ()
-        _ -> getDescription
-  -}
+  
+getDescription x = do
+  case x of
+    EventContent (ContentText dn) ->  liftIO (putStr (T.unpack dn))
+    _ -> return ()   
