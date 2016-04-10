@@ -62,17 +62,17 @@ myprocess = do
        then do
          state' <- get
          liftIO $ print state'
+         liftIO (putStrLn "==========================================================")
          put (def { doc_serial = n+1 })
          myprocess
        else return ()
 
 singlepatent :: (MonadIO m) => StateT ParserState (Sink Event m) Bool
 singlepatent = do
-  liftIO $ putStrLn "=========================================================="
   docNumber 
-  applicationRef
-  description
-
+  -- applicationRef
+  description  
+  
 docNumber :: (MonadIO m) => StateT ParserState (Sink Event m) Bool
 docNumber = findBegin "doc-number" $ findEnd "doc-number" getDocNumber 
 
