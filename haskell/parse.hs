@@ -4,7 +4,9 @@
 
 import           Control.Monad
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans
 import           Control.Monad.Trans.Resource
+import           Control.Monad.Trans.State
 import           Data.Conduit
 import qualified Data.Conduit.List as CL
 import qualified Data.Text as T
@@ -13,14 +15,12 @@ import           Text.XML.Stream.Parse
 
 filename = "ipg160105.xml"
 
-main = do
-  putStrLn "xml parse"
-
+main = 
   runResourceT $
-    parseFile def filename $$ {- CL.isolate 10000 =$= -} (myprocess 0) -- CL.take 100 
+    parseFile def filename $$ {- CL.isolate 10000 =$= -} runStateT myprocess 0 -- CL.take 100 
 
 findBegin tag begin = do
-  mx <- await
+  mx <- lift await
   case mx of
     Nothing -> return False
     Just x -> do
@@ -30,7 +30,7 @@ findBegin tag begin = do
         _ -> findBegin tag begin
 
 findEnd tag inner = do  
-  mx <- await
+  mx <- lift await
   case mx of
     Nothing -> return False
     Just x -> do
@@ -39,28 +39,34 @@ findEnd tag inner = do
           if nameLocalName nm == tag then return True else findEnd tag inner
         _ -> inner x >> findEnd tag inner
 
-myprocess n = do
+myprocess :: (MonadIO m) => StateT Int (Sink Event m) ()
+myprocess = do
+     n <- get
      r <- findBegin "us-patent-grant" $ do
        liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
-       singlepatent n
-     if r then myprocess (n+1) else return ()
+       singlepatent
+     if r then (put (n+1) >> myprocess) else return ()
 
-singlepatent n = do
+singlepatent :: (MonadIO m) => StateT Int (Sink Event m) Bool
+singlepatent = do
   docNumber 
   applicationRef
   description
 
+docNumber :: (MonadIO m) => StateT Int (Sink Event m) Bool
 docNumber = findBegin "doc-number" $ findEnd "doc-number" getDocNumber 
 
+applicationRef :: (MonadIO m) => StateT Int (Sink Event m) Bool
 applicationRef = findBegin "application-reference" $ do
                    liftIO (print "application-reference")  
                    findEnd "application-reference" (\_ -> return ())
 
+description :: (MonadIO m) => StateT Int (Sink Event m) Bool
 description = findBegin "description" $ do
                 liftIO $ print "found description"
                 findEnd "description" getDescription
           
-getDocNumber :: (MonadIO m) => Event -> Sink Event m ()
+getDocNumber :: (MonadIO m) => Event -> StateT Int (Sink Event m) ()
 getDocNumber x = 
   case x of
     EventContent (ContentText dn) ->  liftIO (print dn)
