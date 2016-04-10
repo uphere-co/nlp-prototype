@@ -22,28 +22,28 @@ main = do
 findBegin tag begin = do
   mx <- await
   case mx of
-    Nothing -> return ()
+    Nothing -> return False
     Just x -> do
       case x of
         EventBeginElement nm clst ->
-          if nameLocalName nm == tag then begin else findBegin tag begin
+          if nameLocalName nm == tag then begin >> return True else findBegin tag begin
         _ -> findBegin tag begin
 
 findEnd tag inner = do  
   mx <- await
   case mx of
-    Nothing -> return ()
+    Nothing -> return False
     Just x -> do
       case x of
-        EventEndElement nm ->
-          when (nameLocalName nm /= tag) (findEnd tag inner)
+        EventEndElement nm -> do
+          if nameLocalName nm == tag then return True else findEnd tag inner
         _ -> inner x >> findEnd tag inner
  
 myprocess n = do
-     findBegin "us-patent-grant" $ do
+     r <- findBegin "us-patent-grant" $ do
        liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
        singlepatent n
-     myprocess (n+1)
+     if r then myprocess (n+1) else return ()
 
 applicationRef = findBegin "application-reference" $ do
                    liftIO (print "application-reference")  
