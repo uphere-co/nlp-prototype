@@ -19,15 +19,6 @@ main = do
   runResourceT $
     parseFile def filename $$ {- CL.isolate 10000 =$= -} (myprocess 0) -- CL.take 100 
 
-
-{-
-findElement tag (begin,inner,end) =
-
-
-  findBegin tag begin >> untilEnd tag (inner,end)
--}
-
-
 findBegin tag begin = do
   mx <- await
   case mx of
@@ -51,13 +42,8 @@ findEnd tag inner = do
 myprocess n = do
      findBegin "us-patent-grant" $ do
        liftIO (putStrLn (show n ++ ": " ++ "us-patent-grant"))
-       action
+       singlepatent n
      myprocess (n+1)
-  where action = do
-          singlepatent n
-          liftIO $ print "singlepatent end"
-          -- myprocess (n+1)
-
 
 applicationRef = findBegin "application-reference" $ do
                    liftIO (print "application-reference")  
