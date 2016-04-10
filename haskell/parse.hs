@@ -29,7 +29,7 @@ instance Default ParserState where
 
 main = 
   runResourceT $
-    parseFile def filename $$ {- CL.isolate 10000 =$= -} runStateT myprocess def -- CL.take 100 
+    parseFile def filename $$ {- (CL.drop 5000000 >> CL.isolate 50000) =$= -} runStateT myprocess def -- CL.take 100 
 
 findBegin tag begin = do
   mx <- lift await
@@ -68,6 +68,7 @@ myprocess = do
 
 singlepatent :: (MonadIO m) => StateT ParserState (Sink Event m) Bool
 singlepatent = do
+  liftIO $ putStrLn "=========================================================="
   docNumber 
   applicationRef
   description
@@ -90,9 +91,50 @@ getDocNumber x =
   case x of
     EventContent (ContentText dn) -> modify' (\st -> st { doc_id = dn })
     _ -> return ()
-  
+
+skipTable :: (MonadIO m) => StateT ParserState (Sink Event m) ()
+skipTable = do
+    mx <- lift await
+    case mx of
+      Nothing -> return ()
+      Just x -> do
+        case x of
+          EventEndElement "tables" -> return ()
+          _ -> skipTable
+
+skipMath :: (MonadIO m) => StateT ParserState (Sink Event m) ()
+skipMath = do
+    mx <- lift await
+    case mx of
+      Nothing -> return ()
+      Just x -> do
+        case x of
+          EventEndElement "maths" -> return ()
+          _ -> skipMath
+
+skipChemistry :: (MonadIO m) => StateT ParserState (Sink Event m) ()
+skipChemistry = do
+    mx <- lift await
+    case mx of
+      Nothing -> return ()
+      Just x -> do
+        case x of
+          EventEndElement "chemistry" -> return ()
+          _ -> skipChemistry
+
+    
 getDescription x = do
   case x of
+    EventBeginElement nm clst -> do
+      case nm of
+        "tables"    -> skipTable
+        "maths"     -> skipMath
+        "chemistry" -> skipChemistry
+        _ -> return ()
+      mx <- lift await
+      case mx of
+        Nothing -> return ()
+        Just x -> getDescription x
     EventContent (ContentText dn) ->  do
       let len = T.length dn
       modify' $ \st -> let n = doc_desc_length st
@@ -100,5 +142,5 @@ getDescription x = do
                        in st { doc_desc_length = n + len
                              -- , doc_desc_text = txt <> dn 
                              }
-      -- liftIO (putStr (T.unpack dn))
+      liftIO (putStr (T.unpack dn))
     _ -> return ()   
