@@ -12,8 +12,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 #stemmer = PorterStemmer()
 stop_words = [s.encode('utf-8') for s in stopwords.words('english')]
 
+path = '/home/mo/repo/src/topic-modeling-for-US-patents/python/data'
 docs = []
 tfmap = Counter()
+dict = {}
 
 #def stem_tokens(tokens, stemmer):
 #    stemmed = []
@@ -23,10 +25,11 @@ tfmap = Counter()
 
 def get_tokens(text):
     tokens = nltk.word_tokenize(text)
-    filtered_tokens = [w for w in tokens if not w in stop_words]
+    # filtered_tokens = [w for w in tokens if not w in stop_words]
     # stems = stem_tokens(filtered_tokens, stemmer)
     return filtered_tokens
 
+"""
 #filename = "smalltest.txt"
 filename = "parsed_ipg160105.txt"
 
@@ -69,14 +72,23 @@ for word in tokens:
     if (not word == 'DOCOLLONS'):
         context.append(word)
 
-for doc in docs:
+for doc in docs[0:1500]:
     tokens = doc[2]
     count = Counter(tokens)
     print doc[0] + ":" + doc[1]
     tfmap = tfmap + count # Really Slow Process!!
+"""
+#print tfmap
 
+for subdir, dirs, files in os.walk(path):
+    for file in files:
+        file_path = subdir + os.path.sep + file
+        r = open(file_path,'r')
+        text = r.read().lower().translate(None, string.punctuation)
+        dict[file] = text
 
-print tfmap
+tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
+tfs = tfidf.fit_transform(dict.values())
 
 #tokens = get_tokens("parsed_ipg160105.txt")
 #count = Counter(tokens)
