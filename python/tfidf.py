@@ -25,13 +25,14 @@ dict = {}
 
 def get_tokens(text):
     tokens = nltk.word_tokenize(text)
-    # filtered_tokens = [w for w in tokens if not w in stop_words]
+    filtered_tokens = [w for w in tokens if not w in stop_words]
     # stems = stem_tokens(filtered_tokens, stemmer)
     return filtered_tokens
 
-"""
-#filename = "smalltest.txt"
-filename = "parsed_ipg160105.txt"
+
+
+filename = "smalltest.txt"
+#filename = "parsed_ipg160105.txt"
 
 r = open(filename,'r')
 
@@ -73,22 +74,34 @@ for word in tokens:
         context.append(word)
 
 for doc in docs[0:1500]:
-    tokens = doc[2]
-    count = Counter(tokens)
-    print doc[0] + ":" + doc[1]
-    tfmap = tfmap + count # Really Slow Process!!
-"""
+    #print doc[0]
+    dict[(doc[0],doc[1])] = ' '.join(doc[2])
+    #print doc[0] + ":" + doc[1]
+    #tfmap = tfmap + count # Really Slow Process!!
+
+#print dict
 #print tfmap
 
+"""
 for subdir, dirs, files in os.walk(path):
     for file in files:
         file_path = subdir + os.path.sep + file
         r = open(file_path,'r')
         text = r.read().lower().translate(None, string.punctuation)
         dict[file] = text
+"""
+
 
 tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
 tfs = tfidf.fit_transform(dict.values())
+print dict.values()
+#print dict
+
+print dict
+print tfidf.get_feature_names()
+print tfs.toarray()
+
+count = Counter(get_tokens(dict[('0','d0746541')]))
 
 #tokens = get_tokens("parsed_ipg160105.txt")
 #count = Counter(tokens)
