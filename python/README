@@ -3,3 +3,19 @@
 http://scikit-learn.org/stable/modules/feature_extraction.html
 
 Implementing tfidf by using above document.
+
+2016. 4. 20. WED
+
+https://www.jair.org/media/2934/live-2934-4846-jair.pdf
+
+Three categories of document similarity estimation methods in vector space model
+
+The Term-Document Matrix --> Based on "Term-frequency can determine the document similarity"
+The Word-Context Matrix --> Based on "Words in similar context tend to have similar meanings"
+The Pair-Pattern Matrix --> Based on "Patterns tend to be appeared with similar X:Y pairs, for example, "X solves Y" is appeared with similar {X:Y} pairs."
+
+We need to know about linguistics.
+
+http://nlp.stanford.edu/
+
+Famous NLP lab. Can get useful information and software on NLP.
