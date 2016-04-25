@@ -7,7 +7,7 @@ from nltk.corpus import stopwords
 # from nltk.stem.porter import PorterStemmer
 from collections import Counter
 
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import *
 
 #stemmer = PorterStemmer()
 stop_words = [s.encode('utf-8') for s in stopwords.words('english')]
@@ -92,14 +92,30 @@ for subdir, dirs, files in os.walk(path):
 """
 
 
-tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
-tfs = tfidf.fit_transform(dict.values())
-print dict.values()
+#tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
+#tfs = tfidf.fit_transform(dict.values())
+#print dict.values()
 #print dict
 
-print dict
-print tfidf.get_feature_names()
-print tfs.toarray()
+train_set = ("The sky is blue.", "The sun is bright.")
+test_set = ("The sun in the sky is bright.", "We can see the shining sun, the bright sun.")
+
+print test_set
+
+count_vectorizer = CountVectorizer(stop_words='english')
+count_vectorizer.fit_transform(train_set)
+print count_vectorizer.vocabulary_
+
+freq_term_matrix = count_vectorizer.transform(test_set)
+print freq_term_matrix.todense()
+
+tfidf = TfidfTransformer(norm="l12")
+tfidf.fit(freq_term_matrix)
+print tfidf.idf_
+
+#print dict
+#print tfidf.get_feature_names()
+#print tfs.toarray()
 
 count = Counter(get_tokens(dict[('0','d0746541')]))
 
