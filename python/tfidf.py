@@ -3,6 +3,8 @@ import string
 import os
 import re
 
+import numpy as np
+
 from nltk.corpus import stopwords
 # from nltk.stem.porter import PorterStemmer
 from collections import Counter
@@ -31,8 +33,8 @@ def get_tokens(text):
 
 
 
-filename = "smalltest.txt"
-#filename = "parsed_ipg160105.txt"
+#filename = "smalltest.txt"
+filename = "parsed_ipg160105.txt"
 
 r = open(filename,'r')
 
@@ -52,6 +54,8 @@ check2 = False
 
 print "Finished tokenizing!"
 
+n = 0
+
 for word in tokens:
     if ("DOCUMENTSPLITTER" in word and check0):
         nth = word.replace("DOCUMENTSPLITTER","")
@@ -67,20 +71,25 @@ for word in tokens:
         check0 = True
         check2 = False
         docs.append([nth,docid,context])
+        n = n+1
         context = []
         continue
 
+    if n==300:
+        break
+    
     if (not word == 'DOCOLLONS'):
         context.append(word)
 
-for doc in docs[0:1500]:
-    #print doc[0]
+for doc in docs[0:300]:
+    tokens = doc[2]
+    #count = Counter(tokens)
     dict[(doc[0],doc[1])] = ' '.join(doc[2])
     #print doc[0] + ":" + doc[1]
     #tfmap = tfmap + count # Really Slow Process!!
 
 #print dict
-#print tfmap
+#print tfmap.values()
 
 """
 for subdir, dirs, files in os.walk(path):
@@ -92,16 +101,33 @@ for subdir, dirs, files in os.walk(path):
 """
 
 
-#tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
-#tfs = tfidf.fit_transform(dict.values())
+tfidf = TfidfVectorizer(tokenizer=get_tokens, stop_words='english')
+tfs = tfidf.fit_transform(dict.values())
+
+m_size = len(tfs.toarray())
+res = np.zeros(shape=(m_size,m_size))
+
+r = open('result.txt','w')
+
+for k in range(m_size):
+    for j in range(k+1):
+        res[k][j] = (tfs.toarray()[k]*tfs.toarray()[j]).sum()
+        res[j][k] = res[k][j]
+
+for i in range(m_size):
+    for j in range(m_size):
+        r.write((str)('{0:.2g}'.format(res[i][j])) + "  ")
+    r.write("\n")
+
+r.close()
+
+#print tfs.get_feature_names()
+
+
 #print dict.values()
 #print dict
 
-train_set = ("The sky is blue.", "The sun is bright.")
-test_set = ("The sun in the sky is bright.", "We can see the shining sun, the bright sun.")
-
-print test_set
-
+"""
 count_vectorizer = CountVectorizer(stop_words='english')
 count_vectorizer.fit_transform(train_set)
 print count_vectorizer.vocabulary_
@@ -112,14 +138,7 @@ print freq_term_matrix.todense()
 tfidf = TfidfTransformer(norm="l12")
 tfidf.fit(freq_term_matrix)
 print tfidf.idf_
-
+"""
 #print dict
 #print tfidf.get_feature_names()
 #print tfs.toarray()
-
-count = Counter(get_tokens(dict[('0','d0746541')]))
-
-#tokens = get_tokens("parsed_ipg160105.txt")
-#count = Counter(tokens)
-
-#print count.most_common(100)
