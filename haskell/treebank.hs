@@ -42,13 +42,10 @@ treeprinter n (PN txt) = txt
 
 main :: IO ()
 main = do
-  txt <- TIO.readFile "parsed_test.txt"
+  txt <- TIO.readFile "parsed.txt"
   let p' = penntree <* A.skipSpace 
-  let r = A.parseOnly (A.many1 p') txt -- (A.many1 (p <* A.skipSpace)) txt
+  let r = A.parseOnly (A.many1 p') txt
   case r of
     Right lst -> do
-      print (length lst)
-      -- let x = head lst
-      -- print x 
-      mapM_ (\x -> print x >> putStrLn "-----" >> TIO.putStrLn (treeprinter 0 x) >> putStrLn "=====" )  (take 1 lst)
+      mapM_ (\x -> print x >> putStrLn "-----" >> TIO.putStrLn (treeprinter 0 x) >> putStrLn "=====" )  lst -- (take 1 lst)
     Left err -> print err
