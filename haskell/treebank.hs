@@ -1,23 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 import           Control.Applicative ((<|>))
 import qualified Data.Attoparsec.Text as A
+import           Data.Monoid ((<>))
 import           Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-
-main = do
-  txt <- TIO.readFile "parsed.txt"
-  let p' = penntree <* A.skipSpace 
-  let r = A.parseOnly (A.many1 p') txt -- (A.many1 (p <* A.skipSpace)) txt
-  case r of
-    Right lst -> print (length lst)
-    Left err -> print err
 
 data PennTree = PT Text [PennTree]
               | PN Text
               deriving Show
 
-
-penntree :: A.Parser PennTree -- (Text,Text)
+penntree :: A.Parser PennTree
 penntree =
     (do oparen
         t <- tag
@@ -27,7 +21,7 @@ penntree =
         cparen 
         return (PT t s))
     <|> 
-    (do s <- A.takeWhile1 (not . (`elem` "()"))
+    (do s <- A.takeWhile1 (not . (`elem` ['(',')']))
         return (PN s))
 
 oparen = A.char '('
@@ -35,3 +29,26 @@ oparen = A.char '('
 cparen = A.char ')'
 
 tag = A.takeWhile (`elem` ([ 'A'..'Z' ] ++ ".,"))
+
+textprinter :: Int -> PennTree -> Text
+textprinter n (PT _ lst) = T.intercalate "\n" (map (textprinter (n+4)) lst)
+textprinter n (PN txt) = T.replicate n " " <> txt --  (T.unpack txt)
+
+treeprinter :: Int -> PennTree -> Text
+treeprinter n (PT t lst) = "\n" <> fmttag <> T.concat (map (treeprinter (n+2)) lst)
+  where fmttag = T.replicate n " " <> T.take 4 (t <> "    ") <> " "
+treeprinter n (PN txt) = txt
+
+
+main :: IO ()
+main = do
+  txt <- TIO.readFile "parsed_test.txt"
+  let p' = penntree <* A.skipSpace 
+  let r = A.parseOnly (A.many1 p') txt -- (A.many1 (p <* A.skipSpace)) txt
+  case r of
+    Right lst -> do
+      print (length lst)
+      -- let x = head lst
+      -- print x 
+      mapM_ (\x -> print x >> putStrLn "-----" >> TIO.putStrLn (treeprinter 0 x) >> putStrLn "=====" )  (take 1 lst)
+    Left err -> print err
