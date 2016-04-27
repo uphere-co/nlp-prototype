@@ -24,21 +24,23 @@ penntree =
     (do s <- A.takeWhile1 (not . (`elem` ['(',')']))
         return (PN s))
 
+oparen :: A.Parser Char
 oparen = A.char '('
 
+cparen :: A.Parser Char
 cparen = A.char ')'
 
+tag :: A.Parser Text
 tag = A.takeWhile (`elem` ([ 'A'..'Z' ] ++ ".,"))
 
 textprinter :: Int -> PennTree -> Text
 textprinter n (PT _ lst) = T.intercalate "\n" (map (textprinter (n+4)) lst)
-textprinter n (PN txt) = T.replicate n " " <> txt --  (T.unpack txt)
+textprinter n (PN txt) = T.replicate n " " <> txt
 
 treeprinter :: Int -> PennTree -> Text
 treeprinter n (PT t lst) = "\n" <> fmttag <> T.concat (map (treeprinter (n+2)) lst)
   where fmttag = T.replicate n " " <> T.take 4 (t <> "    ") <> " "
 treeprinter n (PN txt) = txt
-
 
 main :: IO ()
 main = do
