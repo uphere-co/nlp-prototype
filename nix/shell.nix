@@ -3,7 +3,7 @@
 with pkgs;
 
 let hsenv = haskellPackages.ghcWithPackages (p: with p; [
-              xml-conduit split unordered-containers
+              xml-conduit split unordered-containers data-binary-ieee754
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
