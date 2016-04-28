@@ -11,7 +11,9 @@ import           Data.Conduit        (($$),(=$=))
 import qualified Data.Conduit        as C
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List   as CL
+import           Data.Function       (on)
 import qualified Data.HashMap.Strict as HM
+import qualified Data.List           as L
 import           Data.Text           (Text(..))
 import qualified Data.Text           as T
 import qualified Data.Text.Encoding  as TE
@@ -34,6 +36,8 @@ normalize v =
     let l2 = sum (map (\x->x*x) v)
     in map (\x->x/sqrt l2) v
 
+cosDist v1 v2 = sum $ zipWith (*) v1 v2 
+
 
 main :: IO ()
 main = do
@@ -46,9 +50,13 @@ main = do
         let nword = read r1 :: Int
             nvec  = read r2 :: Int
         skipSpace
-	m <- HM.fromList <$> (replicateM nword $ ((,) <$> fst <*> normalize . snd) <$> getVector nvec)
-	
-	liftIO $ print (HM.lookup "find" m) -- (last vs)
+        lst <- (map (\(x,(y,z))->(y,(x,z))) . zip [0..]) <$>
+                 (replicateM nword $ ((,) <$> fst <*> normalize . snd) <$> getVector nvec)
+        let m = HM.fromList lst
+        case HM.lookup "test" m of
+          Nothing -> liftIO $ print "test is not there"
+          Just (i,vv) -> liftIO $ do
+            putStrLn $ "index = " ++ show i
+            let rs = map ((,) <$> fst <*> cosDist vv . snd . snd) . take 40 . L.sortBy (flip compare `on` (cosDist vv . snd . snd)) $ lst
+            mapM_ print rs
         return ()
-
-
