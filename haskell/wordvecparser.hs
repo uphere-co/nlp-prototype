@@ -31,7 +31,7 @@ import           Unsafe.Coerce
 skipSpace :: (MonadResource m) => C.Sink B.ByteString m ()
 skipSpace = CB.dropWhile (isSpace . unsafeCoerce)
 
-getVector :: (MonadResource m, MonadIO m) => Int -> C.Sink B.ByteString m (Text,Vector CFloat)
+getVector :: (MonadResource m, MonadIO m) => Int -> C.Sink B.ByteString m (Text,Vector Float)
 getVector n = do
     w <- head <$> (CB.takeWhile (not . isSpace . unsafeCoerce) =$= CL.consume)
     skipSpace
@@ -44,12 +44,12 @@ getVector n = do
     skipSpace
     return (TE.decodeUtf8 w,v)
 
-normalize :: Vector CFloat -> Vector CFloat
+normalize :: Vector Float -> Vector Float
 normalize v =  
     let l2 = V.sum (V.map (\x->x*x) v)
     in V.map (\x->x/sqrt l2) v
 
-cosDist :: Vector CFloat -> Vector CFloat -> CFloat
+cosDist :: Vector Float -> Vector Float -> Float
 cosDist v1 v2 = V.sum $ V.zipWith (*) v1 v2 
 
 main :: IO ()
