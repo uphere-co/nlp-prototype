@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Applicative         ((<|>))
+-- import           Control.Applicative         ((<|>))
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Foldable        as F
 import           Data.Monoid                 ((<>))
@@ -9,31 +9,10 @@ import qualified Data.Text            as T
 import qualified Data.Text.IO         as TIO
 --
 import           Binarize
+import           Parser
 import           Printer
 import           Types
 
-
-penntree :: A.Parser PennTree
-penntree =
-    (do oparen
-        t <- tag
-        A.skipSpace
-        s <- A.many1 (penntree <* A.skipSpace)
-        A.skipWhile (/= ')')
-        cparen 
-        return (PT t s))
-    <|> 
-    (do s <- A.takeWhile1 (not . (`elem` ['(',')']))
-        return (PN s))
-
-oparen :: A.Parser Char
-oparen = A.char '('
-
-cparen :: A.Parser Char
-cparen = A.char ')'
-
-tag :: A.Parser Text
-tag = A.takeWhile (`elem` ([ 'A'..'Z' ] ++ ".,"))
 
 
 main :: IO ()
