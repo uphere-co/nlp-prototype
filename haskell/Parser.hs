@@ -26,5 +26,5 @@ cparen :: A.Parser Char
 cparen = A.char ')'
 
 tag :: A.Parser Text
-tag = A.takeWhile (`elem` ([ 'A'..'Z' ] ++ ".,"))
+tag = A.takeWhile (`elem` ([ 'A'..'Z' ] ++ ['0'..'9'] ++ ".,"))
 
