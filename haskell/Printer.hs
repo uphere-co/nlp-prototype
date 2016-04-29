@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Printer where
@@ -17,6 +18,10 @@ treeprinter n (PT t lst) = "\n" <> fmttag <> T.concat (map (treeprinter (n+2)) l
   where fmttag = T.replicate n " " <> T.take 4 (t <> "    ") <> " "
 treeprinter n (PN txt) = txt
 
-btreeprinter :: Int -> BinTree Text -> Text
-btreeprinter n (BinNode a b) = btreeprinter (n+2) a <> btreeprinter (n+2) b
-btreeprinter n (BinLeaf txt) = T.replicate n " " <> txt <> "\n"
+btreeprinter :: [Bool] -> BinTree Text -> Text
+btreeprinter bs (BinLeaf txt) = txt
+btreeprinter bs (BinNode a b) = "\x252C\x2500" <> btreeprinter (bs++[True]) a <> "\n" <>
+                                drawlines bs <> "\x2514\x2500" <> btreeprinter (bs++[False]) b
+  where
+    drawlines bs = foldMap (\case True -> "\x2502 " ; False -> "  ") bs 
+
