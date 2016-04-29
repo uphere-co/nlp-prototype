@@ -3,6 +3,7 @@
 
 import           Control.Monad
 import           Control.Monad.IO.Class (MonadIO(..), liftIO)
+import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Resource
 -- import           Data.Binary.Get
 import qualified Data.ByteString.Char8 as B
@@ -19,6 +20,8 @@ import qualified Data.List           as L
 import           Data.Text           (Text(..))
 import qualified Data.Text           as T
 import qualified Data.Text.Encoding  as TE
+import qualified Data.Vector.Algorithms.Intro as VA
+import qualified Data.Vector.Mutable as VM
 import           Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as V
 import           Foreign.C.Types
@@ -27,6 +30,7 @@ import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
 import           Foreign.Ptr
 import           Foreign.Storable
+import           Foreign.Storable.Tuple
 import           System.IO
 import           Unsafe.Coerce
 
@@ -69,5 +73,12 @@ main = do
         Nothing -> liftIO $ print "test is not there"
         Just (i,vv) -> liftIO $ do
           putStrLn $ "index = " ++ show i
-          let rs = map ((,) <$> fst <*> cosDist vv . snd . snd) . take 40 . L.sortBy (flip compare `on` (cosDist vv . snd . snd)) $ lst
-          mapM_ print rs 
+          let vec = map ((,) <$> fst <*>  cosDist vv . snd . snd) $ lst
+          let e = L.foldl' f [] vec
+	      f xs (s,d) | isNaN d       = xs
+	                 | otherwise     = g (s,d) xs
+	      g (s,d) []                 = [(s,d)]
+	      g (s,d) (x:xs) | d < snd x = x:g (s,d) xs
+	                     | otherwise = (s,d):x:xs
+          mapM_ print (drop 1 $ take 40 e)
+          
