@@ -4,8 +4,7 @@
 import           Control.Monad
 import           Control.Monad.IO.Class (MonadIO(..), liftIO)
 import           Control.Monad.Trans.Resource
-import           Data.Binary.Get
-import           Data.Binary.IEEE754
+-- import           Data.Binary.Get
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Lazy.Char8 as LB
@@ -22,7 +21,6 @@ import qualified Data.Text           as T
 import qualified Data.Text.Encoding  as TE
 import           Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as V
--- import           Data.Vector.Storable.ByteString (byteStringToVector)
 import           Foreign.C.Types
 import           Foreign.ForeignPtr
 import           Foreign.Marshal.Alloc
@@ -43,7 +41,7 @@ getVector n = do
     v <- liftIO . B.useAsCString vbstr $ \cstr -> do
       nstr <- mallocBytes (4*n) 
       copyBytes nstr cstr (4*n)
-      fptr {- :: ForeignPtr CFloat -} <- castForeignPtr <$> newForeignPtr_ nstr
+      fptr <- castForeignPtr <$> newForeignPtr_ nstr
       return (V.unsafeFromForeignPtr0 fptr n)
     skipSpace
     return (TE.decodeUtf8 w,v)
@@ -71,6 +69,5 @@ main = do
         Nothing -> liftIO $ print "test is not there"
         Just (i,vv) -> liftIO $ do
           putStrLn $ "index = " ++ show i
-
           let rs = map ((,) <$> fst <*> cosDist vv . snd . snd) . take 40 . L.sortBy (flip compare `on` (cosDist vv . snd . snd)) $ lst
           mapM_ print rs 
