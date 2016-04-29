@@ -31,6 +31,6 @@ main = do
         let btr = binarizeR tr
         print btr
         putStrLn "-----"
-        TIO.putStrLn $ btreeprinter 0 btr -- (binarizeR tr)
+        TIO.putStrLn $ btreeprinter [] btr -- (binarizeR tr)
         putStrLn "=====" 
         
