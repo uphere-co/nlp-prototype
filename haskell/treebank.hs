@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- import           Control.Applicative         ((<|>))
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Foldable        as F
 import           Data.Monoid                 ((<>))
@@ -15,7 +14,7 @@ import           NLP.SyntaxTree.Types
 
 main :: IO ()
 main = do
-  txt <- TIO.readFile "testparsed.txt" -- "parsed.txt"
+  txt <- TIO.readFile "parsed.txt"
   let p' = penntree <* A.skipSpace 
   let r = A.parseOnly (A.many1 p') txt
   case r of
@@ -29,6 +28,6 @@ main = do
         let btr = binarizeR tr
         print btr
         putStrLn "-----"
-        TIO.putStrLn $ btreeprinter [] btr -- (binarizeR tr)
+        TIO.putStrLn $ btreeprinter [] btr
         putStrLn "=====" 
         

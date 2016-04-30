@@ -20,27 +20,11 @@ skipUntilPara = do
 sentence :: A.Parser Text
 sentence = skipUntilPara >> A.skipSpace >> A.takeTill (== '<') <* A.string "</P>" 
 
-{- 
-sentences :: A.Parser Text
-sentences = do
-    skipUntilPara
-    sentence
--}
-
-{-     
-    s <- sentence
-    
-    ys <- (A.try (sentence >>= \x -> x:sentences xs)
-           <|> A.anyChar *> sentences xs)
-    return ys
--}
-
 main :: IO ()
 main = do
     putStrLn "extracting sentenses."
     txt <- TIO.readFile "LDC2003T05"
-    -- putChar (T.head txt)
-    let r = A.parseOnly (many sentence) txt --- (T.take 1000 txt)
+    let r = A.parseOnly (many sentence) txt
     case r of
       Left err -> print err
       Right lst -> do
@@ -52,6 +36,5 @@ main = do
               TIO.hPutStrLn h "<s>"
               TIO.hPutStr   h txt
               TIO.hPutStrLn h "</s>"
-              -- (TIO.hPutStrLn (take 10 lst)
 
         
