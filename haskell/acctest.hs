@@ -46,12 +46,18 @@ prepareData = do
 data KahanSum = KahanSum {-# UNPACK #-} !Float {-# UNPACK #-} !Float
               deriving (Eq, Show)
 
+kahan (KahanSum s _) = s
+
 kahanAdd (KahanSum sum c) x = KahanSum sum' c'
   where sum' = sum + y
         c'   = (sum' - sum) - y
         y    = x - c
 
-testVector v = print . V.foldl' kahanAdd (KahanSum 0 0) $ V.zipWith (*) v v
+kahanZero = KahanSum 0 0
+
+kahanSum = kahan . V.foldl' kahanAdd kahanZero
+
+testVector v = print . kahanSum $ V.zipWith (*) v v
 
   -- N.kbn . V.foldl' N.add N.zero $ V.zipWith (*) v v
 
