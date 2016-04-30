@@ -20,7 +20,7 @@ main = do
   case r of
     Left err -> print err
     Right lst -> do
-      F.forM_ (take 100 lst) $ \tr -> do
+      F.forM_ (take 1 lst) $ \tr -> do
         print tr 
         putStrLn "-----"
         TIO.putStrLn (treeprinter 0 tr)
@@ -29,5 +29,8 @@ main = do
         print btr
         putStrLn "-----"
         TIO.putStrLn $ btreeprinter [] btr
+        putStrLn "-----"
+        let bntr = convert btr
+        TIO.putStrLn  $ bntPrint [] id id bntr
         putStrLn "=====" 
         
