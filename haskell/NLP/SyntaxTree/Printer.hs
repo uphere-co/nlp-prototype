@@ -1,13 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Printer where
+module NLP.SyntaxTree.Printer where
 
 import           Data.Monoid
 import           Data.Text       (Text)
 import qualified Data.Text as T  (concat,intercalate,replicate,take)
 --
-import Types
+import NLP.SyntaxTree.Types
 
 textprinter :: Int -> PennTree -> Text
 textprinter n (PT _ lst) = T.intercalate "\n" (map (textprinter (n+4)) lst)

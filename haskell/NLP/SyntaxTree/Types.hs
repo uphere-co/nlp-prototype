@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Types where
+module NLP.SyntaxTree.Types where
 
 import           Data.Text                   (Text(..))
 

@@ -1,10 +1,10 @@
-module Parser where
+module NLP.SyntaxTree.Parser where
 
 import           Data.Text                   (Text(..))
 import           Control.Applicative
 import qualified Data.Attoparsec.Text as A
 --
-import           Types
+import           NLP.SyntaxTree.Types
 
 penntree :: A.Parser PennTree
 penntree =
