@@ -1,20 +1,34 @@
 #include <stdio.h>
 
-int main (int argc, char** argv)
+#define N 100000000
+
+void load_file( float dat[] )
 {
   FILE* file;
+  int i;
+  
   file = fopen( "randomtest.dat", "r");
 
-  float e;
-  
-  float sum;
+  for( i = 0 ; i < N ; i++ ) {
+    fread( dat+i, sizeof(float) , 1 , file);
+  }
 
+  fclose(file);
+}
+
+int main (int argc, char** argv)
+{
+
+  static float dat[N];
+  load_file( dat );
+
+  float sum, e;
   int i ;
   float x, y , c, sumtemp;
-  sum = 0;
-  c = 0;
-  for( i = 0 ; i < 100000000 ; i++ ) {
-    fread( &e , sizeof(float) , 1 , file);
+  sum = 0; c = 0; e = 0;
+
+  for( i = 0; i < N ; i++ ) {
+    e = dat[i];
     x = e*e;
     y = x-c;
     sumtemp = sum+y;
@@ -27,5 +41,4 @@ int main (int argc, char** argv)
   //  sum += e[i]*e[i];
   //}
   printf("%e",sum);
-  fclose(file);
 }
