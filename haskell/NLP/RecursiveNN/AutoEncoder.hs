@@ -41,21 +41,3 @@ calcP AutoEncoder {..} =
         combined = A.replicate (A.lift $ Z :. All :. (1 :: Int)) (use autoenc_c1 A.++ use autoenc_c2)
         blifted  = A.replicate (A.lift $ Z :. All :. (1 :: Int)) (use autoenc_b)
 
-{- 
-
-cudaTanh :: Acc (Array DIM1 Float) -> Acc (Array DIM1 Float)
-cudaTanh = undefined
-  where foreignTanh :: Array DIM1 Float -> CIO (Array DIM1 Float)
-        foreignTanh arr = do
-          output <- allocateArray (S.shape arr)
-          iptr   <- floatPtr arr
-          optr   <- floatPtr output
-          liftIO $ execute iptr optr
-          return output
-
-        execute :: CUDA.DevicePtr Float -> CUDA.DevicePtr Float -> IO ()
-        execute iptr optr =  execC2C undefined iptr optr undefined
-
-
-        floatPtr = undefined
--}
