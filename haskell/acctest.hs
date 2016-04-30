@@ -47,12 +47,9 @@ prepareData = do
     copyBytes nstr cstr (400000000)
     fptr <- castForeignPtr <$> newForeignPtr_ nstr
     return (V.unsafeFromForeignPtr0 fptr 100000000)
-  return v -- print 0
-
+  return v 
 
 testVector v = print . kahanSumV $ V.zipWith (*) v v
-
-  -- N.kbn . V.foldl' N.add N.zero $ V.zipWith (*) v v
 
 testList v =
     let xs = V.toList v
@@ -61,7 +58,6 @@ testList v =
 testAccel v = 
     let arr = AIO.fromVectors (Z :. 100000000) ((),v) :: Array DIM1 Float
     in print $ run $ A.sum $ A.zipWith (*) (use arr) (use arr)
-
 
 testAccel2 v =
     let arr = AIO.fromVectors (Z :. 1000 :. 1000) ((),v) :: Array DIM2 Float
@@ -76,12 +72,9 @@ testVector2 v =
         t = kahanSumL [ v2 ! (i*n+i) | i <- [0..n-1] ]
     in print t    
 
-
-
 main = do
     args <- getArgs    
     v <- prepareData
-
     case args !! 0 of
       "accel" -> testAccel v
       "vector" -> testVector v
