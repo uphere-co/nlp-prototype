@@ -20,6 +20,9 @@ import           Foreign.Ptr
 import           System.Environment
 import           System.Random.Mersenne
 --
+import           Data.Array.Accelerate.Matrix
+import           Numeric.Kahan
+--
 import           Debug.Trace
 
  
@@ -46,23 +49,6 @@ prepareData = do
     return (V.unsafeFromForeignPtr0 fptr 100000000)
   return v -- print 0
 
--- Naive summation is not good. We should reduce error using Kahan summation algorithm.
-
-data KahanSum = KahanSum {-# UNPACK #-} !Float {-# UNPACK #-} !Float
-              deriving (Eq, Show)
-
-kahan (KahanSum s _) = s
-
-kahanAdd (KahanSum sum c) x = KahanSum sum' c'
-  where sum' = sum + y
-        c'   = (sum' - sum) - y
-        y    = x - c
-
-kahanZero = KahanSum 0 0
-
-kahanSumV = kahan . V.foldl' kahanAdd kahanZero
-
-kahanSumL = kahan .L.foldl' kahanAdd kahanZero
 
 testVector v = print . kahanSumV $ V.zipWith (*) v v
 
@@ -90,23 +76,7 @@ testVector2 v =
         t = kahanSumL [ v2 ! (i*n+i) | i <- [0..n-1] ]
     in print t    
 
-type Matrix a = Array DIM2 a
 
-matMul :: (A.IsNum e, A.Elt e) => Acc (Matrix e) -> Acc (Matrix e) -> Acc (Matrix e)
-matMul arr brr = A.fold (+) 0 $ A.zipWith (*) arrRepl brrRepl
-  where
-    Z :. rowsA :. _     = A.unlift (A.shape arr) :: Z :. Exp Int :. Exp Int
-    Z :. _     :. colsB = A.unlift (A.shape brr) :: Z :. Exp Int :. Exp Int
-    arrRepl = A.replicate (A.lift $ Z :. All   :. colsB :. All ) arr
-    brrRepl = A.replicate (A.lift $ Z :. rowsA :. All   :. All ) (A.transpose brr)
-
-
-matTrace :: (A.IsNum e, A.Elt e) => Acc (Matrix e) -> Acc (A.Scalar e)
-matTrace arr = A.sum $ A.slice y (A.lift (Z :. (0 :: Int) :. All))
-  where
-    Z :. rows :. _cols = A.unlift (A.shape arr) :: Z :. Exp Int :. Exp Int
-    f = A.lift1  (\(Z :. i :. j) ->  Z :. (i-j) `mod` rows :. j)
-    y = A.backpermute (A.lift (A.shape arr)) f arr
 
 main = do
     args <- getArgs    
