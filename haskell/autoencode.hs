@@ -14,17 +14,16 @@ import NLP.RecursiveNN.AutoEncoder
 
 prepareData :: IO (Vector Float)
 prepareData = do
-  bstr <- B.readFile "randomtest.dat"
-  v :: Vector Float <- B.useAsCString bstr $ \cstr -> do
-    nstr <- mallocBytes (400000000)
-    copyBytes nstr cstr (400000000)
-    fptr <- castForeignPtr <$> newForeignPtr_ nstr
-    return (V.unsafeFromForeignPtr0 fptr 100000000)
-  return v -- print 0
-
+    bstr <- B.readFile "randomtest.dat"
+    v :: Vector Float <- B.useAsCString bstr $ \cstr -> do
+      nstr <- mallocBytes (400000000)
+      copyBytes nstr cstr (400000000)
+      fptr <- castForeignPtr <$> newForeignPtr_ nstr
+      return (V.unsafeFromForeignPtr0 fptr 100000000)
+    return v
 
 main = do
-  putStrLn "auto encoder test"
-  v <- prepareData
-  let autoenc = prepare v
-  print (findP autoenc)
+    putStrLn "auto encoder test"
+    v <- prepareData
+    let autoenc = prepare v
+    print (calcP autoenc)
