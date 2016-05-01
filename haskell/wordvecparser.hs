@@ -1,17 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           Control.Monad.IO.Class (MonadIO(..), liftIO)
+import           Control.Monad
+import           Control.Monad.IO.Class    (MonadIO(..), liftIO)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L
+import           Data.Text                 (Text)
+import qualified Data.Text           as T
+import           System.Environment        (getArgs)
+import           System.IO
 --
 import           NLP.WordVector.Vectorize
 
 main :: IO ()
 main = do
     putStrLn "parsing a result of word2vec program"
-    (lst,wvm) <- createWordVectorMap "vectors100.bin"
-    case HM.lookup "test" (wvmap wvm) of
+    filename <- getArgs >>= \args -> return (args !! 0) 
+    (lst,wvm) <- createWordVectorMap filename -- "vectors100statmt.bin"
+    forever (bot (lst,wvm))
+
+bot (lst,wvm) = do    
+    ln <- getLine
+    lookupSimilarWord (lst,wvm) (T.pack (head (words ln)))
+ 
+
+
+-- lookupSimilarWord :: (WordVectorMap -> Text -> IO ()
+lookupSimilarWord (lst,wvm) word =
+    case HM.lookup word (wvmap wvm) of
       Nothing -> liftIO $ putStrLn "test is not there"
       Just (i,vv) -> liftIO $ do
         putStrLn $ "index = " ++ show i
@@ -24,16 +40,4 @@ main = do
                            | otherwise = (s,d):x:xs
         mapM_ print (drop 1 $ take 40 e)
     
-    {- 
-    runResourceT $ CB.sourceFile "vectors100.bin" $$ do
-      
-      r1 <- B.unpack . head <$> (CB.takeWhile (not . isSpace . unsafeCoerce) =$= CL.consume)
-      skipSpace
-      r2 <- B.unpack . head <$> (CB.takeWhile (not . isSpace . unsafeCoerce) =$= CL.consume)
-      let nword = read r1 :: Int
-          nvec  = read r2 :: Int
-      skipSpace
-      lst <- (map (\(x,(y,z))->(y,(x,z))) . zip ([0..] :: [Int])) <$>
-               (replicateM nword $ ((,) <$> fst <*> normalize . snd) <$> getVector nvec)
-      let m = HM.fromList lst -}
           

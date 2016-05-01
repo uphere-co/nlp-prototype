@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module NLP.WordVector.Parser where
 
 import           Control.Monad.IO.Class (MonadIO(..), liftIO)
@@ -32,7 +34,10 @@ getVector n = do
       fptr <- castForeignPtr <$> newForeignPtr_ nstr
       return (V.unsafeFromForeignPtr0 fptr n)
     skipSpace
-    return (TE.decodeUtf8 w,v)
+    case TE.decodeUtf8' w of
+      Right w' -> return (w',v)
+      Left err -> return ("_error",v)
+    -- return (TE.decodeUtf8 w,v)
 
 normalize :: Vector Float -> Vector Float
 normalize v =  

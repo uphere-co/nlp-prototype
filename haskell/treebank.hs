@@ -18,7 +18,7 @@ import           NLP.WordVector.Vectorize
 main :: IO ()
 main = do
   txt <- TIO.readFile "LDC2003T05_parsed1.pos" -- "parsed.txt"
-  (_,wvm) <- createWordVectorMap "vectors100.bin"
+  (_,wvm) <- createWordVectorMap "vectors100statmt.bin" -- "vectors100t8.bin"
   let p' = penntree <* A.skipSpace 
   let r = A.parseOnly (A.many1 p') txt
   case r of
