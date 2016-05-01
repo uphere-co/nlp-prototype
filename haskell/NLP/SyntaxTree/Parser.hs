@@ -4,7 +4,7 @@ import           Data.Text                   (Text(..))
 import           Control.Applicative
 import qualified Data.Attoparsec.Text as A
 --
-import           NLP.SyntaxTree.Types
+import           NLP.SyntaxTree.Type
 
 penntree :: A.Parser PennTree
 penntree =

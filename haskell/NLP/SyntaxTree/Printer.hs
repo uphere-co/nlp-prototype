@@ -7,7 +7,7 @@ import           Data.Monoid
 import           Data.Text       (Text)
 import qualified Data.Text as T  (concat,intercalate,replicate,take)
 --
-import NLP.SyntaxTree.Types
+import NLP.SyntaxTree.Type
 
 textprinter :: Int -> PennTree -> Text
 textprinter n (PT _ lst) = T.intercalate "\n" (map (textprinter (n+4)) lst)
@@ -18,10 +18,10 @@ treeprinter n (PT t lst) = "\n" <> fmttag <> T.concat (map (treeprinter (n+2)) l
   where fmttag = T.replicate n " " <> T.take 4 (t <> "    ") <> " "
 treeprinter n (PN txt) = txt
 
-btreeprinter :: [Bool] -> BinTree Text -> Text
-btreeprinter bs (BinLeaf txt) = txt
-btreeprinter bs (BinNode a b) = "\x252C\x2500" <> btreeprinter (bs++[True]) a <> "\n" <>
-                                drawlines bs <> "\x2514\x2500" <> btreeprinter (bs++[False]) b
+btreePrint :: [Bool] -> (a -> Text) -> BinTree a -> Text
+btreePrint bs s (BinLeaf txt) = s txt
+btreePrint bs s (BinNode a b) = "\x252C\x2500" <> btreePrint (bs++[True]) s a <> "\n" <>
+                                drawlines bs <> "\x2514\x2500" <> btreePrint (bs++[False]) s b
   where
     drawlines bs = foldMap (\case True -> "\x2502 " ; False -> "  ") bs 
 

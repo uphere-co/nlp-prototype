@@ -10,7 +10,7 @@ import           Data.Text (Text)
 import qualified Data.Text as T (replicate)
 import           Data.Monoid
 -- 
-import NLP.SyntaxTree.Types
+import NLP.SyntaxTree.Type
 
 testbtree :: BinTree Text
 testbtree = BinNode (BinNode (BinLeaf "a") (BinLeaf "b")) (BinLeaf "c")
