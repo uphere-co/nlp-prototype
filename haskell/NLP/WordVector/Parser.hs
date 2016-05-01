@@ -26,7 +26,9 @@ skipSpace = CB.dropWhile (isSpace . unsafeCoerce)
 getVector :: (MonadResource m, MonadIO m) => Int -> C.Sink B.ByteString m (Text,Vector Float)
 getVector n = do
     w <- head <$> (CB.takeWhile (not . isSpace . unsafeCoerce) =$= CL.consume)
-    skipSpace
+    -- skipSpace
+    -- A.char ' '
+    CB.drop 1
     vbstr <- LB.toStrict <$> CB.take (4*n)
     v <- liftIO . B.useAsCString vbstr $ \cstr -> do
       nstr <- mallocBytes (4*n) 
