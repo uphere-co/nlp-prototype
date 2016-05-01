@@ -17,8 +17,23 @@ data BinTree a = BinNode (BinTree a) (BinTree a)
 
 deriving instance (Show a) => Show (BinTree a)
 
+{- 
+instance Applicative BinTree where
+  pure = BinLeaf
+  BinLeaf f <*> BinLeaf x       = BinLeaf (f x)
+  BinLeaf f <*> BinNode x y     = BinNode (f <$> x) (f <$> y)
+  BinNode f1 f2 <*> BinLeaf x   = BinNode (f1 <*> pure x) (f2 <*> pure x)
+  BinNode f1 f2 <*> BinNode x y = BinNode (f1 <*> x) (f2 <*> y)
+
+instance Monad BinTree where
+  return = BinLeaf
+  (>>=) = undefined
+-}
+
 data BNTree e a = BNTNode e (BNTree e a) (BNTree e a)
                 | BNTLeaf a
                 deriving (Functor, Foldable, Traversable)
+
+deriving instance (Show e,Show a) => Show (BNTree e a)
 
 
