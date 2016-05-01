@@ -69,5 +69,5 @@ regularize = fmap regtext . remove . nullify . regcomp . fmap replaceNumber
         regcomp (BinLeaf x) = expandComposite x
         regcomp (BinNode x y) = BinNode (regcomp x) (regcomp y)
         
-        regtext = {- removeDotFromMrMrs .-} removeApostrophe . removeTrailingPunctuation .  removeDollarAnnot . T.toLower
+        regtext = removeApostrophe . removeTrailingPunctuation .  removeDollarAnnot . T.toLower
 
