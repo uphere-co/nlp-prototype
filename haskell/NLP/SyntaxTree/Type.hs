@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module NLP.SyntaxTree.Types where
+module NLP.SyntaxTree.Type where
 
 import           Data.Text                   (Text(..))
 
@@ -16,4 +16,9 @@ data BinTree a = BinNode (BinTree a) (BinTree a)
                deriving (Functor, Foldable, Traversable) 
 
 deriving instance (Show a) => Show (BinTree a)
+
+data BNTree e a = BNTNode e (BNTree e a) (BNTree e a)
+                | BNTLeaf a
+                deriving (Functor, Foldable, Traversable)
+
 
