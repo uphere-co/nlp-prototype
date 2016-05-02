@@ -17,25 +17,13 @@ main :: IO ()
 main = do
     putStrLn "parsing a result of word2vec program"
     filename <- getArgs >>= \args -> return (args !! 0) 
-    (lst,wvm) <- createWordVectorMap filename -- "vectors100statmt.bin"
-    -- mapM_ (print . ((,) <$> fst <*> V.sum  . snd . snd))  (take 100 lst)
-    --  let lst' = filter (\x -> let i = (fst . snd) x in i `elem` [75,76,77])  $ take 100 lst
-    -- let lst' = take 1000 $ lst
-    -- forM_ lst' $ \(w,(i,v)) -> do
-    --   print (w,i)
-    --   print v
-    --   putStrLn ""
-    -- print $ HM.lookup "time" (wvmap wvm)
-    -- putStrLn ""
-    -- print $ HM.lookup "so" (wvmap wvm) 
+    (lst,wvm) <- createWordVectorMap filename
     forever (bot (lst,wvm))
 
 bot (lst,wvm) = do    
     ln <- getLine
     lookupSimilarWord (lst,wvm) (T.pack (head (words ln)))
  
-
-
 -- lookupSimilarWord :: (WordVectorMap -> Text -> IO ()
 lookupSimilarWord (lst,wvm) word =
     case HM.lookup word (wvmap wvm) of
