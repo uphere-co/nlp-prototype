@@ -5,41 +5,61 @@ module NLP.SyntaxTree.Regularize where
 import           Data.Char      (isDigit)
 import qualified Data.List as L
 import           Data.Text      (Text)
-import qualified Data.Text as T (drop, filter, head, null, reverse, splitOn, take, toLower)
+import qualified Data.Text as T (drop, find, filter, head, null, reverse, splitOn,
+                                 tail, take, toLower)
 --
 import NLP.SyntaxTree.Type
 --
 import Debug.Trace
 
 isPunctuation :: Text -> Bool
-isPunctuation x = x `elem` [ ".", "?", "!", ","
+isPunctuation x = x `elem` [ ".", "?", "!", ",", ":", ";"
                            , "\"", "'", "`"
                            , "''" , "\"\"" , "``"
-                           , "\"\" \"\"", "`` ``" , "'' ''"
-                           , "'''"
+                           -- , "\"\" \"\"", "`` ``" , "'' ''"
+                           -- , "'''"
                            ]
 
 isxRB :: Text -> Bool
 isxRB x = x' == "lrb" || x' == "rrb" where x' = T.toLower x
 
-
-removeApostrophe txt
-  | txt == "'s" = "his"  -- this is very tempororay.
+expandShortened txt
+  | txt == "'s"  = "his"  -- this is very tempororay.
   | txt == "'ll" = "will"
-  | txt == "'m" = "am"
+  | txt == "'m"  = "am"
+  | txt == "n't" = "not"
+  | txt == "'re" = "are"
+  | txt == "'ve" = "have"
+  | txt == ".."  = "ellipsis"
+  | txt == "..." = "ellipsis"
   | otherwise = txt
-             
+    
+    
 removeTrailingPunctuation = T.reverse . T.filter (not . (`elem` ['.',',',' '] )  ) . T.reverse 
 
 removeDollarAnnot :: Text -> Text
 removeDollarAnnot txt = if (T.take 2 txt == "$ ") then T.drop 2 txt else txt
 
 replaceNumber :: Text -> Text
-replaceNumber txt = if isDigit (T.head txt) then "some-number" else txt
+replaceNumber txt | T.null txt = ""
+replaceNumber txt | (not . T.null) txt = 
+    let (h,t) = (T.head txt, T.tail txt)
+        r | isDigit h                      = "some-number"
+          | h == '.' && T.null t           = "."
+          | h == '.' && isDigit (T.head t) = "some-fractional-number"
+          | h == '\'' && T.null t           = "'"
+          | h == '\'' && isDigit (T.head t) = "some-year"    -- year  
+          | otherwise                      = txt
+    in r 
 
 expandComposite :: Text -> BinTree Text
-expandComposite txt = let lst = T.splitOn "-" txt
-                      in (L.foldr1 BinNode . map BinLeaf) lst 
+expandComposite txt = 
+    let lst = T.splitOn "-" txt
+    in if length lst > 1
+         then case T.find isDigit txt of
+                Nothing -> (L.foldr1 BinNode . map BinLeaf) lst
+                Just _  ->  BinLeaf txt
+         else BinLeaf txt
 
 
 isRemovable :: Text -> Bool
@@ -69,5 +89,5 @@ regularize = fmap regtext . remove . nullify . regcomp . fmap replaceNumber
         regcomp (BinLeaf x) = expandComposite x
         regcomp (BinNode x y) = BinNode (regcomp x) (regcomp y)
         
-        regtext = removeApostrophe . removeTrailingPunctuation .  removeDollarAnnot . T.toLower
+        regtext = removeTrailingPunctuation . expandShortened . removeDollarAnnot . T.toLower
 
