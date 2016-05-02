@@ -62,8 +62,10 @@ int main(int argc, char **argv) {
     for (a = 0; a < size; a++) fread(&M[a + b * size], sizeof(float), 1, f);
 
     //IWKIM
-    if( b == 75 || b == 76 || b == 77) {
+    if( b == 743 || b == 744 || b == 745) {
       printf("b = %d\n" , b);
+      printf("word: %s\n", &vocab[b*max_w] );
+      printf("ascii 1st: %d\n", vocab[b*max_w] );
       for( k= 0 ; k < size ; k++ ) {
 	printf("%e ",  M[k + b*size] );
       }

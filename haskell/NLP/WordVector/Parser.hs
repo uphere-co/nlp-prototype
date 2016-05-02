@@ -12,6 +12,7 @@ import qualified Data.Conduit        as C
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List   as CL
 import           Data.Text                  (Text)
+import qualified Data.Text           as T   (concat)
 import qualified Data.Text.Encoding  as TE
 import           Data.Vector.Storable       (Vector)
 import qualified Data.Vector.Storable as V
@@ -25,9 +26,12 @@ skipSpace = CB.dropWhile (isSpace . unsafeCoerce)
 
 getVector :: (MonadResource m, MonadIO m) => Int -> C.Sink B.ByteString m (Text,Vector Float)
 getVector n = do
-    w <- head <$> (CB.takeWhile (not . isSpace . unsafeCoerce) =$= CL.consume)
+    ws <- (CB.takeWhile (not . (== ' ') . unsafeCoerce) =$= CL.consume)
+    let w = head ws
+
     -- skipSpace
     -- A.char ' '
+    -- liftIO $ print ws 
     CB.drop 1
     vbstr <- LB.toStrict <$> CB.take (4*n)
     v <- liftIO . B.useAsCString vbstr $ \cstr -> do
@@ -36,9 +40,11 @@ getVector n = do
       fptr <- castForeignPtr <$> newForeignPtr_ nstr
       return (V.unsafeFromForeignPtr0 fptr n)
     skipSpace
+    return (TE.decodeLatin1 w, v)
+    {- 
     case TE.decodeUtf8' w of
       Right w' -> return (w',v)
-      Left err -> return ("_error",v)
+      Left err -> return ("_error",v) -}
     -- return (TE.decodeUtf8 w,v)
 
 normalize :: Vector Float -> Vector Float

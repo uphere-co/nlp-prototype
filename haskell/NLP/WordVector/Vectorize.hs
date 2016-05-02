@@ -31,5 +31,5 @@ createWordVectorMap fp =
           nvec  = read r2 :: Int
       skipSpace
       lst <- (map (\(x,(y,z))->(y,(x,z))) . zip ([0..] :: [Int])) <$>
-               (replicateM nword $ ((,) <$> fst <*> {- normalize . -} snd) <$> getVector nvec)
+               (replicateM nword $ ((,) <$> fst <*> normalize . snd) <$> getVector nvec)
       return (lst,WVMap nvec (HM.fromList lst))
