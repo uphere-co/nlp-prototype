@@ -7,6 +7,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L
 import           Data.Text                 (Text)
 import qualified Data.Text           as T
+import qualified Data.Vector.Storable as V
 import           System.Environment        (getArgs)
 import           System.IO
 --
@@ -16,15 +17,13 @@ main :: IO ()
 main = do
     putStrLn "parsing a result of word2vec program"
     filename <- getArgs >>= \args -> return (args !! 0) 
-    (lst,wvm) <- createWordVectorMap filename -- "vectors100statmt.bin"
+    (lst,wvm) <- createWordVectorMap filename
     forever (bot (lst,wvm))
 
 bot (lst,wvm) = do    
     ln <- getLine
     lookupSimilarWord (lst,wvm) (T.pack (head (words ln)))
  
-
-
 -- lookupSimilarWord :: (WordVectorMap -> Text -> IO ()
 lookupSimilarWord (lst,wvm) word =
     case HM.lookup word (wvmap wvm) of

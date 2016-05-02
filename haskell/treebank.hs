@@ -13,6 +13,7 @@ import           Data.Text                   (Text)
 import qualified Data.Text            as T
 import qualified Data.Text.IO         as TIO
 import qualified Data.Vector.Storable as V
+import           System.Environment
 --
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
@@ -22,6 +23,9 @@ import           NLP.WordVector.Vectorize
 
 main :: IO ()
 main = do
+  args <- getArgs
+  let n1 = read (args !! 0) :: Int
+      n2 = read (args !! 1) :: Int
   txt <- TIO.readFile "LDC2003T05_parsed1.pos" -- "parsed.txt"
   (_,wvm) <- createWordVectorMap "vectors100statmt.bin" -- "vectors100t8.bin"
   let v_unknown = HM.lookup "unknown" (wvmap wvm)
@@ -30,15 +34,20 @@ main = do
   case r of
     Left err -> print err
     Right lst -> do
-      result <- (\f -> foldM f (0,0,Set.empty) (take 100 lst)) $ \acc tr -> do
-        let btr   = (regularize . binarizeR) tr
-        let btr'  = fmap (\w -> (w,HM.lookup w (wvmap wvm))) btr
+      result <- (\f -> foldM f (0,0,Set.empty) ((drop n1 . take n2) lst)) $ \acc tr -> do
+        let btr0  = binarizeR tr
+            btr   = regularize btr0 -- . binarizeR) tr
+            btr'  = fmap (\w -> (w,HM.lookup w (wvmap wvm))) btr
             btr'' = fmap (\case (w,Nothing) -> ("unknown",v_unknown) ; x -> x) btr'
             unknowns = map fst . filter (\case (w,Nothing) -> True; _ -> False) . F.toList $ btr'
             (passed,failed,unknownset) = acc
             (passed',failed')
               | null unknowns = (passed+1,failed)
               | otherwise     = (passed,failed+1)
-        when ((not.null) unknowns) $ TIO.putStrLn (btreePrint [] id btr)
+             
+        when ((not.null) unknowns) $ do
+          TIO.putStrLn (pennTreePrint 0 tr)
+          TIO.putStrLn (btreePrint [] (T.pack . show) btr0) 
+          TIO.putStrLn (btreePrint [] (T.pack . show) btr)
         return (passed',failed',L.foldl' (\s x -> Set.insert x s) unknownset unknowns)
       print result

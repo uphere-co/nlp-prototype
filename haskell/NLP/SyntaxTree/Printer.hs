@@ -13,10 +13,10 @@ textprinter :: Int -> PennTree -> Text
 textprinter n (PT _ lst) = T.intercalate "\n" (map (textprinter (n+4)) lst)
 textprinter n (PN txt) = T.replicate n " " <> txt
 
-treeprinter :: Int -> PennTree -> Text
-treeprinter n (PT t lst) = "\n" <> fmttag <> T.concat (map (treeprinter (n+2)) lst)
+pennTreePrint :: Int -> PennTree -> Text
+pennTreePrint n (PT t lst) = "\n" <> fmttag <> T.concat (map (pennTreePrint (n+2)) lst)
   where fmttag = T.replicate n " " <> T.take 4 (t <> "    ") <> " "
-treeprinter n (PN txt) = txt
+pennTreePrint n (PN txt) = txt
 
 btreePrint :: [Bool] -> (a -> Text) -> BinTree a -> Text
 btreePrint bs s (BinLeaf txt) = s txt
