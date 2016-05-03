@@ -11,7 +11,6 @@ rec { Flask = buildPythonPackage rec {
       propagatedBuildInputs = [ python27Packages.itsdangerous
                                 python27Packages.werkzeug
                                 python27Packages.jinja2
-
                               ]; 
       meta = {
       };
@@ -51,23 +50,5 @@ rec { Flask = buildPythonPackage rec {
      propagatedBuildInputs = [python27Packages.six python27Packages.sqlite3 ];
      meta = {
      };
-     #shellHook = ''
-     #export PYTHONPATH=/nix/store/rc445bsxb245k2xb86y2w6qi1w6k8rpg-python-sqlite3-2.7.11/lib/python2.7/site-packages
-     #'';
-     #installPhase = ''
-     #  python -m nltk.downloader all
-     #'';
    };
 }
-
-
-
-#buildPythonPackage rec { 
-#     name = "arxiv-sanity";
-#     version = "1.0";
-#     src = builtins.filterSource (path: type: baseNameOf path != ".git") ./.;
-#     isExecutable = true;
-#     isLibrary = true;
-#     buildInputs = with pkgs.python27Packages; [ feedparser numpy scipy scikitlearn dateutil flask Flask-Limiter tornado ];
-#     license = null;
-#}
