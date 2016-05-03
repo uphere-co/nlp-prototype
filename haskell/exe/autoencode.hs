@@ -9,7 +9,7 @@ import           Foreign.ForeignPtr
 import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
 import           Foreign.Ptr
-
+import           System.Environment
 -- 
 import NLP.RecursiveNN.AutoEncoder
 
@@ -24,8 +24,10 @@ prepareData = do
     return v
 
 main = do
+    args <- getArgs
+    let n = read (args !! 0) :: Int
     putStrLn "auto encoder test"
     v <- prepareData
-    forM_ [0..10] $ \i -> do
+    forM_ [0..n] $ \i -> do
       let autoenc = prepare (V.slice (i*20400) ((i+1)*20400) v)
-      print (calcP autoenc)
+      calcP autoenc `seq` (return ())

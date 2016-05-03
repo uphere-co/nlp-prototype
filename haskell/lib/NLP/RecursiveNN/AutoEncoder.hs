@@ -37,9 +37,9 @@ prepare v =
         arr_c2  = AIO.fromVectors (Z :. 100) (V.slice 20300 100 v)
     in AutoEncoder 100 arr_We arr_b arr_c1 arr_c2
 
-calcP :: AutoEncoder -> Vector Float
+calcP :: AutoEncoder -> Array A.DIM0 Float -- Vector Float
 calcP AutoEncoder {..} =
-    AIO.toVectors . run . A.map (tanh . (/ 100.0)) . A.slice result $ (A.lift (Z :. All :. (0 :: Int)))
+    {- AIO.toVectors . -} run . A.sum . A.map (tanh . (/ 100.0)) . A.slice result $ (A.lift (Z :. All :. (0 :: Int)))
   where
         result = A.zipWith (+) (matMul (use autoenc_We) combined) blifted 
         combined = A.replicate (A.lift $ Z :. All :. (1 :: Int)) (use autoenc_c1 A.++ use autoenc_c2)
