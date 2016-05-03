@@ -29,13 +29,6 @@ add1Word m w = HM.alter f w m
 
 makeWordMap = foldl' add1Word HM.empty . findWords 
 
-{- 
-display x = let snum = fst3 x 
-                docid = snd3 x
-                wmap = (makeWordMap . trd3) x
-            in snum ++ ":" ++ docid ++ ":" ++ show wmap
--}
-
 add1WordInWordDocMap docid m w = HM.alter f w m
   where f Nothing  = Just 1 -- [docid]
         f (Just n) = Just (n+1)  -- (Just lst) = Just (docid:lst)
