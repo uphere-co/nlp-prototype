@@ -17,6 +17,7 @@ import           Foreign.Marshal.Utils
 import           Foreign.Ptr
 import           System.Environment
 -- 
+import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
@@ -51,9 +52,12 @@ main = do
     let n1 = read (args !! 0) :: Int
         n2 = read (args !! 1) :: Int
     v <- prepareData
-    let we = V.slice 0 20000 v
-        b = V.slice 20000 100 v
-    let autoenc = AutoEncoder 100 we b
+    let we = Mat (100,200) (V.slice 0 20000 v)
+        be = V.slice 20000 100 v
+        wd = Mat (200,100) (V.slice 20100 20000 v)
+        bd = V.slice 40100 200 v
+    let autoenc = AutoEncoder 100 we be
+        autodec = AutoDecoder 100 wd bd
     txt <- TIO.readFile "LDC2003T05_parsed1.pos" -- "parsed.txt"
     (_,wvm) <- createWordVectorMap "vectors100statmt.bin" -- "vectors100t8.bin"
     let v_unknown = HM.lookup "unknown" (wvmap wvm)
@@ -65,7 +69,7 @@ main = do
         forM_ ((drop n1 . take n2) lst) $ \tr -> do
           let (btr,mvtr) = getVectorizedTree wvm tr
           forM_ mvtr $ \vtr ->
-            print (calcTree autoenc vtr)
+            print (encode autoenc vtr)
 
 {- 
     let n = read (args !! 0) :: Int

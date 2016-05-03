@@ -16,7 +16,7 @@ import           Data.Vector.Storable              ((!), Vector)
 import qualified Data.Vector.Storable       as V
 import qualified Foreign.CUDA.Driver        as CUDA
 --
-import           Data.Array.Accelerate.Matrix
+-- import           Data.Array.Accelerate.Matrix
 import           Data.Vector.Storable.Matrix
 import           NLP.SyntaxTree.Type
 
@@ -53,13 +53,18 @@ calcP AutoEncoder {..} =
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
                      , aenode_c2  :: Vector Float
-                     } deriving Show
-
+                     }
+              
 data AutoEncoder = AutoEncoder { autoenc_dim :: Int
-                               , autoenc_We  :: Vector Float
+                               , autoenc_We  :: Matrix Float
                                , autoenc_b   :: Vector Float
-                               } deriving Show
+                               } 
 
+
+data AutoDecoder = AutoDecoder { autodec_dim :: Int
+                               , autodec_Wd  :: Matrix Float
+                               , autodec_b   :: Vector Float
+                               }
 {- 
 prepare' :: Vector Float -> AutoEncoder'
 prepare' v =
@@ -77,10 +82,10 @@ calcP AENode {..} =
     we = autoenc_We aenode_autoenc
     b = autoenc_b aenode_autoenc
     c = aenode_c1 V.++ aenode_c2  
-    r = mulMV (Mat (100,200) we) c
+    r = mulMV {- (Mat (100,200) we) -} we c
 
-calcTree :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
-calcTree autoenc btr = go btr
+encode :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
+encode autoenc btr = go btr
   where go (BinNode x y) = let x' = go x
                                y' = go y
                                vx = fromEither (rootElem x')
@@ -88,3 +93,9 @@ calcTree autoenc btr = go btr
                                ae = AENode autoenc vx vy
                            in BNTNode (calcP ae) x' y'
         go (BinLeaf x) = BNTLeaf x
+
+{- 
+decode :: AutoDecoder -> BNTree (Vector Float) () -> BNTree (Vector Float) (Vector Float)
+decode autodec bntr = go bntr
+  where 
+-}
