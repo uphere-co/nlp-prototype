@@ -23,4 +23,13 @@ data BNTree e a = BNTNode e (BNTree e a) (BNTree e a)
 
 deriving instance (Show e,Show a) => Show (BNTree e a)
 
+rootElem :: BNTree e a -> Either e a
+rootElem (BNTLeaf x) = Right x
+rootElem (BNTNode x _ _) = Left x
+
+fromEither = either id id
+
+binTree2BNTree :: BinTree a -> BNTree () a
+binTree2BNTree (BinNode x y) = BNTNode () (binTree2BNTree x) (binTree2BNTree y)
+binTree2BNTree (BinLeaf x)   = BNTLeaf x
 
