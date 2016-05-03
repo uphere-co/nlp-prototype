@@ -2,6 +2,7 @@
 
 
 import qualified Data.ByteString.Char8      as B
+import           Data.Foldable
 import           Data.Vector.Storable              ((!), Vector)
 import qualified Data.Vector.Storable       as V
 import           Foreign.ForeignPtr
@@ -25,5 +26,6 @@ prepareData = do
 main = do
     putStrLn "auto encoder test"
     v <- prepareData
-    let autoenc = prepare v
-    print (calcP autoenc)
+    forM_ [0..10] $ \i -> do
+      let autoenc = prepare (V.slice (i*20400) ((i+1)*20400) v)
+      print (calcP autoenc)
