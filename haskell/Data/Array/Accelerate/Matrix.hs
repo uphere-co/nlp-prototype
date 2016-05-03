@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -9,7 +10,7 @@ import qualified Data.Array.Accelerate      as A
 
 type Matrix a = Array DIM2 a
 
-matMul :: (A.IsNum e, A.Elt e) => Acc (Matrix e) -> Acc (Matrix e) -> Acc (Matrix e)
+matMul :: (A.IsNum e, A.Elt e, Num (Exp e)) => Acc (Matrix e) -> Acc (Matrix e) -> Acc (Matrix e)
 matMul arr brr = A.fold (+) 0 $ A.zipWith (*) arrRepl brrRepl
   where
     Z :. rowsA :. _     = A.unlift (A.shape arr) :: Z :. Exp Int :. Exp Int
@@ -18,7 +19,7 @@ matMul arr brr = A.fold (+) 0 $ A.zipWith (*) arrRepl brrRepl
     brrRepl = A.replicate (A.lift $ Z :. rowsA :. All   :. All ) (A.transpose brr)
 
 
-matTrace :: (A.IsNum e, A.Elt e) => Acc (Matrix e) -> Acc (A.Scalar e)
+matTrace :: (A.IsNum e, A.Elt e, Num (Exp e)) => Acc (Matrix e) -> Acc (A.Scalar e)
 matTrace arr = A.sum $ A.slice y (A.lift (Z :. (0 :: Int) :. All))
   where
     Z :. rows :. _cols = A.unlift (A.shape arr) :: Z :. Exp Int :. Exp Int
