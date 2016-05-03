@@ -48,6 +48,7 @@ Library
                         
 
   Exposed-modules:      Data.Array.Accelerate.Matrix
+                        Data.Vector.Storable.Matrix
                         NLP.RecursiveNN.AutoEncoder
                         NLP.SyntaxTree.Binarize
                         NLP.SyntaxTree.Parser
@@ -56,7 +57,7 @@ Library
                         NLP.SyntaxTree.Type
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
-                        
+                        Numeric.Kahan                        
   Other-modules:        
 
   ghc-options:          -O2 -Wall -funbox-strict-fields
@@ -88,5 +89,82 @@ Executable autoencode
                         --
                         autoencode
 
+-- treebank program. 
+--
+Executable treebank
+  Main-is:              treebank.hs
+  hs-source-dirs:       exe
 
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
 
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        text,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+-- wordvecparser program. 
+--
+Executable wordvecparser
+  Main-is:              wordvecparser.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        bytestring,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+-- acctest program. 
+--
+Executable acctest
+  Main-is:              acctest.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        accelerate                      == 2.*,
+                        accelerate-cuda                 == 2.*,
+                        accelerate-io                   == 2.*,
+                        bytestring,
+                        mersenne-random,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode

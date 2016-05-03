@@ -28,6 +28,8 @@ main = do
     let n = read (args !! 0) :: Int
     putStrLn "auto encoder test"
     v <- prepareData
-    forM_ [0..n] $ \i -> do
-      let autoenc = prepare (V.slice (i*20400) ((i+1)*20400) v)
-      calcP autoenc `seq` (return ())
+    forM_ [0..n-1] $ \i -> do
+      let autoenc = prepare' (V.slice i 20300 v)
+      -- calcP autoenc `seq` (return ())
+      -- calcP' autoenc `seq` return ()
+      print (calcP' autoenc)
