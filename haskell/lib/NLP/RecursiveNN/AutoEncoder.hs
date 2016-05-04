@@ -60,6 +60,9 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_b   :: Vector Float
                                } 
 
+data ADNode = ADNode { adnode_autodec :: AutoDecoder
+                     , adnode_y  :: Vector Float
+                     }
 
 data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_Wd  :: Matrix Float
@@ -75,15 +78,25 @@ prepare' v =
     in AutoEncoder' 100 arr_We arr_b arr_c1 arr_c2
 -}
 
-calcP :: AENode -> Vector Float
-calcP AENode {..} =
-    V.map (tanh . (/ 100.0)) $ V.zipWith (+) r b
+encodeP :: AENode -> Vector Float
+encodeP AENode {..} = V.map tanh $ V.zipWith (+) r b
   where
     we = autoenc_We aenode_autoenc
     b = autoenc_b aenode_autoenc
     c = aenode_c1 V.++ aenode_c2  
-    r = mulMV {- (Mat (100,200) we) -} we c
+    r = mulMV we c
 
+decodeP :: ADNode -> (Vector Float, Vector Float)
+decodeP ADNode {..} = (c1,c2)
+  where
+    dim = autodec_dim adnode_autodec
+    wd = autodec_Wd adnode_autodec 
+    b = autodec_b adnode_autodec
+    r = mulMV wd adnode_y
+    rc = V.map tanh $ V.zipWith (+) r b 
+    c1 = V.slice 0 dim rc
+    c2 = V.slice dim dim rc
+   
 encode :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
 encode autoenc btr = go btr
   where go (BinNode x y) = let x' = go x
@@ -91,11 +104,17 @@ encode autoenc btr = go btr
                                vx = fromEither (rootElem x')
                                vy = fromEither (rootElem y')
                                ae = AENode autoenc vx vy
-                           in BNTNode (calcP ae) x' y'
+                           in BNTNode (encodeP ae) x' y'
         go (BinLeaf x) = BNTLeaf x
 
-{- 
-decode :: AutoDecoder -> BNTree (Vector Float) () -> BNTree (Vector Float) (Vector Float)
-decode autodec bntr = go bntr
+
+decode :: AutoDecoder -> BNTree (Vector Float) ()-> BNTree (Vector Float) (Vector Float)
+decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
--}
+    go v (BNTNode _ x y) = let ad = ADNode autodec v
+                               (c1,c2) = decodeP ad
+                             in BNTNode v (go c1 x) (go c1 y)
+    go v (BNTLeaf ()) = BNTLeaf v
+decode autodec (BNTLeaf _) = error "shouldn't happen"
+
+    

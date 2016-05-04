@@ -23,6 +23,14 @@ data BNTree e a = BNTNode e (BNTree e a) (BNTree e a)
 
 deriving instance (Show e,Show a) => Show (BNTree e a)
 
+newtype BNTreeS a = BNTreeS { unBNTreeS :: BNTree a a }
+
+instance Functor BNTreeS where
+  fmap f (BNTreeS (BNTNode x y z)) = BNTreeS (BNTNode (f x)
+                                                      ((unBNTreeS . fmap f . BNTreeS) y)
+                                                      ((unBNTreeS . fmap f . BNTreeS) z))
+  fmap f (BNTreeS (BNTLeaf x))     = BNTreeS (BNTLeaf (f x))
+
 rootElem :: BNTree e a -> Either e a
 rootElem (BNTLeaf x) = Right x
 rootElem (BNTNode x _ _) = Left x
