@@ -117,4 +117,7 @@ decode autodec bntr@(BNTNode v _ _) = go v bntr
     go v (BNTLeaf ()) = BNTLeaf v
 decode autodec (BNTLeaf _) = error "shouldn't happen"
 
-    
+
+recDecode :: AutoDecoder -> BNTree (Vector Float) () -> BNTree (BNTree (Vector Float) (Vector Float)) ()
+recDecode autodec (BNTLeaf ()) = BNTLeaf ()
+recDecode autodec n@(BNTNode v x y) = BNTNode (decode autodec n) (recDecode autodec x) (recDecode autodec y) 

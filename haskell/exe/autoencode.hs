@@ -74,15 +74,17 @@ main = do
             let enc = encode autoenc vtr
                 dec = decode autodec (fmap (const ()) enc)
             print "================"
-            let printer :: (Show a) => BNTree a a -> IO ()
-                printer = TIO.putStrLn . bntPrint [] (T.pack . show) (T.pack . show)
-            let printer2 :: BNTree (Vector Float) (Vector Float) -> IO ()
-                printer2 = TIO.putStrLn . bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
+            let printer :: (Show a) => BNTree a a -> Text
+                printer = bntPrint [] (T.pack . show) (T.pack . show)
+            let printer2 :: BNTree (Vector Float) (Vector Float) -> Text
+                printer2 = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
 
-            printer2 enc --  . unBNTreeS . fmap V.sum . BNTreeS $ enc
+            TIO.putStrLn $ printer2 enc --  . unBNTreeS . fmap V.sum . BNTreeS $ enc
             print "----------------"
             -- printer . unBNTreeS . fmap V.sum . BNTreeS $ dec
-            printer2 dec 
+            TIO.putStrLn $ printer2 dec
+            let rdec = recDecode autodec (fmap (const ()) enc)
+            TIO.putStrLn . bntPrint [] printer2 (const "") $ rdec
 
 {- 
     let n = read (args !! 0) :: Int
