@@ -42,11 +42,7 @@ getVectorizedTree :: WordVectorMap -> PennTree -> (BinTree Text, Maybe (BinTree 
 getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap) wvm) btr)
   where
     btr0  = binarizeR tr
-    btr   = regularize btr0 -- . binarizeR) tr
-    -- btr'  = fmap (\w -> (w, (fmap snd . HM.lookup w . wvmap) wvm)) btr
-    -- btr'' = fmap (\case (w,Nothing) -> ("unknown",v_unknown) ; x -> x) btr'
-
-
+    btr   = regularize btr0
 
 main = do
     args <- getArgs
@@ -86,13 +82,3 @@ main = do
             let rdec = recDecode autodec (fmap (const ()) enc)
             TIO.putStrLn . bntPrint [] printer2 (const "") $ rdec
 
-{- 
-    let n = read (args !! 0) :: Int
-    putStrLn "auto encoder test"
-    v <- prepareData
-    forM_ [0..n-1] $ \i -> do
-      let autoenc = prepare' (V.slice i 20300 v)
-      -- calcP autoenc `seq` (return ())
-      -- calcP' autoenc `seq` return ()
-      print (calcP' autoenc)
--}

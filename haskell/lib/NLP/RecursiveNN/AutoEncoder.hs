@@ -20,36 +20,6 @@ import qualified Foreign.CUDA.Driver        as CUDA
 import           Data.Vector.Storable.Matrix
 import           NLP.SyntaxTree.Type
 
-
--- | this function is defined in HEAD of accelerate, but I define it here.
--- mkTanh x = A.Exp (A.PrimTanh A.floatingType `A.PrimApp` x)
-
-{- 
-data AutoEncoder = AutoEncoder { autoenc_dim :: Int
-                               , autoenc_We  :: Array DIM2 Float
-                               , autoenc_b   :: Array DIM1 Float  
-                               , autoenc_c1  :: Array DIM1 Float
-                               , autoenc_c2  :: Array DIM1 Float
-                               } deriving Show
-
-prepare :: Vector Float -> AutoEncoder
-prepare v =
-    let arr_We  = AIO.fromVectors (Z :. 100 :. 200) v
-        arr_b   = AIO.fromVectors (Z :. 100) (V.slice 20000 100 v)
-        arr_c1  = AIO.fromVectors (Z :. 100) (V.slice 20100 100 v)
-        arr_c2  = AIO.fromVectors (Z :. 100) (V.slice 20200 100 v)
-    in AutoEncoder 100 arr_We arr_b arr_c1 arr_c2
-
-calcP :: AutoEncoder -> Array A.DIM0 Float -- Vector Float
-calcP AutoEncoder {..} =
-    {- AIO.toVectors . -} run . A.sum . A.map (tanh . (/ 100.0))  .  A.slice result $ (A.lift (Z :. All :. (0 :: Int)))
-  where
-        result = A.zipWith (+) (matMul (use autoenc_We) combined) blifted 
-        combined = A.replicate (A.lift $ Z :. All :. (1 :: Int)) (use autoenc_c1 A.++ use autoenc_c2)
-        blifted  = A.replicate (A.lift $ Z :. All :. (1 :: Int)) (use autoenc_b)
-
--}
-
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
                      , aenode_c2  :: Vector Float
@@ -68,15 +38,6 @@ data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_Wd  :: Matrix Float
                                , autodec_b   :: Vector Float
                                }
-{- 
-prepare' :: Vector Float -> AutoEncoder'
-prepare' v =
-    let arr_We  = V.slice 0 20000 v
-        arr_c1  = V.slice 20000 100 v
-        arr_c2  = V.slice 20100 100 v
-        arr_b   = V.slice 20200 100 v        
-    in AutoEncoder' 100 arr_We arr_b arr_c1 arr_c2
--}
 
 encodeP :: AENode -> Vector Float
 encodeP AENode {..} = V.map tanh $ V.zipWith (+) r b
@@ -106,7 +67,6 @@ encode autoenc btr = go btr
                                ae = AENode autoenc vx vy
                            in BNTNode (encodeP ae) x' y'
         go (BinLeaf x) = BNTLeaf x
-
 
 decode :: AutoDecoder -> BNTree (Vector Float) ()-> BNTree (Vector Float) (Vector Float)
 decode autodec bntr@(BNTNode v _ _) = go v bntr
