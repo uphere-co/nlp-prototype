@@ -21,9 +21,10 @@ import           System.Environment
 import           System.Random.Mersenne
 --
 import           Data.Array.Accelerate.Matrix
+import           Data.Vector.Storable.Matrix
 import           Numeric.Kahan
 --
-import           Debug.Trace
+-- import           Debug.Trace
 
  
 randomVector :: Int -> IO (Vector Float)
@@ -56,22 +57,50 @@ testList v =
     in print $ sum (zipWith (*) xs xs)
 
 testAccel v = 
-    let arr = AIO.fromVectors (Z :. 100000000) ((),v) :: Array DIM1 Float
+    let arr = AIO.fromVectors (Z :. 100000000) v :: Array DIM1 Float
     in print $ run $ A.sum $ A.zipWith (*) (use arr) (use arr)
 
 testAccel2 v =
-    let arr = AIO.fromVectors (Z :. 1000 :. 1000) ((),v) :: Array DIM2 Float
+    let arr = AIO.fromVectors (Z :. 1000 :. 1000) v :: Array DIM2 Float
     in print $ run $ matTrace (matMul (use arr) (use arr)) -- use arr
 
 testVector2 v =
     let n = 1000
-        v' = V.take (n*n) v
-        v2 = V.fromList [ e | i <- [0..n-1], j <- [0..n-1],
-                              let e = kahanSumL [ v' ! (i*n+k) * v' ! (k*n+j) | k <- [0..n-1] ] 
-                        ] 
-        t = kahanSumL [ v2 ! (i*n+i) | i <- [0..n-1] ]
-    in print t    
+        m = Mat (n,n) (V.take (n*n) v)
+    in print $ traceM (m `mulMM` m)
 
+testList2 :: Vector Float -> IO ()
+testList2 v = 
+    let n = 1000
+        v' = V.take (n*n) v 
+        v2 = V.fromList [ e | i <- [0..n-1], j <- [0..n-1],
+                              let e = sum [ v' ! (i*n+k) * v' ! (k*n+j) | k <- [0..n-1] ] 
+                        ] 
+        t = sum [ v2 ! (i*n+i) | i <- [0..n-1] ]
+    in print t
+
+testAccel3 v =
+    let arr = AIO.fromVectors (Z :. 1000 :. 1000) v :: Array DIM2 Float
+    in print $ run $ matTrace (use arr `matMul` use arr `matMul` use arr `matMul` use arr) -- use arr
+
+testVector3 v =
+    let n = 1000
+        m = Mat (n,n) (V.take (n*n) v)
+    in print $ traceM (m `mulMM` m `mulMM` m `mulMM` m)
+
+{- 
+testList3 :: Vector Float -> IO ()
+testList3 v = 
+    let n = 1000
+        v' = V.take (n*n) v 
+        v2 = V.fromList [ e | i <- [0..n-1], j <- [0..n-1],
+                              let e = sum [ v' ! (i*n+k) * v' ! (k*n+j) | k <- [0..n-1] ] 
+                        ] 
+        t = sum [ v2 ! (i*n+i) | i <- [0..n-1] ]
+    in print t
+-}
+
+       
 main = do
     args <- getArgs    
     v <- prepareData
@@ -80,5 +109,9 @@ main = do
       "vector" -> testVector v
       "list" -> testList v
 
-      "accel2" -> testAccel2 v
+      "accel2"  -> testAccel2 v
       "vector2" -> testVector2 v
+      "list2"   -> testList2 v  
+
+      "accel3"  -> testAccel3 v
+      "vector3" -> testVector3 v

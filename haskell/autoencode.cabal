@@ -1,0 +1,170 @@
+Name:                   autoencode
+Version:                0.0
+Cabal-version:          >=1.8
+Tested-with:            GHC >= 7.10
+Build-type:             Simple
+
+Synopsis:               Recursive Autoencoder for Paraphrase detection
+Description:
+  This package implements Socher et al.'s recursive autoencoder algorithm.
+
+License:                BSD3
+License-file:           LICENSE
+Author:                 UpHere, Inc.
+Maintainer:             Ian-Woo Kim <ianwookim@gmail.com>
+Homepage:               https://github.com/uphere-co
+Bug-reports:            https://github.com/uphere-co
+
+Category:               AI, Natural Language Processing
+Stability:              Experimental
+
+Extra-source-files:     
+
+source-repository HEAD
+  type:                 git
+  location:             https://github.com/uphere-co/topic-modeling-for-US-patents
+  branch:               master
+  tag:                  0.0
+
+-- Test harness
+-- ------------
+
+Library
+  hs-source-dirs:       lib
+  Build-depends:        base,
+                        accelerate                      == 2.*,
+                        accelerate-cuda                 == 2.*,
+                        accelerate-io                   == 2.*,
+                        attoparsec,
+                        bytestring,
+                        conduit,
+                        conduit-extra,
+                        cuda,
+                        resourcet,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector
+                        
+
+  Exposed-modules:      Data.Array.Accelerate.Matrix
+                        Data.Vector.Storable.Matrix
+                        NLP.RecursiveNN.AutoEncoder
+                        NLP.SyntaxTree.Binarize
+                        NLP.SyntaxTree.Parser
+                        NLP.SyntaxTree.Printer
+                        NLP.SyntaxTree.Regularize
+                        NLP.SyntaxTree.Type
+                        NLP.WordVector.Parser
+                        NLP.WordVector.Vectorize
+                        Numeric.Kahan                        
+  Other-modules:        
+
+  ghc-options:          -O2 -Wall -funbox-strict-fields
+  ghc-prof-options:     -caf-all -auto-all
+
+
+-- autoencoder program. 
+--
+Executable autoencode
+  Main-is:              autoencode.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        accelerate                      == 2.*,
+                        accelerate-cuda                 == 2.*,
+                        accelerate-io                   == 2.*,
+                        bytestring,
+                        vector,
+                        --
+                        autoencode
+
+-- treebank program. 
+--
+Executable treebank
+  Main-is:              treebank.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        text,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+-- wordvecparser program. 
+--
+Executable wordvecparser
+  Main-is:              wordvecparser.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        bytestring,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+-- acctest program. 
+--
+Executable acctest
+  Main-is:              acctest.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        accelerate                      == 2.*,
+                        accelerate-cuda                 == 2.*,
+                        accelerate-io                   == 2.*,
+                        bytestring,
+                        mersenne-random,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
