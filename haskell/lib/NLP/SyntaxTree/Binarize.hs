@@ -21,5 +21,4 @@ binarizeR (PT _ xs) = go xs
  where
    go []       = error "impossible"
    go (x:[])   = binarizeR x 
-   -- go (x:y:[]) = BinNode (binarizeR x) (binarizeR y)
    go (x:xs)   = BinNode (binarizeR x) (go xs)

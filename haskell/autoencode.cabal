@@ -84,7 +84,10 @@ Executable autoencode
                         accelerate                      == 2.*,
                         accelerate-cuda                 == 2.*,
                         accelerate-io                   == 2.*,
+                        attoparsec,
                         bytestring,
+                        unordered-containers,
+                        text,
                         vector,
                         --
                         autoencode
