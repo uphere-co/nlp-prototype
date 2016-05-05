@@ -20,9 +20,6 @@ import           System.IO
 --
 import           NLP.WordVector.Vectorize
 
--- instance (Storable a) => Storable (Vector a) where
---   sizeOf _ = sizeOf (undefined :: Int) + sizeOf (undefined :: a) * (length v) 
-
 instance (Storable a, Storable b) => Storable (a,b) where
   sizeOf _ = sizeOf (undefined :: a) + sizeOf (undefined :: b)
   alignment _  = 8
@@ -35,14 +32,14 @@ main = do
     filename <- getArgs >>= \args -> return (args !! 0) 
     (lst,wvm) <- createWordVectorMap filename
     -- let vec = V.fromList $ map snd lst
-    let namemap = VB.fromList $ map ((,) <$> fst . snd <*> fst) lst
+    let namemap = VB.fromList $ map fst lst -- this is very fragile
     forever (bot (namemap,lst,wvm))
 
 bot (nm,vec,wvm) = do    
     ln <- getLine
     lookupSimilarWord (nm,vec,wvm) (T.pack (head (words ln)))
  
--- lookupSimilarWord :: (WordVectorMap -> Text -> IO ()
+lookupSimilarWord :: (VB.Vector Text,[(Text,(Int,V.Vector Float))],WordVectorMap) -> Text -> IO ()
 lookupSimilarWord (namemap,lst,wvm) word =
     case HM.lookup word (wvmap wvm) of
       Nothing -> liftIO $ putStrLn "test is not there"
@@ -52,15 +49,5 @@ lookupSimilarWord (namemap,lst,wvm) word =
                   vec'  <- V.thaw . V.fromList . map ((,) <$> fst . snd <*> cosDist vv . snd . snd) $ lst
                   VA.partialSortBy (flip compare `on` snd) vec' 40
                   V.freeze vec' 
-        mapM_ print $ map (\(i,d) -> (snd (namemap VB.! i),d)) $ V.toList . V.take 40 $ v
-{-        
-        let vec = map ((,) <$> fst <*>  cosDist vv . snd . snd) $ lst
-        let e = L.foldl' f [] vec
-            f xs (s,d) | isNaN d       = xs
-                       | otherwise     = g (s,d) xs
-            g (s,d) []                 = [(s,d)]
-            g (s,d) (x:xs) | d < snd x = x:g (s,d) xs
-                           | otherwise = (s,d):x:xs
-        mapM_ print (drop 1 $ take 40 e)
- -}   
+        mapM_ print $ map (\(i,d) -> (namemap VB.! i,d)) $ V.toList . V.take 40 $ v
           
