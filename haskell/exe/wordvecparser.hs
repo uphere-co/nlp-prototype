@@ -1,35 +1,59 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import           Control.Monad
 import           Control.Monad.IO.Class    (MonadIO(..), liftIO)
+import           Control.Monad.ST
+import           Data.Function             (on)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L
 import           Data.Text                 (Text)
 import qualified Data.Text           as T
+import qualified Data.Vector.Algorithms.Intro as VA
 import qualified Data.Vector.Storable as V
+import qualified Data.Vector as VB
+import           Foreign.Ptr
+import           Foreign.Storable
 import           System.Environment        (getArgs)
 import           System.IO
 --
 import           NLP.WordVector.Vectorize
+
+-- instance (Storable a) => Storable (Vector a) where
+--   sizeOf _ = sizeOf (undefined :: Int) + sizeOf (undefined :: a) * (length v) 
+
+instance (Storable a, Storable b) => Storable (a,b) where
+  sizeOf _ = sizeOf (undefined :: a) + sizeOf (undefined :: b)
+  alignment _  = 8
+  peek ptr = peek (castPtr ptr) >>= \i -> peek (castPtr (ptr `plusPtr` sizeOf i)) >>= \f -> return (i,f)
+  poke ptr (i,f) = poke (castPtr ptr) i >> poke (castPtr (ptr `plusPtr` sizeOf i)) f 
 
 main :: IO ()
 main = do
     putStrLn "parsing a result of word2vec program"
     filename <- getArgs >>= \args -> return (args !! 0) 
     (lst,wvm) <- createWordVectorMap filename
-    forever (bot (lst,wvm))
+    -- let vec = V.fromList $ map snd lst
+    let namemap = VB.fromList $ map ((,) <$> fst . snd <*> fst) lst
+    forever (bot (namemap,lst,wvm))
 
-bot (lst,wvm) = do    
+bot (nm,vec,wvm) = do    
     ln <- getLine
-    lookupSimilarWord (lst,wvm) (T.pack (head (words ln)))
+    lookupSimilarWord (nm,vec,wvm) (T.pack (head (words ln)))
  
 -- lookupSimilarWord :: (WordVectorMap -> Text -> IO ()
-lookupSimilarWord (lst,wvm) word =
+lookupSimilarWord (namemap,lst,wvm) word =
     case HM.lookup word (wvmap wvm) of
       Nothing -> liftIO $ putStrLn "test is not there"
       Just (i,vv) -> liftIO $ do
         putStrLn $ "index = " ++ show i
+        let v = runST $ do
+                  vec'  <- V.thaw . V.fromList . map ((,) <$> fst . snd <*> cosDist vv . snd . snd) $ lst
+                  VA.partialSortBy (flip compare `on` snd) vec' 40
+                  V.freeze vec' 
+        mapM_ print $ map (\(i,d) -> (snd (namemap VB.! i),d)) $ V.toList . V.take 40 $ v
+{-        
         let vec = map ((,) <$> fst <*>  cosDist vv . snd . snd) $ lst
         let e = L.foldl' f [] vec
             f xs (s,d) | isNaN d       = xs
@@ -38,5 +62,5 @@ lookupSimilarWord (lst,wvm) word =
             g (s,d) (x:xs) | d < snd x = x:g (s,d) xs
                            | otherwise = (s,d):x:xs
         mapM_ print (drop 1 $ take 40 e)
-    
+ -}   
           
