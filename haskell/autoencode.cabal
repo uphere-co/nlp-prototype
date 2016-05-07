@@ -140,6 +140,7 @@ Executable wordvecparser
                         transformers,
                         unordered-containers,
                         vector,
+                        vector-algorithms,
                         --
                         autoencode
 
