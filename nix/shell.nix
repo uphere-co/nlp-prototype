@@ -15,14 +15,19 @@ let
            version = "0.3.0.0";
 	   src = fetchgit {
              url = "git://github.com/wavewave/cublas.git";
-	     rev = "1c1298a9539ceb8f58bd61f978877ecf89527290";
-	     sha256 = "0g6gi1bagqnl1x9jja53xqv71ihvsyw12c8p0jna9n0pi4l7si4g";
+	     rev = "0ad62bcfcbee369a03ddbf292e49514fb56a2886";
+	     sha256 = "05rspmdl3q2ppgkfzhwviyphi82262r21h9142m1fg3dxiz22k1b";
            }; # /home/wavewave/repo/srcc/cublas;
 	   libraryHaskellDepends = [
 	     base cuda filepath language-c storable-complex template-haskell
 	   ];
 	   buildDepends = [ autoconf ];
 	   librarySystemDepends = [ cudatoolkit ];
+	   preConfigure = ''
+	     unset CC
+	     sed -i -e 's|/usr/bin/gcc|gcc|g' Foreign/CUDA/Cublas/THBase.hs 
+	   '';
+	   jailbreak = true;
 	   homepage = "https://github.com/bmsherman/cublas";
 	   description = "FFI bindings to the CUDA CUBLAS and CUSPARSE libraries";
 	   license = stdenv.lib.licenses.bsd3;
