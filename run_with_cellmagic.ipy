@@ -1,0 +1,4 @@
+#!/home/SRC_snu/.local/bin/ipython
+from IPython import get_ipython
+ipython = get_ipython()
+ipython.magic("run parse_arxiv_meta.py")
