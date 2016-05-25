@@ -1,2 +1,0 @@
-# modori
-My start!
