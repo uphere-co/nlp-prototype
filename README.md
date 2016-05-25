@@ -1,6 +1,7 @@
 # word2vec
 
 ## Parsing Arxiv meta XMLs 
+First, launch `ipcluster start -n 12` first.
 Run `parse_arxiv_meta.ipynb` files in notebook, or in shell:
 ```bash
 #Set environment variable ARXIV_META
