@@ -4,7 +4,63 @@ with pkgs;
 
 let 
     hsconfig = self: super: {
-    
+      "hblas" = self.callPackage
+	({ mkDerivation, base, openblas, HUnit, liblapack, primitive
+	 , storable-complex, tasty, tasty-hunit, vector
+	 }:
+	 mkDerivation {
+	   pname = "hblas";
+	   version = "0.3.2.1";
+	   sha256 = "3e159cc8c98735861edad47cd4da11bd5862bb629601a9bc441960c921ae8215";
+	   revision = "1";
+	   editedCabalFile = "cf7946aba77f6f23a665fe06859a6ba306b513f5849f9828ed171e84bad4a43e";
+	   libraryHaskellDepends = [ base primitive storable-complex vector ];
+	   librarySystemDepends = [ openblas liblapack ];
+	   testHaskellDepends = [ base HUnit tasty tasty-hunit vector ];
+	   jailbreak = true;
+	   doCheck = false;
+	   configureFlags = ["-fOpenBLAS"];
+	   homepage = "http://github.com/wellposed/hblas/";
+	   description = "Human friendly BLAS and Lapack bindings for Haskell";
+	   license = stdenv.lib.licenses.bsd3;
+	   hydraPlatforms = stdenv.lib.platforms.none;
+	 }) { inherit (pkgs) liblapack;};
+ 
+
+      cuda = self.callPackage
+        ({ mkDerivation, base, bytestring, c2hs, pretty, stdenv
+	 , template-haskell
+	 , cudatoolkit, autoconf
+	 }:
+	 mkDerivation {
+	   pname = "cuda";
+	   version = "0.7.1.0";
+	   src = fetchgit {
+             url = "git://github.com/wavewave/cuda.git";
+	     rev = "05145a79dc652a1a9f72bc0d99a6db59a9dd55df";
+	     sha256 = "16hsf2qwzai04bf0gyn6wpw37fk0kldbm6gcx1zzlmhkvb5g94wm";
+           };
+	   isLibrary = true;
+	   isExecutable = true;
+	   libraryHaskellDepends = [ base bytestring template-haskell ];
+	   libraryToolDepends = [ c2hs ];
+	   executableHaskellDepends = [ base pretty ];
+	   librarySystemDepends = [ cudatoolkit ];
+	   buildDepends = [ autoconf ];
+	   extraLibraries = (super.extraLibraries or []) ++ [pkgs.linuxPackages.nvidia_x11];
+	   configureFlags = (super.configureFlags or []) ++
+	     pkgs.lib.optional pkgs.stdenv.is64bit "--extra-lib-dirs=${cudatoolkit}/lib64" ++ [
+	       "--extra-lib-dirs=${cudatoolkit}/lib"
+	       "--extra-include-dirs=${cudatoolkit}/include"
+	     ];
+	   preConfigure = ''
+	     unset CC
+	   '';
+	   homepage = "https://github.com/tmcdonell/cuda";
+	   description = "FFI binding to the CUDA interface for programming NVIDIA GPUs";
+	   license = stdenv.lib.licenses.bsd3;
+	 }) {};
+
       cublas = self.callPackage
         ({ mkDerivation, base, cuda, filepath, language-c
          , stdenv, storable-complex, template-haskell, autoconf
@@ -17,7 +73,7 @@ let
              url = "git://github.com/wavewave/cublas.git";
 	     rev = "0ad62bcfcbee369a03ddbf292e49514fb56a2886";
 	     sha256 = "05rspmdl3q2ppgkfzhwviyphi82262r21h9142m1fg3dxiz22k1b";
-           }; # /home/wavewave/repo/srcc/cublas;
+           };
 	   libraryHaskellDepends = [
 	     base cuda filepath language-c storable-complex template-haskell
 	   ];
@@ -121,6 +177,7 @@ let
 	      math-functions
 	      cuda
 	      cublas
+	      hblas
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
