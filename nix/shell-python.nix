@@ -14,9 +14,6 @@ stdenv.mkDerivation {
                    numpy scipy
                    jupyter
                    toolz.gensim
-                   #sqlite3 scikitlearn dateutil flask
-                   #tornado
-                   #toolz.Flask-Limiter toolz.nltk
                  ];
   shellHook = ''
   '';
