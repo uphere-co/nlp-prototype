@@ -15,5 +15,9 @@ export ARXIV_META='the location of arxiv meta files'
 
 ### Running word2vec
 Run `word2vec.ipynb` as notebook.
-
-
+Use SSH tunneling:
+```
+ssh -p 22221 -N -f -L localhost:18888:localhost:8888  gpu
+jupyter notebook
+```
+Then, visit localhost:18888 on your computer browser.
