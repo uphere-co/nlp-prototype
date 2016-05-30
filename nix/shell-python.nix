@@ -9,13 +9,13 @@ let toolz = callPackage ./default-python.nix {
 in
 stdenv.mkDerivation {
   name = "python-env";
-  buildInputs = with python27Packages;
+  buildInputs = (with python27Packages;
                  [ ipython
 		   ipyparallel
                    numpy scipy
                    jupyter
                    toolz.gensim
-                 ];
+                 ]) ++ [ wget screen ];
   shellHook = ''
   '';
 }
