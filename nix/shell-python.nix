@@ -14,6 +14,7 @@ stdenv.mkDerivation {
 		   ipyparallel
                    numpy scipy
                    jupyter
+                   pyzmq
                    toolz.gensim
                  ];
   shellHook = ''
