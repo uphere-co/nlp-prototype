@@ -11,15 +11,42 @@ using namespace std;
 const int vnum = 4;
 const int nnum = 2;
 
+#define MAX_STRING 1000
+
+void makeLower(string& str){
+  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+}
+
+void remove_punctuations(string& str){
+  char punctuations[5] = {'.',',','?',':',';'};
+  for(int i=0;i<5;i++)
+    str.erase(std::remove(str.begin(),str.end(), punctuations[i]), str.end());
+}
+
+void remove_stopwords(vector<string>& tokens){
+  string stopwords[119] = {"a","able","about","across","after","all","almost","also","am","among","an","and","any","are","as","at","be","because","been","but","by","can","cannot","could","dear","did","do","does","either","else","ever","every","for","from","get","got","had","has","have","he","her","hers","him","his","how","however","i","if","in","into","is","it","its","just","least","let","like","likely","may","me","might","most","must","my","neither","no","nor","not","of","off","often","on","only","or","other","our","own","rather","said","say","says","she","should","since","so","some","than","that","the","their","them","then","there","these","they","this","tis","to","too","twas","us","wants","was","we","were","what","when","where","which","while","who","whom","why","will","with","would","yet","you","your"}; // 119 + 5
+  for(int i=0;i<119;i++){
+    if(std::find(tokens.begin(), tokens.end(), stopwords[i]) != tokens.end())
+      tokens.erase(std::remove(tokens.begin(), tokens.end(), stopwords[i]), tokens.end());
+  }
+}
+
+
 void Tokenize(const string& str, vector<string>& tokens, const string& delimiters = " "){
   string::size_type lastPos = str.find_first_not_of(delimiters, 0);
   string::size_type pos = str.find_first_of(delimiters, lastPos);
 
   while (string::npos != pos || string::npos != lastPos){
-    tokens.push_back(str.substr(lastPos, pos - lastPos));
+    string a = str.substr(lastPos, pos-lastPos);
+    makeLower(a); // Converting into lowercase characters.
+    remove_punctuations(a);
+    if(std::find(tokens.begin(), tokens.end(), a) == tokens.end()) // find() returns tokens.end if tarket is not found. 
+      tokens.push_back(a);
     lastPos = str.find_first_not_of(delimiters, pos);
     pos = str.find_first_of(delimiters, lastPos);
   }
+  remove_stopwords(tokens);
+
 }
 
 void initWeight(double who[nnum][vnum], double wih[vnum][nnum]){
@@ -38,10 +65,9 @@ double activation(double x){
 
 int main()
 {
-  char inputString[1000];
-
   //int vnum = 5;
   //int nnum = 2;
+  char inputString[MAX_STRING];
   
   string buf;
 
@@ -65,18 +91,19 @@ int main()
 
   double eta = 0.1; // Learning rate ( > 0)
   
-//ifstream inFile("input.txt");
-//  ofstream outFile("outfile.txt");
+  ifstream inFile("input.txt");
+  ofstream outFile("outfile.txt");
 
-//while(!inFile.eof()){
-//    inFile.getline(inputString,1000);
-//    Tokenize(inputString, tokens);
-//  }
+  while(!inFile.eof()){
+    inFile.getline(inputString,MAX_STRING);
+    Tokenize(inputString, tokens);
+  }
 
-//  for(vector<string>::size_type i = 0; i < tokens.size(); ++i)
-//    outFile << tokens[i] << endl;
+  for(vector<string>::size_type i = 0; i < tokens.size(); ++i)
+    outFile << tokens[i] << endl;
   
   initWeight(who,wih); // Initialize the weight matrix
+
   
   // Iteration START
   number = 0;
@@ -163,7 +190,7 @@ int main()
   }
   // Iteration END
 
-  //inFile.close();
-  //outFile.close();
+  inFile.close();
+  outFile.close();
 
 }
