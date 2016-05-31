@@ -14,19 +14,23 @@ export ARXIV_META='the location of arxiv meta files'
 ```
 
 ### Running word2vec server
-```
+```bash
 export WORD2VEC_MODEL='path of gensim.Word2Vec model'
 ipython word2vec_server.py
 ```
+```bash
 #list of servers
-localhost:10100 :
+## localhost:10100 : words -> most similar words
 input : words seperated by space, e.g. `quark` or `electron muon tau`.
 output : similar words seperated by space.
+## localhost:10101 : words -> 2D PCA figs
+input : words seperated by space, e.g. `quark` or `electron muon tau`.
+output : full path of the stored .png file.
 ```
 
 ### Running notebooks via SSH tunneling
 Use SSH tunneling:
-```
+```bash
 #On your local machine:
 ssh -p 22221 -N -f -L localhost:18888:localhost:8888  216.218.134.74
 #from remote server:
