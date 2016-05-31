@@ -14,11 +14,9 @@ stdenv.mkDerivation {
                    matplotlib seaborn
                    numpy scipy pandas scikitlearn
                    pyzmq
-                   toolz.gensim
-                   #toolz.Theano
-                   #theano
-                   #toolz.Keras
-                 ]);# ++ [ theano wget screen cudnn ];
+                   toolz.gensim toolz.untangle
+                   toolz.Theano toolz.Keras
+                 ]);# ++ [ wget screen cudnn ];
   shellHook = ''
   '';
 }
