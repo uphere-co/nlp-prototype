@@ -62,6 +62,8 @@ git checkout haskellcudafix-on-15.09-cudnntest
 3. Run nix-shell:
 ```bash
 nix-shell nix/shell-python.cudnn.nix --arg pkgs "import ${HOME}/repo/srcc/nixpkgs {}"
+#check Theano is running with CUDA:
+python -c 'from theano.sandbox.cuda.dnn import version; print(version())'
 ```
 
 Note. 
