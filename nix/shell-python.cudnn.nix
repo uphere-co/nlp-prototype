@@ -10,13 +10,14 @@ in
 stdenv.mkDerivation {
   name = "python-env";
   buildInputs = (with python27Packages;
-                 [ ipython jupyter ipyparallel
-                   matplotlib seaborn
-                   numpy scipy pandas scikitlearn
+                 [ ipython
+                   #ipyparallel
+                   numpy scipy
+                   #jupyter
                    pyzmq
-                   toolz.gensim toolz.untangle
-                   toolz.Theano toolz.Keras
-                 ]);# ++ [ wget screen cudnn ];
+                   theano
+                   toolz.gensim
+                 ]) ++ [ wget screen ];
   shellHook = ''
   '';
 }
