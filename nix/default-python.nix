@@ -60,7 +60,19 @@ rec {
         url = "${mirror_url}/Keras/${name}.tar.gz";
         sha256 = "0wi826bvifvy12w490ghj1g45z5xb83q2cadqh425sg56p98khaq";
       };
-      propagatedBuildInputs = [ Theano 
+      propagatedBuildInputs = [ Theano
+                                python27Packages.six
+                                python27Packages.pyyaml ];
+      meta = {
+      };
+    };
+    KerasCUDNN = buildPythonPackage rec {
+      name = "Keras-1.0.3";
+      src = pkgs.fetchurl {
+        url = "${mirror_url}/Keras/${name}.tar.gz";
+        sha256 = "0wi826bvifvy12w490ghj1g45z5xb83q2cadqh425sg56p98khaq";
+      };
+      propagatedBuildInputs = [ python27Packages.theano 
                                 python27Packages.six 
                                 python27Packages.pyyaml ];
       meta = {

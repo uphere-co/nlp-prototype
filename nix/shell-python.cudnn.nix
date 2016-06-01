@@ -15,9 +15,9 @@ stdenv.mkDerivation {
                    numpy scipy
                    #jupyter
                    pyzmq
-                   theano h5py
-                   toolz.gensim
-                 ]) ++ [ wget screen ];
+                   theano h5py pip
+                   toolz.gensim toolz.KerasCUDNN
+                 ]) ++ [ wget screen gfortran ];
   shellHook = ''
   '';
 }
