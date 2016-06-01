@@ -98,12 +98,12 @@ let
 	mkDerivation {
 	  pname = "accelerate";
 	  version = "2.0.0.0";
-	  src = /home/wavewave/repo/srcc/accelerate;
-	  #src = fetchgit {
-	  #  url = "git://github.com/AccelerateHS/accelerate.git";
-	  #  rev = "9d0118f8ef3cd47d64a737b9d7d1d902a5ee72b7";
-	  #  sha256 = "0gvqv6vx4izwhlgzs13vlmsp07lnfzpy2nzw5ahla8fkxmayllq0";
-	  #};
+	  #src = /home/wavewave/repo/srcc/accelerate;
+	  src = fetchgit {
+	    url = "git://github.com/AccelerateHS/accelerate.git";
+	    rev = "9d0118f8ef3cd47d64a737b9d7d1d902a5ee72b7";
+	    sha256 = "0gvqv6vx4izwhlgzs13vlmsp07lnfzpy2nzw5ahla8fkxmayllq0";
+	  };
 	  libraryHaskellDepends = [
 	    array base base-orphans containers directory exceptions fclabels
 	    filepath ghc-prim hashable hashtables mtl pretty template-haskell
@@ -145,12 +145,12 @@ let
 	mkDerivation {
 	  pname = "accelerate-cuda";
 	  version = "2.0.0.0";
-	  src = /home/wavewave/repo/srcc/accelerate-cuda;
-	  #src = fetchgit {
-	  #  url = "file:///home/wavewave/repo/srcc/accelerate-cuda.git";
-	  #  rev = "8e71da7aeb6da0eb84415abb2dd41eef6c749fa3";
-	  #  sha256 = "1dnz4z5m0dz5k8nhvbls42rr27ggrwg9bfl9p9v78cj5x17h84bc";
-	  #};
+	  #src = /home/wavewave/repo/srcc/accelerate-cuda;
+	  src = fetchgit {
+	    url = "https://github.com/AccelerateHS/accelerate-cuda.git";
+	    rev = "b33150316aa8b8dd611cfc59f08429bd64fdb747";
+	    sha256 = "1b8784bn9gqidrhc9z8bnvxmvp7cp5sq45jp6907gpa1c4jnq3l8";
+	  };
 	  configureFlags = "-fdebug";
 	  doCheck = false;
 	  doHaddock = false;
