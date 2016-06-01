@@ -15,7 +15,7 @@ stdenv.mkDerivation {
                    numpy scipy
                    #jupyter
                    pyzmq
-                   theano
+                   theano h5py
                    toolz.gensim
                  ]) ++ [ wget screen ];
   shellHook = ''

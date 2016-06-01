@@ -15,7 +15,7 @@ stdenv.mkDerivation {
                    numpy scipy pandas scikitlearn
                    pyzmq
                    toolz.gensim toolz.untangle
-                   toolz.Theano toolz.Keras
+                   toolz.Theano toolz.Keras h5py
                  ]);# ++ [ wget screen cudnn ];
   shellHook = ''
   '';
