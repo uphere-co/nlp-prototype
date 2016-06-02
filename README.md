@@ -42,7 +42,7 @@ jupyter notebook
 ```
 Then, visit localhost:18888 on your computer browser to run notebooks.
 
-## Note on cuDNN
+### Note on cuDNN
 Currently, NixOS 16.03 does not support cuDNN. To run Theano with cuDNN, use following steps:
 1. Make `~/.nixpkgs/config.nix` file:
 ```bash
@@ -58,6 +58,9 @@ cd repos/srcc
 git clone https://github.com/wavewave/nixpkgs.git
 cd nixpkgs
 git checkout haskellcudafix-on-15.09-cudnntest
+
+#Register cuDNN binary file:
+nix-store --add-fixed sha256 /data/groups/uphere/cuda/cudnn-7.0-linux-x64-v4.0-prod.tgz
 ```
 3. Run nix-shell:
 ```bash
