@@ -63,29 +63,6 @@ Library
 
   ghc-options:          -O2 -Wall -funbox-strict-fields
   ghc-prof-options:     -caf-all -auto-all
-
-
--- lbfgs test
---
-Executable lbfgs
-  Main-is:              lbfgs.hs
-  hs-source-dirs:       exe
-
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
-
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
-                        
-  build-depends:        base                            >= 4.7 && < 4.9,
-                        --
-                        lbfgs,
-                        --
-                        autoencode
-
   
 -- autoencoder program. 
 --
