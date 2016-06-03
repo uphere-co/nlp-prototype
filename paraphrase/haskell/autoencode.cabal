@@ -144,6 +144,30 @@ Executable wordvecparser
                         --
                         autoencode
 
+
+-- autoencoder program. 
+--
+Executable lbfgs
+  Main-is:              lbfgs.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        array,
+                        lbfgs,
+                        --
+                        autoencode
+
+                        
 -- -- acctest program. 
 -- --
 -- Executable acctest
