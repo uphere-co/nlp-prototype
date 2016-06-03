@@ -4,17 +4,17 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
-import           Data.Array.Accelerate             (use, (:.)(..), Array(..), Z(..),
-                                                    DIM1, DIM2, All(..), Acc, Exp)
-import qualified Data.Array.Accelerate      as A
-import qualified Data.Array.Accelerate.AST  as A
-import qualified Data.Array.Accelerate.Array.Sugar as S
-import           Data.Array.Accelerate.CUDA
-import           Data.Array.Accelerate.CUDA.Foreign
-import qualified Data.Array.Accelerate.IO   as AIO
+-- import           Data.Array.Accelerate             (use, (:.)(..), Array(..), Z(..),
+--                                                    DIM1, DIM2, All(..), Acc, Exp)
+-- import qualified Data.Array.Accelerate      as A
+-- import qualified Data.Array.Accelerate.AST  as A
+-- import qualified Data.Array.Accelerate.Array.Sugar as S
+-- import           Data.Array.Accelerate.CUDA
+-- import           Data.Array.Accelerate.CUDA.Foreign
+-- import qualified Data.Array.Accelerate.IO   as AIO
 import           Data.Vector.Storable              ((!), Vector)
 import qualified Data.Vector.Storable       as V
-import qualified Foreign.CUDA.Driver        as CUDA
+-- import qualified Foreign.CUDA.Driver        as CUDA
 --
 -- import           Data.Array.Accelerate.Matrix
 import           Data.Vector.Storable.Matrix
