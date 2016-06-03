@@ -32,14 +32,14 @@ source-repository HEAD
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
-                        accelerate                      == 2.*,
-                        accelerate-cuda                 == 2.*,
-                        accelerate-io                   == 2.*,
+                        -- accelerate                      == 2.*,
+                        -- accelerate-cuda                 == 2.*,
+                        -- accelerate-io                   == 2.*,
                         attoparsec,
                         bytestring,
                         conduit,
                         conduit-extra,
-                        cuda,
+                        -- cuda,
                         resourcet,
                         text,
                         transformers,
@@ -47,7 +47,8 @@ Library
                         vector
                         
 
-  Exposed-modules:      Data.Array.Accelerate.Matrix
+  Exposed-modules:
+                        -- Data.Array.Accelerate.Matrix
                         Data.Vector.Storable.Matrix
                         NLP.RecursiveNN.AutoEncoder
                         NLP.SyntaxTree.Binarize
@@ -64,6 +65,28 @@ Library
   ghc-prof-options:     -caf-all -auto-all
 
 
+-- lbfgs test
+--
+Executable lbfgs
+  Main-is:              lbfgs.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        lbfgs,
+                        --
+                        autoencode
+
+  
 -- autoencoder program. 
 --
 Executable autoencode
@@ -81,9 +104,9 @@ Executable autoencode
                         
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
-                        accelerate                      == 2.*,
-                        accelerate-cuda                 == 2.*,
-                        accelerate-io                   == 2.*,
+                        -- accelerate                      == 2.*,
+                        -- accelerate-cuda                 == 2.*,
+                        -- accelerate-io                   == 2.*,
                         attoparsec,
                         bytestring,
                         unordered-containers,
@@ -144,31 +167,31 @@ Executable wordvecparser
                         --
                         autoencode
 
--- acctest program. 
---
-Executable acctest
-  Main-is:              acctest.hs
-  hs-source-dirs:       exe
+-- -- acctest program. 
+-- --
+-- Executable acctest
+--   Main-is:              acctest.hs
+--   hs-source-dirs:       exe
 
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
+--   other-modules:       
+--   ghc-options:          -Wall -O2
+--                         -threaded
+--                         -funbox-strict-fields
 
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
+--   ghc-prof-options:     -auto-all
+--   extra-libraries:     
+--   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
-                        --
-                        accelerate                      == 2.*,
-                        accelerate-cuda                 == 2.*,
-                        accelerate-io                   == 2.*,
-                        bytestring,
-                        mersenne-random,
-                        text,
-                        transformers,
-                        unordered-containers,
-                        vector,
-                        --
-                        autoencode
+--   build-depends:        base                            >= 4.7 && < 4.9,
+--                         --
+--                         accelerate                      == 2.*,
+--                         accelerate-cuda                 == 2.*,
+--                         accelerate-io                   == 2.*,
+--                         bytestring,
+--                         mersenne-random,
+--                         text,
+--                         transformers,
+--                         unordered-containers,
+--                         vector,
+--                         --
+--                         autoencode

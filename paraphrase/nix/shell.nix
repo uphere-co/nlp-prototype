@@ -170,14 +170,15 @@ let
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
               xml-conduit split unordered-containers vector-algorithms storable-tuple
 	      tagged either
-              accelerate
-              accelerate-io
-	      accelerate-cuda
+              #accelerate
+              #accelerate-io
+	      #accelerate-cuda
 	      mersenne-random
 	      math-functions
-	      cuda
-	      cublas
+	      #cuda
+	      #cublas
 	      hblas
+              lbfgs
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
