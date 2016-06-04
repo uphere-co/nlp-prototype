@@ -2,6 +2,13 @@
 
 `python` has python codes and `cpp` has c++ codes obviously. Currently we have word2vec experiments.
 
+## RecursiveNN directory
+See tests for usages. Use pytest for unit testing.
+```bash
+#Run unit tests:
+cd python/RecursiveNN
+py.test
+```
 ## word2vec python directory
 
 ### Parsing Arxiv meta XMLs 

@@ -17,6 +17,7 @@ stdenv.mkDerivation {
                    pyzmq
                    theano h5py pip
                    toolz.gensim toolz.KerasCUDNN
+                   pytest
                  ]) ++ [ wget screen gfortran ];
   shellHook = ''
   '';
