@@ -44,12 +44,11 @@ class Var(Number):
         
         
 class Word:
-    #model = word2vecModel
     def __init__(self, word):
         self.name = word
         self.parent=None
         self.expr = 'w2v(%s)'%word
-        self.vec = Val([0,0])
+        self.vec = Val(None)
     def __str__(self):
         return self.name
     def __repr__(self):
@@ -98,22 +97,6 @@ class Phrase:
             print "Message is round-toured."
     def simplify(self):
         return self
-
-class RecursiveNN:
-    def __init__(self, W_left_init, W_right_init, bias_init):
-        self.W_left=W_left_init
-        self.W_right=W_right_init
-        bias = Word(bias_init.name)
-        bias.expr='bias'
-        bias.vec=bias_init        
-        self.bias=bias
-    def combineTwoNodes(self, left,right):        
-        Wxh_left=Mul(self.W_left, left)
-        Wxh_right=Mul(self.W_right, right)
-        x=Add(Add(Wxh_left,Wxh_right), self.bias)
-        vec=Fun('tanh', x)
-        phrase=Phrase(left,right, vec)        
-        return phrase    
     
 class Fun:
     def __init__(self, name, var):

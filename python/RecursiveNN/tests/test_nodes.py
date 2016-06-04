@@ -3,7 +3,8 @@ import sys
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 
-from recursiveNN.nodes import Word,Phrase,RecursiveNN, Val,Var,Fun, Add,Mul
+from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul
+from recursiveNN.models import RecursiveNN
 
 def test_ElementaryTypes():
     val0 = Val(0)
@@ -72,6 +73,7 @@ def test_SimplePhrase():
     W_right_init = Var('W_right', [0,0,0,0])
     bias_init = Var('bias', [1,1])           
     rnn=RecursiveNN(W_left_init, W_right_init, bias_init)
+    merge=rnn.combineTwoNodes
     
     the=Word('The')
     cat=Word('cat')    
@@ -80,27 +82,27 @@ def test_SimplePhrase():
     assert(the.expression()=='w2v(The)')   
     assert(str(the)=='The')
     
-    the_cat=rnn.combineTwoNodes(the,cat)
+    the_cat=merge(the,cat)
     assert(str(the_cat)=='(The,cat)')    
     assert(the_cat.expression()=='tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)')
     #assert(the_cat.expression()=='tanh((((W_left*w2v(The))+(W_right*w2v(cat)))+bias))')
     assert(the_cat.diff(Var('W_left')).expression()=='tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The)')    
     #assert(the_cat.diff(Var('W_left')).expression()=='(tanh`((((W_left*w2v(The))+(W_right*w2v(cat)))+bias))*w2v(The))')
     
-    the_cat_is=rnn.combineTwoNodes(the_cat, Word('is'))
+    the_cat_is=merge(the_cat, Word('is'))
     assert(str(the_cat_is)=='((The,cat),is)')
     assert(the_cat_is.expression()=='tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)')
     #assert(the_cat_is.expression()=='tanh((((W_left*tanh((((W_left*w2v(The))+(W_right*w2v(cat)))+bias)))+(W_right*w2v(is)))+bias))')
     expected='tanh`(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)*'+ \
              '(tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_left*tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The))'
-    a=the_cat_is.diff(Var('W_left'))
-    print a
-    print a.x
-    print a.y
-    print a.y.simplify().__class__
     assert(the_cat_is.diff(Var('W_left')).expression()==expected)
     
-    the_cat_is_cute=rnn.combineTwoNodes(the_cat_is, Word('cute'))
+    assert(str(merge(the_cat, merge(Word('is'), Word('cute'))))=='((The,cat),(is,cute))')
+    
+    the_cat_is_cute=merge(the_cat_is, Word('cute'))
     assert(str(the_cat_is_cute)=='(((The,cat),is),cute)')
     expected='tanh(W_left*tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)+W_right*w2v(cute)+bias)'
-    assert(the_cat_is_cute.expression()==expected)
+    assert(the_cat_is_cute.expression()==expected)  
+    
+def test_CacheKnownValues():
+    pass
