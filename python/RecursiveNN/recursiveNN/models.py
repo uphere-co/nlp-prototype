@@ -20,3 +20,7 @@ class RecursiveNN:
         phrase=Phrase(left,right, vec)        
         return phrase
         
+class Word2VecFactory:
+    def __init__(self):
+        pass
+

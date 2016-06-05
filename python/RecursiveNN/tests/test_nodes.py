@@ -53,12 +53,13 @@ def test_SimplifyZeroAndOne():
     fy=Fun('f',y)
     gx=Fun('g',x)
     gy=Fun('g',y)
+    hx=Fun('h',x)
     gfx=Fun('g',fx)
     zero=Val(0)    
     one=Val(1)
-    #assert(str(Mul(one,Add(x,y)))=='1*(x+y)')
+    assert(str(Mul(one,Add(x,y)))=='1*(x+y)')
     assert(Mul(one,Add(x,y)).expression()=='1*(x+y)')
-    assert(str(Mul(one,Add(x,y)).simplify())=='x+y')
+    assert(str(Mul(one,Add(x,y)).simplify())=='(x+y)')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
     assert(Mul(fx, one).simplify()==Fun('f',Var('x')))
@@ -67,6 +68,10 @@ def test_SimplifyZeroAndOne():
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
     assert(str(Mul(gfx,gy).diff(x))=='g`(f(x))*f`(x)*g(y)')
     assert(str(Mul(gfx,gy).diff(y))=='g(f(x))*g`(y)')
+    
+    assert(str(Mul(hx,Mul(gx,fx)))=='h(x)*g(x)*f(x)')
+    assert(str(Mul(hx,Mul(gx,fx)).diff(x))=='h`(x)*g(x)*f(x)+h(x)*(g`(x)*f(x)+g(x)*f`(x))')
+    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0')
     
 def test_SimplePhrase():
     W_left_init  = Var('W_left', [0,0,0,0])
@@ -85,14 +90,11 @@ def test_SimplePhrase():
     the_cat=merge(the,cat)
     assert(str(the_cat)=='(The,cat)')    
     assert(the_cat.expression()=='tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)')
-    #assert(the_cat.expression()=='tanh((((W_left*w2v(The))+(W_right*w2v(cat)))+bias))')
     assert(the_cat.diff(Var('W_left')).expression()=='tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The)')    
-    #assert(the_cat.diff(Var('W_left')).expression()=='(tanh`((((W_left*w2v(The))+(W_right*w2v(cat)))+bias))*w2v(The))')
     
     the_cat_is=merge(the_cat, Word('is'))
     assert(str(the_cat_is)=='((The,cat),is)')
     assert(the_cat_is.expression()=='tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)')
-    #assert(the_cat_is.expression()=='tanh((((W_left*tanh((((W_left*w2v(The))+(W_right*w2v(cat)))+bias)))+(W_right*w2v(is)))+bias))')
     expected='tanh`(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)*'+ \
              '(tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_left*tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The))'
     assert(the_cat_is.diff(Var('W_left')).expression()==expected)

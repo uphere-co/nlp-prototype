@@ -129,15 +129,23 @@ class Fun:
         print self, 'send message to ', self.var
         self.var.send_message(mesg)
 
-class BinaryOperator:
+class BinaryOperator(object):
     def __init__(self, x, y):
         self.name = None
-        self.parent=None
         self.x, self.y = x,y
+        self.format="%s%s%s"
+        self._parent=None
+        
         self.x.parent=self
         self.y.parent=self
+    @property
+    def parent(self):
+        return self._parent
+    @parent.setter
+    def parent(self,value):
+        self._parent=value
     def __str__(self):
-        return "%s%s%s"%(self.x, self.name, self.y)
+        return self.format%(self.x, self.name, self.y)
     def expression(self):
         if hasattr(self.x, 'expression'):
             x_expr = self.x.expression()
@@ -148,7 +156,7 @@ class BinaryOperator:
         else:
             y_expr= self.y.__str__()
         #if isinstance(self.parent,  self.__class__)
-        return "%s%s%s"%(x_expr, self.name, y_expr)
+        return self.format%(x_expr, self.name, y_expr)
     def send_message(self, mesg):
         print self, 'send %r message to '%mesg, self.x, ' and ', self.y
         self.x.send_message(mesg)
@@ -172,14 +180,15 @@ class Add(BinaryOperator):
             self.x.parent = self.parent
             return self.x
         return self
-    def expression(self):
+    @BinaryOperator.parent.setter
+    def parent(self,value):        
+        self._parent=value
         if isinstance(self.parent, Mul):
-            return '('+BinaryOperator.expression(self)+')'
-        return BinaryOperator.expression(self)
+            self.format='(%s%s%s)'
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
-    def diff(self, var):        
+    def diff(self, var):
         return self.diff_no_simplify().simplify()
     
 class Mul(BinaryOperator):
