@@ -119,7 +119,22 @@ class Phrase(Node):
 
             
 class Fun(Node):
+    known_functions=dict(
+    [('cos' ,('cos',np.cos)),
+     ('sin' ,('sin',np.sin)),
+     ('exp' ,('exp',np.exp)),
+     ('cos`',('-sin',lambda x : -np.sin(x))),
+     ('sin`',('cos',np.cos)),
+     ('exp`',('exp',np.exp)),
+     ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
+     ('tanh',('tanh',np.tanh)),
+     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2))])
+     #'',('',),
     def __init__(self, name, var, op=None):
+        if name in Fun.known_functions.keys():
+            name, op0 = Fun.known_functions[name]
+            if not op:
+                op=op0 
         Node.__init__(self,name)
         self.op=op
         self.var=var

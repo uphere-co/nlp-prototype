@@ -132,7 +132,6 @@ def test_Evaluation():
     s=Var('s',s0)
     fs=Fun('cos',s, np.cos)
     assert(str(fs)=='cos(s)')
-    assert(str(fs.diff(s))=='cos`(s)')
     assert(fs.val==np.cos(s0))
 
 def test_CacheKnownValues():
@@ -185,7 +184,22 @@ def test_ParentRelationships():
     for v in [1.0,0.5,0.1]:
         x.val=v
         assert(fx.val==np.sin(v))
-        assert(gx.val==np.exp(v))
+        assert(gx.val==np.exp(v))    
+    
+def test_DiffKnownFunctions():
+    x=Var('x')
+    fx=Fun('sin',x)
+    dfx=fx.diff(x)
+    assert(dfx.expression()=='cos(x)')
+    gfx=Fun('exp',Mul(Val(3), fx))
+    dgfx=gfx.diff(x)
+    assert(dgfx.expression()=='exp(3*sin(x))*3*cos(x)')
+    for v in [1.0, 2.0, 14.2, 5.1, 5.72341] :
+        x.val=v
+        assert(dfx.val==np.cos(v))
+        assert(gfx.val==np.exp(3*np.sin(v)))
+        #Allow slight difference for complex numpy expressions.
+        np.testing.assert_approx_equal(dgfx.val,np.exp(3*np.sin(v))*3*np.cos(v), 10)
 
 def test_FeedForwardNNEvaluation():
     pass
