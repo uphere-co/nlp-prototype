@@ -200,6 +200,13 @@ def test_DiffKnownFunctions():
         assert(gfx.val==np.exp(3*np.sin(v)))
         #Allow slight difference for complex numpy expressions.
         np.testing.assert_approx_equal(dgfx.val,np.exp(3*np.sin(v))*3*np.cos(v), 10)
+        
+    hfx=Fun('log',fx)
+    dhfx=hfx.diff(x)
+    assert(dhfx.expression()=='1/(sin(x))*cos(x)')
+    hx=Fun('log',Add(fx, Fun('exp', x)))
+    dhx=hx.diff(x)
+    assert(dhx.expression()=='1/(sin(x)+exp(x))*(cos(x)+exp(x))')
 
 def test_FeedForwardNNEvaluation():
     pass

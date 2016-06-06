@@ -123,9 +123,11 @@ class Fun(Node):
     [('cos' ,('cos',np.cos)),
      ('sin' ,('sin',np.sin)),
      ('exp' ,('exp',np.exp)),
-     ('cos`',('-sin',lambda x : -np.sin(x))),
+     ('log' ,('log',np.log)),
+     ('cos`',('-sin',lambda x : -np.sin(x) )),
      ('sin`',('cos',np.cos)),
      ('exp`',('exp',np.exp)),
+     ('log`' ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2))])
