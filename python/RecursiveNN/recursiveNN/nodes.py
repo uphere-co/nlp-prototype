@@ -1,5 +1,7 @@
 
-class Number:
+import numpy as np
+
+class Number(object):
     def __init__(self, name, val):
         self.name = name
         self.parent=None
@@ -14,6 +16,8 @@ class Number:
         print self, 'received message: %r'%mesg
     def simplify(self):
         return self
+    def diff(self,var):
+        return self.diff_no_simplify(var)
         
 class Val(Number):
     def __init__(self, val):
@@ -24,12 +28,11 @@ class Val(Number):
         zero = Val(0)
         zero.parent = self.parent
         return zero
-    def diff(self,var):
-        self.diff_no_simplify(var)
     
 class Var(Number):
-    def __init__(self, name, val=None):
+    def __init__(self, name, val=np.nan):
         Number.__init__(self, name, val)
+        self._val = val
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def diff_no_simplify(self, var):
@@ -39,16 +42,22 @@ class Var(Number):
         val=Val(v)
         val.parent=self.parent
         return val
-    def diff(self,var):
-        self.diff_no_simplify(var)
+    @property
+    def val(self):
+        return self._val
+    @val.setter
+    def val(self,val):
+        self._val=val
+        if self.parent:
+            self.parent.resetCachedValue()
         
         
-class Word:
+class Word(object):
     def __init__(self, word):
         self.name = word
         self.parent=None
         self.expr = 'w2v(%s)'%word
-        self.vec = Val(None)
+        self.vec = Val(np.nan)
     def __str__(self):
         return self.name
     def __repr__(self):
@@ -68,7 +77,7 @@ class Word:
     def simplify(self):
         return self
         
-class Phrase:
+class Phrase(object):
     def __init__(self, left, right, vec):
         self.left = left
         self.left.parent = self
@@ -78,9 +87,9 @@ class Phrase:
                 
         self.vec = vec 
     def __str__(self):
-        return '('+str(self.left)+','+str(self.right)+')'        
+        return '(%s,%s)'%(self.left,self.right)        
     def __repr__(self):
-        return "Phrase(%s)"%(self.left.__repr__()+','+self.right.__repr__())
+        return "Phrase(%r,%r)"%(self.left,self.right)
     def expression(self):
         return self.vec.expression()
     def diff_no_simplify(self, var):
@@ -98,12 +107,14 @@ class Phrase:
     def simplify(self):
         return self
     
-class Fun:
-    def __init__(self, name, var):
+class Fun(object):
+    def __init__(self, name, var, op=None):
         self.name = name
         self.parent=None
         self.var=var
         self.var.parent=self
+        self.op=op
+        self._val=None
     def __str__(self):
         return "%s(%s)"%(self.name, self.var)
     def __repr__(self):
@@ -124,6 +135,15 @@ class Fun:
         return expr
     def diff(self, var):        
         return self.diff_no_simplify(var).simplify()
+    @property
+    def val(self):
+        if not np.any(self._val):
+            self._val = self.op(self.var.val)
+        return self._val
+    def resetCachedValue(self):
+        self._val=None
+        if self.parent:
+            self.parent.resetCachedValue()
         
     def send_message(self, mesg):
         print self, 'send message to ', self.var
@@ -138,6 +158,8 @@ class BinaryOperator(object):
         
         self.x.parent=self
         self.y.parent=self
+        
+        self._val=None
     @property
     def parent(self):
         return self._parent
@@ -155,7 +177,6 @@ class BinaryOperator(object):
             y_expr = self.y.expression()
         else:
             y_expr= self.y.__str__()
-        #if isinstance(self.parent,  self.__class__)
         return self.format%(x_expr, self.name, y_expr)
     def send_message(self, mesg):
         print self, 'send %r message to '%mesg, self.x, ' and ', self.y
@@ -164,11 +185,25 @@ class BinaryOperator(object):
     def simplify(self):
         self.x=self.x.simplify()
         self.y=self.y.simplify()
+    def diff_no_simplify(self, var):
+        assert(0)
+    def diff(self, var):        
+        return self.diff_no_simplify(var).simplify()
+    @property
+    def val(self):
+        if not np.any(self._val):
+            self._val = self.op(self.x.val, self.y.val)
+        return self._val
+    def resetCachedValue(self):
+        self._val=None
+        if self.parent:
+            self.parent.resetCachedValue()
     
 class Add(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = '+'
+        self.op = np.add
     def __repr__(self):
         return "Add(%r,%r)"%(self.x, self.y)
     def simplify(self):
@@ -188,13 +223,13 @@ class Add(BinaryOperator):
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
-    def diff(self, var):
-        return self.diff_no_simplify().simplify()
+        
     
 class Mul(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = '*'
+        self.op=np.dot
     def __repr__(self):
         return "Mul(%r,%r)"%(self.x, self.y)
     def simplify(self):
@@ -214,5 +249,3 @@ class Mul(BinaryOperator):
         expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
                  Mul(self.x,self.y.diff_no_simplify(var)))
         return expr
-    def diff(self, var):        
-        return self.diff_no_simplify(var).simplify()

@@ -3,6 +3,7 @@ import sys
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 
+import numpy as np
 from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul
 from recursiveNN.models import RecursiveNN
 
@@ -105,6 +106,70 @@ def test_SimplePhrase():
     assert(str(the_cat_is_cute)=='(((The,cat),is),cute)')
     expected='tanh(W_left*tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)+W_right*w2v(cute)+bias)'
     assert(the_cat_is_cute.expression()==expected)  
-    
+
+def assert_all(x):
+    assert(np.all(x))
+def test_Evaluation():
+    vx=np.array([1.0,2.0,3.0])
+    vy=np.array([2.0,3.0,4.0])
+    vz=np.array([3.0,5.0,7.0])
+    x=Var('x')
+    x.val=vx
+    y=Var('y', vy)
+    z=Var('z',vz)
+    xy=Mul(x,y)
+    x_plus_y=Add(x,y)
+    assert(str(xy)=='x*y')
+    assert(xy.val==vx.dot(vy))
+    assert(str(x_plus_y)=='x+y')
+    assert_all(x_plus_y.val==vx+vy)
+    assert_all(Mul(xy,z).val==Mul(z,xy).val)
+    assert_all(Mul(xy,z).val==vx.dot(vy)*vz)
+    s0=1.57
+    s=Var('s',s0)
+    fs=Fun('cos',s, np.cos)
+    assert(str(fs)=='cos(s)')
+    assert(str(fs.diff(s))=='cos`(s)')
+    assert(fs.val==np.cos(s0))
+
 def test_CacheKnownValues():
+    x=Var('x')    
+    fx=Fun('cos', x, np.cos)
+    gfx=Fun('exp', fx, np.exp)
+    exp_cos=lambda x : np.exp(np.cos(x))
+    for v in np.random.random(10):        
+        x.val=v
+        assert(gfx.val==exp_cos(v))        
+    for i in range(100):
+        assert(gfx.val==exp_cos(v))
+        
+    y=Var('y')
+    hy=Fun('tanh', y, np.tanh)
+    gfx_hy = Mul(gfx, hy)
+    exp_cos_x_times_tanh_y = lambda x, y : exp_cos(x)*np.tanh(y)
+    vx=5.7
+    vy=np.array([1.1,2.1])
+    x.val=vx
+    y.val=vy
+    assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
+    print "Change x only:"
+    vx=1.0
+    x.val=vx
+    assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
+    print "Change y only:"
+    vy=1.0
+    y.val=vy
+    assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
+    
+    #Instance of Var must be single-assigned, 
+    #but it is not yet enforced by code.          
+    x=Var('x')
+    y=Var('y')
+    assert(np.isnan(Mul(x,y).val))
+    x.val=1.0
+    assert(np.isnan(Mul(x,y).val))
+    y.val=2.0
+    assert(Mul(x,y).val==2.0)
+    
+def test_FeedForwardNNEvaluation():
     pass
