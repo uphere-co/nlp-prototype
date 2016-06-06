@@ -5,17 +5,17 @@ import numpy as np
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
 class Node(object):
     def __init__(self, name):
-        self._parent=None
+        self._parents=[]
         self.name=name
         self._val=None
     def __str__(self):
         return self.name     
     @property
-    def parent(self):
-        return self._parent
-    @parent.setter
-    def parent(self,value):
-        self._parent=value
+    def parents(self):
+        return self._parents
+    #@parent.setter
+    def add_parent(self,parent):
+        self._parents.append(parent)
     @property
     def val(self):
         return self._val
@@ -27,8 +27,9 @@ class Node(object):
         return self
     def resetCachedValue(self):
         self._val=None
-        if self.parent:
-            self.parent.resetCachedValue()     
+        if self.parents:
+            for parent in self.parents:
+                parent.resetCachedValue()     
                
 class Val(Node):
     def __init__(self, val):
@@ -42,7 +43,6 @@ class Val(Node):
         return False
     def diff_no_simplify(self, var):
         zero = Val(0)
-        zero.parent = self.parent
         return zero
     
 class Var(Node):
@@ -60,13 +60,11 @@ class Var(Node):
         if(var.name!= self.name):
             v=0
         val=Val(v)
-        val.parent=self.parent
         return val
     @Node.val.setter
     def val(self,val):
-        self._val=val
-        if self.parent:
-            self.parent.resetCachedValue()        
+        self.resetCachedValue()
+        self._val=val                    
         
 class Word(Node):
     def __init__(self, word):
@@ -86,17 +84,18 @@ class Word(Node):
     def send_message(self, mesg):
         print self, ' received %s'%mesg
         out = str(self)+' received %s'%mesg
-        if self.parent :
-            print self, ' returns %s to '%mesg, self.parent
+        if self.parents :
+            for parent in self.parents:
+                self, ' returns %s to '%mesg, parent
         return
         
 class Phrase(Node):
     def __init__(self, left, right, vec):
         Node.__init__(self, name=None)
         self.left = left
-        self.left.parent = self
+        self.left.add_parent(self)
         self.right = right
-        self.right.parent = self                
+        self.right.add_parent(self)                
         self.vec = vec 
     def __str__(self):
         return '(%s,%s)'%(self.left,self.right)        
@@ -112,8 +111,9 @@ class Phrase(Node):
         print self, ' send %s to %s and %s'%(mesg, self.left, self.right)
         self.left.send_message(mesg)
         self.right.send_message(mesg)
-        if self.parent :
-            print self, 'returns %s to'%mesg, self.parent
+        if self.parents :
+            for parent in self.parents:
+                print self, 'returns %s to'%mesg, parent
         else :
             print "Message is round-toured."
 
@@ -123,7 +123,7 @@ class Fun(Node):
         Node.__init__(self,name)
         self.op=op
         self.var=var
-        self.var.parent=self
+        self.var.add_parent(self)
     def __str__(self):
         return "%s(%s)"%(self.name, self.var)
     def __repr__(self):
@@ -137,7 +137,10 @@ class Fun(Node):
             return True
         return False
     def simplify(self):
-        self.var.simplify()
+        tmp=self.var.simplify()
+        if not tmp is self.var:
+            self.var=tmp
+            self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
         expr=Mul(Fun(self.name+"`", self.var), self.var.diff_no_simplify(var))
@@ -154,8 +157,8 @@ class BinaryOperator(Node):
         self.op=None
         self.format="%s%s%s"
         self.x, self.y = x,y        
-        self.x.parent=self
-        self.y.parent=self
+        self.x.add_parent(self)
+        self.y.add_parent(self)
     def __str__(self):
         return self.format%(self.x, self.name, self.y)
     def expression(self):
@@ -170,7 +173,9 @@ class BinaryOperator(Node):
         return self.format%(x_expr, self.name, y_expr)        
     def simplify(self):
         self.x=self.x.simplify()
+        self.x.add_parent(self)
         self.y=self.y.simplify()
+        self.y.add_parent(self)
     @property
     def val(self):
         if not np.any(self._val):
@@ -187,17 +192,10 @@ class Add(BinaryOperator):
     def simplify(self):
         BinaryOperator.simplify(self)
         if self.x==Val(0):
-            self.y.parent = self.parent
             return self.y
         elif self.y==Val(0):
-            self.x.parent = self.parent
             return self.x
         return self
-    @Node.parent.setter
-    def parent(self,value):        
-        self._parent=value
-        if isinstance(self.parent, Mul):
-            self.format='(%s%s%s)'
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
@@ -208,19 +206,24 @@ class Mul(BinaryOperator):
         BinaryOperator.__init__(self,x,y)
         self.name = '*'
         self.op=np.dot
+        self.update_format()
     def __repr__(self):
         return "Mul(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self.format='(%s)%s%s'
+        elif isinstance(self.y, Add):
+            self.format='%s%s(%s)'
+        else:
+            self.format='%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
+        self.update_format()
         if self.x==Val(0) or self.y==Val(0):
-            zero = Val(0)
-            zero.parent = self.parent
-            return zero
+            return Val(0)
         elif self.x==Val(1):
-            self.y.parent=self.parent
             return self.y
         elif self.y==Val(1):
-            self.x.parent=self.parent
             return self.x
         return self
     def diff_no_simplify(self, var):

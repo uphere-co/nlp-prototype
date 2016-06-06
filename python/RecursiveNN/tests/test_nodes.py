@@ -16,7 +16,7 @@ def test_ElementaryTypes():
     assert(str(val)=='2*10')
     assert(str(val0)=='0')
     assert(str(val10)=='10')
-    
+       
 def test_DiffOperations():
     x =Var('x')    
     y =Var('y') 
@@ -63,7 +63,7 @@ def test_SimplifyZeroAndOne():
     one=Val(1)
     assert(str(Mul(one,Add(x,y)))=='1*(x+y)')
     assert(Mul(one,Add(x,y)).expression()=='1*(x+y)')
-    assert(str(Mul(one,Add(x,y)).simplify())=='(x+y)')
+    assert(str(Mul(one,Add(x,y)).simplify())=='x+y')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
     assert(Mul(fx, one).simplify()==Fun('f',Var('x')))
@@ -156,10 +156,12 @@ def test_CacheKnownValues():
     y.val=vy
     assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
     print "Change x only:"
+    #TODO: verify hy will not be evaluated, but use cache, instead.
     vx=1.0
     x.val=vx
     assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
     print "Change y only:"
+    #TODO: verify gfx will not be evaluated, but use cache, instead.
     vy=1.0
     y.val=vy
     assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
@@ -174,5 +176,16 @@ def test_CacheKnownValues():
     y.val=2.0
     assert(Mul(x,y).val==2.0)
     
+def test_ParentRelationships():
+    x=Var('x')
+    fx=Fun('sin',x, np.sin)
+    gx=Fun('exp',x, np.exp)
+    dfx=fx.diff(x)
+    v=1.0
+    for v in [1.0,0.5,0.1]:
+        x.val=v
+        assert(fx.val==np.sin(v))
+        assert(gx.val==np.exp(v))
+
 def test_FeedForwardNNEvaluation():
     pass
