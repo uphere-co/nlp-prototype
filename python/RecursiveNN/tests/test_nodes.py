@@ -2,6 +2,7 @@ import os
 import sys
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
+print myPath + '/../'
 
 import numpy as np
 from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul
@@ -48,6 +49,8 @@ def test_DiffOperations():
     assert(str(Mul(gfx,gy).diff_no_simplify(y)) == 'g`(f(x))*f`(x)*0*g(y)+g(f(x))*g`(y)*1')
     
 def test_SimplifyZeroAndOne():
+    assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(1))))).simplify()==Val(1))
+    assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(0))))).simplify()==Val(0))
     x =Var('x')    
     y =Var('y') 
     fx=Fun('f',x)
@@ -72,7 +75,7 @@ def test_SimplifyZeroAndOne():
     
     assert(str(Mul(hx,Mul(gx,fx)))=='h(x)*g(x)*f(x)')
     assert(str(Mul(hx,Mul(gx,fx)).diff(x))=='h`(x)*g(x)*f(x)+h(x)*(g`(x)*f(x)+g(x)*f`(x))')
-    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0')
+    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0')    
     
 def test_SimplePhrase():
     W_left_init  = Var('W_left', [0,0,0,0])
@@ -139,7 +142,7 @@ def test_CacheKnownValues():
     exp_cos=lambda x : np.exp(np.cos(x))
     for v in np.random.random(10):        
         x.val=v
-        assert(gfx.val==exp_cos(v))        
+        assert(gfx.val==exp_cos(v))    
     for i in range(100):
         assert(gfx.val==exp_cos(v))
         
