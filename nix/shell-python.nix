@@ -16,7 +16,7 @@ stdenv.mkDerivation {
                    pyzmq
                    toolz.gensim toolz.untangle
                    toolz.Theano toolz.Keras h5py
-                   pytest
+                   pytest toolz.pytest-mock
                  ]);# ++ [ wget screen cudnn ];
   shellHook = ''
   '';

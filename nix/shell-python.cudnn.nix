@@ -16,8 +16,8 @@ stdenv.mkDerivation {
                    #jupyter
                    pyzmq
                    theano h5py pip
-                   toolz.gensim toolz.KerasCUDNN
-                   pytest
+                   toolz.gensim toolz.KerasCUDNN                   
+                   pytest toolz.pytest-mock
                  ]) ++ [ wget screen gfortran ];
   shellHook = ''
   '';

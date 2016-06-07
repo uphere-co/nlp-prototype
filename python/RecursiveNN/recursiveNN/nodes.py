@@ -3,6 +3,7 @@ import numpy as np
 
 #`self._val is None` indicates that there are no cache.
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
+# It is parent's responsibility to set children's parents.
 class Node(object):
     def __init__(self, name):
         self._parents=[]

@@ -94,5 +94,17 @@ rec {
                              ];
      meta = {
      };
+    };
+    pytest-mock = buildPythonPackage rec {
+     name = "pytest-mock-1.1";
+     src = pkgs.fetchurl {
+       url = "https://pypi.python.org/packages/99/0e/45906c1e876b175cb51d8710075be900948f44a5f6a92c90095bdcd846c8/${name}.zip";
+       sha256 = "0gmlh1jzcs385d0764gshmmyszid70v8sc185pmz7gb97idza461";
+     };
+     buildInputs = [];
+     propagatedBuildInputs = [python27Packages.pytest
+                              python27Packages.mock];
+     meta = {
+     };
    };
 }
