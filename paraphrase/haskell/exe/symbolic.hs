@@ -11,36 +11,56 @@ import qualified Data.Text.IO as TIO
 --
 import           NLP.SyntaxTree.Type
 
-data Operation = Add | Mul deriving (Show, Eq)
+data BiOp = Add | Mul deriving (Show, Eq)
 
 -- data Exp = Op Operation
 --          | Val Int
 
-test :: BNTree Operation Int
-test = BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
+data UniOp = Tanh deriving (Show, Eq)
 
-showOp Add = "+"
-showOp Mul = "*"
+data Exp = Fun UniOp Exp
+         | Val Int
+         deriving (Show, Eq)
 
-prettyprint :: BNTree Operation Int -> Text
-prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showOp o <> prettyprint y <> ")"
-prettyprint (BNTLeaf x) = T.pack (show x)
+test :: BNTree BiOp Exp
+test = BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Val 3))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
 
-pMath :: A.Parser (BNTree Operation Int)
-pMath = pNode 
+showBiOp Add = "+"
+showBiOp Mul = "*"
 
-pInt = BNTLeaf <$> A.decimal
+showUniOp Tanh = "tanh"
 
-pOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
+showExp (Val x) = T.pack (show x)
+showExp (Fun o x) = showUniOp o <> "(" <> showExp x <> ")"
 
+prettyprint :: BNTree BiOp Exp -> Text
+prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showBiOp o <> prettyprint y <> ")"
+prettyprint (BNTLeaf x) = showExp x
+
+pExp = pFun <|> pInt 
+
+pFun = do
+    o <- pUniOp
+    A.char '('
+    e <- pExp
+    A.char ')'
+    return (Fun o e) 
+
+pInt = Val <$> A.decimal
+
+pUniOp = A.string "tanh" >> return Tanh
+pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
+
+pLeaf = BNTLeaf <$> pExp
+
+pNode :: A.Parser (BNTree BiOp Exp)
 pNode = do
     A.char '('
-    x <- (pNode <|> pInt)
-    o <- pOp
-    y <- (pNode <|> pInt)
+    x <- (pNode <|> pLeaf)
+    o <- pBiOp
+    y <- (pNode <|> pLeaf)
     A.char ')'
     return (BNTNode o x y)
-
 
 main :: IO ()
 main = do
@@ -48,6 +68,6 @@ main = do
     print test
     TIO.putStrLn (prettyprint test)
   
-    print (A.parseOnly pMath "((3*7)+4)")
+    print (A.parseOnly pNode "((tanh(3)*7)+4)")
 
     
