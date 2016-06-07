@@ -18,26 +18,33 @@ data BiOp = Add | Mul deriving (Show, Eq)
 
 data UniOp = Tanh deriving (Show, Eq)
 
+data Symbol = X | Y deriving (Show, Eq)
+
 data Exp = Fun UniOp Exp
+         | Var Symbol
          | Val Int
          deriving (Show, Eq)
 
 test :: BNTree BiOp Exp
-test = BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Val 3))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
+test = BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
 
 showBiOp Add = "+"
 showBiOp Mul = "*"
 
 showUniOp Tanh = "tanh"
 
+showSymbol X = "x"
+showSymbol Y = "y"
+
 showExp (Val x) = T.pack (show x)
+showExp (Var x) = showSymbol x
 showExp (Fun o x) = showUniOp o <> "(" <> showExp x <> ")"
 
 prettyprint :: BNTree BiOp Exp -> Text
 prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showBiOp o <> prettyprint y <> ")"
 prettyprint (BNTLeaf x) = showExp x
 
-pExp = pFun <|> pInt 
+pExp = pFun <|> pVal <|> pVar
 
 pFun = do
     o <- pUniOp
@@ -46,9 +53,12 @@ pFun = do
     A.char ')'
     return (Fun o e) 
 
-pInt = Val <$> A.decimal
+pVal = Val <$> A.decimal
+
+pVar = Var <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
 
 pUniOp = A.string "tanh" >> return Tanh
+
 pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
 
 pLeaf = BNTLeaf <$> pExp
@@ -68,6 +78,6 @@ main = do
     print test
     TIO.putStrLn (prettyprint test)
   
-    print (A.parseOnly pNode "((tanh(3)*7)+4)")
+    print (A.parseOnly pNode "((tanh(x)*7)+4)")
 
     
