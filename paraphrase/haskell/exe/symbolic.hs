@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 
@@ -23,10 +25,15 @@ data Symbol = X | Y deriving (Show, Eq)
 data Exp = Fun UniOp Exp
          | Var Symbol
          | Val Int
+         | BiExp (BNTree BiOp Exp)
          deriving (Show, Eq)
 
-test :: BNTree BiOp Exp
-test = BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
+-- type SymExp = BNTree BiOp Exp
+
+deriving instance Eq (BNTree BiOp Exp)
+
+test :: Exp -- BNTree BiOp Exp
+test = BiExp $ BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
 
 showBiOp Add = "+"
 showBiOp Mul = "*"
@@ -36,15 +43,17 @@ showUniOp Tanh = "tanh"
 showSymbol X = "x"
 showSymbol Y = "y"
 
-showExp (Val x) = T.pack (show x)
-showExp (Var x) = showSymbol x
-showExp (Fun o x) = showUniOp o <> "(" <> showExp x <> ")"
+showBiExp :: BNTree BiOp Exp -> Text
+showBiExp (BNTNode o x y) = "(" <> showBiExp x <> showBiOp o <> showBiExp y <> ")"
+showBiExp (BNTLeaf x) = prettyprint x
 
-prettyprint :: BNTree BiOp Exp -> Text
-prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showBiOp o <> prettyprint y <> ")"
-prettyprint (BNTLeaf x) = showExp x
+prettyprint :: Exp -> Text
+prettyprint (Val x) = T.pack (show x)
+prettyprint (Var x) = showSymbol x
+prettyprint (Fun o x) = showUniOp o <> "(" <> prettyprint x <> ")"
+prettyprint (BiExp n) = showBiExp n 
 
-pExp = pFun <|> pVal <|> pVar
+pExp = pFun <|> pVal <|> pVar <|> pBiExp
 
 pFun = do
     o <- pUniOp
@@ -61,6 +70,9 @@ pUniOp = A.string "tanh" >> return Tanh
 
 pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
 
+
+pBiExp = BiExp <$> pNode  -- a little hole here.
+
 pLeaf = BNTLeaf <$> pExp
 
 pNode :: A.Parser (BNTree BiOp Exp)
@@ -72,12 +84,16 @@ pNode = do
     A.char ')'
     return (BNTNode o x y)
 
+-- diff :: Symbol -> BNTree BiOp Exp -> BNTree BiOp Exp
+
+
+
 main :: IO ()
 main = do
     putStrLn "symbolic calculation test"
     print test
     TIO.putStrLn (prettyprint test)
   
-    print (A.parseOnly pNode "((tanh(x)*7)+4)")
+    print (A.parseOnly pExp "((tanh((x+y))*7)+4)")
 
     
