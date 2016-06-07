@@ -2,6 +2,8 @@
 
 module Main where
 
+import           Control.Applicative
+import qualified Data.Attoparsec.Text as A
 import           Data.Monoid
 import           Data.Text (Text (..))
 import qualified Data.Text as T
@@ -24,6 +26,21 @@ prettyprint :: BNTree Operation Int -> Text
 prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showOp o <> prettyprint y <> ")"
 prettyprint (BNTLeaf x) = T.pack (show x)
 
+pMath :: A.Parser (BNTree Operation Int)
+pMath = pNode 
+
+pInt = BNTLeaf <$> A.decimal
+
+pOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
+
+pNode = do
+    A.char '('
+    x <- (pNode <|> pInt)
+    o <- pOp
+    y <- (pNode <|> pInt)
+    A.char ')'
+    return (BNTNode o x y)
+
 
 main :: IO ()
 main = do
@@ -31,3 +48,6 @@ main = do
     print test
     TIO.putStrLn (prettyprint test)
   
+    print (A.parseOnly pMath "((3*7)+4)")
+
+    
