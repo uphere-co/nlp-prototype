@@ -248,3 +248,4 @@ class Mul(BinaryOperator):
         expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
                  Mul(self.x,self.y.diff_no_simplify(var)))
         return expr
+

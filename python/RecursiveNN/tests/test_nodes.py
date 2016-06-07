@@ -2,7 +2,6 @@ import os
 import sys
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
-print myPath + '/../'
 
 import numpy as np
 from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul
