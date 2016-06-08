@@ -13,9 +13,6 @@ import           NLP.SyntaxTree.Type
 
 data Operation = Add | Mul deriving (Show, Eq)
 
--- data Exp = Op Operation
---          | Val Int
-
 test :: BNTree Operation Int
 test = BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
 
@@ -49,5 +46,15 @@ main = do
     TIO.putStrLn (prettyprint test)
   
     print (A.parseOnly pMath "((3*7)+4)")
+
+-- test result
+--
+-- $ cabal build
+-- $ dist/build/symbolic/symbolic
+-- 
+-- BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
+-- ((3*7)+4)
+-- Right (BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4))
+
 
     
