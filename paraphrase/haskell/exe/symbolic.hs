@@ -15,9 +15,6 @@ import           NLP.SyntaxTree.Type
 
 data BiOp = Add | Mul deriving (Show, Eq)
 
--- data Exp = Op Operation
---          | Val Int
-
 data UniOp = Tanh deriving (Show, Eq)
 
 data Symbol = X | Y deriving (Show, Eq)
@@ -32,7 +29,7 @@ data Exp = Fun UniOp Exp
 
 deriving instance Eq (BNTree BiOp Exp)
 
-test :: Exp -- BNTree BiOp Exp
+test :: Exp
 test = BiExp $ BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
 
 showBiOp Add = "+"
@@ -95,5 +92,15 @@ main = do
     TIO.putStrLn (prettyprint test)
   
     print (A.parseOnly pExp "((tanh((x+y))*7)+4)")
+
+-- test result
+--
+-- $ cabal build
+-- $ dist/build/symbolic/symbolic
+-- 
+-- BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
+-- ((3*7)+4)
+-- Right (BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4))
+
 
     
