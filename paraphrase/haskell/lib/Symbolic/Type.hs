@@ -21,7 +21,8 @@ data Exp = Fun UniOp Exp
          | Var Symbol
          | Val Int
          | BiExp (BNTree BiOp Exp)
-         --   | Null
+         | Zero
+         | One
          deriving (Show, Eq)
 
 deriving instance Eq (BNTree BiOp Exp)
@@ -47,12 +48,21 @@ prettyprint (Val x) = T.pack (show x)
 prettyprint (Var x) = showSymbol x
 prettyprint (Fun o x) = showUniOp o <> "(" <> prettyprint x <> ")"
 prettyprint (BiExp n) = showBiExp n 
+prettyprint Zero = "zero"
+prettyprint One = "1"
 
+-- gate keeper, simplifying cases with zero
 add :: Exp -> Exp -> Exp
-add e1 e2 = BiExp (BNTNode Add (BNTLeaf e1) (BNTLeaf e2))
+add Zero e2 = e2
+add e1 Zero = e1
+add e1 e2   = BiExp (BNTNode Add (BNTLeaf e1) (BNTLeaf e2))
 
 mul :: Exp -> Exp -> Exp
-mul e1 e2 = BiExp (BNTNode Mul (BNTLeaf e1) (BNTLeaf e2))
+mul Zero e2   = Zero
+mul e1   Zero = Zero
+mul One  e2   = e2
+mul e1   One  = e1
+mul e1   e2   = BiExp (BNTNode Mul (BNTLeaf e1) (BNTLeaf e2))
 
 (/+/) = add
 (/*/) = mul
