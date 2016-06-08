@@ -32,8 +32,6 @@ lift = BiExp
 showBiOp Add = "+"
 showBiOp Mul = "*"
 
--- showUniOp Tanh = "tanh"
--- showUniOp Sech = "sech"
 showUniOp = id
 
 showSymbol X = "x"

@@ -27,7 +27,6 @@ pUniOp = do
     c <- A.satisfy (isAlpha)
     r <- A.takeTill (\x-> isSpace x || x == '(' || x == ')')
     return (c `T.cons` r)
-  -- A.string "tanh" >> return Tanh
 
 pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
 

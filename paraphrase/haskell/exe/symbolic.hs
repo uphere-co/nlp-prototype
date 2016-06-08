@@ -20,7 +20,6 @@ main = do
     putStr $ "prettyprint test = "
     TIO.putStrLn (prettyprint test)
 
-    -- print (A.parseOnly pUniOp "tanh")
     case A.parseOnly pExp "((tanh((x+y))*7)+4)" of
       Left err -> print err
       Right test2 -> do
