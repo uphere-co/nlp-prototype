@@ -21,9 +21,12 @@ data Exp = Fun UniOp Exp
          | Var Symbol
          | Val Int
          | BiExp (BNTree BiOp Exp)
+         --   | Null
          deriving (Show, Eq)
 
 deriving instance Eq (BNTree BiOp Exp)
+
+lift = BiExp
 
 showBiOp Add = "+"
 showBiOp Mul = "*"
@@ -50,3 +53,6 @@ add e1 e2 = BiExp (BNTNode Add (BNTLeaf e1) (BNTLeaf e2))
 
 mul :: Exp -> Exp -> Exp
 mul e1 e2 = BiExp (BNTNode Mul (BNTLeaf e1) (BNTLeaf e2))
+
+(/+/) = add
+(/*/) = mul

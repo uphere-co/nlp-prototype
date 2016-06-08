@@ -6,11 +6,12 @@ import qualified Data.Attoparsec.Text as A
 import qualified Data.Text.IO as TIO
 --
 import           NLP.SyntaxTree.Type
+import           Symbolic.Diff
 import           Symbolic.Type
 import           Symbolic.Parser
 
 test :: Exp
-test = add (mul (Fun "tanh" (Var X)) (Val 7)) (Val 4)
+test = (Fun "tanh" (Var X) /*/ (Val 7)) /+/ Val 4
 
 
 main :: IO ()
@@ -21,6 +22,8 @@ main = do
 
     -- print (A.parseOnly pUniOp "tanh")
     print (A.parseOnly pExp "((tanh((x+y))*7)+4)")
+
+    TIO.putStrLn (prettyprint (diff X test))
 
 -- test result
 --
