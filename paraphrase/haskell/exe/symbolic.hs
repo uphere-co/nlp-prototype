@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 
@@ -11,50 +13,88 @@ import qualified Data.Text.IO as TIO
 --
 import           NLP.SyntaxTree.Type
 
-data Operation = Add | Mul deriving (Show, Eq)
+data BiOp = Add | Mul deriving (Show, Eq)
 
-test :: BNTree Operation Int
-test = BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
+data UniOp = Tanh deriving (Show, Eq)
 
-showOp Add = "+"
-showOp Mul = "*"
+data Symbol = X | Y deriving (Show, Eq)
 
-prettyprint :: BNTree Operation Int -> Text
-prettyprint (BNTNode o x y) = "(" <> prettyprint x <> showOp o <> prettyprint y <> ")"
-prettyprint (BNTLeaf x) = T.pack (show x)
+data Exp = Fun UniOp Exp
+         | Var Symbol
+         | Val Int
+         | BiExp (BNTree BiOp Exp)
+         deriving (Show, Eq)
 
-pMath :: A.Parser (BNTree Operation Int)
-pMath = pNode 
+deriving instance Eq (BNTree BiOp Exp)
 
-pInt = BNTLeaf <$> A.decimal
+test :: Exp
+test = BiExp $ BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))
 
-pOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
+showBiOp Add = "+"
+showBiOp Mul = "*"
 
+showUniOp Tanh = "tanh"
+
+showSymbol X = "x"
+showSymbol Y = "y"
+
+showBiExp :: BNTree BiOp Exp -> Text
+showBiExp (BNTNode o x y) = "(" <> showBiExp x <> showBiOp o <> showBiExp y <> ")"
+showBiExp (BNTLeaf x) = prettyprint x
+
+prettyprint :: Exp -> Text
+prettyprint (Val x) = T.pack (show x)
+prettyprint (Var x) = showSymbol x
+prettyprint (Fun o x) = showUniOp o <> "(" <> prettyprint x <> ")"
+prettyprint (BiExp n) = showBiExp n 
+
+pExp = pFun <|> pVal <|> pVar <|> pBiExp
+
+pFun = do
+    o <- pUniOp
+    A.char '('
+    e <- pExp
+    A.char ')'
+    return (Fun o e) 
+
+pVal = Val <$> A.decimal
+
+pVar = Var <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
+
+pUniOp = A.string "tanh" >> return Tanh
+
+pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
+
+pBiExp = BiExp <$> pNode  -- a little hole here.
+
+pLeaf = BNTLeaf <$> pExp
+
+pNode :: A.Parser (BNTree BiOp Exp)
 pNode = do
     A.char '('
-    x <- (pNode <|> pInt)
-    o <- pOp
-    y <- (pNode <|> pInt)
+    x <- (pNode <|> pLeaf)
+    o <- pBiOp
+    y <- (pNode <|> pLeaf)
     A.char ')'
     return (BNTNode o x y)
 
-
 main :: IO ()
 main = do
-    putStrLn "symbolic calculation test"
-    print test
+    putStrLn $ "test = " ++ show test
+    putStr $ "prettyprint test = "
     TIO.putStrLn (prettyprint test)
   
-    print (A.parseOnly pMath "((3*7)+4)")
+    print (A.parseOnly pExp "((tanh((x+y))*7)+4)")
 
 -- test result
 --
 -- $ cabal build
 -- $ dist/build/symbolic/symbolic
 -- 
--- BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
--- ((3*7)+4)
--- Right (BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4))
+-- test = BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4)))
+-- prettyprint test = ((tanh(x)*7)+4)
+-- Right (BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (BiExp (BNTNode Add (BNTLeaf (Var X)) (BNTLeaf (Var Y)))))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))))
+
 
 
     
