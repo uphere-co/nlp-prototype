@@ -58,7 +58,9 @@ Library
                         NLP.SyntaxTree.Type
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
-                        Numeric.Kahan                        
+                        Numeric.Kahan
+                        Symbolic.Type
+                        Symbolic.Parser
   Other-modules:        
 
   ghc-options:          -O2 -Wall -funbox-strict-fields
