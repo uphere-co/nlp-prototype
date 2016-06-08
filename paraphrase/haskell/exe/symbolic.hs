@@ -25,8 +25,6 @@ data Exp = Fun UniOp Exp
          | BiExp (BNTree BiOp Exp)
          deriving (Show, Eq)
 
--- type SymExp = BNTree BiOp Exp
-
 deriving instance Eq (BNTree BiOp Exp)
 
 test :: Exp
@@ -67,7 +65,6 @@ pUniOp = A.string "tanh" >> return Tanh
 
 pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
 
-
 pBiExp = BiExp <$> pNode  -- a little hole here.
 
 pLeaf = BNTLeaf <$> pExp
@@ -81,14 +78,10 @@ pNode = do
     A.char ')'
     return (BNTNode o x y)
 
--- diff :: Symbol -> BNTree BiOp Exp -> BNTree BiOp Exp
-
-
-
 main :: IO ()
 main = do
-    putStrLn "symbolic calculation test"
-    print test
+    putStrLn $ "test = " ++ show test
+    putStr $ "prettyprint test = "
     TIO.putStrLn (prettyprint test)
   
     print (A.parseOnly pExp "((tanh((x+y))*7)+4)")
@@ -98,9 +91,10 @@ main = do
 -- $ cabal build
 -- $ dist/build/symbolic/symbolic
 -- 
--- BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4)
--- ((3*7)+4)
--- Right (BNTNode Add (BNTNode Mul (BNTLeaf 3) (BNTLeaf 7)) (BNTLeaf 4))
+-- test = BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (Var X))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4)))
+-- prettyprint test = ((tanh(x)*7)+4)
+-- Right (BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun Tanh (BiExp (BNTNode Add (BNTLeaf (Var X)) (BNTLeaf (Var Y)))))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4))))
+
 
 
     
