@@ -4,6 +4,8 @@ module Symbolic.Parser where
 
 import           Control.Applicative
 import qualified Data.Attoparsec.Text as A
+import           Data.Char (isAlpha, isSpace)
+import qualified Data.Text as T
 --
 import           NLP.SyntaxTree.Type
 import           Symbolic.Type
@@ -21,7 +23,11 @@ pVal = Val <$> A.decimal
 
 pVar = Var <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
 
-pUniOp = A.string "tanh" >> return Tanh
+pUniOp = do
+    c <- A.satisfy (isAlpha)
+    r <- A.takeTill (\x-> isSpace x || x == '(' || x == ')')
+    return (c `T.cons` r)
+  -- A.string "tanh" >> return Tanh
 
 pBiOp = (A.char '+' >> return Add) <|> (A.char '*' >> return Mul)
 
