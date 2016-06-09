@@ -200,6 +200,15 @@ void SortVocab() {
   }
 }
 
+/*
+void ReduceVocab() {
+  long long a, b = 0;
+  long long hash;
+  for(a = 0; a < vocab_size; a++) if (vocab[a].cn > min_reduce) {
+
+  }
+}
+*/
 
 // End of HashMap for dictionary
 
@@ -231,7 +240,7 @@ int main()
   unsigned int hash = GetWordHash(test);
   
   std::cout << vocab_hash[hash] << std::endl;
-  
+
   inFile.close();
   outFile.close();
 
