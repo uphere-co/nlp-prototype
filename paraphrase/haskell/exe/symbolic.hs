@@ -19,7 +19,7 @@ main = do
     putStrLn $ "test = " ++ show test
     putStr $ "prettyprint test = "
     TIO.putStrLn (prettyprint test)
-
+    -- 
     case A.parseOnly pExp "((tanh((x+y))*7)+4)" of
       Left err -> print err
       Right test2 -> do
@@ -27,7 +27,9 @@ main = do
         print test2
         putStr "its differential w.r.t x = "
         TIO.putStrLn (prettyprint (diff (SmplVar X) test2))
-
+    --
+    print (A.parseOnly pExp "(tanh(x_2)+3)")
+              
 -- test result
 --
 -- $ cabal build

@@ -17,7 +17,12 @@ type UniOp = Text
 
 data Symbol = X | Y deriving (Show, Eq)
 
-data Variable = SmplVar Symbol deriving (Show, Eq)
+data Index = Idx Int deriving (Show, Eq)
+
+
+data Variable = SmplVar Symbol
+              | IdxVar Symbol Index
+              deriving (Show, Eq)
 -- X | Y deriving (Show, Eq)
 
 
@@ -42,6 +47,7 @@ showSymbol X = "x"
 showSymbol Y = "y"
 
 showVariable (SmplVar sym) = showSymbol sym
+showVariable (IdxVar sym i) = showSymbol sym <> "_" <> T.pack (show i)
 
 showBiExp :: BNTree BiOp Exp -> Text
 showBiExp (BNTNode o x y) = "(" <> showBiExp x <> showBiOp o <> showBiExp y <> ")"
