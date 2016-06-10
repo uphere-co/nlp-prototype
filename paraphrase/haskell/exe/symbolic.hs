@@ -11,7 +11,7 @@ import           Symbolic.Type
 import           Symbolic.Parser
 
 test :: Exp
-test = (Fun "tanh" (Var X) /*/ (Val 7)) /+/ Val 4
+test = (Fun "tanh" (Var (SmplVar X)) /*/ (Val 7)) /+/ Val 4
 
 
 main :: IO ()
@@ -26,7 +26,7 @@ main = do
         putStr "((tanh((x+y))*7)+4) = " 
         print test2
         putStr "its differential w.r.t x = "
-        TIO.putStrLn (prettyprint (diff X test2))
+        TIO.putStrLn (prettyprint (diff (SmplVar X) test2))
 
 -- test result
 --

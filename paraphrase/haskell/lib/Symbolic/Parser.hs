@@ -21,7 +21,7 @@ pFun = do
 
 pVal = Val <$> A.decimal
 
-pVar = Var <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
+pVar = Var . SmplVar <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
 
 pUniOp = do
     c <- A.satisfy (isAlpha)
