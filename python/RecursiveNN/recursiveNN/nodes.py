@@ -34,7 +34,7 @@ class Node(object):
         self._val=None
         if self.parents:
             for parent in self.parents:
-                parent.resetCachedValue()     
+                parent.resetCachedValue()
                
 class Val(Node):
     def __init__(self, val):
@@ -77,10 +77,7 @@ class Var(Node):
         self._val=np.matrix(val)        
         if self._val.shape==(1,1):
             self._val=self._val[0,0]
-    @property
-    def T(self):
-        t=Var(self.name, self.val.T)
-        return t
+             
 class Word(Node):
     def __init__(self, word):
         Node.__init__(self, name=word)
@@ -181,7 +178,8 @@ class Fun(Node):
             self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
-        expr=Mul(Fun(self.name+"`", self.var), self.var.diff_no_simplify(var))
+        expr=CTimes(Fun(self.name+"`", self.var), 
+                    self.var.diff_no_simplify(var))
         return expr
     @property
     def val(self):
@@ -193,6 +191,36 @@ class Fun(Node):
             self._val=self._val[0,0]
         return self._val
 
+class Transpose(Node):
+    def __init__(self, x):
+        Node.__init__(self,name=None)
+        self.op=np.transpose
+        self.var=x
+        self.var.add_parent(self)
+    def __str__(self):
+        return "(%s).T"%(self.var)
+    def __repr__(self):
+        return "(%r).T"%(self.var)        
+    def simplify(self):
+        self.var=self.var.simplify()
+        self.var.add_parent(self)
+        if isinstance(self.var, Var) or isinstance(self.var, Val):
+            if not hasattr(self.var.val, 'shape') :            
+                return self.var
+            elif self.var.val.shape == ():
+                return self.var
+        return self
+    @property
+    def val(self):
+        if not np.any(self._val):
+            self._val = np.transpose(self.var.val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
+        return self._val
+    def diff_no_simplify(self, var):
+        expr=Transpose(self.var.diff_no_simplify(var))
+        return expr
+        
 class BinaryOperator(Node):
     def __init__(self, x, y):
         Node.__init__(self,name=None)
@@ -245,6 +273,13 @@ class Add(BinaryOperator):
         return expr
         
 
+def TransposeVectorsOnly(var):
+    try:
+        if np.min(var.val.shape)==1:
+            return Transpose(var)
+    except:
+        pass
+    return var
 class Mul(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
@@ -273,8 +308,8 @@ class Mul(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
-                 Mul(self.x,self.y.diff_no_simplify(var)))
+        expr=Add(CTimes(TransposeVectorsOnly(self.x.diff_no_simplify(var)),TransposeVectorsOnly(self.y)), 
+                 CTimes(TransposeVectorsOnly(self.x),TransposeVectorsOnly(self.y.diff_no_simplify(var))))
         return expr
 
 def IsZero(var):         
@@ -291,8 +326,11 @@ def IsIdentity(var):
         if not isinstance(var.val, np.matrix) and var.val==1.0:
             return True
         else:
-            d=np.min(var.val.shape)
-            return np.all(var.val==np.identity(d))
+            d1=np.min(var.val.shape)
+            d2=np.max(var.val.shape)
+            if d1 != d2:
+                return False
+            return np.all(var.val==np.identity(d1))
     except:
         pass
     return False
@@ -314,9 +352,17 @@ class CTimes(BinaryOperator):
         else:
             self.format='%s%s%s'
     def simplify(self):
-        assert(0)
+        BinaryOperator.simplify(self)
+        self.update_format()
+        if IsZero(self.x) :
+            return self.x
+        elif IsZero(self.y) :
+            return self.y
+        elif IsIdentity(self.x):
+            return self.y
+        elif IsIdentity(self.y):
+            return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
-                 Mul(self.x,self.y.diff_no_simplify(var)))
+        assert(0)
         return expr

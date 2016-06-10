@@ -1,10 +1,6 @@
 import numpy as np
 
 """
-This is the "example" module.
-
-The example module supplies one function, factorial().  For example,
-
 >>> import numpy as np
 >>> a=np.array([[25,5,1],[10,5,2]])
 >>> b=np.array([1,3,9])
