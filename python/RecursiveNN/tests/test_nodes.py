@@ -7,7 +7,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul,CTimes
+from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul,CTimes, IsZero, IsIdentity
 from recursiveNN.models import RecursiveNN
 
 def test_ElementaryTypes():
@@ -42,15 +42,20 @@ def test_DiffOperations():
     assert(str(Mul(fx,gx)) == 'f(x)*g(x)')
     assert(str(Mul(fx,gy)) == 'f(x)*g(y)')
     assert(str(Mul(gfx,gy)) == 'g(f(x))*g(y)')
-    assert(str(Mul(fx,gx).diff_no_simplify(x)) == "f`(x)*1*g(x)+f(x)*g`(x)*1")
-    assert(str(Mul(fx,gy).diff_no_simplify(x)) == "f`(x)*1*g(y)+f(x)*g`(y)*0")
-    assert(str(fx.diff_no_simplify(x))=="f`(x)*1")
-    assert(str(gfx.diff_no_simplify(x))=="g`(f(x))*f`(x)*1")
-    assert(str(gfx.diff_no_simplify(y))=="g`(f(x))*f`(x)*0")
-    assert(str(Mul(gfx,gy).diff_no_simplify(x)) == 'g`(f(x))*f`(x)*1*g(y)+g(f(x))*g`(y)*0')
-    assert(str(Mul(gfx,gy).diff_no_simplify(y)) == 'g`(f(x))*f`(x)*0*g(y)+g(f(x))*g`(y)*1')
+    z='0.0'
+    i='1.0'
+    assert(str(Mul(fx,gx).diff_no_simplify(x)) == "f`(x)*%s*g(x)+f(x)*g`(x)*%s"%(i,i))
+    assert(str(Mul(fx,gy).diff_no_simplify(x)) == "f`(x)*%s*g(y)+f(x)*g`(y)*%s"%(i,z))
+    assert(str(fx.diff_no_simplify(x))=="f`(x)*%s"%i)
+    assert(str(gfx.diff_no_simplify(x))=="g`(f(x))*f`(x)*%s"%i)
+    assert(str(gfx.diff_no_simplify(y))=="g`(f(x))*f`(x)*%s"%z)
+    assert(str(Mul(gfx,gy).diff_no_simplify(x)) ==\
+           'g`(f(x))*f`(x)*%s*g(y)+g(f(x))*g`(y)*%s'%(i,z))
+    assert(str(Mul(gfx,gy).diff_no_simplify(y)) ==\
+           'g`(f(x))*f`(x)*%s*g(y)+g(f(x))*g`(y)*%s'%(z,i))
     
 def test_SimplifyZeroAndOne():
+    assert(Mul(Val(1),Val(1)).simplify()==Val(1))
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(1))))).simplify()==Val(1))
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(0))))).simplify()==Val(0))
     x =Var('x')    
@@ -77,7 +82,7 @@ def test_SimplifyZeroAndOne():
     
     assert(str(Mul(hx,Mul(gx,fx)))=='h(x)*g(x)*f(x)')
     assert(str(Mul(hx,Mul(gx,fx)).diff(x))=='h`(x)*g(x)*f(x)+h(x)*(g`(x)*f(x)+g(x)*f`(x))')
-    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0')    
+    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')    
     
 def test_SimplePhrase():
     W_left_init  = Var('W_left', [0,0,0,0])
@@ -96,6 +101,7 @@ def test_SimplePhrase():
     the_cat=merge(the,cat)
     assert(str(the_cat)=='(The,cat)')    
     assert(the_cat.expression()=='tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)')
+    assert(str(the_cat.diff_no_simplify(Var('W_left')))=='')
     assert(the_cat.diff(Var('W_left')).expression()=='tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The)')    
     
     the_cat_is=merge(the_cat, Word('is'))
@@ -122,10 +128,12 @@ def test_Evaluation():
     x.val=vx
     y=Var('y', vy)
     z=Var('z',vz)
-    xy=Mul(x,y)
+    with pytest.raises(ValueError):
+        Mul(x,y).val
+    xy=Mul(x,y.T)
     x_plus_y=Add(x,y)
     assert(str(xy)=='x*y')
-    assert(xy.val==vx.dot(vy))
+    assert_all(xy.val==vx.dot(vy))
     assert(str(x_plus_y)=='x+y')
     assert_all(x_plus_y.val==vx+vy)
     assert_all(Mul(xy,z).val==Mul(z,xy).val)
@@ -192,6 +200,7 @@ def test_DiffKnownFunctions():
     x=Var('x')
     fx=Fun('sin',x)
     dfx=fx.diff(x)
+    print '%r'%dfx
     assert(dfx.expression()=='cos(x)')
     gfx=Fun('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
@@ -234,7 +243,27 @@ def test_matrix_circle_times_operations():
     assert(np.all(CTimes(d,e).val==np.array([[ 1,  3], [2,  6], [ 4, 12]])))
     assert(np.all(CTimes(e,d).val==np.array([[ 1,  3], [2,  6], [ 4, 12]])))
     with pytest.raises(ValueError):
-        CTimes(d,f).val   
+        CTimes(d,f).val
+        
+def test_IdentifyZeroOrIdentityMatrix():
+    assert(np.all(np.identity(3, dtype=np.float32)==np.identity(3,dtype=np.float64)))
+    zero=Val(np.zeros((3,5)))
+    assert(IsZero( zero ))
+    zero=Val(np.zeros((3,3)))
+    i=Val(np.identity(3))
+    assert(IsZero( zero ))
+    assert(not IsZero( i ))
+    assert(IsIdentity( i ))
+    assert(not IsIdentity( zero ))
+    assert(not IsIdentity( Val(np.array([[1,0,0],[0,1,0]])) ))
+def test_SimplifyZeroAndIdentityMatrix():
+    i=np.identity(5)
+    z=np.zeros((5,5))
+    assert(Mul(Val(i),Val(i)).simplify()==Val(i))
+    assert(Mul(Mul(Val(i),Val(i)),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(i))))).simplify()==Val(i))
+    assert(Mul(Mul(Val(i),Add(Add(Val(z),Val(z)),Val(i))),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(i))))).simplify()==Val(i))
+    assert(Mul(Mul(Val(i),Val(i)),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(z))))).simplify()==Val(z))
+    
     
 def test_FeedForwardNNEvaluation():
     pass

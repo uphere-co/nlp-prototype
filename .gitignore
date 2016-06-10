@@ -5,3 +5,5 @@ __pycache__
 python/venv/
 python/.ipynb_checkpoints/
 python/parse_arxiv_meta.py
+.cache
+.vscode

@@ -39,21 +39,26 @@ class Node(object):
 class Val(Node):
     def __init__(self, val):
         Node.__init__(self, str(val))
-        self._val=val
+        self._val=np.matrix(val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
     def __repr__(self):
         return "Val(%r)"%(self.name)
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and self.name == other.name:# and self.parent==other.parent:
+        if isinstance(other, self.__class__) and np.all(self._val == other._val):
             return True
         return False
     def diff_no_simplify(self, var):
-        zero = Val(0)
+        v=np.zeros(self._val.shape)
+        zero = Val(v)
         return zero
     
 class Var(Node):
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self._val=val
+        self._val=np.matrix(val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def __eq__(self, other):
@@ -61,16 +66,21 @@ class Var(Node):
             return True
         return False
     def diff_no_simplify(self, var):
-        v=1
+        v=np.ones(self._val.shape)
         if(var.name!= self.name):
-            v=0
+            v=np.zeros(self._val.shape)
         val=Val(v)
         return val
     @Node.val.setter
     def val(self,val):
         self.resetCachedValue()
-        self._val=val                    
-        
+        self._val=np.matrix(val)        
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
+    @property
+    def T(self):
+        t=Var(self.name, self.val.T)
+        return t
 class Word(Node):
     def __init__(self, word):
         Node.__init__(self, name=word)
@@ -175,8 +185,12 @@ class Fun(Node):
         return expr
     @property
     def val(self):
-        if not np.any(self._val):
-            self._val = self.op(self.var.val)
+        if not self.op:
+            return None
+        elif not np.any(self._val):
+            self._val = self.op(self.var.val)            
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
         return self._val
 
 class BinaryOperator(Node):
@@ -208,6 +222,8 @@ class BinaryOperator(Node):
     def val(self):
         if not np.any(self._val):
             self._val = self.op(self.x.val, self.y.val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
         return self._val
     
 class Add(BinaryOperator):
@@ -219,16 +235,16 @@ class Add(BinaryOperator):
         return "Add(%r,%r)"%(self.x, self.y)
     def simplify(self):
         BinaryOperator.simplify(self)
-        if self.x==Val(0):
+        if IsZero(self.x):
             return self.y
-        elif self.y==Val(0):
+        elif IsZero(self.y):
             return self.x
         return self
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
         
-    
+
 class Mul(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
@@ -247,17 +263,39 @@ class Mul(BinaryOperator):
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
-        if self.x==Val(0) or self.y==Val(0):
-            return Val(0)
-        elif self.x==Val(1):
+        if IsZero(self.x) :
+            return self.x
+        elif IsZero(self.y) :
             return self.y
-        elif self.y==Val(1):
+        elif IsIdentity(self.x):
+            return self.y
+        elif IsIdentity(self.y):
             return self.x
         return self
     def diff_no_simplify(self, var):
         expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
                  Mul(self.x,self.y.diff_no_simplify(var)))
         return expr
+
+def IsZero(var):         
+    try : 
+        if not isinstance(var.val, np.matrix) and var.val == 0.0:
+            return True
+        else:
+            return np.all(Add(var,var).val==var.val)
+    except:
+        pass
+    return False
+def IsIdentity(var): 
+    try :
+        if not isinstance(var.val, np.matrix) and var.val==1.0:
+            return True
+        else:
+            d=np.min(var.val.shape)
+            return np.all(var.val==np.identity(d))
+    except:
+        pass
+    return False
 
 #CircleTimes : heavily used for differentiation by Matrix.
 class CTimes(BinaryOperator):
