@@ -1,4 +1,5 @@
 
+# -*- coding: utf-8 -*-
 from nodes import Word,Phrase, Val,Var,Fun, Add,Mul
 
 class RecursiveNN:

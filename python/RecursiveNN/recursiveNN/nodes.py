@@ -1,9 +1,13 @@
 
+# -*- coding: utf-8 -*-
 import numpy as np
 
 #`self._val is None` indicates that there are no cache.
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
 # It is parent's responsibility to set children's parents.
+
+#__str__() : for pretty prints
+#expression() : Math formula. If differs from __str__ for Word and Phrase. 
 class Node(object):
     def __init__(self, name):
         self._parents=[]
@@ -118,7 +122,11 @@ class Phrase(Node):
         else :
             print "Message is round-toured."
 
-            
+def softmax(x):
+    x=x-np.max(x)
+    exp_x=np.exp(x)
+    return exp_x/exp_x.sum()
+                
 class Fun(Node):
     known_functions=dict(
     [('cos' ,('cos',np.cos)),
@@ -129,10 +137,12 @@ class Fun(Node):
      ('sin`',('cos',np.cos)),
      ('exp`',('exp',np.exp)),
      ('log`' ,('1/',lambda x : 1.0/x)),
+     ('1/'   ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
-     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2))])
-     #'',('',),
+     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
+     ('softmax',('softmax',softmax))
+     ])
     def __init__(self, name, var, op=None):
         if name in Fun.known_functions.keys():
             name, op0 = Fun.known_functions[name]
@@ -249,3 +259,26 @@ class Mul(BinaryOperator):
                  Mul(self.x,self.y.diff_no_simplify(var)))
         return expr
 
+#CircleTimes : heavily used for differentiation by Matrix.
+class CTimes(BinaryOperator):
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = '⊗'
+        self.op = lambda x,y : np.array(x)*np.array(y)
+        self.update_format()
+    def __repr__(self):
+        return "CTimes(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self.format='(%s)%s%s'
+        elif isinstance(self.y, Add):
+            self.format='%s%s(%s)'
+        else:
+            self.format='%s%s%s'
+    def simplify(self):
+        assert(0)
+        return self
+    def diff_no_simplify(self, var):
+        expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
+                 Mul(self.x,self.y.diff_no_simplify(var)))
+        return expr

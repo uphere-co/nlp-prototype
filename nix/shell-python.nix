@@ -16,7 +16,7 @@ stdenv.mkDerivation {
                    pyzmq
                    toolz.gensim toolz.untangle
                    toolz.Theano toolz.Keras h5py
-                   pytest toolz.pytest-mock
+                   pytest_28 toolz.pytest-mock
                  ]);
   shellHook = ''
   '';

@@ -1,10 +1,13 @@
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 
+import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul
+from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul,CTimes
 from recursiveNN.models import RecursiveNN
 
 def test_ElementaryTypes():
@@ -198,7 +201,7 @@ def test_DiffKnownFunctions():
         assert(dfx.val==np.cos(v))
         assert(gfx.val==np.exp(3*np.sin(v)))
         #Allow slight difference for complex numpy expressions.
-        np.testing.assert_approx_equal(dgfx.val,np.exp(3*np.sin(v))*3*np.cos(v), 10)
+        np.testing.assert_allclose(dgfx.val,np.exp(3*np.sin(v))*3*np.cos(v), rtol=1e-10, atol=0)
         
     hfx=Fun('log',fx)
     dhfx=hfx.diff(x)
@@ -206,6 +209,32 @@ def test_DiffKnownFunctions():
     hx=Fun('log',Add(fx, Fun('exp', x)))
     dhx=hx.diff(x)
     assert(dhx.expression()=='1/(sin(x)+exp(x))*(cos(x)+exp(x))')
-
+               
+def test_matrix_circle_times_operations():
+    va=np.matrix([[1,2,3],[2,3,4]])
+    vx=np.matrix([5,1,2])
+    vy=np.matrix([[5],[1],[2]])
+    a,x,y=Var('a',va),Var('x',vx),Var('y',vy)
+    with pytest.raises(ValueError):
+        va*vx
+    with pytest.raises(ValueError):
+        va.dot(vx)
+    with pytest.raises(ValueError):
+        Mul(a,x).val
+    assert(np.all(va*vy==va.dot(vy)))  
+    assert(np.all(va*vy==Mul(a,y).val))
+    assert(np.all(va*vy==[[13],[21]]))
+    
+    vd=np.matrix([1,3])
+    ve=np.matrix([[1],[2],[4]])
+    vf=np.matrix([1,2,4])
+    d,e,f=Var('d',vd),Var('e',ve),Var('f',vf)
+    with pytest.raises(ValueError):
+        Mul(d,e).val
+    assert(np.all(CTimes(d,e).val==np.array([[ 1,  3], [2,  6], [ 4, 12]])))
+    assert(np.all(CTimes(e,d).val==np.array([[ 1,  3], [2,  6], [ 4, 12]])))
+    with pytest.raises(ValueError):
+        CTimes(d,f).val   
+    
 def test_FeedForwardNNEvaluation():
     pass
