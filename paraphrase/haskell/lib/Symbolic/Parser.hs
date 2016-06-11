@@ -26,6 +26,7 @@ pSymbol =  ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
 pIdxVar = do
    sym <- pSymbol
    A.char '_'
+   A.char 'i'
    i <- A.decimal
    return (IdxVar sym (Idx i))
 

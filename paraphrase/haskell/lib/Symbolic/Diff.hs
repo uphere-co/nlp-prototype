@@ -20,7 +20,7 @@ diffVar (SmplVar s)  (SmplVar s')   | s == s'   = One
                                     | otherwise = Zero
 diffVar (IdxVar s _) (SmplVar s')               = Zero
 diffVar (SmplVar s)  (IdxVar s' _)              = Zero
-diffVar (IdxVar s i) (IdxVar s' i') | s == s'   = Delta i i'
+diffVar (IdxVar s i) (IdxVar s' i') | s == s'   = Delta i' i
                                     | otherwise = Zero
 
  -- (SmplVar s) (SmplVar s') | s==s'     = One
