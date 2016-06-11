@@ -1,9 +1,13 @@
 
+# -*- coding: utf-8 -*-
 import numpy as np
 
 #`self._val is None` indicates that there are no cache.
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
 # It is parent's responsibility to set children's parents.
+
+#__str__() : for pretty prints
+#expression() : Math formula. If differs from __str__ for Word and Phrase. 
 class Node(object):
     def __init__(self, name):
         self._parents=[]
@@ -30,26 +34,31 @@ class Node(object):
         self._val=None
         if self.parents:
             for parent in self.parents:
-                parent.resetCachedValue()     
+                parent.resetCachedValue()
                
 class Val(Node):
     def __init__(self, val):
         Node.__init__(self, str(val))
-        self._val=val
+        self._val=np.matrix(val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
     def __repr__(self):
         return "Val(%r)"%(self.name)
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and self.name == other.name:# and self.parent==other.parent:
+        if isinstance(other, self.__class__) and np.all(self._val == other._val):
             return True
         return False
     def diff_no_simplify(self, var):
-        zero = Val(0)
+        v=np.zeros(self._val.shape)
+        zero = Val(v)
         return zero
     
 class Var(Node):
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self._val=val
+        self._val=np.matrix(val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def __eq__(self, other):
@@ -57,16 +66,18 @@ class Var(Node):
             return True
         return False
     def diff_no_simplify(self, var):
-        v=1
+        v=np.ones(self._val.shape)
         if(var.name!= self.name):
-            v=0
+            v=np.zeros(self._val.shape)
         val=Val(v)
         return val
     @Node.val.setter
     def val(self,val):
         self.resetCachedValue()
-        self._val=val                    
-        
+        self._val=np.matrix(val)        
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
+             
 class Word(Node):
     def __init__(self, word):
         Node.__init__(self, name=word)
@@ -118,7 +129,11 @@ class Phrase(Node):
         else :
             print "Message is round-toured."
 
-            
+def softmax(x):
+    x=x-np.max(x)
+    exp_x=np.exp(x)
+    return exp_x/exp_x.sum()
+                
 class Fun(Node):
     known_functions=dict(
     [('cos' ,('cos',np.cos)),
@@ -129,10 +144,12 @@ class Fun(Node):
      ('sin`',('cos',np.cos)),
      ('exp`',('exp',np.exp)),
      ('log`' ,('1/',lambda x : 1.0/x)),
+     ('1/'   ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
-     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2))])
-     #'',('',),
+     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
+     ('softmax',('softmax',softmax))
+     ])
     def __init__(self, name, var, op=None):
         if name in Fun.known_functions.keys():
             name, op0 = Fun.known_functions[name]
@@ -161,14 +178,49 @@ class Fun(Node):
             self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
-        expr=Mul(Fun(self.name+"`", self.var), self.var.diff_no_simplify(var))
+        expr=CTimes(Fun(self.name+"`", self.var), 
+                    self.var.diff_no_simplify(var))
         return expr
     @property
     def val(self):
-        if not np.any(self._val):
-            self._val = self.op(self.var.val)
+        if not self.op:
+            return None
+        elif not np.any(self._val):
+            self._val = self.op(self.var.val)            
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
         return self._val
 
+class Transpose(Node):
+    def __init__(self, x):
+        Node.__init__(self,name=None)
+        self.op=np.transpose
+        self.var=x
+        self.var.add_parent(self)
+    def __str__(self):
+        return "(%s).T"%(self.var)
+    def __repr__(self):
+        return "(%r).T"%(self.var)        
+    def simplify(self):
+        self.var=self.var.simplify()
+        self.var.add_parent(self)
+        if isinstance(self.var, Var) or isinstance(self.var, Val):
+            if not hasattr(self.var.val, 'shape') :            
+                return self.var
+            elif self.var.val.shape == ():
+                return self.var
+        return self
+    @property
+    def val(self):
+        if not np.any(self._val):
+            self._val = np.transpose(self.var.val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
+        return self._val
+    def diff_no_simplify(self, var):
+        expr=Transpose(self.var.diff_no_simplify(var))
+        return expr
+        
 class BinaryOperator(Node):
     def __init__(self, x, y):
         Node.__init__(self,name=None)
@@ -198,6 +250,8 @@ class BinaryOperator(Node):
     def val(self):
         if not np.any(self._val):
             self._val = self.op(self.x.val, self.y.val)
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
         return self._val
     
 class Add(BinaryOperator):
@@ -209,16 +263,23 @@ class Add(BinaryOperator):
         return "Add(%r,%r)"%(self.x, self.y)
     def simplify(self):
         BinaryOperator.simplify(self)
-        if self.x==Val(0):
+        if IsZero(self.x):
             return self.y
-        elif self.y==Val(0):
+        elif IsZero(self.y):
             return self.x
         return self
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
         
-    
+
+def TransposeVectorsOnly(var):
+    try:
+        if np.min(var.val.shape)==1:
+            return Transpose(var)
+    except:
+        pass
+    return var
 class Mul(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
@@ -237,15 +298,71 @@ class Mul(BinaryOperator):
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
-        if self.x==Val(0) or self.y==Val(0):
-            return Val(0)
-        elif self.x==Val(1):
+        if IsZero(self.x) :
+            return self.x
+        elif IsZero(self.y) :
             return self.y
-        elif self.y==Val(1):
+        elif IsIdentity(self.x):
+            return self.y
+        elif IsIdentity(self.y):
             return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(Mul(self.x.diff_no_simplify(var),self.y), 
-                 Mul(self.x,self.y.diff_no_simplify(var)))
+        expr=Add(CTimes(TransposeVectorsOnly(self.x.diff_no_simplify(var)),TransposeVectorsOnly(self.y)), 
+                 CTimes(TransposeVectorsOnly(self.x),TransposeVectorsOnly(self.y.diff_no_simplify(var))))
         return expr
 
+def IsZero(var):         
+    try : 
+        if not isinstance(var.val, np.matrix) and var.val == 0.0:
+            return True
+        else:
+            return np.all(Add(var,var).val==var.val)
+    except:
+        pass
+    return False
+def IsIdentity(var): 
+    try :
+        if not isinstance(var.val, np.matrix) and var.val==1.0:
+            return True
+        else:
+            d1=np.min(var.val.shape)
+            d2=np.max(var.val.shape)
+            if d1 != d2:
+                return False
+            return np.all(var.val==np.identity(d1))
+    except:
+        pass
+    return False
+
+#CircleTimes : heavily used for differentiation by Matrix.
+class CTimes(BinaryOperator):
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = '⊗'
+        self.op = lambda x,y : np.array(x)*np.array(y)
+        self.update_format()
+    def __repr__(self):
+        return "CTimes(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self.format='(%s)%s%s'
+        elif isinstance(self.y, Add):
+            self.format='%s%s(%s)'
+        else:
+            self.format='%s%s%s'
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        self.update_format()
+        if IsZero(self.x) :
+            return self.x
+        elif IsZero(self.y) :
+            return self.y
+        elif IsIdentity(self.x):
+            return self.y
+        elif IsIdentity(self.y):
+            return self.x
+        return self
+    def diff_no_simplify(self, var):
+        assert(0)
+        return expr
