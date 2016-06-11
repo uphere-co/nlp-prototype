@@ -19,7 +19,7 @@ main = do
     putStrLn $ "test = " ++ show test
     putStr $ "prettyprint test = "
     TIO.putStrLn (prettyprint test)
-    -- 
+    putStrLn "-----------------"
     case A.parseOnly pExp "((tanh((x+y))*7)+4)" of
       Left err -> print err
       Right test2 -> do
@@ -27,7 +27,7 @@ main = do
         print test2
         putStr "its differential w.r.t x = "
         TIO.putStrLn (prettyprint (diff (SmplVar X) test2))
-    --
+    putStrLn "-----------------"
     case A.parseOnly pExp "((tanh((x_i1+y_i1))*3)+4)" of
       Left err -> print err
       Right test3 -> do
@@ -35,8 +35,7 @@ main = do
         print test3
         putStr "its differential w.r.t x_i2 = "
         TIO.putStrLn (prettyprint (diff (IdxVar X (Idx 2)) test3))
-    --
-    --print (A.parseOnly pExp "(x_i1+y_i1)")
+    putStrLn "-----------------"        
     case A.parseOnly pExp "((x_i1+y_i1)*(x_i1+y_i1))" of
       Left err -> print err
       Right test3 -> do
@@ -45,19 +44,20 @@ main = do
         putStr "its differential w.r.t x_i2 = "
         TIO.putStrLn (prettyprint (diff (IdxVar X (Idx 2)) test3))
 
-    
-    -- print (A.parseOnly pExp "((tanh((x_1+y_1))+3)*4)")
-    -- print (A.parseOnly pExp "tanh((x_1+y_1))")
               
 -- test result
 --
 -- $ cabal build
 -- $ dist/build/symbolic/symbolic
 -- 
--- test = BiExp (BNTNode Add (BNTLeaf (BiExp (BNTNode Mul (BNTLeaf (Fun "tanh" (Var X))) (BNTLeaf (Val 7))))) (BNTLeaf (Val 4)))
+-- test = BiExp (BNTNode Add (BNTLeaf (BiExp (BNTNode Mul (BNTLeaf (Fun "tanh" (Var (SmplVar X)))) (BNTLeaf (Val 7))))) (BNTLeaf (Val 4)))
 -- prettyprint test = ((tanh(x)*7)+4)
--- ((tanh((x+y))*7)+4) = BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun "tanh" (BiExp (BNTNode Add (BNTLeaf (Var X)) (BNTLeaf (Var Y)))))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4)))
+-- -----------------
+-- ((tanh((x+y))*7)+4) = BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun "tanh" (BiExp (BNTNode Add (BNTLeaf (Var (SmplVar X))) (BNTLeaf (Var (SmplVar Y))))))) (BNTLeaf (Val 7))) (BNTLeaf (Val 4)))
 -- its differential w.r.t x = (tanh'((x+y))*7)
-
-
-    
+-- -----------------
+-- ((tanh((x_i1+y_i1))*3)+4) = BiExp (BNTNode Add (BNTNode Mul (BNTLeaf (Fun "tanh" (BiExp (BNTNode Add (BNTLeaf (Var (IdxVar X (Idx 1)))) (BNTLeaf (Var (IdxVar Y (Idx 1)))))))) (BNTLeaf (Val 3))) (BNTLeaf (Val 4)))
+-- its differential w.r.t x_i2 = (tanh'((x_i2+y_i2))*3)
+-- -----------------
+-- ((x_i1-y_i1)*(x_i1-y_i1)) = BiExp (BNTNode Mul (BNTNode Add (BNTLeaf (Var (IdxVar X (Idx 1)))) (BNTLeaf (Var (IdxVar Y (Idx 1))))) (BNTNode Add (BNTLeaf (Var (IdxVar X (Idx 1)))) (BNTLeaf (Var (IdxVar Y (Idx 1))))))
+-- its differential w.r.t x_i2 = ((x_i2+y_i2)+(x_i2+y_i2))

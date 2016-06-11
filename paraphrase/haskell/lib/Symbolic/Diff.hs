@@ -23,9 +23,6 @@ diffVar (SmplVar s)  (IdxVar s' _)              = Zero
 diffVar (IdxVar s i) (IdxVar s' i') | s == s'   = Delta i' i
                                     | otherwise = Zero
 
- -- (SmplVar s) (SmplVar s') | s==s'     = One
-     --                          | otherwise = Zero
-
 diff_bi :: Variable -> BNTree BiOp Exp -> Exp
 diff_bi s (BNTNode Add e1 e2) = (diff_bi s e1) /+/ (diff_bi s e2)
 diff_bi s (BNTNode Mul e1 e2) = ((diff_bi s e1) /*/ lift e2) /+/ (lift e1 /*/ (diff_bi s e2)) -- Leibniz rule

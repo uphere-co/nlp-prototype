@@ -20,12 +20,9 @@ data Symbol = X | Y deriving (Show, Eq)
 
 data Index = Idx Int deriving (Show, Eq)
 
-
 data Variable = SmplVar Symbol
               | IdxVar Symbol Index
               deriving (Show, Eq)
--- X | Y deriving (Show, Eq)
-
 
 data Exp = Fun UniOp Exp
          | Var Variable
@@ -93,12 +90,6 @@ simplifyDelta i j e                                 = e
 
 sdbi i j (BNTLeaf e) = BNTLeaf (simplifyDelta i j e)
 sdbi i j (BNTNode o e1 e2) = BNTNode o (sdbi i j e1) (sdbi i j e2)
-
--- simplifyDelta i j (BiExp (BNTLeaf e))               = BiExp (BNTLeaf (simplifyDelta i j e))
--- simplifyDelta i j (biExp (BNTNode o e
-
-
-
 
 (/+/) = add
 (/*/) = mul
