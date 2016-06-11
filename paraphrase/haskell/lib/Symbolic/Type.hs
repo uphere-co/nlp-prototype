@@ -32,6 +32,7 @@ data Exp = Fun UniOp Exp
          | BiExp (BNTree BiOp Exp)
          | Zero
          | One
+         | Delta Index Index
          deriving (Show, Eq)
 
 deriving instance Eq (BNTree BiOp Exp)
@@ -60,6 +61,7 @@ prettyprint (Fun o x) = showUniOp o <> "(" <> prettyprint x <> ")"
 prettyprint (BiExp n) = showBiExp n 
 prettyprint Zero = "zero"
 prettyprint One = "1"
+prettyprint (Delta (Idx i) (Idx j)) = "delta_" <> (T.pack (show i)) <> "^" <> (T.pack (show j))
 
 -- gate keeper, simplifying cases with zero
 add :: Exp -> Exp -> Exp

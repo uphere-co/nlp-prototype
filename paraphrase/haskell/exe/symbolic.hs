@@ -28,7 +28,16 @@ main = do
         putStr "its differential w.r.t x = "
         TIO.putStrLn (prettyprint (diff (SmplVar X) test2))
     --
-    print (A.parseOnly pExp "(tanh(x_2)+3)")
+    case A.parseOnly pExp "((tanh((x_1+y_1))+3)*4)" of
+      Left err -> print err
+      Right test3 -> do
+        putStr "((tanh((x_1+y_1))+3)*4) = "
+        print test3
+        putStr "its differential w.r.t x_1 = "
+        TIO.putStrLn (prettyprint (diff (IdxVar X (Idx 1)) test3))
+    
+    -- print (A.parseOnly pExp "((tanh((x_1+y_1))+3)*4)")
+    -- print (A.parseOnly pExp "tanh((x_1+y_1))")
               
 -- test result
 --
