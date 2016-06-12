@@ -23,12 +23,15 @@ struct vocab_word {
 };
 
 // Constants
-int min_count = 5, min_reduce = 1;
+int min_count = 5, min_reduce = 1, debug_mode = 2;
 long long vocab_hash_size = 30000000;
 
 // Variables
 long long vocab_max_size = 1000, vocab_size = 0;
-long long train_words = 0;
+long long train_words = 0, file_size = 0;
+
+std::string train_file, output_file;
+std::string save_vocab_file, read_vocab_file;
 
 // Struct
 struct vocab_word *vocab;
@@ -225,8 +228,12 @@ void ReduceVocab() {
 // Frequent words will have short unique binary codes
 void CreateBinaryTree() {
   // Words are not sorted at the beginning
-  long long a;
+  long long a, b, i, min1i, min2i, pos1, pos2;
+  long long point[MAX_CODE_LENGTH];
+  char code[MAX_CODE_LENGTH];
   long long *count = (long long *)calloc(vocab_size * 2 + 1, sizeof(long long));
+  long long *binary = (long long *)calloc(vocab_size * 2 + 1, sizeof(long long));
+  long long *parent_node = (long long *)calloc(vocab_size * 2 + 1, sizeof(long long));
   
   for(a = 0; a < vocab_size; a++) count[a] = vocab[a].cn; // count word frequency
   for(a = vocab_size; a < 2 * vocab_size; a++) count[a] = 1e15; // very very large number. 
@@ -241,11 +248,11 @@ void CreateBinaryTree() {
 	min1i = pos1;
 	pos1--;
       } else {
-	minli = pos2;
+	min1i = pos2;
 	pos2++;
       }
     } else {
-      minli = pos2;
+      min1i = pos2;
       pos2++;
     }
     if(pos1 >= 0) {
@@ -260,11 +267,78 @@ void CreateBinaryTree() {
       min2i = pos2;
       pos2++;
     }
+    count[vocab_size + a] = count[min1i] + count[min2i]; // Creating parent node with summed frequency
+    parent_node[min1i] = vocab_size + a;
+    parent_node[min2i] = vocab_size + a; // Note that having a common parent node
+    binary[min2i] = 1; // min2i will point to root node at the final state
+  }
+  // Now assign binary code to each vocabulary word
+  for(a = 0; a < vocab_size; a++) {
+    b = a;
+    i = 0;
+    while(1) {
+      code[i] = binary[b];
+      point[i] = b;
+      i++;
+      b = parent_node[b];
+      if(b == vocab_size * 2 - 2) break;
+    }
+    vocab[a].codelen = i;
+    vocab[a].point[0] = vocab_size - 2;
+    for(b = 0; b < i; b++) {
+      vocab[a].code[i - b - 1] = code[b];
+      vocab[a].point[i - b] = point[b] - vocab_size;
+    }
+  }
+  free(count);
+  free(binary);
+  free(parent_node);
+  
+}
 
+void LearnVocabFromTrainFile() {
+  std::string word;
+  std::ifstream inFile;
+  long long a, i;
+  for(a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1; // Initialization. Necessary?
+  train_file = "hihi.txt";
+  inFile.open(train_file, std::ios::in | std::ios::binary ); // How to include read mode?
+  if(inFile.fail()) {
+    std::cout << "ERROR: training data file not found!\n";
+    exit(1);
+  }
+  vocab_size = 0;
+  AddWordToVocab((char *)"</s>");
+  while(1) {
+    ReadWord(word, inFile);
+    if(inFile.eof()) break;
+    train_words++;
+    if((debug_mode > 1) && (train_words % 100000 == 0)) {
+      printf("%lldK%c", train_words / 1000, 13);
+      fflush(stdout);
+    }
+    i = SearchVocab(word);
+    if(i == -1) {
+      a = AddWordToVocab(word);
+      vocab[a].cn = 1;
+    } else vocab[i].cn++;
+    if(vocab_size > vocab_hash_size * 0.7) ReduceVocab(); // Limiting vocabulary size
+    SortVocab(); // Necessary before making Huffman tree
+    if(debug_mode > 0) {
+      printf("Vocab size: %lld\n", vocab_size);
+      printf("Words in the train file: %lld\n", train_words);
+    }
+    file_size = inFile.tellg(); // right use of tellg()?
+    inFile.close();
   }
 }
 
+void SaveVocab() {
+  long long i;
+  std::ofstream outFile(save_vocab_file, std::ios::out || std::ios::binary);
+}
 
+ 
 // End of HashMap for dictionary
 
 int main()
