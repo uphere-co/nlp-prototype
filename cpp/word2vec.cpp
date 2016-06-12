@@ -23,7 +23,7 @@ struct vocab_word {
 };
 
 // Constants
-int min_count = 5;
+int min_count = 5, min_reduce = 1;
 long long vocab_hash_size = 30000000;
 
 // Variables
@@ -200,15 +200,70 @@ void SortVocab() {
   }
 }
 
-/*
+// Reduces the vocabulary by removing infrequent tokens. Neutralized by min_reduce = 0
 void ReduceVocab() {
   long long a, b = 0;
   long long hash;
   for(a = 0; a < vocab_size; a++) if (vocab[a].cn > min_reduce) {
+      vocab[b].cn = vocab[a].cn;
+      vocab[b].word = vocab[a].word;
+      b++;
+  }
+  vocab_size = b;
+  // Hash will be re-computed, as it is not actual
+  for(a = 0; a < vocab_hash_size; a++) vocab_hash[a] = -1; // Re-initialization
+  for(a = 0; a < vocab_size; a++) {
+    hash = GetWordHash(vocab[a].word);
+    while(vocab_hash[hash] != -1) hash = (hash + 1) % vocab_hash_size;
+    vocab_hash[hash] = a; // The value is the index(position) of the word
+  }
+  fflush(stdout); // print first
+  min_reduce++; // As ReduceVocab() is called, more words will be removed in the vocabulary
+}
+
+// Create binary Huffman tree using the word counts
+// Frequent words will have short unique binary codes
+void CreateBinaryTree() {
+  // Words are not sorted at the beginning
+  long long a;
+  long long *count = (long long *)calloc(vocab_size * 2 + 1, sizeof(long long));
+  
+  for(a = 0; a < vocab_size; a++) count[a] = vocab[a].cn; // count word frequency
+  for(a = vocab_size; a < 2 * vocab_size; a++) count[a] = 1e15; // very very large number. 
+  pos1 = vocab_size - 1;
+  pos2 = vocab_size; //
+
+  // following algorithm constructs the Huffman tree by adding one node at a time
+  for( a = 0; a < vocab_size - 1; a++) {
+    // First, find two smallest nodes 'min1, min2'
+    if(pos1 >= 0) {
+      if(count[pos1] < count[pos2]) {
+	min1i = pos1;
+	pos1--;
+      } else {
+	minli = pos2;
+	pos2++;
+      }
+    } else {
+      minli = pos2;
+      pos2++;
+    }
+    if(pos1 >= 0) {
+      if(count[pos1] < count[pos2]) {
+	min2i = pos1;
+	pos1--;
+      } else {
+	min2i = pos2;
+	pos2++;
+      }
+    } else {
+      min2i = pos2;
+      pos2++;
+    }
 
   }
 }
-*/
+
 
 // End of HashMap for dictionary
 
