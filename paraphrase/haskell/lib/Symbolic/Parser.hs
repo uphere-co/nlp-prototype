@@ -21,7 +21,16 @@ pFun = do
 
 pVal = Val <$> A.decimal
 
-pVar = Var <$> ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
+pSymbol =  ((A.char 'x' >> return X) <|> (A.char 'y' >> return Y))
+
+pIdxVar = do
+   sym <- pSymbol
+   A.char '_'
+   A.char 'i'
+   i <- A.decimal
+   return (IdxVar sym (Idx i))
+
+pVar = Var <$> (pIdxVar <|> (SmplVar <$> pSymbol))
 
 pUniOp = do
     c <- A.satisfy (isAlpha)
