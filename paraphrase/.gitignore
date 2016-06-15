@@ -1,0 +1,7 @@
+.DS_Store
+*.hi
+*.o
+exe/*.zip
+exe/*.xml
+exe/sentences*.txt
+misc/bllipparser-models
