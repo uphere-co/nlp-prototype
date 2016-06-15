@@ -7,5 +7,5 @@ lst = [ "ipg160105.zip", "ipg160112.zip", "ipg160119.zip", "ipg160126.zip", "ipg
 
 
 main = do
-  -- mapM_ (\x -> system ("wget https://bulkdata.uspto.gov/data2/patent/grant/redbook/fulltext/2016/" ++ x)) lst
+  mapM_ (\x -> system ("wget https://bulkdata.uspto.gov/data2/patent/grant/redbook/fulltext/2016/" ++ x)) lst
   mapM_ (\x -> system ("unzip " ++ x)) lst
