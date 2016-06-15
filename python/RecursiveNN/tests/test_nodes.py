@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 # -*- coding: utf-8 -*-
 
 import os
@@ -7,7 +8,9 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,Fun, Add,Mul,CTimes, IsZero, IsIdentity, Transpose
+from recursiveNN.nodes import Word,Phrase, Val,Var,Fun,VSF, Add,Mul,Dot,CTimes,Transpose, TransposeIfVector
+from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScala,IsVector,IsMatrix
+from recursiveNN.differentiation import Differentiation
 from recursiveNN.models import RecursiveNN
 
 def test_ElementaryTypes():
@@ -153,16 +156,19 @@ def test_CacheKnownValues():
     exp_cos=lambda x : np.exp(np.cos(x))
     for v in np.random.random(10):        
         x.val=v
-        assert(gfx.val==exp_cos(v))    
+        assert(gfx.val==exp_cos(v))
     for i in range(100):
         assert(gfx.val==exp_cos(v))
         
     y=Var('y')
     hy=Fun('tanh', y, np.tanh)
+    for v in np.random.random(10):        
+        y.val=v
+        assert(hy.val==np.tanh(v))
     gfx_hy = Mul(gfx, hy)
     exp_cos_x_times_tanh_y = lambda x, y : exp_cos(x)*np.tanh(y)
     vx=5.7
-    vy=np.array([1.1,2.1])
+    vy=np.array([1.1,2.1,0.5])
     x.val=vx
     y.val=vy
     assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
@@ -292,15 +298,16 @@ def test_Transpose():
     assert(str(Transpose(xyt))=='(x*(y).T).T')
     assert(xyt.val==12) 
     
-def test_MatrixDifferentiation():
+def _MatrixDifferentiation():
     mat=np.matrix
     vw,vx,vb=mat([[1,2,3],[2,3,4]]), mat([[3],[2],[1]]), mat([0.07,0.08])
     w,x,b=Var('W',vw),Var('x',vx),Var('b',vb)
     
     assert_all(w.diff(w).val==np.ones((2,3)))
-    wx=Mul(w,x)
+    wx=Dot(w,x)
     dwx=wx.diff(w)
     xT=Transpose(x)
+    print wx.diff_no_simplify(w)
     assert_all(dwx.val==[[3,2,1],[3,2,1]])
     
     dw=Var('dW',[[0.1,0.2,0.01],[0.2,0.1,0.05]])
@@ -308,7 +315,8 @@ def test_MatrixDifferentiation():
     #f(w+dw) = Mul(Add(w,dw),x)
     #f(w)=wx
     #dw*dfdw = Mul(CTimes(dw,dwx),x.diff(x))
-    assert_all(Mul(Add(w,dw),x).val == Add(wx,Mul(CTimes(dw,dwx),x.diff(x) )).val)
+    assert(str(Dot(Add(w,dw),x))=='(W+dW)⋅x')
+    assert_all(Dot(Add(w,dw),x).val == Add(wx,Dot(CTimes(dw,dwx),x.diff(x) )).val)
     
     dx=Var('dx',mat([[0.1],[0.2],[0.3]]))
     #f(x+dx) = f(x) + dx*dfdx
@@ -330,5 +338,41 @@ def test_MatrixDifferentiation():
     assert_all(h.diff(b).val==CTimes(k, w).val)
     assert_all(h.diff(w).val==CTimes(k, Transpose(b)).val)
 
+
+def test_MatrixDifferentiation():
+    ran=np.random.rand
+    h0=Var('h0')
+    w0=Var('W0')
+    b0=Var('b0')
+    p0=Var('p0')
+    vh0=ran(3,1)
+    vw0=ran(4,3)
+    vb0=ran(4,1)
+    vp0=ran(4,1)
+    h0.val,w0.val,b0.val,p0.val=vh0,vw0,vb0,vp0
+    h1=VSF('tanh',Add(Dot(w0,h0),b0))
+    s0=Dot(Transpose(p0),h1)
+    assert(IsMatrix(w0) and not IsVector(w0))
+    assert(not IsMatrix(b0) and IsVector(b0))
+    assert(not IsMatrix(Dot(w0,h0)) and IsVector(Dot(w0,h0)))
+    assert(IsScala(s0))
+    
+    assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
+    assert(str(h1)=='tanh(W0⋅h0+b0)')
+    assert(str(s0)=='(p0).T⋅tanh(W0⋅h0+b0)')
+    assert_all(s0.val==vp0.T.dot(np.tanh(vw0.dot(vh0)+vb0)))
+    
+    with pytest.raises(ValueError):
+        Differentiation(w0, w0)
+    #Differentiation(Dot(Transpose(p0), Dot(w0,h0)), w0)
+    x=Var('x',ran(1,4))
+    y=Var('y',np.array([1,1,1,1]))
+    assert(y.val.shape==(1,4))
+    assert(IsZero(Differentiation(Dot(x, b0), w0)))
+    assert(IsZero(Differentiation(Dot(x, b0), p0)))
+    print Differentiation(Dot(x, b0), b0)
+    print Differentiation(Dot(x, b0), x)
+    
+    assert 0
 def test_FeedForwardNNEvaluation():
     pass

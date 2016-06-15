@@ -1,20 +1,19 @@
 
 # -*- coding: utf-8 -*-
+import os
+import sys
+myPath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, myPath + '/../')
+
 import numpy as np
 
+from recursiveNN.math import ArrayOrScala,SimplifyIfScala, IsZero,IsAllOne,IsIdentity, IsScala,IsVector,IsMatrix
 #`self._val is None` indicates that there are no cache.
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
 # It is parent's responsibility to set children's parents.
 
 #__str__() : for pretty prints
 #expression() : Math formula. If differs from __str__ for Word and Phrase. 
-def SimplifyIfScala(arr):
-    if np.product(arr.shape) ==1 :
-        return arr.dtype.type(arr)
-    return arr
-def ArrayOrScala(arr):
-    return SimplifyIfScala(np.array(arr))    
-    
 class Node(object):
     def __init__(self, name):
         self._parents=[]
@@ -191,7 +190,64 @@ class Fun(Node):
         if self._val.shape==(1,1):
             self._val=self._val[0,0]
         return self._val
-
+        
+class VSF(Node):
+    '''VectorizedScalaFunction'''
+    known_functions=dict(
+    [('cos' ,('cos',np.cos)),
+     ('sin' ,('sin',np.sin)),
+     ('exp' ,('exp',np.exp)),
+     ('log' ,('log',np.log)),
+     ('cos`',('-sin',lambda x : -np.sin(x) )),
+     ('sin`',('cos',np.cos)),
+     ('exp`',('exp',np.exp)),
+     ('log`' ,('1/',lambda x : 1.0/x)),
+     ('1/'   ,('1/',lambda x : 1.0/x)),
+     ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
+     ('tanh',('tanh',np.tanh)),
+     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
+     ('softmax',('softmax',softmax))
+     ])
+    def __init__(self, name, var, op=None):
+        if name in Fun.known_functions.keys():
+            name, op0 = Fun.known_functions[name]
+            if not op:
+                op=op0 
+        Node.__init__(self,name)
+        self.op=op
+        self.var=var
+        self.var.add_parent(self)
+    def __str__(self):
+        return "%s(%s)"%(self.name, self.var)
+    def __repr__(self):
+        return "VSF(%r)(%r)"%(self.name, self.var)
+    def expression(self):
+        if hasattr(self.var, 'expression'):
+            return "%s(%s)"%(self.name, self.var.expression())
+        return self.__str__()
+    def __eq__(self, other):
+        if isinstance(other, self.__class__) and self.var == other.var and self.name==other.name:
+            return True
+        return False
+    def simplify(self):
+        tmp=self.var.simplify()
+        if not tmp is self.var:
+            self.var=tmp
+            self.var.add_parent(self)
+        return self
+    def diff_no_simplify(self, var):
+        expr=CTimes(Fun(self.name+"`", self.var), 
+                    self.var.diff_no_simplify(var))
+        return expr
+    @property
+    def val(self):
+        if not self.op:
+            return None
+        elif not np.any(self._val):
+            self._val = self.op(self.var.val)            
+        if self._val.shape==(1,1):
+            self._val=self._val[0,0]
+        return self._val
 class Transpose(Node):
     def __init__(self, x):
         Node.__init__(self,name=None)
@@ -221,6 +277,11 @@ class Transpose(Node):
     def diff_no_simplify(self, var):
         expr=Transpose(self.var.diff_no_simplify(var))
         return expr
+
+def TransposeIfVector(var):
+    if IsVector(var):
+            return Transpose(var)
+    return var
         
 class BinaryOperator(Node):
     def __init__(self, x, y):
@@ -250,9 +311,8 @@ class BinaryOperator(Node):
     @property
     def val(self):
         if not np.any(self._val):
-            self._val = self.op(self.x.val, self.y.val)
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
+            tmp=self.op(self.x.val, self.y.val)
+            self._val = SimplifyIfScala(tmp)
         return self._val
     
 class Add(BinaryOperator):
@@ -273,14 +333,6 @@ class Add(BinaryOperator):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
         
-
-def TransposeVectorsOnly(var):
-    try:
-        if np.min(var.val.shape)==1:
-            return Transpose(var)
-    except:
-        pass
-    return var
 class Mul(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
@@ -309,32 +361,40 @@ class Mul(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(CTimes(TransposeVectorsOnly(self.x.diff_no_simplify(var)),TransposeVectorsOnly(self.y)), 
-                 CTimes(TransposeVectorsOnly(self.x),TransposeVectorsOnly(self.y.diff_no_simplify(var))))
+        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)), 
+                 CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
-
-def IsZero(var):         
-    try : 
-        if not isinstance(var.val, np.ndarray) and var.val == 0.0:
-            return True
+class Dot(BinaryOperator):
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = '⋅'
+        self.op=np.dot
+        self.update_format()
+    def __repr__(self):
+        return "Dot(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self.format='(%s)%s%s'
+        elif isinstance(self.y, Add):
+            self.format='%s%s(%s)'
         else:
-            return np.all(Add(var,var).val==var.val)
-    except:
-        pass
-    return False
-def IsIdentity(var):     
-    try :
-        if not isinstance(var.val, np.ndarray) and var.val==1.0:
-            return True
-        else:
-            d1=np.min(var.val.shape)
-            d2=np.max(var.val.shape)
-            if d1 != d2:
-                return False
-            return np.all(var.val==np.identity(d1))
-    except:
-        pass
-    return False
+            self.format='%s%s%s'
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        self.update_format()
+        if IsZero(self.x) :
+            return self.x
+        elif IsZero(self.y) :
+            return self.y
+        elif IsIdentity(self.x):
+            return self.y
+        elif IsIdentity(self.y):
+            return self.x
+        return self
+    def diff_no_simplify(self, var):
+        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)), 
+                 CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
+        return expr
 
 #CircleTimes : heavily used for differentiation by Matrix.
 class CTimes(BinaryOperator):
@@ -359,11 +419,21 @@ class CTimes(BinaryOperator):
             return self.x
         elif IsZero(self.y) :
             return self.y
-        elif IsIdentity(self.x):
+        elif IsIdentity(self.x) :
             return self.y
         elif IsIdentity(self.y):
             return self.x
+        else:
+            try:
+                if self.x.val.shape==self.y.val.shape:
+                    if IsAllOne(self.x) :
+                        return self.y
+                    elif IsAllOne(self.y):
+                        return self.x
+            except:
+                pass
         return self
     def diff_no_simplify(self, var):
         assert(0)
         return expr
+
