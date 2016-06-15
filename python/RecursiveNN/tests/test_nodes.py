@@ -55,6 +55,7 @@ def test_DiffOperations():
            'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
     
 def test_SimplifyZeroAndOne():
+    assert(IsIdentity(Val(1)))
     assert(Mul(Val(1),Val(1)).simplify()==Val(1))
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(1))))).simplify()==Val(1))
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(0))))).simplify()==Val(0))

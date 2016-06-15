@@ -8,6 +8,13 @@ import numpy as np
 
 #__str__() : for pretty prints
 #expression() : Math formula. If differs from __str__ for Word and Phrase. 
+def SimplifyIfScala(arr):
+    if np.product(arr.shape) ==1 :
+        return arr.dtype.type(arr)
+    return arr
+def ArrayOrScala(arr):
+    return SimplifyIfScala(np.array(arr))    
+    
 class Node(object):
     def __init__(self, name):
         self._parents=[]
@@ -39,9 +46,7 @@ class Node(object):
 class Val(Node):
     def __init__(self, val):
         Node.__init__(self, str(val))
-        self._val=np.matrix(val)
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
+        self._val=ArrayOrScala(val)
     def __repr__(self):
         return "Val(%r)"%(self.name)
     def __eq__(self, other):
@@ -56,9 +61,7 @@ class Val(Node):
 class Var(Node):
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self._val=np.matrix(val)
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
+        self._val=ArrayOrScala(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def __eq__(self, other):
@@ -74,9 +77,7 @@ class Var(Node):
     @Node.val.setter
     def val(self,val):
         self.resetCachedValue()
-        self._val=np.matrix(val)        
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
+        self._val=ArrayOrScala(val)
              
 class Word(Node):
     def __init__(self, word):
@@ -314,16 +315,16 @@ class Mul(BinaryOperator):
 
 def IsZero(var):         
     try : 
-        if not isinstance(var.val, np.matrix) and var.val == 0.0:
+        if not isinstance(var.val, np.ndarray) and var.val == 0.0:
             return True
         else:
             return np.all(Add(var,var).val==var.val)
     except:
         pass
     return False
-def IsIdentity(var): 
+def IsIdentity(var):     
     try :
-        if not isinstance(var.val, np.matrix) and var.val==1.0:
+        if not isinstance(var.val, np.ndarray) and var.val==1.0:
             return True
         else:
             d1=np.min(var.val.shape)
