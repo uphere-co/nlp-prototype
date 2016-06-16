@@ -307,6 +307,7 @@ def test_Sum0():
     assert(CTimes(x,y).val.shape==(3, 2))
     assert(Sum0(CTimes(x,y)).val.shape==(1, 2))
     assert_all(Sum0(CTimes(x,y)).val==[11,24])
+    assert_all(Sum0(CTimes(x,y)).val==Dot(Transpose(x),y).val)
 
 
 def _MatrixDifferentiation():
@@ -350,25 +351,22 @@ def _MatrixDifferentiation():
     assert_all(h.diff(w).val==CTimes(k, Transpose(b)).val)
 
 
-def test_MatrixDifferentiation():
-    ran=np.random.rand
+def test_RecursiveNNDifferentiation():
+    ran=np.random.random
     h0=Var('h0')
     w0=Var('W0')
     b0=Var('b0')
     p0=Var('p0')
-    vh0=ran(3,1)
-    vw0=ran(4,3)
-    vb0=ran(4,1)
-    vp0=ran(4,1)
+    vh0=ran((3,1))
+    vw0=ran((4,3))
+    vb0=ran((4,1))
+    vp0=ran((4,1))
     h0.val,w0.val,b0.val,p0.val=vh0,vw0,vb0,vp0
     h1=VSF('tanh',Add(Dot(w0,h0),b0))
     s0=Dot(Transpose(p0),h1)
     assert(IsMatrix(w0) and not IsVector(w0))
     assert(not IsMatrix(b0) and IsVector(b0))
     assert(not IsMatrix(Dot(w0,h0)) and IsVector(Dot(w0,h0)))
-    print Add(Dot(w0,h0),b0).val
-    print h1.val
-    print s0.val
     assert(IsScalar(s0))
     
     assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
@@ -379,13 +377,8 @@ def test_MatrixDifferentiation():
     with pytest.raises(ValueError):
         Differentiation(w0, w0)
     #Differentiation(Dot(Transpose(p0), Dot(w0,h0)), w0)
-    x=Var('x',ran(1,4))
-    y=Var('y',np.array([1,1,1,1]))
-    assert(y.val.shape==(1,4))
-    assert IsZero(Differentiation(Dot(x, b0), w0))
-    assert IsZero(Differentiation(Dot(x, b0), p0))
-    assert str(Differentiation(Dot(x, b0), b0))=='(x).T'
-    assert str(Differentiation(Dot(x, b0), x))=='(b0).T'
+
+    
     
 def test_FeedForwardNNEvaluation():
     pass

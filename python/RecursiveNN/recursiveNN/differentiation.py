@@ -3,11 +3,18 @@ import numpy as np
 from recursiveNN.nodes import Val,Var,VSF, Add,Dot,CTimes,Transpose, Sum0,TransposeIfVector
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
-def Sum0thAxisIfMatrix(expr):
-    if IsMatrix(expr):
-        return Sum0(expr)
-    return expr
+def _AccumulateSideExpression(left, right):
+    if IsMatrix(left) or IsMatrix(right):
+        return Dot(left, right).simplify()
+    return CTimes(left,right).simplify()
 def _Diff(expr_left, expr, expr_right, var):
+    if not (IsScalar(expr_left) or IsVector(expr_left)):
+        print expr_left.val, expr.val, expr_right.val, var
+        raise ValueError('Left-side expression should be a scalar or a vector since we do not process tesnsor.')
+    elif not (IsScalar(expr_left) or IsVector(expr_left)):
+        print expr_left.val, expr.val, expr_right.val, var
+        raise ValueError('Right-side expression should be a scalar or a vector since we do not process tesnsor.')
+    
     if isinstance(expr, Val):
         v=np.zeros(expr.val.shape)
         zero = Val(v)
@@ -17,13 +24,18 @@ def _Diff(expr_left, expr, expr_right, var):
         if(var.name!= expr.name):
             v=np.zeros(expr.val.shape)
         val=Val(v)
-        #print expr_left.val, TransposeVectorsOnly(expr_left).val
-        return CTimes(CTimes(expr_left, val), expr_right).simplify()
+        return CTimes(CTimes(Transpose(expr_left), val), Transpose(expr_right)).simplify()
     elif isinstance(expr, Dot):
-        expr_x,expr_y = expr.x, expr.y
-        x_dy=_Diff(TransposeIfVector(CTimes(expr_left, expr_x).simplify()), expr_y, expr_right, var)
-        dx_y= CTimes(_Diff(expr_left, expr_x, expr_right, var), TransposeIfVector(expr_y))
+        x_dy= _Diff(_AccumulateSideExpression(expr_left, expr.x), expr.y, expr_right, var)
+        dx_y= _Diff(expr_left, expr.x, _AccumulateSideExpression(expr.y, expr_right), var)
         return Add(x_dy, dx_y).simplify()
+    elif isinstance(expr, Add):
+        dx= _Diff(expr_left, expr.x, expr_right, var)
+        dy= _Diff(expr_left, expr.y, expr_right, var)
+        return Add(dx, dy).simplify()
+    elif isinstance(expr, VSF):
+        df = VSF(expr.name+"`", expr.var) 
+        return _Diff(_AccumulateSideExpression(expr_left, Transpose(df)), expr.var, expr_right, var)        
     raise ValueError('Differentiation of unknown expression')
         
         #if IsVexpr.x
