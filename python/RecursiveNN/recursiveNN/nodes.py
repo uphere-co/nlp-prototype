@@ -7,7 +7,7 @@ sys.path.insert(0, myPath + '/../')
 
 import numpy as np
 
-from recursiveNN.math import ArrayOrScala,SimplifyIfScala, IsZero,IsAllOne,IsIdentity, IsScala,IsVector,IsMatrix
+from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 #`self._val is None` indicates that there are no cache.
 #'np.isnan(self._val)' indicates that some of its variables are set to NaN.
 # It is parent's responsibility to set children's parents.
@@ -41,7 +41,7 @@ class Node(object):
         if self.parents:
             for parent in self.parents:
                 parent.resetCachedValue()
-               
+
 class Val(Node):
     def __init__(self, val):
         Node.__init__(self, str(val))
@@ -211,10 +211,10 @@ class VSF(Node):
     def __init__(self, name, var, op=None):
         if name in Fun.known_functions.keys():
             name, op0 = Fun.known_functions[name]
-            if not op:
-                op=op0 
+            if op:
+                op0=op 
         Node.__init__(self,name)
-        self.op=op
+        self.op=op0
         self.var=var
         self.var.add_parent(self)
     def __str__(self):
@@ -248,6 +248,28 @@ class VSF(Node):
         if self._val.shape==(1,1):
             self._val=self._val[0,0]
         return self._val
+
+class Sum0(Node):
+    def __init__(self, x):
+        Node.__init__(self,name=None)
+        self.var=x
+        self.var.add_parent(self)
+    def __str__(self):
+        return "Σ_0(%s)"%(self.var)
+    def __repr__(self):
+        return "Sum_0(%r)"%(self.var)        
+    def simplify(self):
+        self.var=self.var.simplify()
+        if IsScalar(self.var):
+                return self.var
+        self.var.add_parent(self)
+        return self
+    @property
+    def val(self):
+        if not np.any(self._val):
+            self._val = SimplifyIfScalar(np.sum(self.var.val, axis=0).reshape(1,-1))
+        return self._val
+
 class Transpose(Node):
     def __init__(self, x):
         Node.__init__(self,name=None)
@@ -260,19 +282,14 @@ class Transpose(Node):
         return "(%r).T"%(self.var)        
     def simplify(self):
         self.var=self.var.simplify()
+        if IsScalar(self.var):
+            return self.var
         self.var.add_parent(self)
-        if isinstance(self.var, Var) or isinstance(self.var, Val):
-            if not hasattr(self.var.val, 'shape') :            
-                return self.var
-            elif self.var.val.shape == ():
-                return self.var
         return self
     @property
     def val(self):
         if not np.any(self._val):
-            self._val = np.transpose(self.var.val)
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
+            self._val = SimplifyIfScalar(np.transpose(self.var.val))
         return self._val
     def diff_no_simplify(self, var):
         expr=Transpose(self.var.diff_no_simplify(var))
@@ -312,7 +329,7 @@ class BinaryOperator(Node):
     def val(self):
         if not np.any(self._val):
             tmp=self.op(self.x.val, self.y.val)
-            self._val = SimplifyIfScala(tmp)
+            self._val = SimplifyIfScalar(tmp)
         return self._val
     
 class Add(BinaryOperator):

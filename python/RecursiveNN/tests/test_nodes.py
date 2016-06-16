@@ -8,8 +8,8 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,Fun,VSF, Add,Mul,Dot,CTimes,Transpose, TransposeIfVector
-from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScala,IsVector,IsMatrix
+from recursiveNN.nodes import Word,Phrase, Val,Var,Fun,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
+from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 from recursiveNN.differentiation import Differentiation
 from recursiveNN.models import RecursiveNN
 
@@ -280,7 +280,6 @@ def test_SimplifyZeroAndIdentityMatrix():
     assert(Mul(Mul(Val(i),Val(i)),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(z))))).simplify()==Val(z))
 
 def test_Transpose():
-        
     vx=np.matrix([5,1,2])
     vy=np.matrix([1,3,2])
     x=Var('x',vx)
@@ -297,7 +296,19 @@ def test_Transpose():
     xyt=Mul(x,Transpose(y))
     assert(str(Transpose(xyt))=='(x*(y).T).T')
     assert(xyt.val==12) 
-    
+
+def test_Sum0():       
+    vx=np.array([5,1,2]).reshape(3,1)
+    vy=np.array([[1,3],[2,3],[2,3]])
+    x=Var('x',vx)
+    y=Var('y',vy)
+    assert(str(Sum0(y))=='Σ_0(y)')
+    assert(str(Sum0(CTimes(x,y)))=='Σ_0(x⊗y)')
+    assert(CTimes(x,y).val.shape==(3, 2))
+    assert(Sum0(CTimes(x,y)).val.shape==(1, 2))
+    assert_all(Sum0(CTimes(x,y)).val==[11,24])
+
+
 def _MatrixDifferentiation():
     mat=np.matrix
     vw,vx,vb=mat([[1,2,3],[2,3,4]]), mat([[3],[2],[1]]), mat([0.07,0.08])
@@ -355,7 +366,10 @@ def test_MatrixDifferentiation():
     assert(IsMatrix(w0) and not IsVector(w0))
     assert(not IsMatrix(b0) and IsVector(b0))
     assert(not IsMatrix(Dot(w0,h0)) and IsVector(Dot(w0,h0)))
-    assert(IsScala(s0))
+    print Add(Dot(w0,h0),b0).val
+    print h1.val
+    print s0.val
+    assert(IsScalar(s0))
     
     assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
     assert(str(h1)=='tanh(W0⋅h0+b0)')
@@ -368,11 +382,10 @@ def test_MatrixDifferentiation():
     x=Var('x',ran(1,4))
     y=Var('y',np.array([1,1,1,1]))
     assert(y.val.shape==(1,4))
-    assert(IsZero(Differentiation(Dot(x, b0), w0)))
-    assert(IsZero(Differentiation(Dot(x, b0), p0)))
-    print Differentiation(Dot(x, b0), b0)
-    print Differentiation(Dot(x, b0), x)
+    assert IsZero(Differentiation(Dot(x, b0), w0))
+    assert IsZero(Differentiation(Dot(x, b0), p0))
+    assert str(Differentiation(Dot(x, b0), b0))=='(x).T'
+    assert str(Differentiation(Dot(x, b0), x))=='(b0).T'
     
-    assert 0
 def test_FeedForwardNNEvaluation():
     pass

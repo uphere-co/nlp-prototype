@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-def SimplifyIfScala(arr):
+def SimplifyIfScalar(arr):
     if np.product(arr.shape) ==1 :
         return arr.dtype.type(arr)
     return arr
 def ArrayOrScala(arr):
-    arr = SimplifyIfScala(np.array(arr))
+    arr = SimplifyIfScalar(np.array(arr))
     if len(arr.shape)==1:
         arr=arr.reshape(1, -1)
     return arr
 
-def IsScala(x):
+def IsScalar(x):
     try:
         m=int(x.val)
         return True
