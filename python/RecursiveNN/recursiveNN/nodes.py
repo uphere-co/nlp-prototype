@@ -19,8 +19,10 @@ class Node(object):
         self._parents=[]
         self.name=name
         self._val=None
+    def __unicode__(self):
+        return self.name
     def __str__(self):
-        return self.name     
+        return unicode(self).encode('utf-8')     
     @property
     def parents(self):
         return self._parents
@@ -86,7 +88,7 @@ class Word(Node):
     def __str__(self):
         return self.name
     def __repr__(self):
-        return "Word(%r)"%(self.name)
+        return u"Word(%r)"%(self.name)
     def expression(self):
         return self.expr
     def diff_no_simplify(self, var):
@@ -109,8 +111,8 @@ class Phrase(Node):
         self.right = right
         self.right.add_parent(self)                
         self.vec = vec 
-    def __str__(self):
-        return '(%s,%s)'%(self.left,self.right)        
+    def __unicode__(self):
+        return u'(%s,%s)'%(self.left,self.right)        
     def __repr__(self):
         return "Phrase(%r,%r)"%(self.left,self.right)
     def expression(self):
@@ -159,13 +161,13 @@ class Fun(Node):
         self.op=op
         self.var=var
         self.var.add_parent(self)
-    def __str__(self):
-        return "%s(%s)"%(self.name, self.var)
+    def __unicode__(self):
+        return u"%s(%s)"%(self.name, self.var)
     def __repr__(self):
         return "Fun(%r)"%(self.name)
     def expression(self):
         if hasattr(self.var, 'expression'):
-            return "%s(%s)"%(self.name, self.var.expression())
+            return u"%s(%s)"%(self.name, self.var.expression())
         return self.__str__()
     def __eq__(self, other):
         if isinstance(other, self.__class__) and self.var == other.var and self.name==other.name:
@@ -217,13 +219,13 @@ class VSF(Node):
         self.op=op0
         self.var=var
         self.var.add_parent(self)
-    def __str__(self):
-        return "%s(%s)"%(self.name, self.var)
+    def __unicode__(self):
+        return u"%s(%s)"%(self.name, self.var)
     def __repr__(self):
         return "VSF(%r)(%r)"%(self.name, self.var)
     def expression(self):
         if hasattr(self.var, 'expression'):
-            return "%s(%s)"%(self.name, self.var.expression())
+            return u"%s(%s)"%(self.name, self.var.expression())
         return self.__str__()
     def __eq__(self, other):
         if isinstance(other, self.__class__) and self.var == other.var and self.name==other.name:
@@ -254,8 +256,8 @@ class Sum0(Node):
         Node.__init__(self,name=None)
         self.var=x
         self.var.add_parent(self)
-    def __str__(self):
-        return "Σ_0(%s)"%(self.var)
+    def __unicode__(self):
+        return u"Σ_0(%s)"%(self.var)
     def __repr__(self):
         return "Sum_0(%r)"%(self.var)        
     def simplify(self):
@@ -276,10 +278,10 @@ class Transpose(Node):
         self.op=np.transpose
         self.var=x
         self.var.add_parent(self)
-    def __str__(self):
-        return "(%s).T"%(self.var)
+    def __unicode__(self):
+        return u"(%s)ᵀ"%(self.var)
     def __repr__(self):
-        return "(%r).T"%(self.var)        
+        return "Transpose(%r)"%(self.var)        
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
@@ -304,11 +306,11 @@ class BinaryOperator(Node):
     def __init__(self, x, y):
         Node.__init__(self,name=None)
         self.op=None
-        self.format="%s%s%s"
+        self.format=u"%s%s%s"
         self.x, self.y = x,y        
         self.x.add_parent(self)
         self.y.add_parent(self)
-    def __str__(self):
+    def __unicode__(self):
         return self.format%(self.x, self.name, self.y)
     def expression(self):
         if hasattr(self.x, 'expression'):
@@ -360,11 +362,11 @@ class Mul(BinaryOperator):
         return "Mul(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format='(%s)%s%s'
+            self.format=u'(%s)%s%s'
         elif isinstance(self.y, Add):
-            self.format='%s%s(%s)'
+            self.format=u'%s%s(%s)'
         else:
-            self.format='%s%s%s'
+            self.format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
@@ -384,18 +386,18 @@ class Mul(BinaryOperator):
 class Dot(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = '⋅'
+        self.name = u'⋅'
         self.op=np.dot
         self.update_format()
     def __repr__(self):
         return "Dot(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format='(%s)%s%s'
+            self.format=u'(%s)%s%s'
         elif isinstance(self.y, Add):
-            self.format='%s%s(%s)'
+            self.format=u'%s%s(%s)'
         else:
-            self.format='%s%s%s'
+            self.format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
@@ -417,18 +419,18 @@ class Dot(BinaryOperator):
 class CTimes(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = '⊗'
+        self.name = u'⊗'
         self.op = lambda x,y : np.array(x)*np.array(y)
         self.update_format()
     def __repr__(self):
         return "CTimes(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format='(%s)%s%s'
+            self.format=u'(%s)%s%s'
         elif isinstance(self.y, Add):
-            self.format='%s%s(%s)'
+            self.format=u'%s%s(%s)'
         else:
-            self.format='%s%s%s'
+            self.format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()

@@ -18,9 +18,9 @@ def test_ElementaryTypes():
     val2= Val(2)
     val10= Val(10)
     val=Mul(Val(2),Val(10))
-    assert(str(val)=='2*10')
-    assert(str(val0)=='0')
-    assert(str(val10)=='10')
+    assert(unicode(val)=='2*10')
+    assert(unicode(val0)=='0')
+    assert(unicode(val10)=='10')
        
 def test_DiffOperations():
     x =Var('x')    
@@ -39,23 +39,23 @@ def test_DiffOperations():
     assert(x ==Var('x'))
     assert(fx!=Fun('f',y))
     assert(fx!=gx)
-    assert(str(Var('x'))=='x')
-    assert(str(fx)== 'f(x)')    
-    assert(str(gfx)== 'g(f(x))')
-    assert(str(Mul(fx,gx)) == 'f(x)*g(x)')
-    assert(str(Mul(fx,gy)) == 'f(x)*g(y)')
-    assert(str(Mul(gfx,gy)) == 'g(f(x))*g(y)')
+    assert(unicode(Var('x'))=='x')
+    assert(unicode(fx)== 'f(x)')    
+    assert(unicode(gfx)== 'g(f(x))')
+    assert(unicode(Mul(fx,gx)) == 'f(x)*g(x)')
+    assert(unicode(Mul(fx,gy)) == 'f(x)*g(y)')
+    assert(unicode(Mul(gfx,gy)) == 'g(f(x))*g(y)')
     z='0.0'
     i='1.0'
-    assert(str(Mul(fx,gx).diff_no_simplify(x)) == "f`(x)⊗%s⊗g(x)+f(x)⊗g`(x)⊗%s"%(i,i))
-    assert(str(Mul(fx,gy).diff_no_simplify(x)) == "f`(x)⊗%s⊗g(y)+f(x)⊗g`(y)⊗%s"%(i,z))
-    assert(str(fx.diff_no_simplify(x))=="f`(x)⊗%s"%i)
-    assert(str(gfx.diff_no_simplify(x))=="g`(f(x))⊗f`(x)⊗%s"%i)
-    assert(str(gfx.diff_no_simplify(y))=="g`(f(x))⊗f`(x)⊗%s"%z)
-    assert(str(Mul(gfx,gy).diff_no_simplify(x)) ==\
-           'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(i,z))
-    assert(str(Mul(gfx,gy).diff_no_simplify(y)) ==\
-           'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
+    assert(unicode(Mul(fx,gx).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(x)+f(x)⊗g`(x)⊗%s"%(i,i))
+    assert(unicode(Mul(fx,gy).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(y)+f(x)⊗g`(y)⊗%s"%(i,z))
+    assert(unicode(fx.diff_no_simplify(x))==u"f`(x)⊗%s"%i)
+    assert(unicode(gfx.diff_no_simplify(x))==u"g`(f(x))⊗f`(x)⊗%s"%i)
+    assert(unicode(gfx.diff_no_simplify(y))==u"g`(f(x))⊗f`(x)⊗%s"%z)
+    assert(unicode(Mul(gfx,gy).diff_no_simplify(x)) ==\
+           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(i,z))
+    assert(unicode(Mul(gfx,gy).diff_no_simplify(y)) ==\
+           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
     
 def test_SimplifyZeroAndOne():
     assert(IsIdentity(Val(1)))
@@ -72,22 +72,22 @@ def test_SimplifyZeroAndOne():
     gfx=Fun('g',fx)
     zero=Val(0)    
     one=Val(1)
-    assert(str(Mul(one,Add(x,y)))=='1*(x+y)')
+    assert(unicode(Mul(one,Add(x,y)))=='1*(x+y)')
     assert(Mul(one,Add(x,y)).expression()=='1*(x+y)')
-    assert(str(Mul(one,Add(x,y)).simplify())=='x+y')
+    assert(unicode(Mul(one,Add(x,y)).simplify())=='x+y')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
     assert(Mul(fx, one).simplify()==Fun('f',Var('x')))
     assert(Mul(zero, gy).simplify()==zero)
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
-    assert(str(fx.diff(x))=='f`(x)')   
-    assert(str(Mul(gfx,gy).diff(x))=='g`(f(x))⊗f`(x)⊗g(y)')
-    assert(str(Mul(gfx,gy).diff(y))=='g(f(x))⊗g`(y)')
+    assert(unicode(fx.diff(x))=='f`(x)')   
+    assert(unicode(Mul(gfx,gy).diff(x))==u'g`(f(x))⊗f`(x)⊗g(y)')
+    assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⊗g`(y)')
     
-    assert(str(Mul(hx,Mul(gx,fx)))=='h(x)*g(x)*f(x)')
-    assert(str(Mul(hx,Mul(gx,fx)).diff(x))=='h`(x)⊗g(x)*f(x)+h(x)⊗(g`(x)⊗f(x)+g(x)⊗f`(x))')
-    assert(str(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')    
+    assert(unicode(Mul(hx,Mul(gx,fx)))==u'h(x)*g(x)*f(x)')
+    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗(g`(x)⊗f(x)+g(x)⊗f`(x))')
+    assert(unicode(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')    
     
 def _SimplePhrase():
     W_left_init  = Var('W_left', [0,0,0,0])
@@ -101,25 +101,25 @@ def _SimplePhrase():
     assert(not hasattr(Val(11), 'expression'))
     assert(hasattr(the, 'expression'))    
     assert(the.expression()=='w2v(The)')   
-    assert(str(the)=='The')
+    assert(unicode(the)=='The')
     
     the_cat=merge(the,cat)
-    assert(str(the_cat)=='(The,cat)')    
+    assert(unicode(the_cat)=='(The,cat)')    
     assert(the_cat.expression()=='tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)')
-    assert(str(the_cat.diff_no_simplify(Var('W_left')))=='')
+    assert(unicode(the_cat.diff_no_simplify(Var('W_left')))=='')
     assert(the_cat.diff(Var('W_left')).expression()=='tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The)')    
     
     the_cat_is=merge(the_cat, Word('is'))
-    assert(str(the_cat_is)=='((The,cat),is)')
+    assert(unicode(the_cat_is)=='((The,cat),is)')
     assert(the_cat_is.expression()=='tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)')
     expected='tanh`(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)*'+ \
              '(tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_left*tanh`(W_left*w2v(The)+W_right*w2v(cat)+bias)*w2v(The))'
     assert(the_cat_is.diff(Var('W_left')).expression()==expected)
     
-    assert(str(merge(the_cat, merge(Word('is'), Word('cute'))))=='((The,cat),(is,cute))')
+    assert(unicode(merge(the_cat, merge(Word('is'), Word('cute'))))=='((The,cat),(is,cute))')
     
     the_cat_is_cute=merge(the_cat_is, Word('cute'))
-    assert(str(the_cat_is_cute)=='(((The,cat),is),cute)')
+    assert(unicode(the_cat_is_cute)=='(((The,cat),is),cute)')
     expected='tanh(W_left*tanh(W_left*tanh(W_left*w2v(The)+W_right*w2v(cat)+bias)+W_right*w2v(is)+bias)+W_right*w2v(cute)+bias)'
     assert(the_cat_is_cute.expression()==expected)  
 
@@ -136,17 +136,17 @@ def test_Evaluation():
     with pytest.raises(ValueError):
         Mul(x,Var('y',vy.T)).val
     xy=Mul(x,y)
-    assert(str(xy)=='x*y')
+    assert(unicode(xy)=='x*y')
     assert_all(xy.val==vx.dot(vy))
     x_plus_z=Add(x,z)
-    assert(str(x_plus_z)=='x+z')
+    assert(unicode(x_plus_z)=='x+z')
     assert_all(x_plus_z.val==vx+vz)
     assert_all(Mul(xy,z).val==Mul(z,xy).val)
     assert_all(Mul(xy,z).val==vx.dot(vy)*vz)
     s0=1.57
     s=Var('s',s0)
     fs=Fun('cos',s, np.cos)
-    assert(str(fs)=='cos(s)')
+    assert(unicode(fs)=='cos(s)')
     assert(fs.val==np.cos(s0))
 
 def test_CacheKnownValues():
@@ -212,7 +212,7 @@ def test_DiffKnownFunctions():
     assert(dfx.expression()=='cos(x)')
     gfx=Fun('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
-    assert(dgfx.expression()=='exp(3*sin(x))⊗3⊗cos(x)')
+    assert(dgfx.expression()==u'exp(3*sin(x))⊗3⊗cos(x)')
     for v in [1.0, 2.0, 14.2, 5.1, 5.72341] :
         x.val=v
         assert(dfx.val==np.cos(v))
@@ -222,10 +222,10 @@ def test_DiffKnownFunctions():
         
     hfx=Fun('log',fx)
     dhfx=hfx.diff(x)
-    assert(dhfx.expression()=='1/(sin(x))⊗cos(x)')
+    assert(dhfx.expression()==u'1/(sin(x))⊗cos(x)')
     hx=Fun('log',Add(fx, Fun('exp', x)))
     dhx=hx.diff(x)
-    assert(dhx.expression()=='1/(sin(x)+exp(x))⊗(cos(x)+exp(x))')
+    assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗(cos(x)+exp(x))')
                
 def test_matrix_circle_times_operations():
     va=np.matrix([[1,2,3],[2,3,4]])
@@ -288,13 +288,13 @@ def test_Transpose():
     fy=Fun('f',y)
     gx=Fun('g',x)
     fygx=Mul(fy,gx)
-    assert(str(Transpose(fygx).simplify())=='(f(y)*g(x)).T')
-    assert(str(Transpose(Var('z',2)).simplify())=='z')
+    assert(unicode(Transpose(fygx).simplify())==u'(f(y)*g(x))ᵀ')
+    assert(unicode(Transpose(Var('z',2)).simplify())=='z')
     assert(Transpose(Var('z',2)).val==2)
     assert_all(Transpose(x).val==vx.T)
     assert_all(Transpose(Transpose(x)).val==x.val)
     xyt=Mul(x,Transpose(y))
-    assert(str(Transpose(xyt))=='(x*(y).T).T')
+    assert(unicode(Transpose(xyt))==u'(x*(y)ᵀ)ᵀ')
     assert(xyt.val==12) 
 
 def test_Sum0():       
@@ -302,8 +302,8 @@ def test_Sum0():
     vy=np.array([[1,3],[2,3],[2,3]])
     x=Var('x',vx)
     y=Var('y',vy)
-    assert(str(Sum0(y))=='Σ_0(y)')
-    assert(str(Sum0(CTimes(x,y)))=='Σ_0(x⊗y)')
+    assert(unicode(Sum0(y))==u'Σ_0(y)')
+    assert(unicode(Sum0(CTimes(x,y)))==u'Σ_0(x⊗y)')
     assert(CTimes(x,y).val.shape==(3, 2))
     assert(Sum0(CTimes(x,y)).val.shape==(1, 2))
     assert_all(Sum0(CTimes(x,y)).val==[11,24])
@@ -327,7 +327,7 @@ def _MatrixDifferentiation():
     #f(w+dw) = Mul(Add(w,dw),x)
     #f(w)=wx
     #dw*dfdw = Mul(CTimes(dw,dwx),x.diff(x))
-    assert(str(Dot(Add(w,dw),x))=='(W+dW)⋅x')
+    assert(unicode(Dot(Add(w,dw),x))=='(W+dW)⋅x')
     assert_all(Dot(Add(w,dw),x).val == Add(wx,Dot(CTimes(dw,dwx),x.diff(x) )).val)
     
     dx=Var('dx',mat([[0.1],[0.2],[0.3]]))
@@ -370,8 +370,8 @@ def test_RecursiveNNDifferentiation():
     assert(IsScalar(s0))
     
     assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
-    assert(str(h1)=='tanh(W0⋅h0+b0)')
-    assert(str(s0)=='(p0).T⋅tanh(W0⋅h0+b0)')
+    assert(unicode(h1)==u'tanh(W0⋅h0+b0)')
+    assert(unicode(s0)==u'(p0)ᵀ⋅tanh(W0⋅h0+b0)')
     assert_all(s0.val==vp0.T.dot(np.tanh(vw0.dot(vh0)+vb0)))
     
     with pytest.raises(ValueError):

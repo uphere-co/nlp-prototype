@@ -30,42 +30,42 @@ def test_VectorAndMatrixVariables():
     assert(x.val.shape==(1,4))
     assert IsZero(Differentiation(Dot(x, y), D))
     assert IsZero(Differentiation(Dot(x, y), a))
-    assert str(Differentiation(Dot(x, y), y))=='(x).T'
-    assert str(Differentiation(Dot(x, y), x))=='(y).T'
+    assert unicode(Differentiation(Dot(x, y), y))==u'(x)ᵀ'
+    assert unicode(Differentiation(Dot(x, y), x))==u'(y)ᵀ'
     
     xDy = Dot(x,Dot(D,y))
-    assert str(xDy)=='x⋅D⋅y'
-    assert str(Differentiation(xDy, y))=='(x⋅D).T'
-    assert str(Differentiation(xDy, x))=='(D⋅y).T'
+    assert unicode(xDy)==u'x⋅D⋅y'
+    assert unicode(Differentiation(xDy, y))==u'(x⋅D)ᵀ'
+    assert unicode(Differentiation(xDy, x))==u'(D⋅y)ᵀ'
     xDy = Dot(Dot(x,D),y)
-    assert str(xDy)=='x⋅D⋅y'
-    assert str(Differentiation(xDy, y))=='(x⋅D).T'
-    assert str(Differentiation(xDy, x))=='(D⋅y).T'
+    assert unicode(xDy)==u'x⋅D⋅y'
+    assert unicode(Differentiation(xDy, y))==u'(x⋅D)ᵀ'
+    assert unicode(Differentiation(xDy, x))==u'(D⋅y)ᵀ'
     
     xCBAy = Dot(x,Dot(C,Dot(B,Dot(A,y))))
-    assert str(xCBAy)=='x⋅C⋅B⋅A⋅y'
-    assert str(Differentiation(xCBAy, x))=='(C⋅B⋅A⋅y).T'
-    assert str(Differentiation(xCBAy, y))=='(x⋅C⋅B⋅A).T'
+    assert unicode(xCBAy)==u'x⋅C⋅B⋅A⋅y'
+    assert unicode(Differentiation(xCBAy, x))==u'(C⋅B⋅A⋅y)ᵀ'
+    assert unicode(Differentiation(xCBAy, y))==u'(x⋅C⋅B⋅A)ᵀ'
     xCBAy = Dot(Dot(x,C),Dot(B,Dot(A,y)))
-    assert str(xCBAy)=='x⋅C⋅B⋅A⋅y'
-    assert str(Differentiation(xCBAy, x))=='(C⋅B⋅A⋅y).T'
-    assert str(Differentiation(xCBAy, y))=='(x⋅C⋅B⋅A).T'
+    assert unicode(xCBAy)==u'x⋅C⋅B⋅A⋅y'
+    assert unicode(Differentiation(xCBAy, x))==u'(C⋅B⋅A⋅y)ᵀ'
+    assert unicode(Differentiation(xCBAy, y))==u'(x⋅C⋅B⋅A)ᵀ'
     
     xfy = Dot(x,VSF('sin',y))
-    assert str(xfy)=='x⋅sin(y)'
-    assert str(Differentiation(xfy,y))=='(x⊗(cos(y)).T).T'
+    assert unicode(xfy)==u'x⋅sin(y)'
+    assert unicode(Differentiation(xfy,y))==u'(x⊗(cos(y))ᵀ)ᵀ'
     
     f = Dot(Dot(x,C),Dot(B,VSF('sin',Add(Dot(A,y),a))))
-    assert str(f)=='x⋅C⋅B⋅sin(A⋅y+a)'
-    assert str(Differentiation(f,y))=='(x⋅C⋅B⊗(cos(A⋅y+a)).T⋅A).T'
-    assert str(Differentiation(f,a))=='(x⋅C⋅B⊗(cos(A⋅y+a)).T).T'
+    assert unicode(f)==u'x⋅C⋅B⋅sin(A⋅y+a)'
+    assert unicode(Differentiation(f,y))==u'(x⋅C⋅B⊗(cos(A⋅y+a))ᵀ⋅A)ᵀ'
+    assert unicode(Differentiation(f,a))==u'(x⋅C⋅B⊗(cos(A⋅y+a))ᵀ)ᵀ'
     
     g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
-    assert str(g) == 'x⋅C⋅sin(B⋅sin(A⋅y+a)+b)'
-    assert str(Differentiation(g,x))=='(C⋅sin(B⋅sin(A⋅y+a)+b)).T'
-    assert str(Differentiation(g,b))==''
-    assert str(Differentiation(g,a))==''
-    assert str(Differentiation(g,y))==''
+    assert unicode(g) == u'x⋅C⋅sin(B⋅sin(A⋅y+a)+b)'
+    assert unicode(Differentiation(g,x))==u''
+    assert unicode(Differentiation(g,b))==u''
+    assert unicode(Differentiation(g,a))==u''
+    assert unicode(Differentiation(g,y))==u''
     
     
 def test_NumericalVerification():
