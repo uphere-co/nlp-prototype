@@ -5,3 +5,4 @@ exe/*.zip
 exe/*.xml
 exe/sentences*.txt
 misc/bllipparser-models
+misc/US_patent_examples

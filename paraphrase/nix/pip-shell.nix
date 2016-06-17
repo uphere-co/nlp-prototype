@@ -7,23 +7,21 @@ let
     then pythonPackages
     else getAttr pythonPackages pkgs;
 
-  pythonPackagesWithLocals = basePythonPackages.override (a: {
-    self = pythonPackagesWithLocals;
+  myPythonPackages = basePythonPackages.override (a: {
+    self = myPythonPackages;
   })
   // (scopedImport {
-    self = pythonPackagesWithLocals;
+    self = myPythonPackages;
     super = basePythonPackages;
     inherit pkgs;
     inherit (pkgs) fetchurl fetchgit;
   } ./python-packages.nix)
   // { pip = basePythonPackages.pip; };
 
-  myPythonPackages =
-    pythonPackagesWithLocals;
-
 in pkgs.stdenv.mkDerivation {
   name = "pip-shell";
-  buildInputs = [ myPythonPackages.bllipparser myPythonPackages.six ];
+  buildInputs = [ myPythonPackages.bllipparser
+                  myPythonPackages.six ];
   shellHook = ''
   '';
 }

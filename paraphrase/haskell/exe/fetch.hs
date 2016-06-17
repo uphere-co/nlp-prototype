@@ -1,3 +1,5 @@
+#!/usr/bin/env runhaskell
+
 import System.Process
 
 lst = [ "ipg160105.zip", "ipg160112.zip", "ipg160119.zip", "ipg160126.zip", "ipg160202.zip"
