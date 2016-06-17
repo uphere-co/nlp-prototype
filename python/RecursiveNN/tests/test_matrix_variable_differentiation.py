@@ -73,6 +73,42 @@ def test_VectorAndMatrixVariables():
     dgdy=Differentiation(g,y)
     delta=NormalizedMatrix(ran(x.val.shape), 0.01)
 
-
+def test_GradientNumericalChecks():
+    ran=np.random.random
+    #0.01 is may not small enough for g=x⋅C⋅sin(B⋅sin(A⋅y+a)+b).
+    scale=0.001
+    p=[]
+    p_ran=[]
+    for i in range(10):
+        x=Var('x',ran((1,4)))
+        y=Var('y',ran((4,1)))
+        a=Var('a',ran((5,1)))
+        b=Var('b',ran((6,1)))
+        D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
+        g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+                
+        var=y
+        gradient=Differentiation(g,var)
+        var0=var.val
+        delta=NormalizedMatrix(ran(var.val.shape), scale)
+        rand_grad=gradient.val.copy()
+        np.random.shuffle(rand_grad)
+        rand_grad=NormalizedMatrix(ran(gradient.val.shape), gradient.val.sum())
+        dg_ran = float(delta.T.dot(rand_grad))
+        dg_grad = float(delta.T.dot(gradient.val))
+        g0=g.val
+        var.val = var0 + delta
+        g1=g.val
+        dg=g1-g0
+        p.append(dg/dg_grad)
+        p_ran.append(dg/dg_ran)
+    p=np.array(p)
+    p_ran=np.array(p_ran)
+    
+    precision=np.abs(np.mean(p)-1)
+    precision_ran=np.abs(np.mean(p_ran)-1)           
+    assert precision < 10*scale
+    assert precision < precision_ran
+    
 def test_NumericalVerification():
     pass
