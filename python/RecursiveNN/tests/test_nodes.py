@@ -8,10 +8,8 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
-from recursiveNN.differentiation import Differentiation
-from recursiveNN.models import RecursiveNN
 
 def test_ElementaryTypes():
     val0 = Val(0)
@@ -309,75 +307,6 @@ def test_Sum0():
     assert_all(Sum0(CTimes(x,y)).val==Dot(Transpose(x),y).val)
 
 
-def _MatrixDifferentiation():
-    mat=np.matrix
-    vw,vx,vb=mat([[1,2,3],[2,3,4]]), mat([[3],[2],[1]]), mat([0.07,0.08])
-    w,x,b=Var('W',vw),Var('x',vx),Var('b',vb)
-    
-    assert_all(w.diff(w).val==np.ones((2,3)))
-    wx=Dot(w,x)
-    dwx=wx.diff(w)
-    xT=Transpose(x)
-    print wx.diff_no_simplify(w)
-    assert_all(dwx.val==[[3,2,1],[3,2,1]])
-    
-    dw=Var('dW',[[0.1,0.2,0.01],[0.2,0.1,0.05]])
-    #f(w+dw) = f(w) + dw*dfdw
-    #f(w+dw) = Mul(Add(w,dw),x)
-    #f(w)=wx
-    #dw*dfdw = Mul(CTimes(dw,dwx),x.diff(x))
-    assert(unicode(Dot(Add(w,dw),x))=='(W+dW)⋅x')
-    assert_all(Dot(Add(w,dw),x).val == Add(wx,Dot(CTimes(dw,dwx),x.diff(x) )).val)
-    
-    dx=Var('dx',mat([[0.1],[0.2],[0.3]]))
-    #f(x+dx) = f(x) + dx*dfdx
-    #f(x+dx) = Mul(w,Add(x,dx))
-    #f(x)=wx
-    #dx*dfdx = Mul(wx.diff(x), dx)
-    #print Add(wx, Mul(CTimes(wx.diff(x), Transpose(dx)), x.diff(x)) ).val
-    assert_all(Mul(w,Add(x,dx)).val==Add(wx, Mul(wx.diff(x), dx) ).val)
-    
-    f=VSF('sin', wx)
-    g=VSF('cos', wx)
-    assert_all(f.diff(w).val==CTimes(Transpose(x), g).val)
-    assert_all(f.diff(x).val==CTimes(w, g).val)
-    assert_all(CTimes(w, g).val==CTimes(g, w).val)
-    
-    bw=Mul(b,w)
-    h=VSF('sin', bw)
-    k=VSF('cos', bw)
-    assert_all(h.diff(b).val==CTimes(k, w).val)
-    assert_all(h.diff(w).val==CTimes(k, Transpose(b)).val)
 
-
-def test_RecursiveNNDifferentiation():
-    ran=np.random.random
-    h0=Var('h0')
-    w0=Var('W0')
-    b0=Var('b0')
-    p0=Var('p0')
-    vh0=ran((3,1))
-    vw0=ran((4,3))
-    vb0=ran((4,1))
-    vp0=ran((4,1))
-    h0.val,w0.val,b0.val,p0.val=vh0,vw0,vb0,vp0
-    h1=VSF('tanh',Add(Dot(w0,h0),b0))
-    s0=Dot(Transpose(p0),h1)
-    assert(IsMatrix(w0) and not IsVector(w0))
-    assert(not IsMatrix(b0) and IsVector(b0))
-    assert(not IsMatrix(Dot(w0,h0)) and IsVector(Dot(w0,h0)))
-    assert(IsScalar(s0))
-    
-    assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
-    assert(unicode(h1)==u'tanh(W0⋅h0+b0)')
-    assert(unicode(s0)==u'p0ᵀ⋅tanh(W0⋅h0+b0)')
-    assert_all(s0.val==vp0.T.dot(np.tanh(vw0.dot(vh0)+vb0)))
-    
-    with pytest.raises(ValueError):
-        Differentiation(w0, w0)
-    #Differentiation(Dot(Transpose(p0), Dot(w0,h0)), w0)
-
-    
-    
 def test_FeedForwardNNEvaluation():
     pass

@@ -6,7 +6,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix, NormalizedMatrix
 from recursiveNN.differentiation import Differentiation, _Diff
 
@@ -85,14 +85,13 @@ def test_GradientNumericalChecks():
     for var in [B,A,y,a]:
         p=[]
         p_ran=[]
-        for i in range(2):
+        for i in range(3):
             x.val,y.val,a.val,b.val=ran((1,4)),ran((4,1)),ran((5,1)),ran((6,1))
             #D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
             D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))
             #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
             g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
-                    
-            var=A
+
             gradient=Differentiation(g,var)
             var0=var.val
             delta=NormalizedMatrix(ran(var.val.shape), scale)

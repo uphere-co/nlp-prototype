@@ -87,57 +87,6 @@ class Var(Node):
     def val(self,val):
         self.resetCachedValue()
         self._val=ArrayOrScala(val)
-             
-class Word(Node):
-    def __init__(self, word):
-        Node.__init__(self, name=word)
-        self.expr = 'w2v(%s)'%word
-        self.vec = Val(np.nan)
-    def __str__(self):
-        return self.name
-    def __repr__(self):
-        return u"Word(%r)"%(self.name)
-    def expression(self):
-        return self.expr
-    def diff_no_simplify(self, var):
-        return self.vec.diff_no_simplify(var)
-    def diff(self, var):
-        return self.vec.diff(var)
-    def send_message(self, mesg):
-        print self, ' received %s'%mesg
-        out = str(self)+' received %s'%mesg
-        if self.parents :
-            for parent in self.parents:
-                self, ' returns %s to '%mesg, parent
-        return
-        
-class Phrase(Node):
-    def __init__(self, left, right, vec):
-        Node.__init__(self, name=None)
-        self.left = left
-        self.left.add_parent(self)
-        self.right = right
-        self.right.add_parent(self)                
-        self.vec = vec 
-    def __unicode__(self):
-        return u'(%s,%s)'%(self.left,self.right)        
-    def __repr__(self):
-        return "Phrase(%r,%r)"%(self.left,self.right)
-    def expression(self):
-        return self.vec.expression()
-    def diff_no_simplify(self, var):
-        return self.vec.diff_no_simplify(var)
-    def diff(self, var):
-        return self.vec.diff(var)
-    def send_message(self, mesg):
-        print self, ' send %s to %s and %s'%(mesg, self.left, self.right)
-        self.left.send_message(mesg)
-        self.right.send_message(mesg)
-        if self.parents :
-            for parent in self.parents:
-                print self, 'returns %s to'%mesg, parent
-        else :
-            print "Message is round-toured."
 
 def softmax(x):
     x=x-np.max(x)
@@ -202,6 +151,7 @@ class VSF(Node):
             self._val=self._val[0,0]
         return self._val
 
+#Sum0 can be replaced by dot with 1s.
 class Sum0(Node):
     def __init__(self, x):
         Node.__init__(self,name=None)
