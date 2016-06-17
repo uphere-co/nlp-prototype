@@ -392,19 +392,12 @@ class CTimes(BinaryOperator):
             return self.x
         elif IsZero(self.y) :
             return self.y
-        elif IsIdentity(self.x) :
+        #TODO: Critical. For cases like a⊗1⊗b where a,b have incorrect dimensions,
+        #      below simplication may results error.  
+        elif IsAllOne(self.x) :
             return self.y
-        elif IsIdentity(self.y):
+        elif IsAllOne(self.y):
             return self.x
-        else:
-            try:
-                if self.x.val.shape==self.y.val.shape:
-                    if IsAllOne(self.x) :
-                        return self.y
-                    elif IsAllOne(self.y):
-                        return self.x
-            except:
-                pass
         return self
     def diff_no_simplify(self, var):
         assert(0)

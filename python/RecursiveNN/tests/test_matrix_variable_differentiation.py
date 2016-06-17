@@ -62,10 +62,13 @@ def test_VectorAndMatrixVariables():
     
     g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
     assert unicode(g) == u'x⋅C⋅sin(B⋅sin(A⋅y+a)+b)'
-    #assert unicode(Differentiation(g,x))==u''
-    #assert unicode(Differentiation(g,b))==u''
-    #assert unicode(Differentiation(g,a))==u''
-    #assert unicode(Differentiation(g,y))==u''
+    assert unicode(Differentiation(g,x))==u'[C⋅sin(B⋅sin(A⋅y+a)+b)]ᵀ'
+    assert unicode(Differentiation(g,b))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ'
+    assert unicode(Differentiation(g,a))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ]ᵀ'
+    assert unicode(Differentiation(g,y))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ⋅A]ᵀ'
+    assert unicode(Differentiation(g,A))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ]ᵀ⊗yᵀ'
+    assert unicode(Differentiation(g,B))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ⊗[sin(A⋅y+a)]ᵀ'
+    assert unicode(Differentiation(g,C))==u'xᵀ⊗[sin(B⋅sin(A⋅y+a)+b)]ᵀ'
     
     dgdx=Differentiation(g,x)
     dgdb=Differentiation(g,b)
@@ -75,40 +78,42 @@ def test_VectorAndMatrixVariables():
 
 def test_GradientNumericalChecks():
     ran=np.random.random
+    x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
+    D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
     #0.01 is may not small enough for g=x⋅C⋅sin(B⋅sin(A⋅y+a)+b).
     scale=0.001
-    p=[]
-    p_ran=[]
-    for i in range(10):
-        x=Var('x',ran((1,4)))
-        y=Var('y',ran((4,1)))
-        a=Var('a',ran((5,1)))
-        b=Var('b',ran((6,1)))
-        D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
-        g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
-                
-        var=y
-        gradient=Differentiation(g,var)
-        var0=var.val
-        delta=NormalizedMatrix(ran(var.val.shape), scale)
-        rand_grad=gradient.val.copy()
-        np.random.shuffle(rand_grad)
-        rand_grad=NormalizedMatrix(ran(gradient.val.shape), gradient.val.sum())
-        dg_ran = float(delta.T.dot(rand_grad))
-        dg_grad = float(delta.T.dot(gradient.val))
-        g0=g.val
-        var.val = var0 + delta
-        g1=g.val
-        dg=g1-g0
-        p.append(dg/dg_grad)
-        p_ran.append(dg/dg_ran)
-    p=np.array(p)
-    p_ran=np.array(p_ran)
+    for var in [B,A,y,a]:
+        p=[]
+        p_ran=[]
+        for i in range(2):
+            x.val,y.val,a.val,b.val=ran((1,4)),ran((4,1)),ran((5,1)),ran((6,1))
+            #D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
+            D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))
+            #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
+            g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+                    
+            var=A
+            gradient=Differentiation(g,var)
+            var0=var.val
+            delta=NormalizedMatrix(ran(var.val.shape), scale)
+            rand_grad=gradient.val.copy()
+            np.random.shuffle(rand_grad)
+            rand_grad=NormalizedMatrix(ran(gradient.val.shape), gradient.val.sum())
+            dg_ran = np.sum(delta*rand_grad)
+            dg_grad = np.sum(delta*gradient.val)
+            g0=g.val
+            var.val = var0 + delta
+            g1=g.val
+            dg=g1-g0
+            p.append(dg/dg_grad)
+            p_ran.append(dg/dg_ran)
+        p=np.array(p)
+        p_ran=np.array(p_ran)
     
-    precision=np.abs(np.mean(p)-1)
-    precision_ran=np.abs(np.mean(p_ran)-1)           
-    assert precision < 10*scale
-    assert precision < precision_ran
+        precision=np.abs(np.mean(p)-1)
+        precision_ran=np.abs(np.mean(p_ran)-1)           
+        assert precision < 10*scale
+        assert precision < precision_ran
     
 def test_NumericalVerification():
     pass
