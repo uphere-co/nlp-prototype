@@ -1,6 +1,6 @@
 
 # -*- coding: utf-8 -*-
-from nodes import Word,Phrase, Val,Var,Fun, Add,Mul
+from nodes import Word,Phrase, Val,Var,VSF, Add,Mul
 
 class RecursiveNN:
     def __init__(self, W_left_init, W_right_init, bias_init):
@@ -17,7 +17,7 @@ class RecursiveNN:
         Wxh_left=Mul(self.W_left, left)
         Wxh_right=Mul(self.W_right, right)
         x=Add(Add(Wxh_left,Wxh_right), self.bias)
-        vec=Fun('tanh', x)
+        vec=VSF('tanh', x)
         phrase=Phrase(left,right, vec)        
         return phrase
         

@@ -8,7 +8,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Word,Phrase, Val,Var,Fun,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
+from recursiveNN.nodes import Word,Phrase, Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 from recursiveNN.differentiation import Differentiation
 from recursiveNN.models import RecursiveNN
@@ -25,19 +25,19 @@ def test_ElementaryTypes():
 def test_DiffOperations():
     x =Var('x')    
     y =Var('y') 
-    fx=Fun('f',x)
-    fy=Fun('f',y)
-    gx=Fun('g',x)
-    gy=Fun('g',y)
-    gfx=Fun('g',fx)
+    fx=VSF('f',x)
+    fy=VSF('f',y)
+    gx=VSF('g',x)
+    gy=VSF('g',y)
+    gfx=VSF('g',fx)
     zero=Val(0)
     one=Val(1)
     assert(zero==Val(0))
     assert(zero!=one)
     assert(x !=Var('x'))
-    assert(fx==Fun('f',x))
+    assert(fx==VSF('f',x))
     assert(x ==Var('x'))
-    assert(fx!=Fun('f',y))
+    assert(fx!=VSF('f',y))
     assert(fx!=gx)
     assert(unicode(Var('x'))=='x')
     assert(unicode(fx)== 'f(x)')    
@@ -64,20 +64,20 @@ def test_SimplifyZeroAndOne():
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(0))))).simplify()==Val(0))
     x =Var('x')    
     y =Var('y') 
-    fx=Fun('f',x)
-    fy=Fun('f',y)
-    gx=Fun('g',x)
-    gy=Fun('g',y)
-    hx=Fun('h',x)
-    gfx=Fun('g',fx)
+    fx=VSF('f',x)
+    fy=VSF('f',y)
+    gx=VSF('g',x)
+    gy=VSF('g',y)
+    hx=VSF('h',x)
+    gfx=VSF('g',fx)
     zero=Val(0)    
     one=Val(1)
-    assert(unicode(Mul(one,Add(x,y)))=='1*(x+y)')
-    assert(Mul(one,Add(x,y)).expression()=='1*(x+y)')
+    assert(unicode(Mul(one,Add(x,y)))=='1*{x+y}')
+    assert(Mul(one,Add(x,y)).expression()=='1*{x+y}')
     assert(unicode(Mul(one,Add(x,y)).simplify())=='x+y')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
-    assert(Mul(fx, one).simplify()==Fun('f',Var('x')))
+    assert(Mul(fx, one).simplify()==VSF('f',Var('x')))
     assert(Mul(zero, gy).simplify()==zero)
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
@@ -86,7 +86,7 @@ def test_SimplifyZeroAndOne():
     assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⊗g`(y)')
     
     assert(unicode(Mul(hx,Mul(gx,fx)))==u'h(x)*g(x)*f(x)')
-    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗(g`(x)⊗f(x)+g(x)⊗f`(x))')
+    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗{g`(x)⊗f(x)+g(x)⊗f`(x)}')
     assert(unicode(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')    
     
 def _SimplePhrase():
@@ -145,14 +145,14 @@ def test_Evaluation():
     assert_all(Mul(xy,z).val==vx.dot(vy)*vz)
     s0=1.57
     s=Var('s',s0)
-    fs=Fun('cos',s, np.cos)
+    fs=VSF('cos',s, np.cos)
     assert(unicode(fs)=='cos(s)')
     assert(fs.val==np.cos(s0))
 
 def test_CacheKnownValues():
     x=Var('x')    
-    fx=Fun('cos', x, np.cos)
-    gfx=Fun('exp', fx, np.exp)
+    fx=VSF('cos', x, np.cos)
+    gfx=VSF('exp', fx, np.exp)
     exp_cos=lambda x : np.exp(np.cos(x))
     for v in np.random.random(10):        
         x.val=v
@@ -161,7 +161,7 @@ def test_CacheKnownValues():
         assert(gfx.val==exp_cos(v))
         
     y=Var('y')
-    hy=Fun('tanh', y, np.tanh)
+    hy=VSF('tanh', y, np.tanh)
     for v in np.random.random(10):        
         y.val=v
         assert(hy.val==np.tanh(v))
@@ -195,8 +195,8 @@ def test_CacheKnownValues():
     
 def test_ParentRelationships():
     x=Var('x')
-    fx=Fun('sin',x, np.sin)
-    gx=Fun('exp',x, np.exp)
+    fx=VSF('sin',x, np.sin)
+    gx=VSF('exp',x, np.exp)
     dfx=fx.diff(x)
     v=1.0
     for v in [1.0,0.5,0.1]:
@@ -206,11 +206,10 @@ def test_ParentRelationships():
     
 def test_DiffKnownFunctions():
     x=Var('x')
-    fx=Fun('sin',x)
+    fx=VSF('sin',x)
     dfx=fx.diff(x)
-    print '%r'%dfx
     assert(dfx.expression()=='cos(x)')
-    gfx=Fun('exp',Mul(Val(3), fx))
+    gfx=VSF('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
     assert(dgfx.expression()==u'exp(3*sin(x))⊗3⊗cos(x)')
     for v in [1.0, 2.0, 14.2, 5.1, 5.72341] :
@@ -220,12 +219,12 @@ def test_DiffKnownFunctions():
         #Allow slight difference for complex numpy expressions.
         np.testing.assert_allclose(dgfx.val,np.exp(3*np.sin(v))*3*np.cos(v), rtol=1e-10, atol=0)
         
-    hfx=Fun('log',fx)
+    hfx=VSF('log',fx)
     dhfx=hfx.diff(x)
     assert(dhfx.expression()==u'1/(sin(x))⊗cos(x)')
-    hx=Fun('log',Add(fx, Fun('exp', x)))
+    hx=VSF('log',Add(fx, VSF('exp', x)))
     dhx=hx.diff(x)
-    assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗(cos(x)+exp(x))')
+    assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗{cos(x)+exp(x)}')
                
 def test_matrix_circle_times_operations():
     va=np.matrix([[1,2,3],[2,3,4]])
@@ -285,16 +284,16 @@ def test_Transpose():
     x=Var('x',vx)
     y=Var('y',vy)
     
-    fy=Fun('f',y)
-    gx=Fun('g',x)
+    fy=VSF('f',y)
+    gx=VSF('g',x)
     fygx=Mul(fy,gx)
-    assert(unicode(Transpose(fygx).simplify())==u'(f(y)*g(x))ᵀ')
+    assert(unicode(Transpose(fygx).simplify())==u'[f(y)*g(x)]ᵀ')
     assert(unicode(Transpose(Var('z',2)).simplify())=='z')
     assert(Transpose(Var('z',2)).val==2)
     assert_all(Transpose(x).val==vx.T)
     assert_all(Transpose(Transpose(x)).val==x.val)
     xyt=Mul(x,Transpose(y))
-    assert(unicode(Transpose(xyt))==u'(x*(y)ᵀ)ᵀ')
+    assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12) 
 
 def test_Sum0():       
@@ -338,15 +337,15 @@ def _MatrixDifferentiation():
     #print Add(wx, Mul(CTimes(wx.diff(x), Transpose(dx)), x.diff(x)) ).val
     assert_all(Mul(w,Add(x,dx)).val==Add(wx, Mul(wx.diff(x), dx) ).val)
     
-    f=Fun('sin', wx)
-    g=Fun('cos', wx)
+    f=VSF('sin', wx)
+    g=VSF('cos', wx)
     assert_all(f.diff(w).val==CTimes(Transpose(x), g).val)
     assert_all(f.diff(x).val==CTimes(w, g).val)
     assert_all(CTimes(w, g).val==CTimes(g, w).val)
     
     bw=Mul(b,w)
-    h=Fun('sin', bw)
-    k=Fun('cos', bw)
+    h=VSF('sin', bw)
+    k=VSF('cos', bw)
     assert_all(h.diff(b).val==CTimes(k, w).val)
     assert_all(h.diff(w).val==CTimes(k, Transpose(b)).val)
 
@@ -371,7 +370,7 @@ def test_RecursiveNNDifferentiation():
     
     assert('%r'%h1=="VSF('tanh')(Add(Dot(Var('W0'),Var('h0')),Var('b0')))")
     assert(unicode(h1)==u'tanh(W0⋅h0+b0)')
-    assert(unicode(s0)==u'(p0)ᵀ⋅tanh(W0⋅h0+b0)')
+    assert(unicode(s0)==u'p0ᵀ⋅tanh(W0⋅h0+b0)')
     assert_all(s0.val==vp0.T.dot(np.tanh(vw0.dot(vh0)+vb0)))
     
     with pytest.raises(ValueError):
