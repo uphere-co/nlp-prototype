@@ -108,6 +108,7 @@ class VSF(Node):
      ('1/'   ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
+     ('tanh`',('tanh`',lambda x : np.cosh(x)**-2)),
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
@@ -220,11 +221,11 @@ class BinaryOperator(Node):
         if hasattr(self.x, 'expression'):
             x_expr = self.x.expression()
         else:
-            x_expr= self.x.__str__()
+            x_expr= self.x.__unicode__()
         if hasattr(self.y, 'expression'):
             y_expr = self.y.expression()
         else:
-            y_expr= self.y.__str__()
+            y_expr= self.y.__unicode__()
         return self._format%(x_expr, self.name, y_expr)        
     def simplify(self):
         self.x=self.x.simplify()
