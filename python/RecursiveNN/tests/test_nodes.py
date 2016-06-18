@@ -19,7 +19,19 @@ def test_ElementaryTypes():
     assert(unicode(val)=='2*10')
     assert(unicode(val0)=='0')
     assert(unicode(val10)=='10')
-       
+
+def test_Equality():
+    x =Var('x')    
+    y =Var('y') 
+    fx=VSF('f',x)
+    assert(x !=Var('x'))
+    assert(fx!=VSF('f',x))
+    assert(Var('x') != x)
+    assert(Val(1)==Val(1))
+    #Values are simplified to scalar when possible:
+    assert(Val(1)==Val([1]))
+    assert(Val(1)==Val([[1]]))
+           
 def test_DiffOperations():
     x =Var('x')    
     y =Var('y') 
@@ -32,10 +44,6 @@ def test_DiffOperations():
     one=Val(1)
     assert(zero==Val(0))
     assert(zero!=one)
-    assert(x !=Var('x'))
-    assert(fx==VSF('f',x))
-    assert(x ==Var('x'))
-    assert(fx!=VSF('f',y))
     assert(fx!=gx)
     assert(unicode(Var('x'))=='x')
     assert(unicode(fx)== 'f(x)')    
@@ -75,7 +83,7 @@ def test_SimplifyZeroAndOne():
     assert(unicode(Mul(one,Add(x,y)).simplify())=='x+y')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
-    assert(Mul(fx, one).simplify()==VSF('f',Var('x')))
+    assert(Mul(fx, one).simplify()==fx)
     assert(Mul(zero, gy).simplify()==zero)
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)

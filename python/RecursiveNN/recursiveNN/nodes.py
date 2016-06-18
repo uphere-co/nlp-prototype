@@ -15,17 +15,13 @@ from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsId
 #__str__() : for pretty prints
 #expression() : Math formula. If differs from __str__ for Word and Phrase.
 
-def IsIn(iter, x):
-    for elm in iter:
-        if x is elm:
-            return True
-    return False
-    
 class Node(object):
     def __init__(self, name):
         self._parents=[]
         self.name=name
         self._val=None
+    def __eq__(self, other):
+        return self is other
     def __unicode__(self):
         return self.name
     def __str__(self):
@@ -33,9 +29,8 @@ class Node(object):
     @property
     def parents(self):
         return self._parents
-    #@parent.setter
     def add_parent(self,parent):
-        if not IsIn(self._parents, parent):
+        if not parent in self._parents:
             self._parents.append(parent)
     @property
     def val(self):
@@ -73,10 +68,6 @@ class Var(Node):
         self._val=ArrayOrScala(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
-    def __eq__(self, other):
-        if isinstance(other, self.__class__) and self.name == other.name:# and self.parent==other.parent:
-            return True
-        return False
     def diff_no_simplify(self, var):
         v=np.ones(self._val.shape)
         if(var.name!= self.name):
@@ -128,10 +119,6 @@ class VSF(Node):
         if hasattr(self.var, 'expression'):
             return u"%s(%s)"%(self.name, self.var.expression())
         return self.__str__()
-    def __eq__(self, other):
-        if isinstance(other, self.__class__) and self.var == other.var and self.name==other.name:
-            return True
-        return False
     def simplify(self):
         tmp=self.var.simplify()
         if not tmp is self.var:
