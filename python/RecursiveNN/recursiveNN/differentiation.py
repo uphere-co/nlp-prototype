@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from recursiveNN.nodes import Val,Var,VSF, Add,Dot,CTimes,Transpose, Sum0,TransposeIfVector
+from recursiveNN.models import Word,Phrase
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 def _AccumulateSideExpression(left, right):
@@ -33,9 +34,13 @@ def _Diff(expr_left, expr, expr_right, var):
         dx= _Diff(expr_left, expr.x, expr_right, var)
         dy= _Diff(expr_left, expr.y, expr_right, var)
         return Add(dx, dy).simplify()
+    elif isinstance(expr, Transpose):        
+        return Transpose(_Diff(expr_left, expr.var, expr_right, var))
     elif isinstance(expr, VSF):
         df = VSF(expr.name+"`", expr.var) 
-        return _Diff(_AccumulateSideExpression(expr_left, Transpose(df)), expr.var, expr_right, var)        
+        return _Diff(_AccumulateSideExpression(expr_left, Transpose(df)), expr.var, expr_right, var)
+    elif isinstance(expr, Word) or isinstance(expr, Phrase):
+        _Diff(expr_left, expr.vec, expr_right, var)
     raise ValueError('Differentiation of unknown expression')
         
         #if IsVexpr.x

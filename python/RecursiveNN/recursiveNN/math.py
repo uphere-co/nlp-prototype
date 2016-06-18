@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+def NormalizedMatrix(mat, l1norm):
+    return l1norm*mat/np.abs(mat).sum()
+    
 def SimplifyIfScalar(arr):
     if np.product(arr.shape) ==1 :
         return arr.dtype.type(arr)

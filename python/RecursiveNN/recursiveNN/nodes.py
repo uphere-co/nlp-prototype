@@ -13,7 +13,14 @@ from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsId
 # It is parent's responsibility to set children's parents.
 
 #__str__() : for pretty prints
-#expression() : Math formula. If differs from __str__ for Word and Phrase. 
+#expression() : Math formula. If differs from __str__ for Word and Phrase.
+
+def IsIn(iter, x):
+    for elm in iter:
+        if x is elm:
+            return True
+    return False
+    
 class Node(object):
     def __init__(self, name):
         self._parents=[]
@@ -28,7 +35,8 @@ class Node(object):
         return self._parents
     #@parent.setter
     def add_parent(self,parent):
-        self._parents.append(parent)
+        if not IsIn(self._parents, parent):
+            self._parents.append(parent)
     @property
     def val(self):
         return self._val
@@ -79,119 +87,12 @@ class Var(Node):
     def val(self,val):
         self.resetCachedValue()
         self._val=ArrayOrScala(val)
-             
-class Word(Node):
-    def __init__(self, word):
-        Node.__init__(self, name=word)
-        self.expr = 'w2v(%s)'%word
-        self.vec = Val(np.nan)
-    def __str__(self):
-        return self.name
-    def __repr__(self):
-        return u"Word(%r)"%(self.name)
-    def expression(self):
-        return self.expr
-    def diff_no_simplify(self, var):
-        return self.vec.diff_no_simplify(var)
-    def diff(self, var):
-        return self.vec.diff(var)
-    def send_message(self, mesg):
-        print self, ' received %s'%mesg
-        out = str(self)+' received %s'%mesg
-        if self.parents :
-            for parent in self.parents:
-                self, ' returns %s to '%mesg, parent
-        return
-        
-class Phrase(Node):
-    def __init__(self, left, right, vec):
-        Node.__init__(self, name=None)
-        self.left = left
-        self.left.add_parent(self)
-        self.right = right
-        self.right.add_parent(self)                
-        self.vec = vec 
-    def __unicode__(self):
-        return u'(%s,%s)'%(self.left,self.right)        
-    def __repr__(self):
-        return "Phrase(%r,%r)"%(self.left,self.right)
-    def expression(self):
-        return self.vec.expression()
-    def diff_no_simplify(self, var):
-        return self.vec.diff_no_simplify(var)
-    def diff(self, var):
-        return self.vec.diff(var)
-    def send_message(self, mesg):
-        print self, ' send %s to %s and %s'%(mesg, self.left, self.right)
-        self.left.send_message(mesg)
-        self.right.send_message(mesg)
-        if self.parents :
-            for parent in self.parents:
-                print self, 'returns %s to'%mesg, parent
-        else :
-            print "Message is round-toured."
 
 def softmax(x):
     x=x-np.max(x)
     exp_x=np.exp(x)
     return exp_x/exp_x.sum()
-                
-class Fun(Node):
-    known_functions=dict(
-    [('cos' ,('cos',np.cos)),
-     ('sin' ,('sin',np.sin)),
-     ('exp' ,('exp',np.exp)),
-     ('log' ,('log',np.log)),
-     ('cos`',('-sin',lambda x : -np.sin(x) )),
-     ('sin`',('cos',np.cos)),
-     ('exp`',('exp',np.exp)),
-     ('log`' ,('1/',lambda x : 1.0/x)),
-     ('1/'   ,('1/',lambda x : 1.0/x)),
-     ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
-     ('tanh',('tanh',np.tanh)),
-     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
-     ('softmax',('softmax',softmax))
-     ])
-    def __init__(self, name, var, op=None):
-        if name in Fun.known_functions.keys():
-            name, op0 = Fun.known_functions[name]
-            if not op:
-                op=op0 
-        Node.__init__(self,name)
-        self.op=op
-        self.var=var
-        self.var.add_parent(self)
-    def __unicode__(self):
-        return u"%s(%s)"%(self.name, self.var)
-    def __repr__(self):
-        return "Fun(%r)"%(self.name)
-    def expression(self):
-        if hasattr(self.var, 'expression'):
-            return u"%s(%s)"%(self.name, self.var.expression())
-        return self.__str__()
-    def __eq__(self, other):
-        if isinstance(other, self.__class__) and self.var == other.var and self.name==other.name:
-            return True
-        return False
-    def simplify(self):
-        tmp=self.var.simplify()
-        if not tmp is self.var:
-            self.var=tmp
-            self.var.add_parent(self)
-        return self
-    def diff_no_simplify(self, var):
-        expr=CTimes(Fun(self.name+"`", self.var), 
-                    self.var.diff_no_simplify(var))
-        return expr
-    @property
-    def val(self):
-        if not self.op:
-            return None
-        elif not np.any(self._val):
-            self._val = self.op(self.var.val)            
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
-        return self._val
+
         
 class VSF(Node):
     '''VectorizedScalaFunction'''
@@ -207,14 +108,14 @@ class VSF(Node):
      ('1/'   ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
+     ('tanh`',('tanh`',lambda x : np.cosh(x)**-2)),
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
-     ('softmax',('softmax',softmax))
+     #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
     def __init__(self, name, var, op=None):
-        if name in Fun.known_functions.keys():
-            name, op0 = Fun.known_functions[name]
-            if op:
-                op0=op 
+        name, op0 = VSF.known_functions.get(name, (name,op))            
+        if op:
+            op0=op 
         Node.__init__(self,name)
         self.op=op0
         self.var=var
@@ -238,19 +139,20 @@ class VSF(Node):
             self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
-        expr=CTimes(Fun(self.name+"`", self.var), 
+        expr=CTimes(VSF(self.name+"`", self.var), 
                     self.var.diff_no_simplify(var))
         return expr
     @property
     def val(self):
         if not self.op:
             return None
-        elif not np.any(self._val):
+        elif self._val is None or np.all(np.isnan(self._val)):
             self._val = self.op(self.var.val)            
         if self._val.shape==(1,1):
             self._val=self._val[0,0]
         return self._val
 
+#Sum0 can be replaced by dot with 1s.
 class Sum0(Node):
     def __init__(self, x):
         Node.__init__(self,name=None)
@@ -278,8 +180,11 @@ class Transpose(Node):
         self.op=np.transpose
         self.var=x
         self.var.add_parent(self)
+        self._format=u"[%s]ᵀ"
+        if isinstance(self.var, Var) or isinstance(self.var, Val):
+            self._format=u"%sᵀ"
     def __unicode__(self):
-        return u"(%s)ᵀ"%(self.var)
+        return self._format%(self.var)
     def __repr__(self):
         return "Transpose(%r)"%(self.var)        
     def simplify(self):
@@ -306,22 +211,22 @@ class BinaryOperator(Node):
     def __init__(self, x, y):
         Node.__init__(self,name=None)
         self.op=None
-        self.format=u"%s%s%s"
+        self._format=u"%s%s%s"
         self.x, self.y = x,y        
         self.x.add_parent(self)
         self.y.add_parent(self)
     def __unicode__(self):
-        return self.format%(self.x, self.name, self.y)
+        return self._format%(self.x, self.name, self.y)
     def expression(self):
         if hasattr(self.x, 'expression'):
             x_expr = self.x.expression()
         else:
-            x_expr= self.x.__str__()
+            x_expr= self.x.__unicode__()
         if hasattr(self.y, 'expression'):
             y_expr = self.y.expression()
         else:
-            y_expr= self.y.__str__()
-        return self.format%(x_expr, self.name, y_expr)        
+            y_expr= self.y.__unicode__()
+        return self._format%(x_expr, self.name, y_expr)        
     def simplify(self):
         self.x=self.x.simplify()
         self.x.add_parent(self)
@@ -362,11 +267,11 @@ class Mul(BinaryOperator):
         return "Mul(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format=u'(%s)%s%s'
+            self._format=u'{%s}%s%s'
         elif isinstance(self.y, Add):
-            self.format=u'%s%s(%s)'
+            self._format=u'%s%s{%s}'
         else:
-            self.format=u'%s%s%s'
+            self._format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
@@ -393,11 +298,11 @@ class Dot(BinaryOperator):
         return "Dot(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format=u'(%s)%s%s'
+            self._format=u'{%s}%s%s'
         elif isinstance(self.y, Add):
-            self.format=u'%s%s(%s)'
+            self._format=u'%s%s{%s}'
         else:
-            self.format=u'%s%s%s'
+            self._format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
@@ -426,11 +331,11 @@ class CTimes(BinaryOperator):
         return "CTimes(%r,%r)"%(self.x, self.y)
     def update_format(self):
         if isinstance(self.x, Add):
-            self.format=u'(%s)%s%s'
+            self._format=u'{%s}%s%s'
         elif isinstance(self.y, Add):
-            self.format=u'%s%s(%s)'
+            self._format=u'%s%s{%s}'
         else:
-            self.format=u'%s%s%s'
+            self._format=u'%s%s%s'
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
@@ -438,19 +343,12 @@ class CTimes(BinaryOperator):
             return self.x
         elif IsZero(self.y) :
             return self.y
-        elif IsIdentity(self.x) :
+        #TODO: Critical. For cases like a⊗1⊗b where a,b have incorrect dimensions,
+        #      below simplication may results error.  
+        elif IsAllOne(self.x) :
             return self.y
-        elif IsIdentity(self.y):
+        elif IsAllOne(self.y):
             return self.x
-        else:
-            try:
-                if self.x.val.shape==self.y.val.shape:
-                    if IsAllOne(self.x) :
-                        return self.y
-                    elif IsAllOne(self.y):
-                        return self.x
-            except:
-                pass
         return self
     def diff_no_simplify(self, var):
         assert(0)
