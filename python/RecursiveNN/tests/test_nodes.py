@@ -8,10 +8,11 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
-def test_ElementaryTypes():
+    
+def test_ElementaryTypes(reset_NodeDict):
     val0 = Val(0)
     val2= Val(2)
     val10= Val(10)
@@ -19,8 +20,21 @@ def test_ElementaryTypes():
     assert(unicode(val)=='2*10')
     assert(unicode(val0)=='0')
     assert(unicode(val10)=='10')
-       
-def test_DiffOperations():
+
+def test_Equality(reset_NodeDict):
+    x =Var('x')    
+    y =Var('y') 
+    fx=VSF('f',x)
+    #Each expressions are singletons.
+    assert(x ==Var('x'))
+    assert(fx==VSF('f',x))
+    assert(Var('x') == x)
+    assert(Val(1)==Val(1))
+    #Values are simplified to scalar when possible:
+    assert(Val(1)==Val([1]))
+    assert(Val(1)==Val([[1]]))
+           
+def test_DiffOperations(reset_NodeDict):
     x =Var('x')    
     y =Var('y') 
     fx=VSF('f',x)
@@ -32,10 +46,6 @@ def test_DiffOperations():
     one=Val(1)
     assert(zero==Val(0))
     assert(zero!=one)
-    assert(x !=Var('x'))
-    assert(fx==VSF('f',x))
-    assert(x ==Var('x'))
-    assert(fx!=VSF('f',y))
     assert(fx!=gx)
     assert(unicode(Var('x'))=='x')
     assert(unicode(fx)== 'f(x)')    
@@ -55,7 +65,7 @@ def test_DiffOperations():
     assert(unicode(Mul(gfx,gy).diff_no_simplify(y)) ==\
            u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
     
-def test_SimplifyZeroAndOne():
+def test_SimplifyZeroAndOne(reset_NodeDict):
     assert(IsIdentity(Val(1)))
     assert(Mul(Val(1),Val(1)).simplify()==Val(1))
     assert(Mul(Mul(Val(1),Val(1)),Mul(Val(1),Mul(Val(1),Mul(Val(1),Val(1))))).simplify()==Val(1))
@@ -75,7 +85,7 @@ def test_SimplifyZeroAndOne():
     assert(unicode(Mul(one,Add(x,y)).simplify())=='x+y')
     assert(Add(fx, zero).simplify()==fx)
     assert(Mul(fx, zero).simplify()==zero)
-    assert(Mul(fx, one).simplify()==VSF('f',Var('x')))
+    assert(Mul(fx, one).simplify()==fx)
     assert(Mul(zero, gy).simplify()==zero)
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
@@ -87,7 +97,7 @@ def test_SimplifyZeroAndOne():
     assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗{g`(x)⊗f(x)+g(x)⊗f`(x)}')
     assert(unicode(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')    
     
-def _SimplePhrase():
+def _SimplePhrase(reset_NodeDict):
     W_left_init  = Var('W_left', [0,0,0,0])
     W_right_init = Var('W_right', [0,0,0,0])
     bias_init = Var('bias', [1,1])           
@@ -123,7 +133,7 @@ def _SimplePhrase():
 
 def assert_all(x):
     assert(np.all(x))
-def test_Evaluation():
+def test_Evaluation(reset_NodeDict):
     vx=np.matrix([1.0,2.0,3.0])
     vy=np.matrix([2.0,3.0,4.0]).T
     vz=np.matrix([3.0,5.0,7.0])
@@ -132,7 +142,7 @@ def test_Evaluation():
     y=Var('y', vy)
     z=Var('z',vz)
     with pytest.raises(ValueError):
-        Mul(x,Var('y',vy.T)).val
+        Mul(x,Var('t',vy.T)).val
     xy=Mul(x,y)
     assert(unicode(xy)=='x*y')
     assert_all(xy.val==vx.dot(vy))
@@ -147,7 +157,7 @@ def test_Evaluation():
     assert(unicode(fs)=='cos(s)')
     assert(fs.val==np.cos(s0))
 
-def test_CacheKnownValues():
+def test_CacheKnownValues(reset_NodeDict):
     x=Var('x')    
     fx=VSF('cos', x, np.cos)
     gfx=VSF('exp', fx, np.exp)
@@ -183,15 +193,15 @@ def test_CacheKnownValues():
     
     #Instance of Var must be single-assigned, 
     #but it is not yet enforced by code.          
-    x=Var('x')
-    y=Var('y')
-    assert(np.isnan(Mul(x,y).val))
-    x.val=1.0
-    assert(np.isnan(Mul(x,y).val))
-    y.val=2.0
-    assert(Mul(x,y).val==2.0)
+    a=Var('a')
+    b=Var('b')
+    assert(np.isnan(Mul(a,b).val))
+    a.val=1.0
+    assert(np.isnan(Mul(a,b).val))
+    b.val=2.0
+    assert(Mul(a,b).val==2.0)
     
-def test_ParentRelationships():
+def test_ParentRelationships(reset_NodeDict):
     x=Var('x')
     fx=VSF('sin',x, np.sin)
     gx=VSF('exp',x, np.exp)
@@ -202,7 +212,7 @@ def test_ParentRelationships():
         assert(fx.val==np.sin(v))
         assert(gx.val==np.exp(v))    
     
-def test_DiffKnownFunctions():
+def test_DiffKnownFunctions(reset_NodeDict):
     x=Var('x')
     fx=VSF('sin',x)
     dfx=fx.diff(x)
@@ -224,7 +234,7 @@ def test_DiffKnownFunctions():
     dhx=hx.diff(x)
     assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗{cos(x)+exp(x)}')
                
-def test_matrix_circle_times_operations():
+def test_matrix_circle_times_operations(reset_NodeDict):
     va=np.matrix([[1,2,3],[2,3,4]])
     vb=np.matrix([[2,3,4],[3,2,1]])
     vx=np.matrix([5,1,2])
@@ -255,7 +265,7 @@ def test_matrix_circle_times_operations():
     with pytest.raises(ValueError):
         CTimes(d,f).val
         
-def test_IdentifyZeroOrIdentityMatrix():
+def test_IdentifyZeroOrIdentityMatrix(reset_NodeDict):
     assert(np.all(np.identity(3, dtype=np.float32)==np.identity(3,dtype=np.float64)))
     zero=Val(np.zeros((3,5)))
     assert(IsZero( zero ))
@@ -267,7 +277,7 @@ def test_IdentifyZeroOrIdentityMatrix():
     assert(not IsIdentity( zero ))
     assert(not IsIdentity( Val(np.array([[1,0,0],[0,1,0]])) ))
     
-def test_SimplifyZeroAndIdentityMatrix():
+def test_SimplifyZeroAndIdentityMatrix(reset_NodeDict):
     i=np.identity(5)
     z=np.zeros((5,5))
     assert(IsIdentity(Val(i)))
@@ -276,7 +286,7 @@ def test_SimplifyZeroAndIdentityMatrix():
     assert(Mul(Mul(Val(i),Add(Add(Val(z),Val(z)),Val(i))),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(i))))).simplify()==Val(i))
     assert(Mul(Mul(Val(i),Val(i)),Mul(Val(i),Mul(Val(i),Mul(Val(i),Val(z))))).simplify()==Val(z))
 
-def test_Transpose():
+def test_Transpose(reset_NodeDict):
     vx=np.matrix([5,1,2])
     vy=np.matrix([1,3,2])
     x=Var('x',vx)
@@ -294,7 +304,7 @@ def test_Transpose():
     assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12) 
 
-def test_Sum0():       
+def test_Sum0(reset_NodeDict):       
     vx=np.array([5,1,2]).reshape(3,1)
     vy=np.array([[1,3],[2,3],[2,3]])
     x=Var('x',vx)
@@ -308,5 +318,5 @@ def test_Sum0():
 
 
 
-def test_FeedForwardNNEvaluation():
+def test_FeedForwardNNEvaluation(reset_NodeDict):
     pass

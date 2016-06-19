@@ -6,19 +6,18 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix, NormalizedMatrix
 from recursiveNN.differentiation import Differentiation, _Diff
 
 
-def test_MatrixDifferentiation_internal():
+def test_MatrixDifferentiation_internal(reset_NodeDict):
     w=Var('w',[[1,2],[2,3]])
     x,y,z = Var('x',1), Var('y',[1,2]),Var('z',[1,2])
     with pytest.raises(ValueError):
         _Diff(w, x, y, z)
         
-        
-def test_VectorAndMatrixVariables():
+def test_VectorAndMatrixVariables(reset_NodeDict):
     ran=np.random.random
         
     x=Var('x',ran((1,4)))
@@ -76,7 +75,8 @@ def test_VectorAndMatrixVariables():
     dgdy=Differentiation(g,y)
     delta=NormalizedMatrix(ran(x.val.shape), 0.01)
 
-def test_GradientNumericalChecks():
+
+def test_GradientNumericalChecks(reset_NodeDict):
     ran=np.random.random
     x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
     D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
@@ -113,6 +113,3 @@ def test_GradientNumericalChecks():
         precision_ran=np.abs(np.mean(p_ran)-1)           
         assert precision < 10*scale
         assert precision < precision_ran
-    
-def test_NumericalVerification():
-    pass

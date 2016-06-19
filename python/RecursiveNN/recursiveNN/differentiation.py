@@ -37,7 +37,7 @@ def _Diff(expr_left, expr, expr_right, var):
     elif isinstance(expr, Transpose):        
         return Transpose(_Diff(expr_left, expr.var, expr_right, var))
     elif isinstance(expr, VSF):
-        df = VSF(expr.name+"`", expr.var) 
+        df = VSF(expr.op_name+"`", expr.var) 
         return _Diff(_AccumulateSideExpression(expr_left, Transpose(df)), expr.var, expr_right, var)
     elif isinstance(expr, Word) or isinstance(expr, Phrase):
         _Diff(expr_left, expr.vec, expr_right, var)
