@@ -4,10 +4,10 @@ from nodes import Val,Var,VSF, Add,Dot,Transpose
 import numpy as np
 
 class Word():
-    def __init__(self, word):
+    def __init__(self, word, vec=np.random.random((5,1)) ):
         self.name=word
         self.expr = 'w2v(%s)'%word
-        self.vec = Var(word, np.random.random((5,1)))
+        self.vec = Var(word, vec)#
     def __unicode__(self):
         return self.name
     def __repr__(self):

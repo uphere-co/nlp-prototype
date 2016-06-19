@@ -15,7 +15,32 @@ from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsId
 #__str__() : for pretty prints
 #expression() : Math formula. If differs from __str__ for Word and Phrase.
 
+import pytest
+@pytest.fixture(scope="function")
+def reset_NodeDict():
+    NodeDict.reset()
+    pass
+    
+class NodeDict(type):
+    _dict = {}
+    def __call__(cls, *args):
+        name = str(cls)+str(args)
+        if name in NodeDict._dict:
+            print '%s EXISTS'%name
+            return NodeDict._dict[name]
+        else:
+            print 'NEW: %s'%name
+            pass
+        instance = super(NodeDict, cls).__call__(*args)
+        NodeDict._dict[name] = instance
+        return instance
+    @staticmethod
+    def reset():
+        print 'Reset NodeDict'
+        NodeDict._dict={}
+            
 class Node(object):
+    __metaclass__ = NodeDict
     def __init__(self, name):
         self._parents=[]
         self.name=name
@@ -103,21 +128,22 @@ class VSF(Node):
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
-    def __init__(self, name, var, op=None):
-        name, op0 = VSF.known_functions.get(name, (name,op))            
+    def __init__(self, op_name, var, op=None):
+        op_expr, op0 = VSF.known_functions.get(op_name, (op_name,op))            
         if op:
             op0=op 
-        Node.__init__(self,name)
+        Node.__init__(self,"%s(%s)"%(op_name,var))
+        self.op_expr=op_expr #cos
         self.op=op0
         self.var=var
         self.var.add_parent(self)
     def __unicode__(self):
-        return u"%s(%s)"%(self.name, self.var)
+        return u"%s(%s)"%(self.op_expr, self.var)
     def __repr__(self):
-        return "VSF(%r)(%r)"%(self.name, self.var)
+        return "VSF(%r)(%r)"%(self.op_expr, self.var)
     def expression(self):
         if hasattr(self.var, 'expression'):
-            return u"%s(%s)"%(self.name, self.var.expression())
+            return u"%s(%s)"%(self.op_expr, self.var.expression())
         return self.__str__()
     def simplify(self):
         tmp=self.var.simplify()
@@ -126,9 +152,12 @@ class VSF(Node):
             self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
-        expr=CTimes(VSF(self.name+"`", self.var), 
+        expr=CTimes(VSF(self.op_expr+"`", self.var), 
                     self.var.diff_no_simplify(var))
         return expr
+    @property
+    def op_name(self):
+        return self.op_expr
     @property
     def val(self):
         if not self.op:
