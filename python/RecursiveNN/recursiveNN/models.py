@@ -30,18 +30,17 @@ class Phrase():
         return self.vec.expression()
             
 class RecursiveNN:
-    def __init__(self, W_left_init, W_right_init, bias_init, u_score_init):
-        assert isinstance(W_left_init, Var), "W_left should be instance of `Var`"
-        assert isinstance(W_right_init, Var), "W_right should be instance of `Var`"
+    def __init__(self, W_init, bias_init, u_score_init):
+        assert isinstance(W_init, Var), "W_left should be instance of `Var`"
         assert isinstance(bias_init, Var), "bias should be instance of `Var`"
-        self.W_left=W_left_init
-        self.W_right=W_right_init 
+        self.W=W_init
         self.bias=bias_init
         self.u_score=u_score_init
-    def combineTwoNodes(self, left,right):        
-        Wxh_left=Dot(self.W_left, left.vec)
-        Wxh_right=Dot(self.W_right, right.vec)
-        x=Add(Add(Wxh_left,Wxh_right), self.bias)
+    def combineTwoNodes(self, left,right):
+        vec = Var(u'(%s⊕%s)'%(left,right))
+        vec.val=np.concatenate([left.vec.val,right.vec.val],0)        
+        Wxh=Dot(self.W, vec)
+        x=Add(Wxh, self.bias)
         vec=VSF('tanh', x)
         phrase=Phrase(left,right, vec)        
         return phrase
@@ -61,6 +60,7 @@ class RecursiveNN:
             nodes.insert(idx_max, phrase)
             #print nodes
         return nodes[0]
+
         
 class Word2VecFactory:
     def __init__(self):
