@@ -32,10 +32,10 @@ class NodeDict(type):
     def __call__(cls, *args):
         name = str(cls)+str(args)
         if name in NodeDict._dict:
-            print '%s EXISTS'%name
+            #print '%s EXISTS'%name
             return NodeDict._dict[name]
         else:
-            print 'NEW: %s'%name
+            #print 'NEW: %s'%name
             pass
         instance = super(NodeDict, cls).__call__(*args)
         NodeDict._dict[name] = instance
@@ -43,7 +43,7 @@ class NodeDict(type):
         return instance
     @staticmethod
     def reset():
-        print 'Reset NodeDict'
+        #print 'Reset NodeDict'
         NodeDict._dict={}
         NodeDict._dict_instance={}
     @staticmethod
@@ -79,6 +79,8 @@ class Node(object):
     def add_parent(self,parent):
         if not parent in self._parents:
             self._parents.append(parent)
+    def remove_parent(self,parent):
+        self._parents.remove(parent)
     @property
     def val(self):
         return self._val
@@ -93,6 +95,11 @@ class Node(object):
         if self.parents:
             for parent in self.parents:
                 parent.resetCachedValue()
+    def isContain(self, expr):
+        if self is expr :
+            return True
+        else :
+            return np.any([child.isContain(expr) for child in self.children])
 
 class Val(Node):
     def __init__(self, val):
@@ -179,7 +186,7 @@ class VSF(Node):
         return expr
     @property
     def children(self):
-        return [i for i in (self.var)]
+        return [self.var]
     @property
     def op_name(self):
         return self.op_expr
@@ -206,7 +213,7 @@ class Sum0(Node):
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
-                return self.var
+            return self.var
         self.var.add_parent(self)
         return self
     @property
@@ -236,7 +243,7 @@ class Transpose(Node):
         return self
     @property
     def children(self):
-        return [i for i in (self.var)]
+        return [self.var]
     @property
     def val(self):
         if not np.any(self._val):
@@ -278,7 +285,7 @@ class BinaryOperator(Node):
         self.y.add_parent(self)
     @property
     def children(self):
-        return [i for i in (self.x, self.y)]
+        return [self.x, self.y]
     @property
     def val(self):
         if not np.any(self._val):
