@@ -75,11 +75,43 @@ def test_VectorAndMatrixVariables(reset_NodeDict):
     dgdy=Differentiation(g,y)
     delta=NormalizedMatrix(ran(x.val.shape), 0.01)
 
+def test_ReuseExistingExpressions(reset_NodeDict):
+    ran=np.random.random
+    x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
+    D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
+    x.val,y.val,a.val,b.val=ran((1,4)),ran((4,1)),ran((5,1)),ran((6,1))
+    D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))           
+
+    xDy = Dot(x,Dot(D,y))
+    xDy2 = Dot(Dot(x,D),y)
+    assert  Dot(D,y) is xDy.y
+    tmp=Differentiation(xDy2, x)
+    tmp2=Differentiation(xDy2, x)
+    assert tmp is tmp2
+    tmp3=Differentiation(xDy, x)
+    assert tmp3 is tmp
+    
+    f = Dot(Dot(x,C),Dot(B,VSF('sin',Add(Dot(A,y),a))))
+    dfdy=Differentiation(f,y)
+    dfdy2=Differentiation(f,y)
+    assert dfdy2 is dfdy
+    dfda=Differentiation(f,a)
+    assert dfda.var is dfdy.var.x
+
+    g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+    assert g.y.var.x is f.y
+    dgdA=Differentiation(g,A)
+    dgdB=Differentiation(g,B)
+    assert dgdB.y.var is f.y.y
+    assert dgdA.x.var.x.x is dgdB.x.var
 
 def test_GradientNumericalChecks(reset_NodeDict):
     ran=np.random.random
     x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
     D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
+    #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
+    g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+
     #0.01 is may not small enough for g=x⋅C⋅sin(B⋅sin(A⋅y+a)+b).
     scale=0.001
     for var in [B,A,y,a]:
@@ -89,9 +121,6 @@ def test_GradientNumericalChecks(reset_NodeDict):
             x.val,y.val,a.val,b.val=ran((1,4)),ran((4,1)),ran((5,1)),ran((6,1))
             #D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
             D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))
-            #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
-            g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
-
             gradient=Differentiation(g,var)
             var0=var.val
             delta=NormalizedMatrix(ran(var.val.shape), scale)
