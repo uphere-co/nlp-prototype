@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from nodes import Val,Var,VSF, Add,Dot,Transpose
 import numpy as np
+import zmq
 
 class Word():
     def __init__(self, word, vec=np.random.random((5,1)) ):
@@ -63,5 +64,21 @@ class RecursiveNN:
         
 class Word2VecFactory:
     def __init__(self):
-        pass
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REQ)
+        self.socket.connect ("tcp://localhost:10100" )
+        self.dict={}
+    def getWord2Vec(self, words):
+        for word in words:
+            if word in self.dict.keys():
+                continue
+            self.socket.send(word)
+            packet=self.socket.recv()
+            idx_split=packet.find(',')
+            dtype,bytes = packet[:idx_split],packet[idx_split+1:]
+            self.dict[word]=np.fromstring(bytes,dtype=dtype).reshape(-1,1)
+        return [Word(word, self.dict[word]) for word in words]
+            
+
+
 

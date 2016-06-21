@@ -21,23 +21,39 @@ def reset_NodeDict():
     NodeDict.reset()
     pass
     
+@pytest.fixture(scope="function")
+def deregister(instance):
+    print 'Delete an instance :', NodeDict.getKey(instance)
+    NodeDict.deregister(instance)
+    
 class NodeDict(type):
     _dict = {}
+    _dict_instance = {}
     def __call__(cls, *args):
         name = str(cls)+str(args)
         if name in NodeDict._dict:
-            print '%s EXISTS'%name
+            #print '%s EXISTS'%name
             return NodeDict._dict[name]
         else:
-            print 'NEW: %s'%name
+            #print 'NEW: %s'%name
             pass
         instance = super(NodeDict, cls).__call__(*args)
         NodeDict._dict[name] = instance
+        NodeDict._dict_instance[instance]=name
         return instance
     @staticmethod
     def reset():
-        print 'Reset NodeDict'
+        #print 'Reset NodeDict'
         NodeDict._dict={}
+        NodeDict._dict_instance={}
+    @staticmethod
+    def getKey(instance):
+        return NodeDict._dict_instance[instance]
+    @staticmethod
+    def deregister(instance):
+        key=NodeDict.getKey(instance)
+        NodeDict._dict.pop(key)
+        NodeDict._dict_instance.pop(instance)
             
 class Node(object):
     __metaclass__ = NodeDict
@@ -50,13 +66,21 @@ class Node(object):
     def __unicode__(self):
         return self.name
     def __str__(self):
-        return unicode(self).encode('utf-8')     
+        return unicode(self).encode('utf-8')
+    def __del__(self):
+        print self, 'will be destructed!'
+        deregister(self)
     @property
     def parents(self):
         return self._parents
+    @property
+    def children(self):
+        return []
     def add_parent(self,parent):
         if not parent in self._parents:
             self._parents.append(parent)
+    def remove_parent(self,parent):
+        self._parents.remove(parent)
     @property
     def val(self):
         return self._val
@@ -71,6 +95,11 @@ class Node(object):
         if self.parents:
             for parent in self.parents:
                 parent.resetCachedValue()
+    def isContain(self, expr):
+        if self is expr :
+            return True
+        else :
+            return np.any([child.isContain(expr) for child in self.children])
 
 class Val(Node):
     def __init__(self, val):
@@ -156,6 +185,9 @@ class VSF(Node):
                     self.var.diff_no_simplify(var))
         return expr
     @property
+    def children(self):
+        return [self.var]
+    @property
     def op_name(self):
         return self.op_expr
     @property
@@ -181,7 +213,7 @@ class Sum0(Node):
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
-                return self.var
+            return self.var
         self.var.add_parent(self)
         return self
     @property
@@ -209,6 +241,9 @@ class Transpose(Node):
             return self.var
         self.var.add_parent(self)
         return self
+    @property
+    def children(self):
+        return [self.var]
     @property
     def val(self):
         if not np.any(self._val):
@@ -248,6 +283,9 @@ class BinaryOperator(Node):
         self.x.add_parent(self)
         self.y=self.y.simplify()
         self.y.add_parent(self)
+    @property
+    def children(self):
+        return [self.x, self.y]
     @property
     def val(self):
         if not np.any(self._val):

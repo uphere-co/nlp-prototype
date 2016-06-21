@@ -48,6 +48,9 @@ def test_GradientNumericalChecks(reset_NodeDict):
     assert(abs(ds-ds_grad)<abs(ds-ds_ran))
     np.testing.assert_allclose(ds, ds_grad, rtol=1e-2, atol=0)
     
+    assert score.isContain(w0l)
+    assert not score.isContain(Var('xx'))
+    
     
 def test_IterativeParsing(reset_NodeDict):
     ran=np.random.random
@@ -74,11 +77,9 @@ def test_GettingWord2Vec(reset_NodeDict):
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
     socket.connect ("tcp://localhost:10100" )
-
     for query in ['lepton', 'lepton electron', 'muon electron', 'electron muon tau', 'Chromium']:
-        socket.send (query)
+        socket.send(query)
         dtype,bytes = socket.recv().split(',')
-        #print np.fromstring(bytes,dtype=dtype)    
-    
+        #np.fromstring(bytes,dtype=dtype)    
     #assert 0
     
