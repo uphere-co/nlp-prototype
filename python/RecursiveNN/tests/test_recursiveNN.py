@@ -18,48 +18,49 @@ def assert_all(x):
 def test_GradientNumericalChecks(reset_NodeDict):
     ran=np.random.random
     n=5
-    h0,w0l,w0r,b0,u0     =Var('h0'),Var('W0l'),Var('W0r'),Var('b0'),Var('u0')
-    vh0,vw0l,vw0r,vb0,vu0 =ran((n,1)),ran((n,n)),ran((n,n)),ran((n,1)),ran((n,1))
-    h0.val,w0l.val,w0r.val,b0.val,u0.val=vh0,vw0l,vw0r,vb0,vu0
+    h0,w0,b0,u0     =Var('h0'),Var('W0'),Var('b0'),Var('u0')
+    vh0,vw0,vb0,vu0 =ran((n,1)),ran((n,2*n)),ran((n,1)),ran((n,1))
+    h0.val,w0.val,b0.val,u0.val=vh0,vw0,vb0,vu0
     
-    rnn=RecursiveNN(w0l,w0r,b0,u0)
+    rnn=RecursiveNN(w0,b0,u0)
     the,cat,on,a,hat=Word('the'),Word('cat'),Word('on'),Word('a'),Word('hat')
     the_cat=rnn.combineTwoNodes(the,cat)
     a_hat=rnn.combineTwoNodes(a,hat)
     the_cat_on=rnn.combineTwoNodes(the_cat,on)
     the_cat_on_a_hat=rnn.combineTwoNodes(the_cat_on,a_hat)
     assert unicode(the_cat_on_a_hat)==u'(((the,cat),on),(a,hat))'
-    score=rnn.score(the_cat_on)
-    assert unicode(score)==u'u0ᵀ⋅tanh(W0l⋅tanh(W0l⋅the+W0r⋅cat+b0)+W0r⋅on+b0)'
+    assert unicode(rnn.score(the_cat))==u'u0ᵀ⋅tanh(W0⋅(the⊕cat)+b0)'
+    assert unicode(rnn.score(the_cat_on))==u'u0ᵀ⋅tanh(W0⋅((the,cat)⊕on)+b0)'
     
+    score=rnn.score(the_cat_on_a_hat)
     s0=score.val
-    gradient=Differentiation(score, w0l)
+    gradient=Differentiation(score, w0)
     #TODO:Check parents management and makes the for-loop works.
     #for i in range(10):
-    diff=0.001*ran(w0l.val.shape)
+    diff=0.001*ran(w0.val.shape)
     ds_grad=np.sum(diff*gradient.val)
     tmp=gradient.val
     np.random.shuffle(tmp)
     ds_ran=np.sum(diff*tmp)
-    w0l.val += diff
+    w0.val += diff
     s1=score.val
     ds=s1-s0
     print ds_grad/ds, ds_ran/ds
     assert(abs(ds-ds_grad)<abs(ds-ds_ran))
     np.testing.assert_allclose(ds, ds_grad, rtol=1e-2, atol=0)
     
-    assert score.isContain(w0l)
+    assert score.isContain(w0)
     assert not score.isContain(Var('xx'))
     
     
 def test_IterativeParsing(reset_NodeDict):
     ran=np.random.random
     n=5
-    h0,w0l,w0r,b0,u0     =Var('h0'),Var('W0l'),Var('W0r'),Var('b0'),Var('u0')
-    vh0,vw0l,vw0r,vb0,vu0 =ran((n,1)),ran((n,n)),ran((n,n)),ran((n,1)),ran((n,1))
-    h0.val,w0l.val,w0r.val,b0.val,u0.val=vh0,vw0l,vw0r,vb0,vu0
+    h0,w0,b0,u0     =Var('h0'),Var('w0'),Var('b0'),Var('u0')
+    vh0,vw0,vb0,vu0 =ran((n,1)),ran((n,2*n)),ran((n,1)),ran((n,1))
+    h0.val,w0.val,b0.val,u0.val=vh0,vw0,vb0,vu0
     
-    rnn=RecursiveNN(w0l,w0r,b0,u0)
+    rnn=RecursiveNN(w0,b0,u0)
     the,cat,on,hat=Word('the'),Word('cat'),Word('on'),Word('hat')
     
     nodes=[the,cat,on,the,hat]
