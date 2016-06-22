@@ -31,12 +31,13 @@ class Phrase():
             
 class RecursiveNN:
     def __init__(self, W_init, bias_init, u_score_init):
-        assert isinstance(W_init, Var), "W_left should be instance of `Var`"
+        assert isinstance(W_init, Var), "W should be instance of `Var`"
         assert isinstance(bias_init, Var), "bias should be instance of `Var`"
         self.W=W_init
         self.bias=bias_init
         self.u_score=u_score_init
     def combineTwoNodes(self, left,right):
+        #TODO: there can be too many vec...
         vec = Var(u'(%s⊕%s)'%(left,right))
         vec.val=np.concatenate([left.vec.val,right.vec.val],0)        
         Wxh=Dot(self.W, vec)
@@ -46,10 +47,12 @@ class RecursiveNN:
         return phrase
     def score(self, phrase):
         return Dot(Transpose(self.u_score),phrase.vec)
-    def combineSentence(self, sentence_words):
+    def combineToSentence(self, sentence_words):
         nodes=list(sentence_words)
         assert nodes[0] is sentence_words[0]
-        while len(nodes)>1:
+        def mergeHighestPair(nodes,score):
+            if len(nodes)==1:
+                return nodes[0], score
             phrases=[self.combineTwoNodes(x,y) for x,y in zip(nodes,nodes[1:])]
             scores=[self.score(node).val for node in phrases]   
             idx_max=np.argmax(scores)
@@ -58,9 +61,8 @@ class RecursiveNN:
             nodes.pop(idx_max)
             nodes.pop(idx_max)
             nodes.insert(idx_max, phrase)
-            #print nodes
-        return nodes[0]
-
+            return mergeHighestPair(nodes,Add(score,self.score(phrase)))
+        return mergeHighestPair(nodes, Val(0))
         
 class Word2VecFactory:
     def __init__(self):

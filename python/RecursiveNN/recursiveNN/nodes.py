@@ -68,8 +68,9 @@ class Node(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
     def __del__(self):
-        print self, 'will be destructed!'
-        deregister(self)
+        #print self, 'will be destructed!'
+        #deregister(self)
+        pass
     @property
     def parents(self):
         return self._parents

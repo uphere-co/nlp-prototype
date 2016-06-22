@@ -16,7 +16,7 @@ def assert_all(x):
     assert(np.all(x))
 
 def test_GradientNumericalChecks(reset_NodeDict):
-    ran=np.random.random
+    ran=lambda x : np.random.random(x)-0.5
     n=5
     h0,w0,b0,u0     =Var('h0'),Var('W0'),Var('b0'),Var('u0')
     vh0,vw0,vb0,vu0 =ran((n,1)),ran((n,2*n)),ran((n,1)),ran((n,1))
@@ -54,7 +54,7 @@ def test_GradientNumericalChecks(reset_NodeDict):
     
     
 def test_IterativeParsing(reset_NodeDict):
-    ran=np.random.random
+    ran=lambda x : np.random.random(x)-0.5
     n=5
     h0,w0,b0,u0     =Var('h0'),Var('w0'),Var('b0'),Var('u0')
     vh0,vw0,vb0,vu0 =ran((n,1)),ran((n,2*n)),ran((n,1)),ran((n,1))
@@ -66,11 +66,11 @@ def test_IterativeParsing(reset_NodeDict):
     nodes=[the,cat,on,the,hat]
     assert nodes[0] is nodes[3]
     
-    sentence=rnn.combineSentence(nodes)
-    print unicode(sentence)
+    sentence, score=rnn.combineToSentence(nodes)
+    print unicode(sentence), score.val
     print sentence
     print '%s'%sentence
-    #assert 0
+    assert 0
     
     
 import zmq
