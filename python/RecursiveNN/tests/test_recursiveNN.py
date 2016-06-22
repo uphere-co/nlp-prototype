@@ -74,7 +74,7 @@ def test_IterativeParsing(reset_NodeDict):
     
     
 import zmq
-def test_GettingWord2Vec(reset_NodeDict):
+def _GettingWord2Vec(reset_NodeDict):
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
     socket.connect ("tcp://localhost:10100" )

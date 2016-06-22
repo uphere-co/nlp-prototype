@@ -2,22 +2,25 @@
 # -*- coding: utf-8 -*-
 from nodes import Val,Var,VSF, Add,Dot,Transpose
 import numpy as np
-import zmq
+#import zmq
+from gensim.models import Word2Vec
 
-class Word():
+class Word(object):
+#class Word():
+    __slots__= ["vec"]
     def __init__(self, word, vec=np.random.random((5,1)) ):
-        self.name=word
-        self.expr = 'w2v(%s)'%word
         self.vec = Var(word, vec)#
     def __unicode__(self):
-        return self.name
+        return self.vec.name
     def __repr__(self):
-        return u"Word(%r)"%(self.name)
+        return u"Word(%r)"%(self.vec.name)
     #def __eq__(self)
     def expression(self):
-        return self.expr
+        return 'w2v(%s)'%self.vec.name
         
-class Phrase():
+class Phrase(object):
+#class Phrase():
+    __slots__= ["left","right","vec"]
     def __init__(self, left, right, vec):
         self.left = left
         self.right = right                
@@ -29,7 +32,9 @@ class Phrase():
     def expression(self):
         return self.vec.expression()
             
-class RecursiveNN:
+class RecursiveNN(object):
+#class RecursiveNN():
+    __slots__= ["W","bias","u_score"]
     def __init__(self, W_init, bias_init, u_score_init):
         assert isinstance(W_init, Var), "W should be instance of `Var`"
         assert isinstance(bias_init, Var), "bias should be instance of `Var`"
@@ -64,7 +69,20 @@ class RecursiveNN:
             return mergeHighestPair(nodes,Add(score,self.score(phrase)))
         return mergeHighestPair(nodes, Val(0))
         
-class Word2VecFactory:
+class Word2VecFactory(object):
+    __slots__= ["model"]
+    def __init__(self, w2v_path):
+        self.model = Word2Vec.load(w2v_path)
+    def getWord2Vec(self, words):
+        try:
+            words=[Word(word, self.model[word]) for word in words]
+                  #\if word in self.model.vocab.keys()]
+        except:
+            words=[]
+        return  words
+        
+"""                
+class Word2VecFactory2(object):
     def __init__(self):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
@@ -80,7 +98,4 @@ class Word2VecFactory:
             dtype,bytes = packet[:idx_split],packet[idx_split+1:]
             self.dict[word]=np.fromstring(bytes,dtype=dtype).reshape(-1,1)
         return [Word(word, self.dict[word]) for word in words]
-            
-
-
-
+"""    
