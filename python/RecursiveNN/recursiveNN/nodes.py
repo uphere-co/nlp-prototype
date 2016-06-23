@@ -30,6 +30,7 @@ class NodeDict(type):
     _dict = {}
     _dict_instance = {}
     def __call__(cls, *args):
+        #TODO: change this to 128-bit hash
         name = hash(str(cls)+str(args))
         if name in NodeDict._dict:
             #print '%s EXISTS'%(str(cls)+str(args))

@@ -75,7 +75,7 @@ class Word2VecFactory(object):
         self.model = Word2Vec.load(w2v_path)
     def getWord2Vec(self, words):
         try:
-            words=[Word(word, self.model[word]) for word in words]
+            words=[Word(word, self.model[word].reshape(-1,1)) for word in words]
                   #\if word in self.model.vocab.keys()]
         except:
             words=[]
