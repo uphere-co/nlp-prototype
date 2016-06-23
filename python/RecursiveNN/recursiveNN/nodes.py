@@ -30,12 +30,13 @@ class NodeDict(type):
     _dict = {}
     _dict_instance = {}
     def __call__(cls, *args):
-        name = str(cls)+str(args)
+        #TODO: change this to 128-bit hash
+        name = hash(str(cls)+str(args))
         if name in NodeDict._dict:
-            #print '%s EXISTS'%name
+            #print '%s EXISTS'%(str(cls)+str(args))
             return NodeDict._dict[name]
         else:
-            #print 'NEW: %s'%name
+            #print 'NEW: %s'%(str(cls)+str(args))
             pass
         instance = super(NodeDict, cls).__call__(*args)
         NodeDict._dict[name] = instance
@@ -56,6 +57,7 @@ class NodeDict(type):
         NodeDict._dict_instance.pop(instance)
             
 class Node(object):
+    __slots__= ["_parents", "name","_val"]
     __metaclass__ = NodeDict
     def __init__(self, name):
         self._parents=[]
@@ -68,8 +70,9 @@ class Node(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
     def __del__(self):
-        print self, 'will be destructed!'
-        deregister(self)
+        #print self, 'will be destructed!'
+        #deregister(self)
+        pass
     @property
     def parents(self):
         return self._parents
@@ -102,11 +105,14 @@ class Node(object):
             return np.any([child.isContain(expr) for child in self.children])
 
 class Val(Node):
+    __slots__ = []
     def __init__(self, val):
-        Node.__init__(self, str(val))
+        Node.__init__(self, 'Val')
         self._val=ArrayOrScala(val)
+    def __unicode__(self):
+        return unicode(self._val)    
     def __repr__(self):
-        return "Val(%r)"%(self.name)
+        return "Val(%r)"%(str(self._val))
     def __eq__(self, other):
         if isinstance(other, self.__class__) and np.all(self._val == other._val):
             return True
@@ -117,6 +123,7 @@ class Val(Node):
         return zero
     
 class Var(Node):
+    __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
         self._val=ArrayOrScala(val)
@@ -138,9 +145,11 @@ def softmax(x):
     exp_x=np.exp(x)
     return exp_x/exp_x.sum()
 
+
         
 class VSF(Node):
     '''VectorizedScalaFunction'''
+    __slots__ = ["op_expr","op","var"]
     known_functions=dict(
     [('cos' ,('cos',np.cos)),
      ('sin' ,('sin',np.sin)),
@@ -150,19 +159,27 @@ class VSF(Node):
      ('sin`',('cos',np.cos)),
      ('exp`',('exp',np.exp)),
      ('log`' ,('1/',lambda x : 1.0/x)),
-     ('1/'   ,('1/',lambda x : 1.0/x)),
+     #('1/'   ,('1/',lambda x : 1.0/x)),
      ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
      ('tanh',('tanh',np.tanh)),
      ('tanh`',('tanh`',lambda x : np.cosh(x)**-2)),
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
+     ('f',('f',lambda x : 'f')),
+     ('f`',('f`',lambda x : 'f`')),
+     ('g',('g',lambda x : 'g')),
+     ('g`',('g`',lambda x : 'g`')),
+     ('h',('h',lambda x : 'h')),
+     ('h`',('h`',lambda x : 'h`'))
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
+    expr_to_fun = dict(known_functions.values())
+    func_to_expr=dict(zip(expr_to_fun.values(),expr_to_fun.keys()))
     def __init__(self, op_name, var, op=None):
         op_expr, op0 = VSF.known_functions.get(op_name, (op_name,op))            
         if op:
-            op0=op 
-        Node.__init__(self,"%s(%s)"%(op_name,var))
-        self.op_expr=op_expr #cos
+            op0=op
+        Node.__init__(self,"vsf") #"%s(%s)"%(op_name,var)
+        #self.op_expr=op_expr #cos
         self.op=op0
         self.var=var
         self.var.add_parent(self)
@@ -188,8 +205,13 @@ class VSF(Node):
     def children(self):
         return [self.var]
     @property
+    def op_expr(self):
+        return VSF.func_to_expr[self.op]
+        #return self.op_expr
+    @property
     def op_name(self):
-        return self.op_expr
+        return VSF.func_to_expr[self.op]
+        #return self.op_expr
     @property
     def val(self):
         if not self.op:
@@ -202,6 +224,7 @@ class VSF(Node):
 
 #Sum0 can be replaced by dot with 1s.
 class Sum0(Node):
+    __slots__ = ["var"]
     def __init__(self, x):
         Node.__init__(self,name=None)
         self.var=x
@@ -223,6 +246,7 @@ class Sum0(Node):
         return self._val
 
 class Transpose(Node):
+    __slots__ = ["op","var", "_format"]
     def __init__(self, x):
         Node.__init__(self,name=None)
         self.op=np.transpose
@@ -259,6 +283,7 @@ def TransposeIfVector(var):
     return var
         
 class BinaryOperator(Node):
+    __slots__ = ["op","x","y","_format"]
     def __init__(self, x, y):
         Node.__init__(self,name=None)
         self.op=None
@@ -294,6 +319,7 @@ class BinaryOperator(Node):
         return self._val
     
 class Add(BinaryOperator):
+    __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = '+'
@@ -312,6 +338,7 @@ class Add(BinaryOperator):
         return expr
         
 class Mul(BinaryOperator):
+    __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = '*'
@@ -343,6 +370,7 @@ class Mul(BinaryOperator):
                  CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
 class Dot(BinaryOperator):
+    __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = u'⋅'
@@ -376,6 +404,7 @@ class Dot(BinaryOperator):
 
 #CircleTimes : heavily used for differentiation by Matrix.
 class CTimes(BinaryOperator):
+    __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = u'⊗'

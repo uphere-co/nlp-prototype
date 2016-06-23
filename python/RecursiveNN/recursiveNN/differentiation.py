@@ -32,7 +32,7 @@ def _Diff(expr_left, expr, expr_right, var):
         elif not expr.y.isContain(var):
             return _Diff(expr_left, expr.x, _AccumulateSideExpression(expr.y, expr_right), var)
         else:
-            print 'x: ', expr.x,expr.x.isContain(var), 'y: ', expr.y,expr.y.isContain(var), 'var: ',var
+            #print 'x: ', expr.x,expr.x.isContain(var), 'y: ', expr.y,expr.y.isContain(var), 'var: ',var
             x_dy= _Diff(_AccumulateSideExpression(expr_left, expr.x), expr.y, expr_right, var)
             dx_y= _Diff(expr_left, expr.x, _AccumulateSideExpression(expr.y, expr_right), var)
             return Add(x_dy, dx_y).simplify()
@@ -43,7 +43,7 @@ def _Diff(expr_left, expr, expr_right, var):
         elif not expr.y.isContain(var):
             return _Diff(expr_left, expr.x, expr_right, var)
         else:
-            print 'x: ', expr.x,expr.x.isContain(var), 'y: ', expr.y,expr.y.isContain(var), 'var: ',var
+            #print 'x: ', expr.x,expr.x.isContain(var), 'y: ', expr.y,expr.y.isContain(var), 'var: ',var
             dx= _Diff(expr_left, expr.x, expr_right, var)
             dy= _Diff(expr_left, expr.y, expr_right, var)
             return Add(dx, dy).simplify()
@@ -57,7 +57,6 @@ def _Diff(expr_left, expr, expr_right, var):
         _Diff(expr_left, expr.vec, expr_right, var)    
     raise ValueError('Differentiation of unknown expression')
         
-        #if IsVexpr.x
 def Differentiation(expr, var):
     if not IsScalar(expr):
         raise ValueError('Differentiation on non-scalar value is not yet supported')

@@ -106,5 +106,55 @@ rec {
                               python27Packages.mock];
      meta = {
      };
+    };
+    guppy = buildPythonPackage rec {
+     name = "guppy-0.1.10";
+     src = pkgs.fetchurl {
+       #url = "${mirror_url}/guppy/${name}.tar.gz";
+       url = "https://pypi.python.org/packages/2b/b0/8614c981bc40c10ec4e24a7428e998d05d11e4b9680c718952207ff63a26/${name}.tar.gz";
+       sha256 = "1pqk730fbp47q99la0f08h69c41dcd93nsmv2vm664251q08q480";
+     };
+     buildInputs = [];
+     propagatedBuildInputs = [];
+     meta = {
+     };
    };
+   nltk = buildPythonPackage rec {
+     name = "nltk-3.2.1";
+     src = pkgs.fetchurl {
+       #url = "${mirror_url}/nltk/${name}.tar.gz";
+       url = "https://pypi.python.org/packages/58/85/8fa6f8c488507aab7d6234ce754bbbe61bfeb8382489785e2d764bf8f52a/${name}.tar.gz";
+       sha256 = "0skxbhnymwlspjkzga0f7x1hg3y50fwpfghs8g8k7fh6f4nknlym";
+     };
+     buildInputs = [];
+     propagatedBuildInputs = [];
+     meta = {
+     };
+   };
+  numba = buildPythonPackage rec {
+    version = "0.26.0";
+    name = "numba-${version}";
+
+    src = pkgs.fetchurl {
+      url = "https://pypi.python.org/packages/6f/b1/e3773ec83b112caddc6d3808326c241f59261f569e6a8db90a2bde89c66e/${name}.tar.gz";
+      sha256 = "1ai06ks2ly6wcw2fpljmmyr41y9jidds8qingyih8cbq37fpym44";
+    };
+
+    NIX_CFLAGS_COMPILE = stdenv.lib.optionalString stdenv.isDarwin "-I${pkgs.libcxx}/include/c++/v1";
+
+    propagatedBuildInputs = [python27Packages.numpy python27Packages.llvmlite python27Packages.argparse 
+                             python27Packages.funcsigs python27Packages.singledispatch];
+    checkPhase = ''
+      cp runtests.py $out/${python.sitePackages}/numba/runtests.py
+      ${python.interpreter} $out/${python.sitePackages}/numba/runtests.py
+    '';
+    doCheck = false;
+
+    meta = {
+      homepage = http://numba.pydata.org/;
+      license = licenses.bsd2;
+      description = "Compiling Python code using LLVM";
+      maintainers = with maintainers; [ fridh ];
+    };
+  };
 }

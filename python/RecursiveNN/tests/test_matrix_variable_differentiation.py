@@ -18,8 +18,8 @@ def test_MatrixDifferentiation_internal(reset_NodeDict):
         _Diff(w, x, y, z)
         
 def test_VectorAndMatrixVariables(reset_NodeDict):
-    ran=np.random.random
-        
+    ran=lambda x : np.random.random(x)-0.5
+       
     x=Var('x',ran((1,4)))
     y=Var('y',ran((4,1)))
     a=Var('a',ran((5,1)))
@@ -76,7 +76,7 @@ def test_VectorAndMatrixVariables(reset_NodeDict):
     delta=NormalizedMatrix(ran(x.val.shape), 0.01)
 
 def test_ReuseExistingExpressions(reset_NodeDict):
-    ran=np.random.random
+    ran=lambda x : np.random.random(x)-0.5
     x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
     D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
     x.val,y.val,a.val,b.val=ran((1,4)),ran((4,1)),ran((5,1)),ran((6,1))
@@ -106,7 +106,7 @@ def test_ReuseExistingExpressions(reset_NodeDict):
     assert dgdA.x.var.x.x is dgdB.x.var
 
 def test_GradientNumericalChecks(reset_NodeDict):
-    ran=np.random.random
+    ran=lambda x : np.random.random(x)-0.5
     x,y,a,b=Var('x'),Var('y'),Var('a'),Var('b')
     D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
     #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
