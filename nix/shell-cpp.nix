@@ -7,8 +7,8 @@ in
 stdenv.mkDerivation {
   name = "cpp-env";
   buildInputs = [ gcc boost openblas #liblapack
-  	      	   toolz.armadillo toolz.libpca
-		   gdb
+                  toolz.armadillo toolz.libpca
+                  gdb
                 ];
   shellHook = ''
   '';
