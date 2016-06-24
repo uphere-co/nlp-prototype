@@ -1,5 +1,5 @@
 CXX = g++
-CFLAGS = -Ofast -Wall -funroll-loops -Wno-unused-result --std=c++11
+CFLAGS = -g -Ofast -Wall -funroll-loops -Wno-unused-result --std=c++11
 LDFLAGS = -larmadillo -lpca #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
 
 all: word2vec pca
