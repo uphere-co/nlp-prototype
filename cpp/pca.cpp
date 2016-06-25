@@ -9,13 +9,6 @@ int main() {
 
   const int num_variables = 10;
   const int num_records = 300;
-
-  // this is necessary for initialization of openMP
-  //int num_procs = omp_get_num_procs();
-  //if( num_procs < omp_get_max_threads() * 2 )
-  //  omp_set_num_threads(num_procs < 4 ? 1 : num_procs /2 ); 
-
-  //cout << "num_procs = " << num_procs << endl;
   
   stats::pca pca(num_variables);
   pca.set_do_bootstrap(true, 100);
