@@ -1,7 +1,6 @@
 #include "pca.h"
 #include <iostream>
 #include <random>
-#include <omp.h>
 
 using namespace std;
 
