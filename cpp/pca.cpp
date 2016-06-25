@@ -8,7 +8,7 @@ int main() {
 
   const int num_variables = 10;
   const int num_records = 300;
-
+  
   stats::pca pca(num_variables);
   pca.set_do_bootstrap(true, 100);
 
