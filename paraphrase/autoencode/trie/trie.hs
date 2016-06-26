@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 import Control.Lens (over, _1)
+import Data.Function (fix)
 -- import Data.Hashable
 import Data.MemoTrie
 -- import GHC.Generics (Generic)
@@ -80,11 +81,77 @@ power n e
 exp1 = square (x `add` y)
 exp2 = power 10 (x `add` y)
 
-  
+{- 
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib n = fib (n-1) + fib (n-2)
+
+
+fib' :: Int -> Int
+fib' 0 = 0
+fib' 1 = 1
+fib' n = memo fib' (n-1) + memo fib' (n-2)
+
+fib'' :: (Int -> Int) -> Int -> Int
+fib'' mf 0 = 0
+fib'' mf 1 = 1
+fib'' mf n = mf (n-1) + mf (n-2)
+-}
+-- fibWork :: (Int :-> a) -> Int -> a
+
+{-
+fibW (Fib 0 t) = 0
+fibW (Fib 1 t) = 1
+fibW (Fib n t) = untrie t 
+-}
+
+fib' :: (Int :->: Int) -> Int -> Int
+fib' t 0 = 0 
+fib' t 1 = 1
+fib' t n = untrie t (n-1) + untrie t (n-2)
+
 main = do
     mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
-    let prettyPrint' = memo prettyPrint
-    print (prettyPrint' exp2)
+    let t = trie fib
+        fib = fib' t 
+
+    print (fib 50)
+    
+    -- let prettyPrint' = memo prettyPrint
+    -- print (prettyPrint' exp2)
     -- print (trie id)
 
+
+
+      -- fib' = fib' (trie (fib')
+
+    -- print (fib 33)
+    -- print (memo fib 37)
+    -- let lst = enumerate (trie fib') 
+    -- print (lst !! 37)
+    {-
+    let f_list = map (fib'' faster_f) [0..]
+        faster_f n = f_list !! n
+    print (faster_f 40)
+-}
+{-
+    let fib''' = memo f
+          where f 0 = 0
+                f 1 = 1
+                f n = fib (n-1) + fib (n-2)
+    print (fib''' 37)
+    return ()
+-}
+    -- print (memo fib 40)
+    --print (memo fib 37)
+    -- print (memo (id :: Int -> Int) 40)
+    -- print (enumerate (trie (id :: Bool -> Bool)))
+{-
+    let f_tree :: 
+
+        fastest_f :: Integer -> Integer
+        fastest_f n = f_tree !! n 
+        
+-}
