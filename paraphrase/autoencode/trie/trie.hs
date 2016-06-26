@@ -11,24 +11,28 @@ import Text.Printf
 
 type Symbol = String
 
-data Exp = Zero
-         | One
-         | Val Int
-         | Var Symbol
-         | Fun1 Symbol Exp
-         | Fun2 Symbol Exp Exp
-         -- | Fun3 Symbol Exp Exp Exp
-         deriving (Show,Eq) -- Generic
+data Exp' = Zero
+          | One
+          | Val Int
+          | Var Symbol
+          | Fun1 Symbol Exp
+          | Fun2 Symbol Exp Exp
+          deriving (Show,Eq) -- Generic
 
-instance HasTrie Exp where
-  data (Exp :->: b) = ExpTrie (() :->: b)
-                              (() :->: b)
-                              (Symbol :->: b)
-                              ((Symbol,Exp) :->: b)
-                              ((Symbol,Exp,Exp) :->: b)
-  trie :: (Exp -> b) -> (Exp :->: b)
-  trie f = ExpTrie (trie (\() -> f Zero)) (trie (\() -> f One)) (trie (f . Var))
-                   (trie (\(s,e)-> f (Fun1 s e))) (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
+data Exp = Exp (Exp' :->: Int) Exp'
+
+instance HasTrie Exp' where
+  data (Exp' :->: b) = Exp'Trie (() :->: b)
+                               (() :->: b)
+                               (Symbol :->: b)
+                               ((Symbol,Exp') :->: b)
+                               ((Symbol,Exp',Exp') :->: b)
+  trie :: (Exp' -> b) -> (Exp' :->: b)
+  trie f = Exp'Trie (trie (\() -> f Zero))
+                    (trie (\() -> f One))
+                    (trie (f . Var))
+                    (trie (\(s,e)-> f (Fun1 s e)))
+                    (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
            
   untrie :: (Exp :->: b) -> Exp -> b
   untrie (ExpTrie z o v f1 f2) e = case e of
@@ -48,6 +52,13 @@ instance HasTrie Exp where
                                     enum' (\(s,e)->Fun1 s e) f1
                                     `weave`
                                     enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+
+instance HasTrie Exp where
+  newtype (Exp :->: b) = ExpTrie (Exp' :->: b)
+  trie f = ExpTrie (trie f . Exp (trie hash))
+  untrie (ExpTrie f) (Exp _ x) = untrie f x
+  enumerate :: (Exp :->: b) -> [(Exp,b)]
+  enumerate (ExpTrie f) = enum' Exp f
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
@@ -74,25 +85,14 @@ prettyPrint (Var s) = s
 prettyPrint (Fun1 s e) = "( " ++ s ++ " " ++ prettyPrint e ++ " )"
 prettyPrint (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ prettyPrint e2 ++ " )"
 
-instance Hashable Exp where
-  hashWithSalt :: Int -> Exp -> Int
-  hashWithSalt = curry h''
-   where
-    h'' = fix (h' . trie)
-    h' t (s,e) = 
-     case e of
-      Zero           -> s `combine` 0
-      One            -> s `combine` 1
-      Val n          -> s `combine` 2 `combine` n
-      Var str        -> s `combine` 3 `hashWithSalt` str
-      Fun1 str e1    -> untrie t (s `combine` 4 `hashWithSalt` str, e1)
-      Fun2 str e1 e2 -> untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e)
-
-
-
-
-
-
+instance Hashable Exp' where
+  hashWithSalt :: Int -> Exp' -> Int
+  hashWithSalt s Zero             = s `combine` 0
+  hashWithSalt s One              = s `combine` 1
+  hashWithSalt s (Val n)          = s `combine` 2 `combine` n
+  hashWithSalt s (Var s')         = s `combine` 3 `hashWithSalt` s'
+  hashWithSalt s (Fun1 str e1)    = s `combine` 4 `hashWithSalt` str `hashWithSalt` e1
+  hashWithSalt s (Fun2 str e1 e2) = s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2
 
 square :: Exp -> Exp
 square e = e `mul` e
