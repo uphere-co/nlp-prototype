@@ -1,4 +1,3 @@
--- {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -8,7 +7,7 @@ import Data.Bits (xor)
 import Data.Function (fix)
 import Data.Hashable
 import Data.MemoTrie
--- import GHC.Generics (Generic)
+import Text.Printf
 
 type Symbol = String
 
@@ -70,10 +69,6 @@ instance Hashable Exp where
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
   
-  -- hash :: Exp -> Int
-  -- hash 
-
-
 add = Fun2 "+"
 mul = Fun2 "*"
 
@@ -82,6 +77,7 @@ y = Var "y"
 
 prettyPrint Zero = "0"
 prettyPrint One  = "1"
+prettyPrint (Val n) = show n 
 prettyPrint (Var s) = s
 prettyPrint (Fun1 s e) = "( " ++ s ++ " " ++ prettyPrint e ++ " )"
 prettyPrint (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ prettyPrint e2 ++ " )"
@@ -105,7 +101,9 @@ power n e
 exp1 = square (x `add` y)
 exp2 = power 10 (x `add` y)
 
-
+expfib 0 = Val 0
+expfib 1 = Val 1
+expfib n = add (expfib (n-1)) (expfib (n-2))
 
 
 fib' :: (Int :->: Int) -> Int -> Int
@@ -113,17 +111,24 @@ fib' t 0 = 0
 fib' t 1 = 1
 fib' t n = untrie t (n-1) + untrie t (n-2)
 
-main = do
-    mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
-    mapM_ (print . hash) [exp1, exp2]
 
+testfib = do
     -- let t = trie fib
     --    fib = fib' t 
     -- let fib = fib' (trie fib)
-    
     let fib = fix (fib' . trie)
-    
-    
     print (fib 50)
+
+main = do
+    mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
+
+    mapM_ (printf "%x\n" . hash) [exp1, exp2]
+
+    -- expfib spits out very very large expression. cannot go over 40
+    -- (putStrLn . prettyPrint) ( expfib 30 )
+
+    -- also this hash calculation takes forever
+    printf "%x\n" . hash $ expfib 40 
+
     
