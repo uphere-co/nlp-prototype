@@ -57,14 +57,6 @@ weave :: [a] -> [a] -> [a]
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
                   
-instance Hashable Exp where
-  hashWithSalt :: Int -> Exp -> Int
-  hashWithSalt s Zero             = s `combine` 0
-  hashWithSalt s One              = s `combine` 1
-  hashWithSalt s (Val n)          = s `combine` 2 `combine` n
-  hashWithSalt s (Var str)        = s `combine` 3 `hashWithSalt` str
-  hashWithSalt s (Fun1 str e)     = s `combine` 4 `hashWithSalt` str `hashWithSalt` e
-  hashWithSalt s (Fun2 str e1 e2) = s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
@@ -81,6 +73,25 @@ prettyPrint (Val n) = show n
 prettyPrint (Var s) = s
 prettyPrint (Fun1 s e) = "( " ++ s ++ " " ++ prettyPrint e ++ " )"
 prettyPrint (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ prettyPrint e2 ++ " )"
+
+instance Hashable Exp where
+  hashWithSalt :: Int -> Exp -> Int
+  hashWithSalt = curry h''
+   where
+    h'' = fix (h' . trie)
+    h' t (s,e) = 
+     case e of
+      Zero           -> s `combine` 0
+      One            -> s `combine` 1
+      Val n          -> s `combine` 2 `combine` n
+      Var str        -> s `combine` 3 `hashWithSalt` str
+      Fun1 str e1    -> untrie t (s `combine` 4 `hashWithSalt` str, e1)
+      Fun2 str e1 e2 -> untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e)
+
+
+
+
+
 
 
 square :: Exp -> Exp
