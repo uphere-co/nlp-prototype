@@ -23,31 +23,40 @@ data Exp = Zero
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
+                              (Int :->: b)
                               (Symbol :->: b)
                               ((Symbol,Exp) :->: b)
                               ((Symbol,Exp,Exp) :->: b)
   trie :: (Exp -> b) -> (Exp :->: b)
-  trie f = ExpTrie (trie (\() -> f Zero)) (trie (\() -> f One)) (trie (f . Var))
-                   (trie (\(s,e)-> f (Fun1 s e))) (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
+  trie f = ExpTrie (trie (\() -> f Zero))
+                   (trie (\() -> f One))
+                   (trie (f . Val))
+                   (trie (f . Var))
+                   (trie (\(s,e)-> f (Fun1 s e)))
+                   (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
            
   untrie :: (Exp :->: b) -> Exp -> b
-  untrie (ExpTrie z o v f1 f2) e = case e of
+  untrie (ExpTrie z o l v f1 f2) e = case e of
                                      Zero         -> untrie z ()
                                      One          -> untrie o ()
+                                     Val n        -> untrie l n
                                      Var s        -> untrie v s
                                      Fun1 s e     -> untrie f1 (s,e)
                                      Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
                                      
   enumerate :: (Exp :->: b) -> [(Exp,b)]
-  enumerate (ExpTrie z o v f1 f2) = enum' (\()->Zero) z
-                                    `weave`
-                                    enum' (\()->One) o
-                                    `weave`
-                                    enum' Var v
-                                    `weave`
-                                    enum' (\(s,e)->Fun1 s e) f1
-                                    `weave`
-                                    enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+  enumerate (ExpTrie z o n v f1 f2)
+    = enum' (\()->Zero) z
+      `weave`
+      enum' (\()->One) o
+      `weave`
+      enum' Val n
+      `weave`
+      enum' Var v
+      `weave`
+      enum' (\(s,e)->Fun1 s e) f1
+      `weave`
+      enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
@@ -86,12 +95,7 @@ instance Hashable Exp where
       Val n          -> s `combine` 2 `combine` n
       Var str        -> s `combine` 3 `hashWithSalt` str
       Fun1 str e1    -> untrie t (s `combine` 4 `hashWithSalt` str, e1)
-      Fun2 str e1 e2 -> untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e)
-
-
-
-
-
+      Fun2 str e1 e2 -> untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e2)
 
 
 square :: Exp -> Exp
@@ -140,6 +144,6 @@ main = do
     -- (putStrLn . prettyPrint) ( expfib 30 )
 
     -- also this hash calculation takes forever
-    printf "%x\n" . hash $ expfib 40 
+    printf "%x\n" . hash $ expfib 20 
 
     
