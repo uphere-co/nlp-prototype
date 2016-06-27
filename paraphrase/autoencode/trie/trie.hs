@@ -5,13 +5,14 @@
 
 import           Control.Arrow
 import           Control.Lens              (over, _1)
+import           Control.Monad.Trans.State
 import           Data.Bits                 (xor)
 import           Data.Function             (fix)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
--- import           Data.HashSet              (HashSet)
--- import qualified Data.HashSet        as HS
+import           Data.HashSet              (HashSet)
+import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 import           Text.Printf
 --
@@ -78,12 +79,12 @@ as `weave` [] = as
                   
 instance Hashable Exp where
   hashWithSalt :: Int -> Exp -> Int
-  hashWithSalt s Zero             = trace "hashing Zero" (s `hashWithSalt` (0 :: Int))
-  hashWithSalt s One              = trace "hashing One" (s `hashWithSalt` (1 :: Int))
-  hashWithSalt s (Val n)          = trace (printf "hashing Val %d" n) (s `hashWithSalt` (2 :: Int) `hashWithSalt` n)
-  hashWithSalt s (Var s')         = trace (printf "hashing Var %s" s') (s `hashWithSalt` (3 :: Int) `hashWithSalt` s')
-  hashWithSalt s (Fun1 str h1)    = trace (printf "hashing Fun1 %s" str) ( s `hashWithSalt` (4 :: Int) `hashWithSalt` str `hashWithSalt` h1)
-  hashWithSalt s (Fun2 str h1 h2) = trace (printf "hashing Fun2 %s %x %x" str h1 h2) ( s `hashWithSalt` (5 :: Int) `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
+  hashWithSalt s Zero            = s `hashWithSalt` (0 :: Int)
+  hashWithSalt s One             = s `hashWithSalt` (1 :: Int)
+  hashWithSalt s (Val n)         = s `hashWithSalt` (2 :: Int) `hashWithSalt` n
+  hashWithSalt s (Var s')        = s `hashWithSalt` (3 :: Int) `hashWithSalt` s'
+  hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (4 :: Int) `hashWithSalt` s' `hashWithSalt` h1
+  hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
@@ -95,32 +96,31 @@ prettyPrint (Var s) = s
 prettyPrint (Fun1 s h1) = printf "( %s %x )" s h1
 prettyPrint (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
 
-{- 
-mkHashMap (?expHash :: Exp :->: Int) => Exp -> HM.Map Int Exp -> HM.Map Int Exp
-mkHashMap e m = let h = untrie expHash e
-                in case HM.lookup h m of
-                     Just _ -> m
-                     Nothing ->
-                       case e of
-                         Fun1 s h1 -> 
-                                  
                        
+dotPrint :: HashMap Int Exp -> Hash -> State (HashSet Int) String
+dotPrint m h = do
+  s <- get
+  let Just e = HM.lookup h m
+  case h `HS.member` s of
+    True -> return ""
+    False -> do
+      let (str,hs) = dotPrint' h e
+      put (h `HS.insert` s)
+      lst <- mapM (dotPrint m) hs
+      return (concat (str : lst))
+      -- in str ++ concatMap dotPrint m (hs `HS.union` s) 
 
-dotPrint m Zero = "0"
-dotPrint m One  = "1"
-dotPrint m (Val n) = show n 
-dotPrint m (Var s) = s
-dotPrint m (Fun1 s h1)    = let Just e1 = HM.lookup h1 m
-                            in printf "%s -> %x;\n" s h1 <> dotPrint m e1
-dotPrint m (Fun2 s h1 h2) = let Just e1 = HM.lookup h1 m
-                                Just e2 = HM.lookup h2 m
-                            in printf "%s -> %x;\n%s -> %x;" s h1 s h2
--}
+dotPrint' h Zero           = (printf "x%x [label=\"0\"];\n" h,[])
+dotPrint' h One            = (printf "x%x [label=\"1\"];\n" h,[])
+dotPrint' h (Val n)        = (printf "x%x [label=\"%d\"];\n" h n ,[])
+dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h s,[])
+dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h s h h1,[h1]) --  ++ dotPrint ms h1
+dotPrint' h (Fun2 s h1 h2) = (printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2,[h1,h2])
 
-add :: (?expHash :: Exp :->: Int) => Exp -> Exp -> Exp
+add :: (?expHash :: Exp :->: Hash) => Exp -> Exp -> Exp
 add e1 e2 = Fun2 "+" (untrie ?expHash e1) (untrie ?expHash e2)
 
-mul :: (?expHash :: Exp :->: Int) => Exp -> Exp -> Exp
+mul :: (?expHash :: Exp :->: Hash) => Exp -> Exp -> Exp
 mul e1 e2 = Fun2 "*" (untrie ?expHash e1) (untrie ?expHash e2)
 
 x = Var "x"
@@ -179,9 +179,12 @@ main = do
       
     putStrLn " hash for expfib 35"
     let v = expfib 35
-    printf "%x \n"  (untrie ?expHash (snd v))
-    mapM_ (printf "%x ")  (HM.keys (fst v))
+        h = untrie ?expHash (snd v)
+    printf "%x \n" h
+    let m = fst v 
+    -- mapM_ (printf "%x ")  (HM.keys (fst v))
 
     -- putStrLn (dotPrint exp1)
+    putStrLn $ evalState (dotPrint m h) HS.empty
     
 
