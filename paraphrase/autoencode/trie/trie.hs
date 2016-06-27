@@ -32,6 +32,13 @@ data Exp = Zero
 
 type ExpMap = (Exp,HashMap Hash Exp)
 
+data RExp = RZero
+          | ROne
+          | RVal Int
+          | RVar Symbol
+          | RFun1 Symbol RExp
+          | RFun2 Symbol RExp RExp
+
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                                (() :->: b)
@@ -93,15 +100,31 @@ instance Hashable Exp where
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
-  
-prettyPrint Zero = "0"
-prettyPrint One  = "1"
-prettyPrint (Val n) = show n 
-prettyPrint (Var s) = s
-prettyPrint (Fun1 s h1) = printf "( %s %x )" s h1
-prettyPrint (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
 
-                       
+exp2RExp :: HashMap Hash Exp -> Exp -> RExp
+exp2RExp m Zero           = RZero
+exp2RExp m One            = ROne
+exp2RExp m (Val n)        = RVal n
+exp2RExp m (Var s)        = RVar s
+exp2RExp m (Fun1 s h1)    = let e1 = case HM.lookup h1 m of
+                                       Nothing -> error " fun1 "
+                                       Just e -> e
+                            in RFun1 s (exp2RExp m e1)
+exp2RExp m (Fun2 s h1 h2) = let e1 = case HM.lookup h1 m of
+                                            Nothing -> error " fun2 "
+                                            Just e -> e
+                                e2 = case HM.lookup h2 m of
+                                            Nothing -> error "fun2 2"
+                                            Just e -> e
+                            in RFun2 s (exp2RExp m e1) (exp2RExp m e2)
+  
+prettyPrint RZero = "0"
+prettyPrint ROne  = "1"
+prettyPrint (RVal n) = show n 
+prettyPrint (RVar s) = s
+prettyPrint (RFun1 s e1) = printf "( %s %s )" s (prettyPrint e1)
+prettyPrint (RFun2 s e1 e2) = printf "( %s %s %s )" s (prettyPrint e1) (prettyPrint e2)
+
 dotPrint :: HashMap Int Exp -> Hash -> State (HashSet Int) String
 dotPrint m h = do
   s <- get
@@ -179,11 +202,15 @@ expfib =
 
 
 
-main' = do
+main = do
     let ?expHash = trie hash
-    putStrLn (prettyPrint (fst exp1))
-    putStrLn (prettyPrint (fst x))
-    printf "%x \n" (untrie ?expHash (Val 1))
+    let (e,m) = exp2
+        (ex,mx) = x
+    putStrLn . prettyPrint . exp2RExp m $ e
+    putStrLn . prettyPrint . exp2RExp mx $ ex
+    -- putStrLn (prettyPrint (fst exp1))
+    -- putStrLn (prettyPrint (fst x))
+    -- printf "%x \n" (untrie ?expHash (Val 1))
 
 digraph v = do
     let -- v = expfib 10
@@ -193,7 +220,7 @@ digraph v = do
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
 
-main = do
+main' = do
     let ?expHash = trie hash
     
     -- digraph (expfib 10)
