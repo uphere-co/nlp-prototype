@@ -8,6 +8,8 @@ import Data.Function (fix)
 import Data.Hashable
 import Data.MemoTrie
 import Text.Printf
+--
+import Debug.Trace
 
 type Symbol = String
 
@@ -63,7 +65,7 @@ instance HasTrie Exp' where
 
 instance HasTrie Exp where
   newtype (Exp :->: b) = ExpTrie (Exp' :->: b)
-  trie f = ExpTrie (trie (f . Exp (trie hash)))
+  trie f = ExpTrie (trie (f . embed))
   untrie (ExpTrie f) (Exp _ x) = untrie f x
   enumerate :: (Exp :->: b) -> [(Exp,b)]
   enumerate (ExpTrie f) = enum' embed f
@@ -79,12 +81,12 @@ as `weave` [] = as
 
 instance Hashable Exp' where
   hashWithSalt :: Int -> Exp' -> Int
-  hashWithSalt s Zero             = s `combine` 0
-  hashWithSalt s One              = s `combine` 1
-  hashWithSalt s (Val n)          = s `combine` 2 `combine` n
-  hashWithSalt s (Var s')         = s `combine` 3 `hashWithSalt` s'
-  hashWithSalt s (Fun1 str e1)    = s `combine` 4 `hashWithSalt` str `hashWithSalt` e1
-  hashWithSalt s (Fun2 str e1 e2) = s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2
+  hashWithSalt s Zero             = trace "hashing Zero" (s `combine` 0)
+  hashWithSalt s One              = trace "hashing One" (s `combine` 1)
+  hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
+  hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `combine` 3 `hashWithSalt` s')
+  hashWithSalt s (Fun1 str e1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` e1)
+  hashWithSalt s (Fun2 str e1 e2) = trace ("hashing Fun2 " ++ str) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2)
 
 instance Hashable Exp where
   hashWithSalt s (Exp _ e) = hashWithSalt s e
@@ -134,7 +136,7 @@ expfib n = add (expfib (n-1)) (expfib (n-2))
 fib' :: (Int :->: Int) -> Int -> Int
 fib' t 0 = 0 
 fib' t 1 = 1
-fib' t n = untrie t (n-1) + untrie t (n-2)
+fib' t n = trace ("fib' n = " ++ show n) ( untrie t (n-1) + untrie t (n-2) )
 
 
 
@@ -145,10 +147,12 @@ testfib = do
     let fib = fix (fib' . trie)
     print (fib 50)
 
-main = do
-    mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
-    mapM_ (printf "%x\n" . hash) [exp1, exp2]
+main = do
+    testfib
+    -- mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
+
+    -- mapM_ (printf "%x\n" . hash) [exp1, exp2]
 
     -- expfib spits out very very large expression. cannot go over 40
     -- (putStrLn . prettyPrint) ( expfib 30 )
@@ -156,8 +160,13 @@ main = do
     -- also this hash calculation takes forever
     -- printf "%x\n" . hash $ expfib 35
 
-    let x@(Exp t y) = expfib 35
+    -- let x@(Exp t y) = expfib 35
+    
+    -- printf "%x\n" (untrie t y)
+
+    let x@(Exp t y) = exp1
     
     printf "%x\n" (untrie t y)
+    putStrLn . prettyPrint $ exp1
 
     
