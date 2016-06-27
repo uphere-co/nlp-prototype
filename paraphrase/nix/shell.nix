@@ -197,7 +197,7 @@ let
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv cudatoolkit ];
+     buildInputs = [ hsenv cudatoolkit graphviz ];
      shellHook = ''
        export CUDA_PATH=${pkgs.cudatoolkit}
      '';
