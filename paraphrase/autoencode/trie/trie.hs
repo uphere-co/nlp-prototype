@@ -154,6 +154,10 @@ main = do
     -- (putStrLn . prettyPrint) ( expfib 30 )
 
     -- also this hash calculation takes forever
-    printf "%x\n" . hash $ expfib 35 
+    -- printf "%x\n" . hash $ expfib 35
+
+    let x@(Exp t y) = expfib 35
+    
+    printf "%x\n" (untrie t y)
 
     
