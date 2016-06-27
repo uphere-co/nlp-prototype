@@ -24,22 +24,22 @@ import Debug.Trace
 
 
 
-x = (Var "x", HM.empty)
+x = ExpMap (Var "x") HM.empty
 
-y = (Var "y", HM.empty)
+y = ExpMap (Var "y") HM.empty
 
-one = (One, HM.empty)
-zero = (Zero, HM.empty)
+one = ExpMap One HM.empty
+zero = ExpMap Zero HM.empty
 
-val n = (Val n, HM.empty)
+val n = ExpMap (Val n) HM.empty
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
-biop sym (e1,m1) (e2,m2) =
+biop sym em1@(ExpMap e1 m1) em2@(ExpMap e2 m2) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
       e = Fun2 sym h1 h2
-      m = (HM.insert h1 e1 . HM.insert h2 e2) (m1 `HM.union` m2)
-  in (e,m)
+      m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
+  in ExpMap e m
 
 add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
 add = biop "+"
@@ -47,10 +47,10 @@ add = biop "+"
 mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
 mul = biop "*"
 
-square :: (?expHash :: Exp :->: Int) => ExpMap -> ExpMap
+square :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap
 square e = mul e e 
 
-power :: (?expHash :: Exp :->: Int) => Int -> ExpMap -> ExpMap
+power :: (?expHash :: Exp :->: Hash) => Int -> ExpMap -> ExpMap
 power n e
   | n < 0          = error "not supported"
   | n == 1         = e

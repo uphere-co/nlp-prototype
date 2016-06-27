@@ -25,10 +25,10 @@ prettyPrint (RVar s) = s
 prettyPrint (RFun1 s e1) = printf "( %s %s )" s (prettyPrint e1)
 prettyPrint (RFun2 s e1 e2) = printf "( %s %s %s )" s (prettyPrint e1) (prettyPrint e2)
 
-dotPrint :: HashMap Int Exp -> Hash -> State (HashSet Int) String
+dotPrint :: HashMap Hash ExpMap -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
   s <- get
-  let Just e = HM.lookup h m
+  let Just (ExpMap e _) = HM.lookup h m
   case h `HS.member` s of
     True -> return ""
     False -> do

@@ -25,14 +25,16 @@ type Symbol = String
 type Hash = Int
 
 data Exp = Zero
-          | One
-          | Val Int
-          | Var Symbol
-          | Fun1 Symbol Hash
-          | Fun2 Symbol Hash Hash
-          -- deriving (Show,Eq) -- Generic
+         | One
+         | Val Int
+         | Var Symbol
+         | Fun1 Symbol Hash
+         | Fun2 Symbol Hash Hash
+         deriving (Show,Eq) -- Generic
 
-type ExpMap = (Exp,HashMap Hash Exp)
+data ExpMap = ExpMap { expMapExp :: Exp
+                     , expMapMap :: HashMap Hash ExpMap
+                     }
 
 data RExp = RZero
           | ROne
@@ -92,7 +94,7 @@ as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
                   
 instance Hashable Exp where
-  hashWithSalt :: Int -> Exp -> Int
+  hashWithSalt :: Hash -> Exp -> Hash
   hashWithSalt s Zero            = s `hashWithSalt` (0 :: Int)
   hashWithSalt s One             = s `hashWithSalt` (1 :: Int)
   hashWithSalt s (Val n)         = s `hashWithSalt` (2 :: Int) `hashWithSalt` n
@@ -100,10 +102,11 @@ instance Hashable Exp where
   hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (4 :: Int) `hashWithSalt` s' `hashWithSalt` h1
   hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
 
-combine :: Int -> Int -> Int
-combine h1 h2 = (h1 * 16777619) `xor` h2
+-- combine :: Hash -> Hash -> Hash
+-- combine h1 h2 = (h1 * 16777619) `xor` h2
 
-exp2RExp :: HashMap Hash Exp -> Exp -> RExp
+{- 
+exp2RExp :: HashMap Hash ExpMap -> Exp -> RExp
 exp2RExp m Zero           = RZero
 exp2RExp m One            = ROne
 exp2RExp m (Val n)        = RVal n
@@ -119,3 +122,4 @@ exp2RExp m (Fun2 s h1 h2) = let e1 = case HM.lookup h1 m of
                                             Nothing -> error "fun2 2"
                                             Just e -> e
                             in RFun2 s (exp2RExp m e1) (exp2RExp m e2)
+-}
