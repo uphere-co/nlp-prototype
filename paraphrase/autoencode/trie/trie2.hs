@@ -21,9 +21,11 @@ data Exp' = Zero
           | Fun2 Symbol Exp Exp
           -- deriving (Show,Eq) -- Generic
 
-data Exp = Exp (Exp' :->: Int) Exp'
+data Exp = Exp { expHash :: Int
+               , expExp :: Exp' }
            -- deriving (Show)
 
+{-
 instance HasTrie Exp' where
   data (Exp' :->: b) = Exp'Trie (() :->: b)
                                (() :->: b)
@@ -78,6 +80,7 @@ weave :: [a] -> [a] -> [a]
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
                   
+-}
 
 instance Hashable Exp' where
   hashWithSalt :: Int -> Exp' -> Int
@@ -85,11 +88,11 @@ instance Hashable Exp' where
   hashWithSalt s One              = trace "hashing One" (s `combine` 1)
   hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
   hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `combine` 3 `hashWithSalt` s')
-  hashWithSalt s (Fun1 str e1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` e1)
-  hashWithSalt s (Fun2 str e1 e2) = trace ("hashing Fun2 " ++ str) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2)
+  hashWithSalt s (Fun1 str e1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` (expHash e1))
+  hashWithSalt s (Fun2 str e1 e2) = trace ("hashing Fun2 " ++ str ++ show (expHash e1) ++ show (expHash e2)) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` (expHash e1) `hashWithSalt` (expHash e2))
 
 instance Hashable Exp where
-  hashWithSalt s (Exp _ e) = hashWithSalt s e
+  hashWithSalt s (Exp h e) = hashWithSalt s h
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
@@ -104,7 +107,9 @@ prettyPrint' (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ prett
 prettyPrint (Exp _ e) = prettyPrint' e
 
 embed :: Exp' -> Exp
-embed = Exp (trie hash)
+embed e' = Exp (hash e') e'
+
+-- Exp (trie hash)
 
 add e1 e2 = embed (Fun2 "+" e1 e2)
 mul e1 e2 = embed (Fun2 "*" e1 e2)
@@ -164,9 +169,9 @@ main = do
     
     -- printf "%x\n" (untrie t y)
 
-    let x@(Exp t y) = exp1
+    let x@(Exp h y) = expfib 15
     
-    printf "%x\n" (untrie t y)
-    putStrLn . prettyPrint $ exp1
+    printf "%x\n" h -- (untrie t y)
+    -- putStrLn . prettyPrint $ exp1
 
     
