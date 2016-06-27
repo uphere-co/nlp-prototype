@@ -8,6 +8,8 @@ import Data.Function (fix)
 import Data.Hashable
 import Data.MemoTrie
 import Text.Printf
+--
+import Debug.Trace
 
 type Symbol = String
 
@@ -90,12 +92,12 @@ instance Hashable Exp where
     h'' = fix (h' . trie)
     h' t (s,e) = 
      case e of
-      Zero           -> s `combine` 0
-      One            -> s `combine` 1
-      Val n          -> s `combine` 2 `combine` n
-      Var str        -> s `combine` 3 `hashWithSalt` str
-      Fun1 str e1    -> untrie t (s `combine` 4 `hashWithSalt` str, e1)
-      Fun2 str e1 e2 -> untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e2)
+      Zero           -> trace "hashing Zero" (s `combine` 0)
+      One            -> trace "hashing One" (s `combine` 1)
+      Val n          -> trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
+      Var str        -> trace ("hashing Var " ++ str) (s `combine` 3 `hashWithSalt` str)
+      Fun1 str e1    -> trace ("hashing Fun1 " ++ str) (untrie t (s `combine` 4 `hashWithSalt` str, e1))
+      Fun2 str e1 e2 -> trace ("hashing Fun2 " ++ str) (untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e2))
 
 
 square :: Exp -> Exp
@@ -136,14 +138,15 @@ testfib = do
     print (fib 50)
 
 main = do
-    mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
+    printf  "%x\n" . hash $ exp1
+    -- mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
-    mapM_ (printf "%x\n" . hash) [exp1, exp2]
+    -- mapM_ (printf "%x\n" . hash) [exp1, exp2]
 
     -- expfib spits out very very large expression. cannot go over 40
     -- (putStrLn . prettyPrint) ( expfib 30 )
 
     -- also this hash calculation takes forever
-    printf "%x\n" . hash $ expfib 20 
+    -- printf "%x\n" . hash $ expfib 20 
 
     
