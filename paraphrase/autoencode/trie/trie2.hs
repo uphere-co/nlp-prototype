@@ -12,6 +12,9 @@ import Text.Printf
 --
 import Debug.Trace
 
+-- expHash :: Exp' :->: Int
+-- expHash = trie hash
+
 fib' :: (Int :->: Int) -> Int -> Int
 fib' t 0 = 0 
 fib' t 1 = 1
@@ -35,11 +38,6 @@ data Exp' = Zero
           | Fun1 Symbol Hash
           | Fun2 Symbol Hash Hash
           -- deriving (Show,Eq) -- Generic
-
--- data Exp = Exp { expHash :: Int
---                , expMap :: Int :->: Exp' }
-           -- deriving (Show)
-
 
 instance HasTrie Exp' where
   data (Exp' :->: b) = Exp'Trie (() :->: b)
@@ -80,15 +78,6 @@ instance HasTrie Exp' where
     `weave`
     enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
 
-{- 
-instance HasTrie Exp where
-  newtype (Exp :->: b) = ExpTrie (Exp' :->: b)
-  trie f = ExpTrie (trie (f . embed))
-  untrie (ExpTrie f) (Exp _ x) = untrie f x
-  enumerate :: (Exp :->: b) -> [(Exp,b)]
-  enumerate (ExpTrie f) = enum' embed f
--}
-
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
 
@@ -106,11 +95,6 @@ instance Hashable Exp' where
   hashWithSalt s (Fun1 str h1)    = trace (printf "hashing Fun1 %s" str) ( s `hashWithSalt` (4 :: Int) `hashWithSalt` str `hashWithSalt` h1)
   hashWithSalt s (Fun2 str h1 h2) = trace (printf "hashing Fun2 %s %x %x" str h1 h2) ( s `hashWithSalt` (5 :: Int) `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
 
-{-
-instance Hashable Exp where
-  hashWithSalt s (Exp h e) = hashWithSalt s h
--}
-
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
   
@@ -121,13 +105,6 @@ prettyPrint' (Var s) = s
 prettyPrint' (Fun1 s h1) = printf "( %s %x )" s h1
 prettyPrint' (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
 
--- prettyPrint (Exp _ e) = prettyPrint' e
-
-{- embed :: Exp' -> Exp
-embed e' = Exp (hash e') e'
--}
--- Exp (trie hash)
-
 add :: (?expHash :: Exp' :->: Int) => Exp' -> Exp' -> Exp'
 add e1 e2 = Fun2 "+" (untrie ?expHash e1) (untrie ?expHash e2)
 
@@ -136,9 +113,6 @@ mul e1 e2 = Fun2 "*" (untrie ?expHash e1) (untrie ?expHash e2)
 
 x = Var "x"
 y = Var "y"
-
--- square :: (Exp' :->: Int) -> Exp' -> Exp'
--- square h e = mul h e e
 
 square :: (?expHash :: Exp' :->: Int) => Exp' -> Exp'
 square e = mul e e 
@@ -159,10 +133,10 @@ exp1 :: (?expHash :: Exp' :->: Int) => Exp'
 exp1 = square (add x y)
 -- exp2 h = power h 10 (add h x y)
 
- 
-expfib 0 = Val 0
-expfib 1 = Val 1
-expfib n = add (expfib (n-1)) (expfib (n-2))
+expfib' :: (?expHash :: Exp' :->: Int) => (Int :->: Exp') -> Int -> Exp'
+expfib' t 0 = Val 0
+expfib' t 1 = Val 1
+expfib' t n = add (untrie t (n-1)) (untrie t (n-2))
 
 
 
@@ -185,9 +159,16 @@ main = do
     let ?expHash = trie hash
 
     putStrLn (prettyPrint' exp1)
+
+    putStrLn (prettyPrint' x)
+    printf "%x \n" (untrie ?expHash (Val 1))
+
+
+    let expfib = fix (expfib' . trie)
     printf "%x \n" (untrie ?expHash (expfib 35))
     
-  
+
+    
     -- putStrLn (prettyPrint' (exp1 (trie hash))) -- (untrie t y)
     -- putStrLn . prettyPrint $ exp1
 
