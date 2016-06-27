@@ -1,4 +1,3 @@
-#!/usr/bin/env runhaskell
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad (forM_)

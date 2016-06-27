@@ -1,5 +1,3 @@
-#!/usr/bin/env runhaskell
-
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans (lift)
 import           Control.Monad.Trans.Resource (ResourceT,runResourceT)
