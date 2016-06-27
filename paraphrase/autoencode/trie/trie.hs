@@ -25,19 +25,23 @@ import Debug.Trace
 
 suffix' = (<> "'")
 
-{- 
+suffix_1 = (<> "_1")
+
+suffix_2 = (<> "_2")
+ 
 diff :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap
-diff s (e,m) = case e of
-                 Zero -> (Zero,HM.empty)
-                 One ->  (Zero,HM.empty)
-                 Val n -> (Zero,HM.empty)
-                 Var s' -> (if s == s' then One else Zero,HM.empty)
-                 Fun1 f h1 -> let Just e1 = HM.lookup h1 m
-                              in mul (Fun1 (suffix' f) h1,m) one -- diff e1
-                 Fun2 f h1 h2 -> let Just e1 = HM.lookup h1 m
-                                     Just e2 = HM.lookup h2 m
-                                 in mul (Fun2 (suffix' f) h1 h2,m) one -- diff e1 (Zero,HM.empty)
--}
+diff s (ExpMap e m) =
+  case e of
+    Zero -> zero 
+    One ->  zero
+    Val n -> zero
+    Var s' -> if s == s' then one else zero
+    Fun1 f h1 -> let Just e1 = HM.lookup h1 m
+                 in ExpMap (Fun1 (suffix' f) h1) m `mul` diff s e1
+    Fun2 f h1 h2 -> let Just e1 = HM.lookup h1 m
+                        Just e2 = HM.lookup h2 m
+                    in (ExpMap (Fun2 (suffix_1 f) h1 h2) m `mul` diff s e1) `add`
+                       (ExpMap (Fun2 (suffix_2 f) h1 h2) m `mul` diff s e2) 
 
 
 
@@ -70,22 +74,24 @@ digraph v = do
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
 
-main = do
+main' = do
     let ?expHash = trie hash
 
     -- digraph exp1
     -- digraph (expfib 100)
     -- digraph exp1
     digraph exp2
-{- 
-main'' = do
+ 
+main = do
     let ?expHash = trie hash
-    let (e,m) = exp2
-        -- (e,m) = diff "x" exp2
-    putStrLn . prettyPrint . exp2RExp m $ e
+    let -- (e,m) = exp2
+        e = diff "x" exp2
+        e2 = diff "x" (expfib 100)
+    putStrLn . prettyPrint . exp2RExp $ e
+    printf "%x\n" . untrie ?expHash . expMapExp $ e2
 
     -- putStrLn (prettyPrint (fst exp1))
     -- putStrLn (prettyPrint (fst x))
     -- printf "%x \n" (untrie ?expHash (Val 1))
 
--}
+

@@ -105,21 +105,21 @@ instance Hashable Exp where
 -- combine :: Hash -> Hash -> Hash
 -- combine h1 h2 = (h1 * 16777619) `xor` h2
 
-{- 
-exp2RExp :: HashMap Hash ExpMap -> Exp -> RExp
-exp2RExp m Zero           = RZero
-exp2RExp m One            = ROne
-exp2RExp m (Val n)        = RVal n
-exp2RExp m (Var s)        = RVar s
-exp2RExp m (Fun1 s h1)    = let e1 = case HM.lookup h1 m of
-                                       Nothing -> error " fun1 "
-                                       Just e -> e
-                            in RFun1 s (exp2RExp m e1)
-exp2RExp m (Fun2 s h1 h2) = let e1 = case HM.lookup h1 m of
-                                            Nothing -> error " fun2 "
-                                            Just e -> e
-                                e2 = case HM.lookup h2 m of
-                                            Nothing -> error "fun2 2"
-                                            Just e -> e
-                            in RFun2 s (exp2RExp m e1) (exp2RExp m e2)
--}
+ 
+exp2RExp :: ExpMap -> RExp
+exp2RExp (ExpMap Zero _)    = RZero
+exp2RExp (ExpMap One _)     = ROne
+exp2RExp (ExpMap (Val n) _) = RVal n
+exp2RExp (ExpMap (Var s) _) = RVar s
+exp2RExp (ExpMap (Fun1 s h1) m)    = let e1 = case HM.lookup h1 m of
+                                                Nothing -> error " fun1 "
+                                                Just e' -> e'
+                                     in RFun1 s (exp2RExp e1)
+exp2RExp (ExpMap (Fun2 s h1 h2) m) = let e1 = case HM.lookup h1 m of
+                                                Nothing -> error " fun2 "
+                                                Just e' -> e'
+                                         e2 = case HM.lookup h2 m of
+                                                Nothing -> error "fun2 2"
+                                                Just e' -> e'
+                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
+
