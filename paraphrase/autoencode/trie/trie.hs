@@ -71,7 +71,9 @@ as `weave` [] = as
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
-  
+
+
+                
 add = Fun2 "+"
 mul = Fun2 "*"
 
@@ -87,6 +89,17 @@ prettyPrint (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ pretty
 
 instance Hashable Exp where
   hashWithSalt :: Int -> Exp -> Int
+  hashWithSalt s e =
+    case e of
+      Zero           -> trace "hashing Zero" (s `combine` 0)
+      One            -> trace "hashing One" (s `combine` 1)
+      Val n          -> trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
+      Var str        -> trace ("hashing Var " ++ str) (s `combine` 3 `hashWithSalt` str)
+      Fun1 str e1    -> trace ("hashing Fun1 " ++ str) (s `combine` 4 `hashWithSalt` str `hashWithSalt` e1)
+      Fun2 str e1 e2 -> trace ("hashing Fun2 " ++ str) (s `combine` 5 `hashWithSalt` str `hashWithSalt` e1 `hashWithSalt` e2)
+  
+{-
+  hashWithSalt :: Int -> Exp -> Int
   hashWithSalt = curry h''
    where
     h'' = fix (h' . trie)
@@ -98,7 +111,7 @@ instance Hashable Exp where
       Var str        -> trace ("hashing Var " ++ str) (s `combine` 3 `hashWithSalt` str)
       Fun1 str e1    -> trace ("hashing Fun1 " ++ str) (untrie t (s `combine` 4 `hashWithSalt` str, e1))
       Fun2 str e1 e2 -> trace ("hashing Fun2 " ++ str) (untrie t (untrie t (s `combine` 5 `hashWithSalt` str, e1), e2))
-
+-}
 
 square :: Exp -> Exp
 square e = e `mul` e
@@ -138,7 +151,9 @@ testfib = do
     print (fib 50)
 
 main = do
+    
     printf  "%x\n" . hash $ exp1
+    printf  "%x\n" . hash $ exp1 
     -- mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
     -- mapM_ (printf "%x\n" . hash) [exp1, exp2]
