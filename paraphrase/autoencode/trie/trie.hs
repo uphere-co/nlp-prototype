@@ -126,6 +126,9 @@ x = (Var "x", HM.empty)
 
 y = (Var "y", HM.empty)
 
+one = (One, HM.empty)
+zero = (Zero, HM.empty)
+
 val n = (Val n, HM.empty)
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
@@ -145,44 +148,21 @@ mul = biop "*"
 square :: (?expHash :: Exp :->: Int) => ExpMap -> ExpMap
 square e = mul e e 
 
-
-{- 
-add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-add (e1,m1) (e2,m2) =
-  let h1 = untrie ?expHash e1
-      h2 = untrie ?expHash e2
-      e = Fun2 "+" h1 h2
-      m = (HM.insert h1 e1 . HM.insert h2 e2) (m1 `HM.union` m2)
-  in (e,m)
-
--}
-
-
--- mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
--- mul (e1,m1) (e2,m2) = Fun2 "*" (untrie ?expHash e1) (untrie ?expHash e2)
-
-{- 
-
-
-power :: (?expHash :: Exp :->: Int) => Int -> Exp -> Exp
+power :: (?expHash :: Exp :->: Int) => Int -> ExpMap -> ExpMap
 power n e
   | n < 0          = error "not supported"
   | n == 1         = e
-  | n == 0         = One
+  | n == 0         = one
   | n `mod` 2 == 0 = square (power (n `div` 2) e)
   | otherwise      = square (power (n `div` 2) e) `mul` e
 
--}
 
 exp1 :: (?expHash :: Exp :->: Int) => ExpMap
 exp1 = square (x `add` y)
 
-
-{-
-exp2 :: (?expHash :: Exp :->: Int) => Exp
+exp2 :: (?expHash :: Exp :->: Int) => ExpMap
 exp2 = power 10 (x `add` y)
 
--}
 
 expfib' :: (?expHash :: Exp :->: Int) => (Int :->: ExpMap) -> Int -> ExpMap
 expfib' t 0 = val 0 -- let e = Val 0; h = hash e in (HM.singleton h e, Val 0)
@@ -190,13 +170,6 @@ expfib' t 1 = val 1 -- let e = Val 1; h = hash e in (HM.singleton h e, Val 1)
 expfib' t n = let e1 = untrie t (n-1)
                   e2 = untrie t (n-2)
               in add e1 e2
-{-                   h = hash e
-              in (HM.insert h e (HM.union s1 s2), e) -}
-
-
---  let e = add (untrie t (s,(n-1))) (untrie t (s,(n-2))); h = hash e in (HS.insert h s, e)
-
-
 
 expfib :: (?expHash :: Exp :->: Int) => Int -> ExpMap 
 expfib = 
@@ -208,13 +181,9 @@ expfib =
 
 main' = do
     let ?expHash = trie hash
-
     putStrLn (prettyPrint (fst exp1))
-
     putStrLn (prettyPrint (fst x))
     printf "%x \n" (untrie ?expHash (Val 1))
-
-    -- let expfib = fix (expfib' . trie)
 
 digraph v = do
     let -- v = expfib 10
@@ -228,4 +197,5 @@ main = do
     let ?expHash = trie hash
     
     -- digraph (expfib 10)
-    digraph exp1
+    -- digraph exp1
+    digraph exp2
