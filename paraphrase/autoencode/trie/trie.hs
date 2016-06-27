@@ -3,12 +3,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-import Control.Lens (over, _1)
-import Data.Bits (xor)
-import Data.Function (fix)
-import Data.Hashable
-import Data.MemoTrie
-import Text.Printf
+import           Control.Arrow
+import           Control.Lens              (over, _1)
+import           Data.Bits                 (xor)
+import           Data.Function             (fix)
+import           Data.Hashable
+import qualified Data.HashMap.Strict as HM
+import           Data.HashSet              (HashSet)
+import qualified Data.HashSet        as HS
+import           Data.MemoTrie
+import           Text.Printf
 --
 import Debug.Trace
 
@@ -83,12 +87,34 @@ instance Hashable Exp where
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
   
-prettyPrint' Zero = "0"
-prettyPrint' One  = "1"
-prettyPrint' (Val n) = show n 
-prettyPrint' (Var s) = s
-prettyPrint' (Fun1 s h1) = printf "( %s %x )" s h1
-prettyPrint' (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
+prettyPrint Zero = "0"
+prettyPrint One  = "1"
+prettyPrint (Val n) = show n 
+prettyPrint (Var s) = s
+prettyPrint (Fun1 s h1) = printf "( %s %x )" s h1
+prettyPrint (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
+
+{- 
+mkHashMap (?expHash :: Exp :->: Int) => Exp -> HM.Map Int Exp -> HM.Map Int Exp
+mkHashMap e m = let h = untrie expHash e
+                in case HM.lookup h m of
+                     Just _ -> m
+                     Nothing ->
+                       case e of
+                         Fun1 s h1 -> 
+                                  
+                       
+
+dotPrint m Zero = "0"
+dotPrint m One  = "1"
+dotPrint m (Val n) = show n 
+dotPrint m (Var s) = s
+dotPrint m (Fun1 s h1)    = let Just e1 = HM.lookup h1 m
+                            in printf "%s -> %x;\n" s h1 <> dotPrint m e1
+dotPrint m (Fun2 s h1 h2) = let Just e1 = HM.lookup h1 m
+                                Just e2 = HM.lookup h2 m
+                            in printf "%s -> %x;\n%s -> %x;" s h1 s h2
+-}
 
 add :: (?expHash :: Exp :->: Int) => Exp -> Exp -> Exp
 add e1 e2 = Fun2 "+" (untrie ?expHash e1) (untrie ?expHash e2)
@@ -118,22 +144,34 @@ exp1 = square (x `add` y)
 exp2 :: (?expHash :: Exp :->: Int) => Exp
 exp2 = power 10 (x `add` y)
 
-expfib' :: (?expHash :: Exp :->: Int) => (Int :->: Exp) -> Int -> Exp
-expfib' t 0 = Val 0
-expfib' t 1 = Val 1
-expfib' t n = add (untrie t (n-1)) (untrie t (n-2))
+expfib' :: (?expHash :: Exp :->: Int) => (Int :->: Exp) -> Int -> Int -> (Int,Exp)
+expfib' t i 0 = (i+1,Val 0)
+expfib' t i 1 = (i+1,Val 1)
+expfib' t i n = (i+1,add (untrie t (n-1)) (untrie t (n-2)))
+
+expfib :: (?expHash :: Exp :->: Int) => Int -> Int -> (Int, Exp)
+expfib = 
+    let t = trie (snd . expfib 0)
+        extfib = expfib' t
+    in extfib
 
 
 
 main = do
     let ?expHash = trie hash
 
-    putStrLn (prettyPrint' exp1)
+    putStrLn (prettyPrint exp1)
 
-    putStrLn (prettyPrint' x)
+    putStrLn (prettyPrint x)
     printf "%x \n" (untrie ?expHash (Val 1))
 
-    let expfib = fix (expfib' . trie)
-    printf "%x \n" (untrie ?expHash (expfib 35))
+    -- let expfib = fix (expfib' . trie)
+      
+    putStrLn " hash for expfib 35"
+    let v = expfib 35 0
+    printf "%x \n"  (untrie ?expHash (snd v))
+    printf "%d \n" (fst v)
 
+    -- putStrLn (dotPrint exp1)
     
+
