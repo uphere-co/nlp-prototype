@@ -13,6 +13,7 @@ stdenv.mkDerivation {
                   gdb
 		  pkgconfig
 		  gfortran #stdenv.cc.libc
+		  gnuplot
                 ];
   shellHook = ''
   '';

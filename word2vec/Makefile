@@ -1,7 +1,7 @@
 CXX = g++
 CFLAGS = -g -march=native -pthread -fopenmp -Wall -funroll-loops -Wno-unused-result --std=c++11 # -Ofast
 LDFLAGS = -pthread -lpca -larmadillo -lgfortran -lopenblas
-
+BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
 
 #/home/wavewave/repo/srcp/nlp-prototype/tmp/OpenBLAS-0.2.17/libopenblas.a
 
@@ -11,13 +11,13 @@ LDFLAGS = -pthread -lpca -larmadillo -lgfortran -lopenblas
 
 #libopenblas.a  #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
 
-all: pca # word2vec
+all: pca word2vec
 
 word2vec: word2vec.cpp
-	$(CXX) $(LDFLAGS) -o word2vec word2vec.cpp $(CFLAGS)
+	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp $(CFLAGS)
 
 pca: pca.o
-	$(CXX) -o pca pca.o $(LDFLAGS) 
+	$(CXX) -o pca pca.o $(LDFLAGS) $(BOOSTFLAGS) 
 
 pca.o: pca.cpp
 	$(CXX) -c $(CFLAGS) pca.cpp 
