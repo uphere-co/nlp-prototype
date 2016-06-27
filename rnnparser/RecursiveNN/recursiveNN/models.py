@@ -12,6 +12,8 @@ class Word(object):
         self.vec = Var(word, vec)#
     def __unicode__(self):
         return self.vec.name
+    def toBinaryTreeRep(self):
+        return self.vec.name
     def __repr__(self):
         return u"Word(%r)"%(self.vec.name)
     #def __eq__(self)
@@ -27,6 +29,8 @@ class Phrase(object):
         self.vec = vec 
     def __unicode__(self):
         return u'(%s,%s)'%(self.left,self.right)        
+    def toBinaryTreeRep(self):
+        return u'(%s %s)'%(self.left.toBinaryTreeRep(),self.right.toBinaryTreeRep())
     def __repr__(self):
         return "Phrase(%r,%r)"%(self.left,self.right)
     def expression(self):
