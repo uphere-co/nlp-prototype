@@ -12,6 +12,18 @@ import Text.Printf
 --
 import Debug.Trace
 
+fib' :: (Int :->: Int) -> Int -> Int
+fib' t 0 = 0 
+fib' t 1 = 1
+fib' t n = trace ("fib' n = " ++ show n) ( untrie t (n-1) + untrie t (n-2) )
+
+testfib = do
+    -- let t = trie fib
+    --    fib = fib' t 
+    -- let fib = fib' (trie fib)
+    let fib = fix (fib' . trie)
+    print (fib 50)
+
 type Symbol = String
 
 type Hash = Int
@@ -85,16 +97,14 @@ weave :: [a] -> [a] -> [a]
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
                   
-
-
 instance Hashable Exp' where
   hashWithSalt :: Int -> Exp' -> Int
-  hashWithSalt s Zero             = trace "hashing Zero" (s `combine` 0)
-  hashWithSalt s One              = trace "hashing One" (s `combine` 1)
-  hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
-  hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `combine` 3 `hashWithSalt` s')
-  hashWithSalt s (Fun1 str h1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` h1)
-  hashWithSalt s (Fun2 str h1 h2) = trace ("hashing Fun2 " ++ str ++ show h1 ++ show h2) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
+  hashWithSalt s Zero             = trace "hashing Zero" (s `hashWithSalt` (0 :: Int))
+  hashWithSalt s One              = trace "hashing One" (s `hashWithSalt` (1 :: Int))
+  hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `hashWithSalt` (2 :: Int) `hashWithSalt` n)
+  hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `hashWithSalt` (3 :: Int) `hashWithSalt` s')
+  hashWithSalt s (Fun1 str h1)    = trace ("hashing Fun1 " ++ str) ( s `hashWithSalt` (4 :: Int) `hashWithSalt` str `hashWithSalt` h1)
+  hashWithSalt s (Fun2 str h1 h2) = trace ("hashing Fun2 " ++ str ++ show h1 ++ show h2) ( s `hashWithSalt` (5 :: Int) `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
 
 {-
 instance Hashable Exp where
@@ -118,15 +128,22 @@ embed e' = Exp (hash e') e'
 -}
 -- Exp (trie hash)
 
-add h e1 e2 = Fun2 "+" (untrie h e1) (untrie h e2)
-mul h e1 e2 = Fun2 "*" (untrie h e1) (untrie h e2)
+add :: (?expHash :: Exp' :->: Int) => Exp' -> Exp' -> Exp'
+add e1 e2 = Fun2 "+" (untrie ?expHash e1) (untrie ?expHash e2)
+
+mul :: (?expHash :: Exp' :->: Int) => Exp' -> Exp' -> Exp'
+mul e1 e2 = Fun2 "*" (untrie ?expHash e1) (untrie ?expHash e2)
 
 x = Var "x"
 y = Var "y"
 
-square :: (Exp' :->: Int) -> Exp' -> Exp'
-square h e = mul h e e
+-- square :: (Exp' :->: Int) -> Exp' -> Exp'
+-- square h e = mul h e e
 
+square :: (?expHash :: Exp' :->: Int) => Exp' -> Exp'
+square e = mul e e 
+
+{-
 power :: (Exp' :->: Int) -> Int -> Exp' -> Exp'
 power h n e
   | n < 0          = error "not supported"
@@ -134,31 +151,19 @@ power h n e
   | n == 0         = One
   | n `mod` 2 == 0 = square h (power h (n `div` 2) e)
   | otherwise      = mul h (square h (power h (n `div` 2) e)) e
+-}
 
 -- cseDetector :: HashMap 
 
-exp1 h = square h (add h x y)
-exp2 h = power h 10 (add h x y)
+exp1 :: (?expHash :: Exp' :->: Int) => Exp'
+exp1 = square (add x y)
+-- exp2 h = power h 10 (add h x y)
 
 {- 
 expfib 0 = Val 0
 expfib 1 = Val 1
 expfib n = add (expfib (n-1)) (expfib (n-2))
 -}
-
-fib' :: (Int :->: Int) -> Int -> Int
-fib' t 0 = 0 
-fib' t 1 = 1
-fib' t n = trace ("fib' n = " ++ show n) ( untrie t (n-1) + untrie t (n-2) )
-
-
-
-testfib = do
-    -- let t = trie fib
-    --    fib = fib' t 
-    -- let fib = fib' (trie fib)
-    let fib = fix (fib' . trie)
-    print (fib 50)
 
 
 main = do
@@ -177,7 +182,12 @@ main = do
     
     -- printf "%x\n" (untrie t y)
 
-    putStrLn (prettyPrint' (exp1 (trie hash))) -- (untrie t y)
+    let ?expHash = trie hash
+
+    putStrLn (prettyPrint' exp1)
+    
+  
+    -- putStrLn (prettyPrint' (exp1 (trie hash))) -- (untrie t y)
     -- putStrLn . prettyPrint $ exp1
 
     
