@@ -1,8 +1,8 @@
 .DS_Store
 *.hi
 *.o
-exe/*.zip
-exe/*.xml
-exe/sentences*.txt
+haskell/exe/*.zip
+haskell/exe/*.xml
+haskell/exe/sentences*.txt
 misc/bllipparser-models
 misc/US_patent_examples

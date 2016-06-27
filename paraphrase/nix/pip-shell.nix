@@ -7,11 +7,11 @@ let
     then pythonPackages
     else getAttr pythonPackages pkgs;
 
-  myPythonPackages = basePythonPackages.override (a: {
-    self = myPythonPackages;
+  pythonPackagesWithLocals = basePythonPackages.override (a: {
+    self = pythonPackagesWithLocals;
   })
   // (scopedImport {
-    self = myPythonPackages;
+    self = pythonPackagesWithLocals;
     super = basePythonPackages;
     inherit pkgs;
     inherit (pkgs) fetchurl fetchgit;
