@@ -101,10 +101,10 @@ instance Hashable Exp' where
   hashWithSalt :: Int -> Exp' -> Int
   hashWithSalt s Zero             = trace "hashing Zero" (s `hashWithSalt` (0 :: Int))
   hashWithSalt s One              = trace "hashing One" (s `hashWithSalt` (1 :: Int))
-  hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `hashWithSalt` (2 :: Int) `hashWithSalt` n)
-  hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `hashWithSalt` (3 :: Int) `hashWithSalt` s')
-  hashWithSalt s (Fun1 str h1)    = trace ("hashing Fun1 " ++ str) ( s `hashWithSalt` (4 :: Int) `hashWithSalt` str `hashWithSalt` h1)
-  hashWithSalt s (Fun2 str h1 h2) = trace ("hashing Fun2 " ++ str ++ show h1 ++ show h2) ( s `hashWithSalt` (5 :: Int) `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
+  hashWithSalt s (Val n)          = trace (printf "hashing Val %d" n) (s `hashWithSalt` (2 :: Int) `hashWithSalt` n)
+  hashWithSalt s (Var s')         = trace (printf "hashing Var %s" s') (s `hashWithSalt` (3 :: Int) `hashWithSalt` s')
+  hashWithSalt s (Fun1 str h1)    = trace (printf "hashing Fun1 %s" str) ( s `hashWithSalt` (4 :: Int) `hashWithSalt` str `hashWithSalt` h1)
+  hashWithSalt s (Fun2 str h1 h2) = trace (printf "hashing Fun2 %s %x %x" str h1 h2) ( s `hashWithSalt` (5 :: Int) `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
 
 {-
 instance Hashable Exp where
@@ -159,11 +159,11 @@ exp1 :: (?expHash :: Exp' :->: Int) => Exp'
 exp1 = square (add x y)
 -- exp2 h = power h 10 (add h x y)
 
-{- 
+ 
 expfib 0 = Val 0
 expfib 1 = Val 1
 expfib n = add (expfib (n-1)) (expfib (n-2))
--}
+
 
 
 main = do
@@ -185,6 +185,7 @@ main = do
     let ?expHash = trie hash
 
     putStrLn (prettyPrint' exp1)
+    printf "%x \n" (untrie ?expHash (expfib 35))
     
   
     -- putStrLn (prettyPrint' (exp1 (trie hash))) -- (untrie t y)
