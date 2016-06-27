@@ -167,7 +167,7 @@ expfib =
 
 
 
-main = do
+main' = do
     let ?expHash = trie hash
 
     putStrLn (prettyPrint exp1)
@@ -176,15 +176,14 @@ main = do
     printf "%x \n" (untrie ?expHash (Val 1))
 
     -- let expfib = fix (expfib' . trie)
-      
-    putStrLn " hash for expfib 35"
-    let v = expfib 35
-        h = untrie ?expHash (snd v)
-    printf "%x \n" h
-    let m = fst v 
-    -- mapM_ (printf "%x ")  (HM.keys (fst v))
 
-    -- putStrLn (dotPrint exp1)
+
+main = do
+    let ?expHash = trie hash  
+    let v = expfib 10
+        h = untrie ?expHash (snd v)
+    let m = fst v 
+    putStrLn "digraph G {"
     putStrLn $ evalState (dotPrint m h) HS.empty
-    
+    putStrLn "}"
 
