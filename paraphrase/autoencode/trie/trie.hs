@@ -144,14 +144,23 @@ exp1 = square (x `add` y)
 exp2 :: (?expHash :: Exp :->: Int) => Exp
 exp2 = power 10 (x `add` y)
 
-expfib' :: (?expHash :: Exp :->: Int) => (Int :->: Exp) -> Int -> Int -> (Int,Exp)
-expfib' t i 0 = (i+1,Val 0)
-expfib' t i 1 = (i+1,Val 1)
-expfib' t i n = (i+1,add (untrie t (n-1)) (untrie t (n-2)))
+expfib' :: (?expHash :: Exp :->: Int) => (Int :->: (HashSet Int, Exp)) -> Int -> (HashSet Int,Exp)
+expfib' t 0 = let e = Val 0; h = hash e in (HS.singleton h, Val 0)
+expfib' t 1 = let e = Val 1; h = hash e in (HS.singleton h, Val 1)
+expfib' t n = let (s1,e1) = untrie t (n-1)
+                  (s2,e2) = untrie t (n-2)
+                  e = add e1 e2
+                  h = hash e
+              in (h `HS.insert` HS.union s1 s2, e)
 
-expfib :: (?expHash :: Exp :->: Int) => Int -> Int -> (Int, Exp)
+
+--  let e = add (untrie t (s,(n-1))) (untrie t (s,(n-2))); h = hash e in (HS.insert h s, e)
+
+
+
+expfib :: (?expHash :: Exp :->: Int) => Int -> (HashSet Int, Exp)
 expfib = 
-    let t = trie (snd . expfib 0)
+    let t = trie expfib
         extfib = expfib' t
     in extfib
 
@@ -168,9 +177,9 @@ main = do
     -- let expfib = fix (expfib' . trie)
       
     putStrLn " hash for expfib 35"
-    let v = expfib 35 0
+    let v = expfib 35
     printf "%x \n"  (untrie ?expHash (snd v))
-    printf "%d \n" (fst v)
+    print (fst v)
 
     -- putStrLn (dotPrint exp1)
     
