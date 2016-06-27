@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -13,26 +14,28 @@ import Debug.Trace
 
 type Symbol = String
 
+type Hash = Int
+
 data Exp' = Zero
           | One
           | Val Int
           | Var Symbol
-          | Fun1 Symbol Exp
-          | Fun2 Symbol Exp Exp
+          | Fun1 Symbol Hash
+          | Fun2 Symbol Hash Hash
           -- deriving (Show,Eq) -- Generic
 
-data Exp = Exp { expHash :: Int
-               , expExp :: Exp' }
+-- data Exp = Exp { expHash :: Int
+--                , expMap :: Int :->: Exp' }
            -- deriving (Show)
 
-{-
+
 instance HasTrie Exp' where
   data (Exp' :->: b) = Exp'Trie (() :->: b)
                                (() :->: b)
                                (Int :->: b)
                                (Symbol :->: b)
-                               ((Symbol,Exp) :->: b)
-                               ((Symbol,Exp,Exp) :->: b)
+                               ((Symbol,Hash) :->: b)
+                               ((Symbol,Hash,Hash) :->: b)
   trie :: (Exp' -> b) -> (Exp' :->: b)
   trie f = Exp'Trie (trie (\() -> f Zero))
                     (trie (\() -> f One))
@@ -65,12 +68,14 @@ instance HasTrie Exp' where
     `weave`
     enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
 
+{- 
 instance HasTrie Exp where
   newtype (Exp :->: b) = ExpTrie (Exp' :->: b)
   trie f = ExpTrie (trie (f . embed))
   untrie (ExpTrie f) (Exp _ x) = untrie f x
   enumerate :: (Exp :->: b) -> [(Exp,b)]
   enumerate (ExpTrie f) = enum' embed f
+-}
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
@@ -80,7 +85,7 @@ weave :: [a] -> [a] -> [a]
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
                   
--}
+
 
 instance Hashable Exp' where
   hashWithSalt :: Int -> Exp' -> Int
@@ -88,11 +93,13 @@ instance Hashable Exp' where
   hashWithSalt s One              = trace "hashing One" (s `combine` 1)
   hashWithSalt s (Val n)          = trace ("hashing Val " ++ show n) (s `combine` 2 `combine` n)
   hashWithSalt s (Var s')         = trace ("hashing Var " ++ s') (s `combine` 3 `hashWithSalt` s')
-  hashWithSalt s (Fun1 str e1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` (expHash e1))
-  hashWithSalt s (Fun2 str e1 e2) = trace ("hashing Fun2 " ++ str ++ show (expHash e1) ++ show (expHash e2)) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` (expHash e1) `hashWithSalt` (expHash e2))
+  hashWithSalt s (Fun1 str h1)    = trace ("hashing Fun1 " ++ str) ( s `combine` 4 `hashWithSalt` str `hashWithSalt` h1)
+  hashWithSalt s (Fun2 str h1 h2) = trace ("hashing Fun2 " ++ str ++ show h1 ++ show h2) ( s `combine` 5 `hashWithSalt` str `hashWithSalt` h1 `hashWithSalt` h2)
 
+{-
 instance Hashable Exp where
   hashWithSalt s (Exp h e) = hashWithSalt s h
+-}
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
@@ -101,42 +108,43 @@ prettyPrint' Zero = "0"
 prettyPrint' One  = "1"
 prettyPrint' (Val n) = show n 
 prettyPrint' (Var s) = s
-prettyPrint' (Fun1 s e) = "( " ++ s ++ " " ++ prettyPrint e ++ " )"
-prettyPrint' (Fun2 s e1 e2) = "( " ++ s ++ " " ++ prettyPrint e1 ++ " " ++ prettyPrint e2 ++ " )"
+prettyPrint' (Fun1 s h1) = printf "( %s %x )" s h1
+prettyPrint' (Fun2 s h1 h2) = printf "( %s %x %x )" s h1 h2
 
-prettyPrint (Exp _ e) = prettyPrint' e
+-- prettyPrint (Exp _ e) = prettyPrint' e
 
-embed :: Exp' -> Exp
+{- embed :: Exp' -> Exp
 embed e' = Exp (hash e') e'
-
+-}
 -- Exp (trie hash)
 
-add e1 e2 = embed (Fun2 "+" e1 e2)
-mul e1 e2 = embed (Fun2 "*" e1 e2)
+add h e1 e2 = Fun2 "+" (untrie h e1) (untrie h e2)
+mul h e1 e2 = Fun2 "*" (untrie h e1) (untrie h e2)
 
-x = embed (Var "x")
-y = embed (Var "y")
+x = Var "x"
+y = Var "y"
 
-square :: Exp -> Exp
-square e = e `mul` e
+square :: (Exp' :->: Int) -> Exp' -> Exp'
+square h e = mul h e e
 
-power :: Int -> Exp -> Exp
-power n e
+power :: (Exp' :->: Int) -> Int -> Exp' -> Exp'
+power h n e
   | n < 0          = error "not supported"
   | n == 1         = e
-  | n == 0         = embed One
-  | n `mod` 2 == 0 = square (power (n `div` 2) e)
-  | otherwise      = square (power (n `div` 2) e) `mul` e
+  | n == 0         = One
+  | n `mod` 2 == 0 = square h (power h (n `div` 2) e)
+  | otherwise      = mul h (square h (power h (n `div` 2) e)) e
 
 -- cseDetector :: HashMap 
 
-exp1 = square (x `add` y)
-exp2 = power 10 (x `add` y)
+exp1 h = square h (add h x y)
+exp2 h = power h 10 (add h x y)
 
-expfib 0 = embed (Val 0)
-expfib 1 = embed (Val 1)
+{- 
+expfib 0 = Val 0
+expfib 1 = Val 1
 expfib n = add (expfib (n-1)) (expfib (n-2))
-
+-}
 
 fib' :: (Int :->: Int) -> Int -> Int
 fib' t 0 = 0 
@@ -154,7 +162,7 @@ testfib = do
 
 
 main = do
-    testfib
+    -- testfib
     -- mapM_ (putStrLn . prettyPrint) [ exp1, exp2 ]
 
     -- mapM_ (printf "%x\n" . hash) [exp1, exp2]
@@ -169,9 +177,7 @@ main = do
     
     -- printf "%x\n" (untrie t y)
 
-    let x@(Exp h y) = expfib 15
-    
-    printf "%x\n" h -- (untrie t y)
+    putStrLn (prettyPrint' (exp1 (trie hash))) -- (untrie t y)
     -- putStrLn . prettyPrint $ exp1
 
     

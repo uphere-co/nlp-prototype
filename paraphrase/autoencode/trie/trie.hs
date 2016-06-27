@@ -19,9 +19,9 @@ data Exp = Zero
          | Var Symbol
          | Fun1 Symbol Exp
          | Fun2 Symbol Exp Exp
-         -- | Fun3 Symbol Exp Exp Exp
-         deriving (Show,Eq) -- Generic
+         deriving (Show,Eq)
 
+{-
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
@@ -67,7 +67,7 @@ weave :: [a] -> [a] -> [a]
 [] `weave` as = as
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
-                  
+-}                  
 
 combine :: Int -> Int -> Int
 combine h1 h2 = (h1 * 16777619) `xor` h2
