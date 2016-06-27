@@ -193,6 +193,7 @@ let
               #cublas
               hblas
               lbfgs
+              MemoTrie lens
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
