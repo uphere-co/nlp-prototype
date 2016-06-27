@@ -8,9 +8,10 @@ import           Control.Lens              (over, _1)
 import           Data.Bits                 (xor)
 import           Data.Function             (fix)
 import           Data.Hashable
+import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
-import           Data.HashSet              (HashSet)
-import qualified Data.HashSet        as HS
+-- import           Data.HashSet              (HashSet)
+-- import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 import           Text.Printf
 --
@@ -144,21 +145,21 @@ exp1 = square (x `add` y)
 exp2 :: (?expHash :: Exp :->: Int) => Exp
 exp2 = power 10 (x `add` y)
 
-expfib' :: (?expHash :: Exp :->: Int) => (Int :->: (HashSet Int, Exp)) -> Int -> (HashSet Int,Exp)
-expfib' t 0 = let e = Val 0; h = hash e in (HS.singleton h, Val 0)
-expfib' t 1 = let e = Val 1; h = hash e in (HS.singleton h, Val 1)
+expfib' :: (?expHash :: Exp :->: Int) => (Int :->: (HashMap Int Exp, Exp)) -> Int -> (HashMap Int Exp,Exp)
+expfib' t 0 = let e = Val 0; h = hash e in (HM.singleton h e, Val 0)
+expfib' t 1 = let e = Val 1; h = hash e in (HM.singleton h e, Val 1)
 expfib' t n = let (s1,e1) = untrie t (n-1)
                   (s2,e2) = untrie t (n-2)
                   e = add e1 e2
                   h = hash e
-              in (h `HS.insert` HS.union s1 s2, e)
+              in (HM.insert h e (HM.union s1 s2), e)
 
 
 --  let e = add (untrie t (s,(n-1))) (untrie t (s,(n-2))); h = hash e in (HS.insert h s, e)
 
 
 
-expfib :: (?expHash :: Exp :->: Int) => Int -> (HashSet Int, Exp)
+expfib :: (?expHash :: Exp :->: Int) => Int -> (HashMap Int Exp, Exp)
 expfib = 
     let t = trie expfib
         extfib = expfib' t
@@ -179,7 +180,7 @@ main = do
     putStrLn " hash for expfib 35"
     let v = expfib 35
     printf "%x \n"  (untrie ?expHash (snd v))
-    print (fst v)
+    mapM_ (printf "%x ")  (HM.keys (fst v))
 
     -- putStrLn (dotPrint exp1)
     
