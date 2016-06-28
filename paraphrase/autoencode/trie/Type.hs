@@ -5,20 +5,12 @@
 
 module Type where
 
-import           Control.Arrow
 import           Control.Lens              (over, _1)
-import           Control.Monad.Trans.State
-import           Data.Bits                 (xor)
-import           Data.Function             (fix)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
-import           Data.HashSet              (HashSet)
-import qualified Data.HashSet        as HS
 import           Data.MemoTrie
-import           Text.Printf
 --
-import Debug.Trace
 
 type Symbol = String
 
@@ -30,7 +22,7 @@ data Exp = Zero
          | Var Symbol
          | Fun1 Symbol Hash
          | Fun2 Symbol Hash Hash
-         deriving (Show,Eq) -- Generic
+         deriving (Show,Eq)
 
 data ExpMap = ExpMap { expMapExp :: Exp
                      , expMapMap :: HashMap Hash ExpMap
@@ -65,7 +57,7 @@ instance HasTrie Exp where
       One          -> untrie o ()
       Val n        -> untrie l n
       Var s        -> untrie v s
-      Fun1 s e     -> untrie f1 (s,e)
+      Fun1 s e1    -> untrie f1 (s,e1)
       Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
                                      
   enumerate :: (Exp :->: b) -> [(Exp,b)]

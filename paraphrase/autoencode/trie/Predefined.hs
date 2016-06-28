@@ -5,32 +5,25 @@
 
 module Predefined where
 
-import           Control.Arrow
-import           Control.Lens              (over, _1)
-import           Control.Monad.Trans.State
-import           Data.Bits                 (xor)
-import           Data.Function             (fix)
-import           Data.Hashable
-import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
-import           Data.HashSet              (HashSet)
-import qualified Data.HashSet        as HS
 import           Data.MemoTrie
-import           Text.Printf
 --
 import           Type
 --
-import Debug.Trace
 
-
-
+x :: ExpMap
 x = ExpMap (Var "x") HM.empty
 
+y :: ExpMap
 y = ExpMap (Var "y") HM.empty
 
+one :: ExpMap 
 one = ExpMap One HM.empty
+
+zero :: ExpMap
 zero = ExpMap Zero HM.empty
 
+val :: Int -> ExpMap
 val n = ExpMap (Val n) HM.empty
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
