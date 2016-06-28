@@ -66,6 +66,7 @@ std::vector<vocab_word> vocab;
 std::array<unsigned long long, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
 std::array<int, table_size> table;
 
+std::vector<double> mine;
 
 // Begin of Tokenizer
 
@@ -630,6 +631,28 @@ void TrainModel() {
 
 // Begin of Distance Measurement
 
+double cosDistBetweenWords(std::string& str1, std::string& str2)
+{
+  double str1mag = 0, str2mag = 0;
+  double dist = 0;
+
+  long long str1pos, str2pos;
+
+  str1pos = vocab_hash[GetWordHash(str1)];
+  str2pos = vocab_hash[GetWordHash(str2)];
+  
+  for(int a = 0; a < layer1_size; a++) {
+    str1mag += mine[layer1_size*str1pos + a]*mine[layer1_size*str1pos + a];
+    str2mag += mine[layer1_size*str2pos + a]*mine[layer1_size*str2pos + a];
+  }
+
+  str1mag = sqrt(str1mag);
+  str2mag = sqrt(str2mag);
+  
+  for(int a = 0; a < layer1_size; a++) {
+    dist += (mine[layer1_size*str1pos + a]/str1mag) * (mine[layer1_size*str2pos + a]/str2mag);
+  }
+}
 
 // End of Distance Measurement
 
@@ -778,7 +801,7 @@ int main(int argc, char **argv) {
   fin.open("vectors.bin", std::ifstream::in);
   std::vector<std::string> my;
   std::vector<std::string> smine;
-  std::vector<double> mine;
+
   my.reserve(vocab_size);
   mine.reserve(vocab_size*layer1_size);
   smine.reserve(vocab_size*layer1_size);
@@ -810,44 +833,24 @@ int main(int argc, char **argv) {
   std::vector< std::pair<std::string, double> > distM;
   int p = 0;
   double dist;
-  long long qword_position=0;
-  double aaa, bbb;
 
   fin.close();
-
-
   
   while(1) {
     std::cout << "Enter word (EXIT to break): ";
     std::cin >> qword;
 
-    for(a = 0; a < vocab_size; a++) if(qword == my[a]) qword_position = a;
-    
     if(qword == "EXIT") {
       std::cout << "Finishing the program!\n";
       break;
     }
     
-    dist = 0;
-    aaa = 0;
-    bbb = 0;
     p = 0;
     distM.clear();
     
     for(a = 0; a < vocab_size; a++) {
       if(qword != my[a]) {
-	dist = 0;
-	aaa = 0;
-	bbb = 0;
-	for(b = 0; b < layer1_size; b++) {
-	  aaa += mine[layer1_size*qword_position+b]*mine[layer1_size*qword_position+b];
-	  bbb += mine[layer1_size*a+b]*mine[layer1_size*a+b];
-	}
-	aaa = sqrt(aaa);
-	bbb = sqrt(bbb);
-	for(b = 0; b < layer1_size; b++) {
-	  dist += (mine[qword_position * layer1_size + b]/aaa) * (mine[a * layer1_size + b]/bbb);
-	}
+	dist = cosDistBetweenWords(qword, my[a]);
 	//dist = sqrt(dist);
 	if(p<50) {
 	  distM.push_back(make_pair(my[a], dist));
