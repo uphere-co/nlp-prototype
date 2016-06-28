@@ -42,15 +42,15 @@ diff' m t (s,e) =
     Val n -> zero
     Var s' -> if s == s' then one else zero
     Fun1 f h1 -> let Just (ExpMap e1 _) = HM.lookup h1 m
-                 in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1) -- diff s e1
+                 in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
     Fun2 f h1 h2 -> let Just (ExpMap e1 _) = HM.lookup h1 m
                         Just (ExpMap e2 _) = HM.lookup h2 m
-                    in (simplify2 m f Pos1 h1 h2 `mul'` {- diff s e1 -} untrie t (s,e1)) `add'`
-                       (simplify2 m f Pos2 h1 h2 `mul'` {- diff s e2 -} untrie t (s,e2)) 
+                    in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
+                         (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
 
 data Pos = Pos1 | Pos2 
 
-justLookup h m = fromJust (HM.lookup h m)
+justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
 
 simplify2 m f pos h1 h2
   | f == "+" = one
@@ -61,9 +61,13 @@ simplify2 m f pos h1 h2
                   Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
                   Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
 
-add' e1              (ExpMap Zero _) = e1
-add' (ExpMap Zero _) e2              = e2
-add' e1              e2              = e1 `add` e2
+add' e1                 (ExpMap Zero _)    = e1
+add' (ExpMap Zero _)    e2                 = e2
+add' (ExpMap One _)     (ExpMap One _)     = val 2
+add' (ExpMap (Val m) _) (ExpMap One _)     = val (m+1)
+add' (ExpMap One _)     (ExpMap (Val m) _) = val (m+1)
+add' (ExpMap (Val m) _) (ExpMap (Val n) _) = val (m+n)
+add' e1               e2               = e1 `add` e2
 
 mul' e1              (ExpMap Zero _) = zero
 mul' (ExpMap Zero _) e2              = zero
@@ -104,9 +108,6 @@ dexpfib (s,n) = let tfib = trie expfib
                     tdiff = trie (diff' m tdiff)
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
-  -- fix (dexpfib' . trie)
-
-
 
 digraph v = do
     let h = untrie ?expHash (expMapExp v)
@@ -117,7 +118,6 @@ digraph v = do
 
 main' = do
     let ?expHash = trie hash
-
     -- digraph exp1
     -- digraph (expfib 100)
     -- digraph exp1
@@ -125,15 +125,16 @@ main' = do
 
 main = do
     let ?expHash = trie hash
-  
-    putStrLn "hello"
     let ExpMap e m = exp1
         diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ diff ("x",e)
-    let lexp = dexpfib ("x",500)    
-    -- putStrLn . prettyPrint . exp2RExp $ lexp
+    let lexp1 = expfib 6
+        lexp2 = dexpfib ("y",6)    
+    putStrLn . prettyPrint . exp2RExp $ lexp1
+    putStrLn . prettyPrint . exp2RExp $ lexp2    
+    (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp2
 
-    (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp
+
 {-
 main = do
     let ?expHash = trie hash
