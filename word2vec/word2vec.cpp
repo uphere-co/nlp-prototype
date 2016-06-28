@@ -9,8 +9,12 @@
 #include <string>
 #include <vector>
 
+#include <boost/tuple/tuple.hpp>
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "gnuplot-iostream.h"
 
 #define EXP_TABLE_SIZE 1000
 #define MAX_EXP 6
@@ -62,6 +66,7 @@ std::vector<vocab_word> vocab;
 std::array<unsigned long long, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
 std::array<int, table_size> table;
 
+
 // Begin of Tokenizer
 
 void makeLower(std::string& str) {
@@ -93,8 +98,8 @@ void Tokenize(const std::string& str, std::vector<std::string>& tokens, const st
 
   while (std::string::npos != pos || std::string::npos != lastPos) {
     std::string a = str.substr(lastPos, pos-lastPos);
-    makeLower(a); // Converting into lowercase characters.
-    remove_punctuations(a);
+    //makeLower(a); // Converting into lowercase characters.
+    //remove_punctuations(a);
     if(std::find(tokens.begin(), tokens.end(), a) == tokens.end()) // find() returns tokens.end if tarket is not found. 
       tokens.push_back(a);
     lastPos = str.find_first_not_of(delimiters, pos);
@@ -264,7 +269,7 @@ void CreateBinaryTree() {
   pos2 = vocab_size; //
 
   // following algorithm constructs the Huffman tree by adding one node at a time
-  for( a = 0; a < vocab_size - 1; a++) {
+  for(a = 0; a < vocab_size - 1; a++) {
     // First, find two smallest nodes 'min1, min2'
     if(pos1 >= 0) {
       if(count[pos1] < count[pos2]) {
@@ -483,68 +488,67 @@ void TrainModelThread(){
     continue;
     }
     word = sen[sentence_position];
-  if(word == -1) continue;
-  // Network Initialization
-  for(c = 0; c < layer1_size; c++) neu1[c] = 0;
-  for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
-  next_random = rand();
-  b = next_random % window;
-  // Skip-gram
-  {
-    for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
-	c = sentence_position - window + a;
-	if(c < 0) continue;
-	if(c >= sentence_length) continue;
-	last_word = sen[c];
-	if(last_word == -1) continue;
-	l1 = last_word * layer1_size;
-	for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
-	// Hierarchical Softmax
-	if(hs) for(d = 0; d < vocab[word].codelen; d++) {
-	    f = 0;
-	    l2 = vocab[word].point[d] * layer1_size;
-	    // Propagate hidden -> output
-	    for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1[c + l2];
-	    if(f <= -MAX_EXP) continue;
-	    else if(f >= MAX_EXP) continue;
-	    else f = expTable[(int)((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))];
-	    // g is the gradient multiplied by the learning rate
-	    g = (1 - vocab[word].code[d] - f) * alpha;
-	    // Backpropagate errors output -> hidden
-	    for(c = 0; c < layer1_size; c++) neu1e[c] += g * syn1[c + l2];
-	    // Learn weights hidden -> output
-	    for(c = 0; c < layer1_size; c++) syn1[c + l2] += g * syn0[c +l1];
-	  }
-	// Negative Sampling
-	if(negative > 0) for (d = 0; d < negative + 1 ; d++) {
-	    if(d == 0) {
-	      target = word;
-	      label = 1;
-	    } else {
-	      next_random = rand();
-	      target = table[next_random % table_size];
-	      if(target == 0) target = next_random % (vocab_size - 1) + 1;
-	      if(target == word) continue;
-	      label = 0;
+    if(word == -1) continue;
+    // Network Initialization
+    for(c = 0; c < layer1_size; c++) neu1[c] = 0;
+    for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
+    next_random = rand();
+    b = next_random % window;
+    // Skip-gram
+    {
+      for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
+	  c = sentence_position - window + a;
+	  if(c < 0) continue;
+	  if(c >= sentence_length) continue;
+	  last_word = sen[c];
+	  if(last_word == -1) continue;
+	  l1 = last_word * layer1_size;
+	  // Hierarchical Softmax
+	  if(hs) for(d = 0; d < vocab[word].codelen; d++) {
+	      f = 0;
+	      l2 = vocab[word].point[d] * layer1_size;
+	      // Propagate hidden -> output
+	      for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1[c + l2];
+	      if(f <= -MAX_EXP) continue;
+	      else if(f >= MAX_EXP) continue;
+	      else f = expTable[(int)((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))];
+	      // g is the gradient multiplied by the learning rate
+	      g = (1 - vocab[word].code[d] - f) * alpha;
+	      // Backpropagate errors output -> hidden
+	      for(c = 0; c < layer1_size; c++) neu1e[c] += g * syn1[c + l2];
+	      // Learn weights hidden -> output
+	      for(c = 0; c < layer1_size; c++) syn1[c + l2] += g * syn0[c +l1];
 	    }
-	    l2 = target * layer1_size;
-	    f = 0;
-	    for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1neg[c + l2];
-	    if(f > MAX_EXP) g = (label - 1) * alpha;
-	    else if(f < -MAX_EXP) g = (label - 0) * alpha;
-	    else g = (label - expTable[(int)((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]) * alpha;
-	    for (c = 0; c < layer1_size; c++) neu1e[c] += g * syn1neg[c + l2];
-	    for (c = 0; c < layer1_size; c++) syn1neg[c + l2] += g * syn0[c + l1];
-	  }
-	// Learn weights input -> hidden
-	for(c = 0; c < layer1_size; c++) syn0[c + l1] += neu1e[c];
-      }
-  }
-  sentence_position++;
-  if(sentence_position >= sentence_length) {
-    sentence_length = 0;
-    continue;
-  }
+	  // Negative Sampling
+	  if(negative > 0) for (d = 0; d < negative + 1 ; d++) {
+	      if(d == 0) {
+		target = word;
+		label = 1;
+	      } else {
+		next_random = rand();
+		target = table[next_random % table_size];
+		if(target == 0) target = next_random % (vocab_size - 1) + 1;
+		if(target == word) continue;
+		label = 0;
+	      }
+	      l2 = target * layer1_size;
+	      f = 0;
+	      for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1neg[c + l2];
+	      if(f > MAX_EXP) g = (label - 1) * alpha;
+	      else if(f < -MAX_EXP) g = (label - 0) * alpha;
+	      else g = (label - expTable[(int)((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))]) * alpha;
+	      for (c = 0; c < layer1_size; c++) neu1e[c] += g * syn1neg[c + l2];
+	      for (c = 0; c < layer1_size; c++) syn1neg[c + l2] += g * syn0[c + l1];
+	    }
+	  // Learn weights input -> hidden
+	  for(c = 0; c < layer1_size; c++) syn0[c + l1] += neu1e[c];
+	}
+    }
+    sentence_position++;
+    if(sentence_position >= sentence_length) {
+      sentence_length = 0;
+      continue;
+    }
   }
   inFile.close();
 }
@@ -622,6 +626,12 @@ void TrainModel() {
 }
 
 // End of Learning Net
+
+
+// Begin of Distance Measurement
+
+
+// End of Distance Measurement
 
 
 
@@ -715,6 +725,22 @@ void ArgPass(int argc, char **argv) {
 
 // main function arguments
 
+void ReadValue(std::string& word, std::ifstream& fin) {
+  int a = 0, ch;
+  word.clear();
+  while(!fin.eof()) {
+    ch = fin.get();
+    if( ch == ' ' || ch == '\n') {
+      if(a > 0) {
+	if(ch == '\n') fin.unget();
+	break;
+      } else continue;
+    }
+    word += ch;
+    a++;
+  }
+}
+
 int main(int argc, char **argv) {
 
   // Seeding random function
@@ -728,7 +754,137 @@ int main(int argc, char **argv) {
   ArgPass(argc, argv);
 
   
-  TrainModel();
+  //TrainModel();
 
+  long long a, b, c;
+
+  /*
+  // Too many memory consumption
+  distM.resize(vocab_size, std::vector<real>(vocab_size, 0));
+  
+  for(a = 0; a < vocab_size; a++) {
+    for(b = 0; b < vocab_size; b++) {
+      for(c = 0; c < layer1_size; c++) {
+	distM[a][b] += pow(syn0[a * layer1_size + c] - syn0[b * layer1_size + c],2);
+      }
+    }
+  }
+  
+  */
+
+  vocab_size = 71291;
+  std::ifstream fin;
+  std::string value;
+  fin.open("vectors.bin", std::ifstream::in);
+  std::vector<std::string> my;
+  std::vector<std::string> smine;
+  std::vector<double> mine;
+  my.reserve(vocab_size);
+  mine.reserve(vocab_size*layer1_size);
+  smine.reserve(vocab_size*layer1_size);
+  int number = 0;
+  while(!fin.eof()) {
+      ReadValue(value, fin);
+      my.push_back(value);
+
+      for(number = 0; number < 100; number++) {
+	ReadValue(value, fin);
+	smine.push_back(value);
+      }
+  }
+
+  /*
+  for(a=0;a<vocab_size;a++) {
+    std::cout << my[a] << "  ";
+    for(b=0;b<layer1_size;b++) {
+      std::cout << smine[a*layer1_size + b] << "  ";
+    }
+    std::cout << std::endl;
+  }*/
+
+
+  for(a = 0; a < vocab_size*layer1_size; a++) {
+    mine[a] = std::atof(smine[a].c_str());
+  }
+  std::string qword;
+  std::vector< std::pair<std::string, double> > distM;
+  int p = 0;
+  double dist;
+  long long qword_position=0;
+  double aaa, bbb;
+
+  fin.close();
+
+
+  
+  while(1) {
+    std::cout << "Enter word (EXIT to break): ";
+    std::cin >> qword;
+
+    for(a = 0; a < vocab_size; a++) if(qword == my[a]) qword_position = a;
+    
+    if(qword == "EXIT") {
+      std::cout << "Finishing the program!\n";
+      break;
+    }
+    
+    dist = 0;
+    aaa = 0;
+    bbb = 0;
+    p = 0;
+    distM.clear();
+    
+    for(a = 0; a < vocab_size; a++) {
+      if(qword != my[a]) {
+	dist = 0;
+	aaa = 0;
+	bbb = 0;
+	for(b = 0; b < layer1_size; b++) {
+	  aaa += mine[layer1_size*qword_position+b]*mine[layer1_size*qword_position+b];
+	  bbb += mine[layer1_size*a+b]*mine[layer1_size*a+b];
+	}
+	aaa = sqrt(aaa);
+	bbb = sqrt(bbb);
+	for(b = 0; b < layer1_size; b++) {
+	  dist += (mine[qword_position * layer1_size + b]/aaa) * (mine[a * layer1_size + b]/bbb);
+	}
+	//dist = sqrt(dist);
+	if(p<50) {
+	  distM.push_back(make_pair(my[a], dist));
+	  p++;
+	  continue;
+	}
+	if(p>=50) {
+	  double smallest = 0;
+	  int smallposition = 0;
+	  for(int w = 0; w < p; w++) {
+	    if(w == 0) {
+	      smallest = distM[w].second;
+	      smallposition = 0;
+	    }
+	    if(w != 0) {
+	      if(distM[w].second < smallest) {
+		smallest = distM[w].second;
+		smallposition = w;
+	      }
+	    }
+	  }
+	  
+	  if(smallest < dist) {
+	    distM.erase(distM.begin() + smallposition);
+	    distM.push_back(make_pair(my[a], dist));  
+	  }
+	}
+      }
+    }
+
+    // Print
+    for(int w = 0; w < 50; w++) {
+      std::cout << distM[w].first << "    " << distM[w].second << std::endl;
+    }
+    std::cout << std::endl;
+  }
+
+  
   return 0;
 }
