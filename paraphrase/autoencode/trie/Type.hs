@@ -82,9 +82,6 @@ instance HasTrie Exp where
     `weave`
     enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
 
-
-
-
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
 
@@ -101,9 +98,6 @@ instance Hashable Exp where
   hashWithSalt s (Var s')        = s `hashWithSalt` (3 :: Int) `hashWithSalt` s'
   hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (4 :: Int) `hashWithSalt` s' `hashWithSalt` h1
   hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
-
--- combine :: Hash -> Hash -> Hash
--- combine h1 h2 = (h1 * 16777619) `xor` h2
 
  
 exp2RExp :: ExpMap -> RExp
