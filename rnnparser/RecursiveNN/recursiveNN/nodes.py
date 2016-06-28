@@ -1,46 +1,47 @@
-
 # -*- coding: utf-8 -*-
 import os
 import sys
-myPath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, myPath + '/../')
-
+import pytest
 import numpy as np
 
+myPath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, myPath + '/../')
 from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
-#`self._val is None` indicates that there are no cache.
-#'np.isnan(self._val)' indicates that some of its variables are set to NaN.
-# It is parent's responsibility to set children's parents.
 
-#__str__() : for pretty prints
-#expression() : Math formula. If differs from __str__ for Word and Phrase.
+'''
+`self._val is None` of Node object indicates that there are no cache.
+`np.isnan(self._val)` indicates that some of its variables are set to NaN.
+It is parent's responsibility to set children's parents.
 
-import pytest
+Node.__str__() : for pretty prints
+Node.expression() : Math formula. If differs from __str__ for Word and Phrase.
+'''
+
 @pytest.fixture(scope="function")
 def reset_NodeDict():
     NodeDict.reset()
     pass
-    
+
 @pytest.fixture(scope="function")
 def deregister(instance):
     print 'Delete an instance :', NodeDict.getKey(instance)
     NodeDict.deregister(instance)
-    
 class NodeDict(type):
     _dict = {}
     _dict_instance = {}
     def __call__(cls, *args):
         #TODO: change this to 128-bit hash
+        #print cls, args
         name = hash(str(cls)+str(args))
-        if name in NodeDict._dict:
+        if name in cls._dict:
             #print '%s EXISTS'%(str(cls)+str(args))
-            return NodeDict._dict[name]
+            return cls._dict[name]
         else:
             #print 'NEW: %s'%(str(cls)+str(args))
             pass
         instance = super(NodeDict, cls).__call__(*args)
-        NodeDict._dict[name] = instance
-        NodeDict._dict_instance[instance]=name
+        cls._dict[name] = instance
+        cls._dict_instance[instance]=name
         return instance
     @staticmethod
     def reset():
@@ -55,7 +56,7 @@ class NodeDict(type):
         key=NodeDict.getKey(instance)
         NodeDict._dict.pop(key)
         NodeDict._dict_instance.pop(instance)
-            
+
 class Node(object):
     __slots__= ["_parents", "name","_val"]
     __metaclass__ = NodeDict
@@ -87,6 +88,10 @@ class Node(object):
     @property
     def val(self):
         return self._val
+    @val.setter
+    def val(self, val):
+        self.resetCachedValue()
+        self._val=ArrayOrScala(val)
     def diff_no_simplify(self, var):
         assert(0)
     def diff(self,var):
@@ -108,45 +113,42 @@ class Val(Node):
     __slots__ = []
     def __init__(self, val):
         Node.__init__(self, 'Val')
-        self._val=ArrayOrScala(val)
+        super(self.__class__, self.__class__).val.fset(self, ArrayOrScala(val))
     def __unicode__(self):
-        return unicode(self._val)    
+        return unicode(self.val)
     def __repr__(self):
-        return "Val(%r)"%(str(self._val))
+        return "Val(%r)"%(str(self.val))
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and np.all(self._val == other._val):
+        if isinstance(other, self.__class__) and np.all(self.val == other.val):
             return True
         return False
     def diff_no_simplify(self, var):
-        v=np.zeros(self._val.shape)
+        v=np.zeros(self.val.shape)
         zero = Val(v)
         return zero
-    
+    @Node.val.setter
+    def val(self, var):
+        raise TypeError('Val objects are immutable')
+
 class Var(Node):
     __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self._val=ArrayOrScala(val)
+        self.val=ArrayOrScala(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def diff_no_simplify(self, var):
-        v=np.ones(self._val.shape)
+        v=np.ones(self.val.shape)
         if(var.name!= self.name):
-            v=np.zeros(self._val.shape)
+            v=np.zeros(self.val.shape)
         val=Val(v)
         return val
-    @Node.val.setter
-    def val(self,val):
-        self.resetCachedValue()
-        self._val=ArrayOrScala(val)
 
 def softmax(x):
     x=x-np.max(x)
     exp_x=np.exp(x)
     return exp_x/exp_x.sum()
 
-
-        
 class VSF(Node):
     '''VectorizedScalaFunction'''
     __slots__ = ["op_expr","op","var"]
@@ -175,7 +177,7 @@ class VSF(Node):
     expr_to_fun = dict(known_functions.values())
     func_to_expr=dict(zip(expr_to_fun.values(),expr_to_fun.keys()))
     def __init__(self, op_name, var, op=None):
-        op_expr, op0 = VSF.known_functions.get(op_name, (op_name,op))            
+        op_expr, op0 = VSF.known_functions.get(op_name, (op_name,op))
         if op:
             op0=op
         Node.__init__(self,"vsf") #"%s(%s)"%(op_name,var)
@@ -198,7 +200,7 @@ class VSF(Node):
             self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
-        expr=CTimes(VSF(self.op_expr+"`", self.var), 
+        expr=CTimes(VSF(self.op_expr+"`", self.var),
                     self.var.diff_no_simplify(var))
         return expr
     @property
@@ -206,21 +208,21 @@ class VSF(Node):
         return [self.var]
     @property
     def op_expr(self):
-        return VSF.func_to_expr[self.op]
+        return self.__class__.func_to_expr[self.op]
         #return self.op_expr
     @property
     def op_name(self):
-        return VSF.func_to_expr[self.op]
+        return self.__class__.func_to_expr[self.op]
         #return self.op_expr
     @property
     def val(self):
         if not self.op:
             return None
-        elif self._val is None or np.all(np.isnan(self._val)):
-            self._val = self.op(self.var.val)            
-        if self._val.shape==(1,1):
-            self._val=self._val[0,0]
-        return self._val
+        v=super(self.__class__, self).val
+        if v is None or np.all(np.isnan(v)):
+            v = self.op(self.var.val)
+            super(self.__class__, self.__class__).val.fset(self, ArrayOrScala(v))
+        return v
 
 #Sum0 can be replaced by dot with 1s.
 class Sum0(Node):
@@ -232,13 +234,14 @@ class Sum0(Node):
     def __unicode__(self):
         return u"Σ_0(%s)"%(self.var)
     def __repr__(self):
-        return "Sum_0(%r)"%(self.var)        
+        return "Sum_0(%r)"%(self.var)
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
             return self.var
         self.var.add_parent(self)
         return self
+    #TODO: remove this class or refactoring the val property
     @property
     def val(self):
         if not np.any(self._val):
@@ -258,7 +261,7 @@ class Transpose(Node):
     def __unicode__(self):
         return self._format%(self.var)
     def __repr__(self):
-        return "Transpose(%r)"%(self.var)        
+        return "Transpose(%r)"%(self.var)
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
@@ -270,9 +273,11 @@ class Transpose(Node):
         return [self.var]
     @property
     def val(self):
-        if not np.any(self._val):
-            self._val = SimplifyIfScalar(np.transpose(self.var.val))
-        return self._val
+        v=super(self.__class__, self).val
+        if not np.any(v):
+            v = SimplifyIfScalar(np.transpose(self.var.val))
+            super(self.__class__, self.__class__).val.fset(self, v)
+        return v
     def diff_no_simplify(self, var):
         expr=Transpose(self.var.diff_no_simplify(var))
         return expr
@@ -281,14 +286,14 @@ def TransposeIfVector(var):
     if IsVector(var):
             return Transpose(var)
     return var
-        
+
 class BinaryOperator(Node):
     __slots__ = ["op","x","y","_format"]
     def __init__(self, x, y):
         Node.__init__(self,name=None)
         self.op=None
         self._format=u"%s%s%s"
-        self.x, self.y = x,y        
+        self.x, self.y = x,y
         self.x.add_parent(self)
         self.y.add_parent(self)
     def __unicode__(self):
@@ -302,7 +307,7 @@ class BinaryOperator(Node):
             y_expr = self.y.expression()
         else:
             y_expr= self.y.__unicode__()
-        return self._format%(x_expr, self.name, y_expr)        
+        return self._format%(x_expr, self.name, y_expr)
     def simplify(self):
         self.x=self.x.simplify()
         self.x.add_parent(self)
@@ -313,11 +318,12 @@ class BinaryOperator(Node):
         return [self.x, self.y]
     @property
     def val(self):
-        if not np.any(self._val):
-            tmp=self.op(self.x.val, self.y.val)
-            self._val = SimplifyIfScalar(tmp)
-        return self._val
-    
+        v=super(BinaryOperator, self).val
+        if not np.any(v):
+            v = SimplifyIfScalar(self.op(self.x.val, self.y.val))
+            super(BinaryOperator, self.__class__).val.fset(self, v)
+        return v
+
 class Add(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
@@ -336,7 +342,7 @@ class Add(BinaryOperator):
     def diff_no_simplify(self, var):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
-        
+
 class Mul(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
@@ -366,7 +372,7 @@ class Mul(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)), 
+        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)),
                  CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
 class Dot(BinaryOperator):
@@ -398,7 +404,7 @@ class Dot(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
-        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)), 
+        expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)),
                  CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
 
@@ -427,7 +433,7 @@ class CTimes(BinaryOperator):
         elif IsZero(self.y) :
             return self.y
         #TODO: Critical. For cases like a⊗1⊗b where a,b have incorrect dimensions,
-        #      below simplication may results error.  
+        #      below simplication may results error.
         elif IsAllOne(self.x) :
             return self.y
         elif IsAllOne(self.y):
@@ -436,4 +442,3 @@ class CTimes(BinaryOperator):
     def diff_no_simplify(self, var):
         assert(0)
         return expr
-
