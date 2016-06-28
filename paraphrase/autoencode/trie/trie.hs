@@ -41,18 +41,19 @@ diff s (ExpMap e m) =
                  in ExpMap (Fun1 (suffix' f) h1) m `mul'` diff s e1
     Fun2 f h1 h2 -> let Just e1 = HM.lookup h1 m
                         Just e2 = HM.lookup h2 m
-                    in (simplify2 m f Pos1 h1 h2 `mul'` diff s e1) `add'`
-                       (simplify2 m f Pos2 h1 h2 `mul'` diff s e2) 
+                    in trace (printf "h2 = %x" h2)-- (show (expMapExp e2))
+                         ( (simplify2 m f Pos1 h1 h2 `mul` diff s e1) `add`
+                           (simplify2 m f Pos2 h1 h2 `mul` diff s e2)  )
 
 data Pos = Pos1 | Pos2 
 
 justLookup h m = fromJust (HM.lookup h m)
 
 simplify2 m f pos h1 h2
-  | f == "+" = one
-  | f == "*" = case pos of
-                 Pos1 -> justLookup h2 m
-                 Pos2 -> justLookup h1 m
+  -- | f == "+" = one
+  -- | f == "*" = case pos of
+  --               Pos1 -> justLookup h2 m
+  --               Pos2 -> justLookup h1 m
   | otherwise = case pos of
                   Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
                   Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
@@ -75,8 +76,8 @@ exp2 = power 10 (x `add` y)
 
 
 expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: ExpMap) -> Int -> ExpMap
-expfib' t 0 = val 0
-expfib' t 1 = val 1
+expfib' t 0 = x
+expfib' t 1 = y
 expfib' t n = let e1 = untrie t (n-1)
                   e2 = untrie t (n-2)
               in add e1 e2
@@ -86,6 +87,14 @@ expfib =
     let t = trie expfib
         extfib = expfib' t
     in extfib
+
+dexpfib' :: (?expHash :: Exp :->: Hash) =>
+            (Int :->: ExpMap)
+         -> Int -> ExpMap
+dexpfib' t n = diff "x" (expfib' t n) 
+
+dexpfib :: (?expHash :: Exp :->: Hash) => Int -> ExpMap
+dexpfib = fix (dexpfib' . trie)
 
 
 
@@ -106,11 +115,22 @@ main' = do
  
 main = do
     let ?expHash = trie hash
+
+    printf "x : %x\n" $ (hash (expMapExp x)) -- . untrie ?expHash . expMapExp $ e2
+    printf "one: %x\n" $ (hash (expMapExp one))
     let -- (e,m) = exp2
-        e = diff "x" exp1 -- exp2
-        e2 = diff "x" (expfib 100)
-    putStrLn . prettyPrint . exp2RExp $ e
-    digraph e
+        e = diff "x" (y `add` x) -- exp1 -- exp2
+        --e2 = diff "x" (expfib 10)
+        e' = expfib 2
+        e2 = dexpfib 2
+    digraph e'
+    digraph e2
+        
+    putStrLn . prettyPrint . exp2RExp $ e'
+    putStrLn . prettyPrint . exp2RExp $ e2
+    -- putStrLn . prettyPrint . exp2RExp $ e -- iff "x" x
+    
+    -- digraph e
     -- printf "%x\n" . untrie ?expHash . expMapExp $ e2
 
     -- putStrLn (prettyPrint (fst exp1))

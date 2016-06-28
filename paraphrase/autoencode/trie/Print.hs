@@ -23,7 +23,9 @@ prettyPrint ROne  = "1"
 prettyPrint (RVal n) = show n 
 prettyPrint (RVar s) = s
 prettyPrint (RFun1 s e1) = printf "( %s %s )" s (prettyPrint e1)
-prettyPrint (RFun2 s e1 e2) = printf "( %s %s %s )" s (prettyPrint e1) (prettyPrint e2)
+prettyPrint (RFun2 s e1 e2)
+  | s == "+" || s == "*" = printf "( %s %s %s )" (prettyPrint e1) s (prettyPrint e2)
+  | otherwise            = printf "( %s %s %s )" s (prettyPrint e1) (prettyPrint e2)
 
 dotPrint :: HashMap Hash ExpMap -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
