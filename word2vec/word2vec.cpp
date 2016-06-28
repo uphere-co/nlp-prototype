@@ -57,7 +57,7 @@ std::vector<real> syn1neg;
 
 
 std::string train_file, output_file;
-std::string save_vocab_file, read_vocab_file;
+std::string save_vocab_file = "", read_vocab_file = "";
 
 // Struct
 std::vector<vocab_word> vocab;
@@ -107,6 +107,19 @@ void Tokenize(const std::string& str, std::vector<std::string>& tokens, const st
     pos = str.find_first_of(delimiters, lastPos);
   }
   remove_stopwords(tokens);
+}
+
+void split(const std::string& str, std::vector<std::string>& tokens, const std::string& delimiters = " ") {
+  std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+  std::string::size_type pos= str.find_first_of(delimiters, lastPos);
+
+  while (std::string::npos != pos || std::string::npos != lastPos) {
+    std::string a = str.substr(lastPos, pos-lastPos);
+    if(std::find(tokens.begin(), tokens.end(), a) == tokens.end()) // find() returns tokens.end if tarket is not found. 
+      tokens.push_back(a);
+    lastPos = str.find_first_not_of(delimiters, pos);
+    pos = str.find_first_of(delimiters, lastPos);
+  }
 }
 
 // End of Tokenizer
@@ -369,11 +382,53 @@ void SaveVocab() {
   std::ofstream outFile;
   outFile.open(save_vocab_file, std::ofstream::out | std::ofstream::binary);
   for(i = 0; i < vocab_size; i++) {
-    outFile << vocab[i].word << "    ";
+    outFile << vocab[i].word << " ";
     outFile << vocab[i].cn << "\n";
   }
   outFile.close();
 }
+
+void ReadVocab() {
+  long long a, i = 0;
+  char cline[MAX_STRING];
+  std::string line;
+  std::vector<std::string> word;
+  std::ifstream inFile;
+  inFile.open(read_vocab_file, std::ifstream::in);// | std::ifstream::binary);
+  if(inFile.fail()) {
+    std::cout << "Vocabulary file not found!\n";
+    exit(1);
+  }
+  initVocabHash();
+  vocab_size = 0;
+  while(1) {
+    word.clear();
+    inFile.getline(cline,MAX_SENTENCE_LENGTH);
+    if(inFile.eof()) break;
+    line = cline;
+    split(line, word);
+    a = AddWordToVocab(word[0]);
+    if(word[0] == "post") std::cout << "hi!";
+    std::cout << word[0] << " ";
+    std::cout << word[1] << "\n";
+    vocab[a].cn = atof(word[1].c_str());
+  }
+  SortVocab();
+  if(debug_mode > 0) {
+    std::cout << "Vocab size : " << vocab_size << std::endl;
+    std::cout << "Words in train file : " << train_words << std::endl;
+  }
+  inFile.close();
+  inFile.open(train_file, std::ifstream::in | std::ifstream::binary);
+  if(inFile.fail()) {
+    std::cout << "Training data file not found!\n";
+    exit(1);
+  }
+  
+  file_size = inFile.tellg();
+  inFile.close();
+}
+
 
 // End of HashMap for dictionary
 
@@ -559,9 +614,9 @@ void TrainModel() {
   std::ofstream outFile;
   std::cout << "Starting training using file " << train_file << std::endl;
   starting_alpha = alpha;
-  //if(read_vocab_file[0] != 0) ReadVocab(); else LearnVocabFromTrainFile();
-  //if(save_vocab_file[0] != 0) SaveVocab();
-  LearnVocabFromTrainFile();
+  if(read_vocab_file != "") ReadVocab(); else LearnVocabFromTrainFile();
+  if(save_vocab_file != "") SaveVocab();
+  //LearnVocabFromTrainFile();
   if(output_file[0] == 0) return;
   InitNet();
   if(negative > 0) InitUnigramTable();
@@ -777,24 +832,14 @@ int main(int argc, char **argv) {
   ArgPass(argc, argv);
 
   
-  //TrainModel();
+  TrainModel();
 
-  long long a, b, c;
+
+
 
   /*
-  // Too many memory consumption
-  distM.resize(vocab_size, std::vector<real>(vocab_size, 0));
+  long long a, b, c;
   
-  for(a = 0; a < vocab_size; a++) {
-    for(b = 0; b < vocab_size; b++) {
-      for(c = 0; c < layer1_size; c++) {
-	distM[a][b] += pow(syn0[a * layer1_size + c] - syn0[b * layer1_size + c],2);
-      }
-    }
-  }
-  
-  */
-
   vocab_size = 71291;
   std::ifstream fin;
   std::string value;
@@ -815,15 +860,6 @@ int main(int argc, char **argv) {
 	smine.push_back(value);
       }
   }
-
-  /*
-  for(a=0;a<vocab_size;a++) {
-    std::cout << my[a] << "  ";
-    for(b=0;b<layer1_size;b++) {
-      std::cout << smine[a*layer1_size + b] << "  ";
-    }
-    std::cout << std::endl;
-  }*/
 
 
   for(a = 0; a < vocab_size*layer1_size; a++) {
@@ -886,7 +922,7 @@ int main(int argc, char **argv) {
       std::cout << distM[w].first << "    " << distM[w].second << std::endl;
     }
     std::cout << std::endl;
-  }
+  }*/
 
   
   return 0;

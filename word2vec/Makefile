@@ -1,5 +1,5 @@
 CXX = g++
-CFLAGS = -g -march=native -pthread -fopenmp -Wall -funroll-loops -Wno-unused-result --std=c++11 # -Ofast
+CFLAGS = -g -march=native -pthread -fopenmp -funroll-loops -Wno-unused-result -Ofast --std=c++11 # -Wall -Ofast
 LDFLAGS = -pthread -lpca -larmadillo -lgfortran -lopenblas
 BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
 
