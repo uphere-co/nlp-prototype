@@ -16,8 +16,8 @@ import           Symbolic.Type
 var :: String -> MExp
 var s = MExp (Var (Simple s)) HM.empty HS.empty
 
-ivar :: String -> Index -> MExp
-ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.singleton i)
+ivar :: String -> [Index] -> MExp
+ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.fromList i)
 
 x :: MExp
 x = var "x"
@@ -25,10 +25,10 @@ x = var "x"
 y :: MExp
 y = var "y"
 
-x_ :: Index -> MExp
+x_ :: [Index] -> MExp
 x_ i = ivar "x" i
 
-y_ :: Index -> MExp
+y_ :: [Index] -> MExp
 y_ i = ivar "y" i
 
 one :: MExp 

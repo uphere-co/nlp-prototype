@@ -34,6 +34,7 @@ prettyPrint (RFun2 s e1 e2)
                                                  (prettyPrint e2 :: String)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 
+showIdxSet :: [Index] -> String
 showIdxSet = intercalate ","
 
 dotPrint :: HashMap Hash MExp -> Hash -> State (HashSet Hash) String
