@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
+import           Control.Monad ((>=>))
 import           Control.Monad.Trans.State
 import           Data.Function             (fix)
 import           Data.Hashable
@@ -78,10 +79,13 @@ mul' (ExpMap One  _) e2              = e2
 mul' e1              e2              = e1 `mul` e2 
 
 exp1 :: (?expHash :: Exp :->: Hash) => ExpMap
-exp1 = square (x `add` y)
+exp1 = square (x `add'` y)
 
 exp2 :: (?expHash :: Exp :->: Hash) => ExpMap
-exp2 = power 10 (x `add` y)
+exp2 = power 3 x -- power 10 (x `add'` y)
+
+exp3 :: (?expHash :: Exp :->: Hash) => ExpMap
+exp3 = (x_ "i") `add'` (y_ "i")
 
 expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: ExpMap) -> Int -> ExpMap
 expfib' _ 0 = x
@@ -109,6 +113,10 @@ dexpfib (s,n) = let tfib = trie ffib
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
 
+prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
+
+endl = putStrLn ""
+
 digraph :: (?expHash :: Exp :->: Hash) => ExpMap -> IO ()
 digraph v = do
     let h = untrie ?expHash (expMapExp v)
@@ -133,8 +141,12 @@ main = do
     putStrLn . prettyPrint . exp2RExp $ diff (Simple "x",e)
     let lexp1 = expfib 6
         lexp2 = dexpfib (Simple "y",6)    
-    putStrLn . prettyPrint . exp2RExp $ lexp1
-    putStrLn . prettyPrint . exp2RExp $ lexp2    
+    prettyPrintR $ lexp1
+    prettyPrintR $ lexp2    
     (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp2
+
+    let ExpMap e' m' = exp2
+        ndiff = fix (diff' m' . trie)
+    prettyPrintR $ ndiff (Simple "x",e')
 
 

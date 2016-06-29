@@ -16,21 +16,24 @@ type Hash = Int
 
 
 data Symbol = Simple String
+            | Indexed String String
             deriving (Show, Eq)
 
 showSym (Simple str) = str
+showSym (Indexed x k) = x ++ "_" ++ k
 
 instance HasTrie Symbol where
-  data (Symbol :->: b) = SymbolTrie (String :->: b)
+  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,String) :->: b)
   
   trie :: (Symbol -> b) -> (Symbol :->: b)
-  trie f = SymbolTrie (trie (f . Simple))
+  trie f = SymbolTrie (trie (f . Simple)) (trie (f . uncurry Indexed))
 
   untrie :: (Symbol :->: b) -> Symbol -> b
-  untrie (SymbolTrie t) (Simple s) = untrie t s
+  untrie (SymbolTrie s i) (Simple x) = untrie s x
+  untrie (SymbolTrie s i) (Indexed x k) = untrie i (x,k)
 
   enumerate :: (Symbol :->: b) -> [(Symbol,b)]
-  enumerate (SymbolTrie t) = enum' Simple t
+  enumerate (SymbolTrie s i) = enum' Simple s `weave` enum' (uncurry Indexed) i
 
 instance Hashable Symbol where
   hashWithSalt :: Hash -> Symbol -> Hash

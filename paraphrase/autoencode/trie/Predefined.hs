@@ -14,11 +14,20 @@ import           Type
 var :: String -> ExpMap
 var s = ExpMap (Var (Simple s)) HM.empty
 
+ivar :: String -> String -> ExpMap
+ivar x i = ExpMap (Var (Indexed x i)) HM.empty
+
 x :: ExpMap
 x = var "x" -- ExpMap (Var (Simple "x")) HM.empty
 
 y :: ExpMap
 y = var "y" -- ExpMap (Var (Simple "y")) HM.empty
+
+x_ :: String -> ExpMap
+x_ i = ivar "x" i
+
+y_ :: String -> ExpMap
+y_ i = ivar "y" i
 
 one :: ExpMap 
 one = ExpMap One HM.empty

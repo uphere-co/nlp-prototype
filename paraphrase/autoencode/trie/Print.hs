@@ -10,15 +10,21 @@ import           Text.Printf
 import           Type
 -- 
 
-prettyPrint :: RExp -> String
-prettyPrint RZero = "0"
-prettyPrint ROne  = "1"
-prettyPrint (RVal n) = show n 
-prettyPrint (RVar s) = (showSym s)
-prettyPrint (RFun1 s e1) = printf "( %s %s )" (showSym s) (prettyPrint e1)
+prettyPrint :: PrintfType r => RExp -> r -- String
+prettyPrint RZero = printf "0"
+prettyPrint ROne  = printf "1"
+prettyPrint (RVal n) = printf "%d" n 
+prettyPrint (RVar s) = printf "%s" (showSym s)
+prettyPrint (RFun1 s e1) = printf "(%s %s)" (showSym s) (prettyPrint e1 :: String)
 prettyPrint (RFun2 s e1 e2)
-  | (showSym s) == "+" || (showSym s) == "*" = printf "( %s %s %s )" (prettyPrint e1) (showSym s) (prettyPrint e2)
-  | otherwise            = printf "( %s %s %s )" (showSym s) (prettyPrint e1) (prettyPrint e2)
+  | (showSym s) == "+" || (showSym s) == "*" = printf "(%s%s%s)"
+                                                 (prettyPrint e1 :: String)
+                                                 (showSym s :: String)
+                                                 (prettyPrint e2 ::String)
+  | otherwise                                = printf "(%s%s%s)"
+                                                 (showSym s :: String)
+                                                 (prettyPrint e1 :: String)
+                                                 (prettyPrint e2 :: String)
 
 dotPrint :: HashMap Hash ExpMap -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
