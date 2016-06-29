@@ -36,9 +36,10 @@ Library
                         
 
   Exposed-modules:
-                        Predefined
-                        Print
-                        Type
+                        Symbolic.Differential
+                        Symbolic.Predefined
+                        Symbolic.Print
+                        Symbolic.Type
 
   Other-modules:        
 

@@ -1,6 +1,8 @@
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Print where
+module Symbolic.Print where
 
 import           Control.Monad.Trans.State
 import           Data.HashMap.Strict       (HashMap)
@@ -8,9 +10,10 @@ import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (HashSet)
 import qualified Data.HashSet        as HS
 import           Data.List                 (intercalate)
+import           Data.MemoTrie
 import           Text.Printf
 --
-import           Type
+import           Symbolic.Type
 -- 
 
 prettyPrint :: PrintfType r => RExp -> r
@@ -54,3 +57,11 @@ dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h (showSym s),[])
 dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h (showSym s) h h1,[h1])
 dotPrint' h (Fun2 s h1 h2) = (printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h (showSym s) h h1 h h2,[h1,h2])
 dotPrint' h (Sum is h1)    = (printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1,[h1])
+
+digraph :: (?expHash :: Exp :->: Hash) => MExp -> IO ()
+digraph v = do
+    let h = untrie ?expHash (mexpExp v)
+        m = HM.insert h v (mexpMap v) 
+    putStrLn "digraph G {"
+    putStrLn $ evalState (dotPrint m h) HS.empty
+    putStrLn "}"

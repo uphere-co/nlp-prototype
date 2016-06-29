@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Type where
+module Symbolic.Type where
 
 import           Control.Lens              (over, _1)
 import           Data.Hashable
