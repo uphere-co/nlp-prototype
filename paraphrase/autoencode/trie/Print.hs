@@ -29,10 +29,10 @@ prettyPrint (RFun2 s e1 e2)
                                                  (prettyPrint e1 :: String)
                                                  (prettyPrint e2 :: String)
 
-dotPrint :: HashMap Hash ExpMap -> Hash -> State (HashSet Hash) String
+dotPrint :: HashMap Hash MExp -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
   s <- get
-  let ExpMap e _ _ = justLookup h m
+  let MExp e _ _ = justLookup h m
   case h `HS.member` s of
     True -> return ""
     False -> do

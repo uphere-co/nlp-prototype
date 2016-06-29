@@ -12,53 +12,53 @@ import           Data.MemoTrie
 import           Type
 --
 
-var :: String -> ExpMap
-var s = ExpMap (Var (Simple s)) HM.empty HS.empty
+var :: String -> MExp
+var s = MExp (Var (Simple s)) HM.empty HS.empty
 
-ivar :: String -> Index -> ExpMap
-ivar x i = ExpMap (Var (Indexed x i)) HM.empty HS.empty
+ivar :: String -> Index -> MExp
+ivar x i = MExp (Var (Indexed x i)) HM.empty HS.empty
 
-x :: ExpMap
+x :: MExp
 x = var "x"
 
-y :: ExpMap
+y :: MExp
 y = var "y"
 
-x_ :: Index -> ExpMap
+x_ :: Index -> MExp
 x_ i = ivar "x" i
 
-y_ :: Index -> ExpMap
+y_ :: Index -> MExp
 y_ i = ivar "y" i
 
-one :: ExpMap 
-one = ExpMap One HM.empty HS.empty
+one :: MExp 
+one = MExp One HM.empty HS.empty
 
-zero :: ExpMap
-zero = ExpMap Zero HM.empty HS.empty
+zero :: MExp
+zero = MExp Zero HM.empty HS.empty
 
-val :: Int -> ExpMap
-val n = ExpMap (Val n) HM.empty HS.empty
+val :: Int -> MExp
+val n = MExp (Val n) HM.empty HS.empty
 
-delta j k = ExpMap (Delta j k) HM.empty HS.empty
+delta j k = MExp (Delta j k) HM.empty HS.empty
 
-biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
-biop sym em1@(ExpMap e1 m1 _) em2@(ExpMap e2 m2 _) =
+biop :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp -> MExp
+biop sym em1@(MExp e1 m1 _) em2@(MExp e2 m2 _) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
       e = Fun2 sym h1 h2
       m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
-  in ExpMap e m HS.empty
+  in MExp e m HS.empty
 
-add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+add :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 add = biop (Simple "+")
 
-mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+mul :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 mul = biop (Simple "*")
 
-square :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap
+square :: (?expHash :: Exp :->: Hash) => MExp -> MExp
 square e = mul e e 
 
-power :: (?expHash :: Exp :->: Hash) => Int -> ExpMap -> ExpMap
+power :: (?expHash :: Exp :->: Hash) => Int -> MExp -> MExp
 power n e
   | n < 0          = error "not supported"
   | n == 1         = e
