@@ -16,7 +16,7 @@ var :: String -> MExp
 var s = MExp (Var (Simple s)) HM.empty HS.empty
 
 ivar :: String -> Index -> MExp
-ivar x i = MExp (Var (Indexed x i)) HM.empty HS.empty
+ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.singleton i)
 
 x :: MExp
 x = var "x"
@@ -39,15 +39,15 @@ zero = MExp Zero HM.empty HS.empty
 val :: Int -> MExp
 val n = MExp (Val n) HM.empty HS.empty
 
-delta j k = MExp (Delta j k) HM.empty HS.empty
+delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp -> MExp
-biop sym em1@(MExp e1 m1 _) em2@(MExp e2 m2 _) =
+biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
       e = Fun2 sym h1 h2
       m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
-  in MExp e m HS.empty
+  in MExp e m (HS.union i1 i2)
 
 add :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 add = biop (Simple "+")

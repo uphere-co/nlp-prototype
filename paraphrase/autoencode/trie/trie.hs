@@ -142,11 +142,11 @@ main = do
     let MExp e m _ = exp1
         diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ diff (Simple "x",e)
-    let lexp1 = expfib 6
-        lexp2 = dexpfib (Simple "y",6)    
-    prettyPrintR $ lexp1
-    prettyPrintR $ lexp2    
-    (printf "x : %x\n" . untrie ?expHash . mexpExp) lexp2
+    let lexp1 = expfib 100
+        lexp2 = dexpfib (Simple "y",100)
+    -- prettyPrintR $ lexp1
+    -- prettyPrintR $ lexp2    
+    (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
 
     let MExp e' m' _ = exp2
         ndiff = fix (diff' m' . trie)
@@ -157,3 +157,8 @@ main = do
         r = diff3 (Indexed "x" "j",e3)
     prettyPrintR r
     digraph r
+
+    print (mexpIdx r)
+
+    print (mexpIdx exp1)
+    print (mexpIdx exp3)
