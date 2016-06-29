@@ -15,9 +15,10 @@ import           Data.MemoTrie
 
 type Hash = Int
 
+type Index = String
 
 data Symbol = Simple String
-            | Indexed String String
+            | Indexed String Index
             deriving (Show, Eq)
 
 showSym (Simple str) = str
@@ -43,7 +44,7 @@ instance Hashable Symbol where
 
 data Exp = Zero
          | One
-         | Delta String String
+         | Delta Index Index
          | Val Int
          | Var Symbol
          | Fun1 Symbol Hash
@@ -56,7 +57,7 @@ data ExpMap = ExpMap { expMapExp :: Exp
 
 data RExp = RZero
           | ROne
-          | RDelta String String
+          | RDelta Index Index
           | RVal Int
           | RVar Symbol
           | RFun1 Symbol RExp
@@ -65,7 +66,7 @@ data RExp = RZero
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
-                              ((String,String) :->: b)
+                              ((String,Index) :->: b)
                               (Int :->: b)
                               (Symbol :->: b)
                               ((Symbol,Hash) :->: b)

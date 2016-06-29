@@ -14,7 +14,7 @@ import           Type
 var :: String -> ExpMap
 var s = ExpMap (Var (Simple s)) HM.empty
 
-ivar :: String -> String -> ExpMap
+ivar :: String -> Index -> ExpMap
 ivar x i = ExpMap (Var (Indexed x i)) HM.empty
 
 x :: ExpMap
@@ -23,10 +23,10 @@ x = var "x"
 y :: ExpMap
 y = var "y"
 
-x_ :: String -> ExpMap
+x_ :: Index -> ExpMap
 x_ i = ivar "x" i
 
-y_ :: String -> ExpMap
+y_ :: Index -> ExpMap
 y_ i = ivar "y" i
 
 one :: ExpMap 
