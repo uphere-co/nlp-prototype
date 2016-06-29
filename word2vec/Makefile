@@ -1,6 +1,6 @@
 CXX = g++
-CFLAGS = -g -march=native -pthread -fopenmp -funroll-loops -Wall -Wno-unused-result -Ofast --std=c++11
-LDFLAGS = -pthread -lpca -larmadillo -lgfortran -lopenblas
+CFLAGS = -g -march=native -fopenmp -funroll-loops -Wall -Wno-unused-result --std=c++11 # -pthread -Ofast
+LDFLAGS = -lpca -larmadillo -lgfortran -lopenblas #-pthread
 BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
 
 #libopenblas.a  #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
@@ -17,7 +17,7 @@ tsne: tsne.cpp
 	$(CXX) -o bh_tsne tsne.cpp sptree.o -O2
 
 word2vec: word2vec.cpp
-	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp utils.o $(CFLAGS)
+	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp utils.o $(CFLAGS) -Ofast -pthread
 
 pca: pca.cpp
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o pca pca.cpp utils.o $(CFLAGS)  

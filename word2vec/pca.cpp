@@ -53,6 +53,8 @@ int main(int argc, char **argv) {
   std::string line;
   std::vector<std::string> word;
 
+  std::vector< std::vector<double> > data;
+  std::vector<std::string> label;
   if(argc == 1) {
     printHelp();
     return 0;
@@ -69,7 +71,8 @@ int main(int argc, char **argv) {
 
   getline(inFile, line);
   split(line, word);
-  int num_records = atoi(word[0].c_str());
+  //int num_records = atoi(word[0].c_str());
+  int num_records = 30;
   int num_variables = atoi(word[1].c_str());
 
   stats::pca pca(num_variables);
@@ -83,9 +86,14 @@ int main(int argc, char **argv) {
     for(int j = 0; j < num_variables; j++) record[j] = atof(word[j+1].c_str());
     
     pca.add_record(record);
+    label.push_back(word[0]);
+    data.push_back(record);
   }
+
+  
   pca.solve();
 
+  /*
   std::cout<<"Energy = "<<pca.get_energy()<<" ("<<
     stats::utils::get_sigma(pca.get_energy_boot())<<")"<<std::endl;;
 
@@ -94,41 +102,86 @@ int main(int argc, char **argv) {
       <<eigenvalues[1]<<", "
 	   <<eigenvalues[2]<<std::endl;;
 
+  */
   std::cout<<"Orthogonal Check = "<<pca.check_eigenvectors_orthogonal()<<std::endl;;
   std::cout<<"Projection Check = "<<pca.check_projection_accurate()<<std::endl;;
+  
 
-  pca.save("pca_results");
 
-  const std::vector<double> principal_1 = pca.get_principal(0);
-  const std::vector<double> principal_2 = pca.get_principal(1);
+  //pca.save("pca_results");
 
-  for(int i = 0 ; i < principal_1.size(); i++)
-    std::cout << principal_1[i] << "  ";
-  std::cout << std::endl;;
+  std::vector<double> principal_1 = pca.get_principal(0);
+  std::vector<double> principal_2 = pca.get_principal(1);
 
+  double prin1[principal_1.size()];
+  double prin2[principal_2.size()];
+
+  
+  for(int i = 0 ; i < principal_1.size(); i++) {
+    prin1[i] = principal_1[i];
+    prin2[i] = principal_2[i];
+  }
+
+  /* 
   for(int i = 0 ; i < principal_2.size(); i++)
     std::cout << principal_2[i] << "  ";
   std::cout << std::endl;
+  */  
   
   // Very simple use case of gnuplot
-  Gnuplot gp;
+  Gnuplot gp; // this does something really really strange
+  
+  //std::vector< std::pair< std::string, std::pair<double, double> > > xy_pts_A;
+  std::vector< boost::tuple<std::string, double, double> > xy_pts_A;
+ 
+  double x, y;
 
-  std::vector<std::pair<double, double> > xy_pts_A;
-  std::vector<std::pair<double, double> > xy_pts_B;
+  std::vector<double> tempx;
+  for(int i = 0; i < num_records; i++) {
+    x = 0;
+    for(int j = 0; j < num_variables; j++) {
+      x += prin1[j] * data[i][j];
+    }
+    tempx.push_back(x);
+  }
 
+  std::vector<double> tempy;
+  for(int i = 0; i < num_records; i++) {
+    y = 0;
+    for(int j = 0; j < num_variables; j++) {
+      y += prin2[j] * data[i][j];
+    }
+    tempy.push_back(y);
+  }
+
+  for(int i = 0; i < num_records; i++) {
+    xy_pts_A.push_back(boost::make_tuple(label[i],tempx[i],tempy[i]));
+  }
+
+
+  
+  /*
   for(double x = -2; x <2; x += 0.01) {
     double y = x*x*x;
     xy_pts_A.push_back(std::make_pair(x, y));
-  }
-
+    }*/
+  /*
   for(double alpha = 0; alpha < 1; alpha += 1.0/24.0) {
     double theta = alpha*2.0*3.14159;
     xy_pts_B.push_back(std::make_pair(cos(theta), sin(theta)));
   }
+  */
+  
+  //gp << "set xrange [-100:100]\nset yrange [-100:100]\n";
 
-  gp << "set xrange [-2:2]\nset yrange [-2:2]\n";
-  gp << "plot" << gp.file1d(xy_pts_A) << "with lines title 'cubic',"
-     << gp.file1d(xy_pts_B) << "with points title 'circle'" << std::endl;
+
+
+  gp << "plot" << gp.file1d(xy_pts_A, "temp.dat") << " using 2:3:1 with labels offset 1 title 'word vectors'" << std::endl;
+  gp.send1d(xy_pts_A);
+
+  
+  //gp << "plot" << gp.file1d(xy_pts_A, "temp.dat") << "using 2:3, " << gp.file1d(xy_pts_A, "temp2.dat") << " 2:3:1 with labels offset 1 title 'word vectors'," << std::endl;
+    //<< gp.file1d(xy_pts_B) << "with points title 'circle'" << std::endl;
   
   return 0;
 }
