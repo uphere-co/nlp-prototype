@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
 import           Control.Monad ((>=>))
 import           Control.Monad.Trans.State
@@ -39,10 +40,10 @@ diff' m t (s,e) =
     One          -> zero
     Val _        -> zero
     Var s'       -> dvar s s' 
-    Fun1 f h1    -> let Just (ExpMap e1 _) = HM.lookup h1 m
-                    in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
-    Fun2 f h1 h2 -> let Just (ExpMap e1 _) = HM.lookup h1 m
-                        Just (ExpMap e2 _) = HM.lookup h2 m
+    Fun1 f h1    -> let ExpMap e1 _ _ = justLookup h1 m
+                    in ExpMap (Fun1 (suffix' f) h1) m HS.empty `mul'` untrie t (s,e1)
+    Fun2 f h1 h2 -> let ExpMap e1 _ _ = justLookup h1 m
+                        ExpMap e2 _ _ = justLookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
                          (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
 
@@ -61,24 +62,24 @@ simplify2 m f pos h1 h2
                          Pos1 -> justLookup h2 m
                          Pos2 -> justLookup h1 m
   | otherwise        = case pos of
-                         Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
-                         Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
+                         Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m HS.empty
+                         Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m HS.empty
 
 add' :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-add' e1                 (ExpMap Zero _)    = e1
-add' (ExpMap Zero _)    e2                 = e2
-add' (ExpMap One _)     (ExpMap One _)     = val 2
-add' (ExpMap (Val m) _) (ExpMap One _)     = val (m+1)
-add' (ExpMap One _)     (ExpMap (Val m) _) = val (m+1)
-add' (ExpMap (Val m) _) (ExpMap (Val n) _) = val (m+n)
-add' e1               e2               = e1 `add` e2
+add' e1                   (expMapExp -> Zero)  = e1
+add' (expMapExp -> Zero)  e2                   = e2
+add' (expMapExp -> One)   (expMapExp -> One)   = val 2
+add' (expMapExp -> Val m) (expMapExp -> One)   = val (m+1)
+add' (expMapExp -> One)   (expMapExp -> Val m) = val (m+1)
+add' (expMapExp -> Val m) (expMapExp -> Val n) = val (m+n)
+add' e1                   e2                   = e1 `add` e2
 
 mul' :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-mul' _e1             (ExpMap Zero _) = zero
-mul' (ExpMap Zero _) _e2             = zero
-mul' e1              (ExpMap One  _) = e1
-mul' (ExpMap One  _) e2              = e2
-mul' e1              e2              = e1 `mul` e2 
+mul' _                   (expMapExp -> Zero) = zero
+mul' (expMapExp -> Zero) _                   = zero
+mul' e1                  (expMapExp -> One)  = e1
+mul' (expMapExp -> One)  e2                  = e2
+mul' e1                  e2                  = e1 `mul` e2 
 
 exp1 :: (?expHash :: Exp :->: Hash) => ExpMap
 exp1 = square (x `add'` y)
@@ -105,12 +106,12 @@ expfib =
 dexpfib' :: (?expHash :: Exp :->: Hash) => 
             (Int :->: ExpMap, (Symbol,Exp) :->: ExpMap)
          -> (Symbol,Int) -> ExpMap
-dexpfib' (tfib,tdiff) (s,n) = let ExpMap e m = untrie tfib n in diff' m tdiff (s,e)
+dexpfib' (tfib,tdiff) (s,n) = let ExpMap e m _ = untrie tfib n in diff' m tdiff (s,e)
 
 dexpfib :: (?expHash :: Exp :->: Hash) => (Symbol,Int) -> ExpMap
 dexpfib (s,n) = let tfib = trie ffib
                     ffib = expfib' tfib
-                    ExpMap _ m = untrie tfib n
+                    ExpMap _ m _ = untrie tfib n
                     tdiff = trie (diff' m tdiff)
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
@@ -138,7 +139,7 @@ main' = do
 main :: IO ()
 main = do
     let ?expHash = trie hash
-    let ExpMap e m = exp1
+    let ExpMap e m _ = exp1
         diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ diff (Simple "x",e)
     let lexp1 = expfib 6
@@ -147,11 +148,11 @@ main = do
     prettyPrintR $ lexp2    
     (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp2
 
-    let ExpMap e' m' = exp2
+    let ExpMap e' m' _ = exp2
         ndiff = fix (diff' m' . trie)
     prettyPrintR $ ndiff (Simple "x",e')
 
-    let ExpMap e3 m3 = exp3
+    let ExpMap e3 m3 _ = exp3
         diff3 = fix (diff' m3 . trie)
         r = diff3 (Indexed "x" "j",e3)
     prettyPrintR r

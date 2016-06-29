@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Type where
 
@@ -9,6 +10,7 @@ import           Control.Lens              (over, _1)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
+import           Data.HashSet              (HashSet)
 import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 --
@@ -53,6 +55,7 @@ data Exp = Zero
 
 data ExpMap = ExpMap { expMapExp :: Exp
                      , expMapMap :: HashMap Hash ExpMap
+                     , expMapIdx :: HashSet Index
                      }
 
 data RExp = RZero
@@ -129,12 +132,12 @@ justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
 justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
 
 exp2RExp :: ExpMap -> RExp
-exp2RExp (ExpMap Zero _)           = RZero
-exp2RExp (ExpMap One _)            = ROne
-exp2RExp (ExpMap (Delta i j) _)    = RDelta i j
-exp2RExp (ExpMap (Val n) _)        = RVal n
-exp2RExp (ExpMap (Var s) _)        = RVar s
-exp2RExp (ExpMap (Fun1 s h1) m)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
-exp2RExp (ExpMap (Fun2 s h1 h2) m) = let e1 = justLookup h1 m; e2 = justLookup h2 m
-                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
+exp2RExp (expMapExp -> Zero)           = RZero
+exp2RExp (expMapExp -> One)            = ROne
+exp2RExp (expMapExp -> Delta i j)    = RDelta i j
+exp2RExp (expMapExp -> Val n)        = RVal n
+exp2RExp (expMapExp -> Var s)        = RVar s
+exp2RExp (ExpMap (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
+exp2RExp (ExpMap (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
+                                       in RFun2 s (exp2RExp e1) (exp2RExp e2)
 

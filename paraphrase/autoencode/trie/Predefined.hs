@@ -6,16 +6,17 @@
 module Predefined where
 
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
 import           Type
 --
 
 var :: String -> ExpMap
-var s = ExpMap (Var (Simple s)) HM.empty
+var s = ExpMap (Var (Simple s)) HM.empty HS.empty
 
 ivar :: String -> Index -> ExpMap
-ivar x i = ExpMap (Var (Indexed x i)) HM.empty
+ivar x i = ExpMap (Var (Indexed x i)) HM.empty HS.empty
 
 x :: ExpMap
 x = var "x"
@@ -30,23 +31,23 @@ y_ :: Index -> ExpMap
 y_ i = ivar "y" i
 
 one :: ExpMap 
-one = ExpMap One HM.empty
+one = ExpMap One HM.empty HS.empty
 
 zero :: ExpMap
-zero = ExpMap Zero HM.empty
+zero = ExpMap Zero HM.empty HS.empty
 
 val :: Int -> ExpMap
-val n = ExpMap (Val n) HM.empty
+val n = ExpMap (Val n) HM.empty HS.empty
 
-delta j k = ExpMap (Delta j k) HM.empty
+delta j k = ExpMap (Delta j k) HM.empty HS.empty
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
-biop sym em1@(ExpMap e1 m1) em2@(ExpMap e2 m2) =
+biop sym em1@(ExpMap e1 m1 _) em2@(ExpMap e2 m2 _) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
       e = Fun2 sym h1 h2
       m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
-  in ExpMap e m
+  in ExpMap e m HS.empty
 
 add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
 add = biop (Simple "+")

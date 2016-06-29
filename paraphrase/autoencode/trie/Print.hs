@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module Print where
 
 import           Control.Monad.Trans.State
@@ -30,7 +32,7 @@ prettyPrint (RFun2 s e1 e2)
 dotPrint :: HashMap Hash ExpMap -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
   s <- get
-  let Just (ExpMap e _) = HM.lookup h m
+  let ExpMap e _ _ = justLookup h m
   case h `HS.member` s of
     True -> return ""
     False -> do
