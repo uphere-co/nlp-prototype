@@ -3,14 +3,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Predefined where
+module Symbolic.Predefined where
 
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
-import           Type
+import           Symbolic.Type
 --
 
 var :: String -> MExp
