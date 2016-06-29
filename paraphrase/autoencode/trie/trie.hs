@@ -29,8 +29,7 @@ suffix_1 (Simple s) = Simple (s <> "_1")
 suffix_2 :: Symbol -> Symbol
 suffix_2 (Simple s) = Simple (s  <> "_2")
 
-
-                      
+                    
 diff'
   :: (?expHash :: Exp :->: Hash)
   => HashMap Hash ExpMap
@@ -92,7 +91,7 @@ exp2 :: (?expHash :: Exp :->: Hash) => ExpMap
 exp2 = power 3 x -- power 10 (x `add'` y)
 
 exp3 :: (?expHash :: Exp :->: Hash) => ExpMap
-exp3 = (x_ "i") `add'` (y_ "i")
+exp3 = ( (x_ "i") `mul'` (y_ "i")) `add'` ( (x_ "i") `mul` (x_ "i"))
 
 expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: ExpMap) -> Int -> ExpMap
 expfib' _ 0 = x
@@ -158,5 +157,6 @@ main = do
 
     let ExpMap e3 m3 = exp3
         diff3 = fix (diff' m3 . trie)
-
-    prettyPrintR $ diff3 (Indexed "x" "j",e3)
+        r = diff3 (Indexed "x" "j",e3)
+    prettyPrintR r
+    digraph r
