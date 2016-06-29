@@ -14,14 +14,14 @@ stdenv.mkDerivation {
                    matplotlib seaborn
                    numpy scipy pandas scikitlearn
                    pyzmq
+                   cython
                    numba
-                   #toolz.numba
                    toolz.gensim toolz.untangle
-                   toolz.Theano toolz.Keras h5py
-                   pytest_28 toolz.pytest-mock
+                   Theano Keras h5py
+                   pytest toolz.pytest-mock
                    toolz.guppy
                    toolz.nltk
-                 ]);
+                 ]) ++ [wget];
   shellHook = ''
      EDITOR=vim
   '';
