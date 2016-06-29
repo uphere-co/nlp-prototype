@@ -14,13 +14,18 @@ from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMat
 
 def test_ElementaryTypes(reset_NodeDict):
     val0 = Val(0)
-    val2= Val(2)
+    val2 = Val(2)
     val10= Val(10)
     val=Mul(Val(2),Val(10))
     assert(unicode(val)=='2*10')
     assert(unicode(val0)=='0')
     assert(unicode(val10)=='10')
 
+def test_ValImmunity():
+    v1=Val(1)
+    with pytest.raises(TypeError):
+        v1.val=2
+    assert v1.val == 1
 def test_Equality(reset_NodeDict):
     x =Var('x')
     y =Var('y')
@@ -134,23 +139,23 @@ def _SimplePhrase(reset_NodeDict):
 def assert_all(x):
     assert(np.all(x))
 def test_Evaluation(reset_NodeDict):
-    vx=np.matrix([1.0,2.0,3.0])
-    vy=np.matrix([2.0,3.0,4.0]).T
-    vz=np.matrix([3.0,5.0,7.0])
+    vx=np.array([1.0,2.0,3.0]).reshape(1,3)
+    vy=np.array([2.0,3.0,4.0]).reshape(3,1)
+    vz=np.array([3.0,5.0,7.0]).reshape(1,3)
     x=Var('x')
     x.val=vx
     y=Var('y', vy)
     z=Var('z',vz)
     with pytest.raises(ValueError):
-        Mul(x,Var('t',vy.T)).val
+        Dot(x,Var('t',vy.T)).val
     xy=Mul(x,y)
     assert(unicode(xy)=='x*y')
     assert_all(xy.val==vx.dot(vy))
     x_plus_z=Add(x,z)
     assert(unicode(x_plus_z)=='x+z')
     assert_all(x_plus_z.val==vx+vz)
-    assert_all(Mul(xy,z).val==Mul(z,xy).val)
-    assert_all(Mul(xy,z).val==vx.dot(vy)*vz)
+    assert_all(CTimes(xy,z).val==CTimes(z,xy).val)
+    assert_all(CTimes(xy,z).val==vx.dot(vy)*vz)
     s0=1.57
     s=Var('s',s0)
     fs=VSF('cos',s, np.cos)
@@ -173,7 +178,7 @@ def test_CacheKnownValues(reset_NodeDict):
     for v in np.random.random(10):
         y.val=v
         assert(hy.val==np.tanh(v))
-    gfx_hy = Mul(gfx, hy)
+    gfx_hy = CTimes(gfx, hy)
     exp_cos_x_times_tanh_y = lambda x, y : exp_cos(x)*np.tanh(y)
     vx=5.7
     vy=np.array([1.1,2.1,0.5])
@@ -288,7 +293,7 @@ def test_SimplifyZeroAndIdentityMatrix(reset_NodeDict):
 
 def test_Transpose(reset_NodeDict):
     vx=np.matrix([5,1,2])
-    vy=np.matrix([1,3,2])
+    vy=np.matrix([1,3,2]).T
     x=Var('x',vx)
     y=Var('y',vy)
 
@@ -300,6 +305,7 @@ def test_Transpose(reset_NodeDict):
     assert(Transpose(Var('z',2)).val==2)
     assert_all(Transpose(x).val==vx.T)
     assert_all(Transpose(Transpose(x)).val==x.val)
+    y.val=vy.T
     xyt=Mul(x,Transpose(y))
     assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12)

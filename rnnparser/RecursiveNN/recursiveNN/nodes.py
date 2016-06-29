@@ -6,7 +6,7 @@ import numpy as np
 
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
-from recursiveNN.math import ArrayOrScala,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
+from recursiveNN.math import ScalarToMatrix,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 '''
 `self._val is None` of Node object indicates that there are no cache.
@@ -91,7 +91,7 @@ class Node(object):
     @val.setter
     def val(self, val):
         self.resetCachedValue()
-        self._val=ArrayOrScala(val)
+        self._val=val
     def diff_no_simplify(self, var):
         assert(0)
     def diff(self,var):
@@ -113,11 +113,11 @@ class Val(Node):
     __slots__ = []
     def __init__(self, val):
         Node.__init__(self, 'Val')
-        super(self.__class__, self.__class__).val.fset(self, ArrayOrScala(val))
+        super(self.__class__, self.__class__).val.fset(self, ScalarToMatrix(val))
     def __unicode__(self):
-        return unicode(self.val)
+        return unicode(SimplifyIfScalar(self.val))
     def __repr__(self):
-        return "Val(%r)"%(str(self.val))
+        return "Val(%r)"%(unicode(self.val))
     def __eq__(self, other):
         if isinstance(other, self.__class__) and np.all(self.val == other.val):
             return True
@@ -126,15 +126,18 @@ class Val(Node):
         v=np.zeros(self.val.shape)
         zero = Val(v)
         return zero
-    @Node.val.setter
-    def val(self, var):
+    @property
+    def val(self):
+        return super(self.__class__, self).val
+    @val.setter
+    def val(self, val):
         raise TypeError('Val objects are immutable')
 
 class Var(Node):
     __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self.val=ArrayOrScala(val)
+        self.val=ScalarToMatrix(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def diff_no_simplify(self, var):
@@ -143,12 +146,19 @@ class Var(Node):
             v=np.zeros(self.val.shape)
         val=Val(v)
         return val
+    @property
+    def val(self):
+        return super(self.__class__, self).val
+    @val.setter
+    def val(self, val):
+        super(self.__class__, self.__class__).val.fset(self, ScalarToMatrix(val))
 
 def softmax(x):
     x=x-np.max(x)
     exp_x=np.exp(x)
     return exp_x/exp_x.sum()
 
+identify_func=lambda x : x
 class VSF(Node):
     '''VectorizedScalaFunction'''
     __slots__ = ["op_expr","op","var"]
@@ -166,12 +176,12 @@ class VSF(Node):
      ('tanh',('tanh',np.tanh)),
      ('tanh`',('tanh`',lambda x : np.cosh(x)**-2)),
      ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
-     ('f',('f',lambda x : 'f')),
-     ('f`',('f`',lambda x : 'f`')),
-     ('g',('g',lambda x : 'g')),
-     ('g`',('g`',lambda x : 'g`')),
-     ('h',('h',lambda x : 'h')),
-     ('h`',('h`',lambda x : 'h`'))
+     ('f',('f',lambda x : x)),
+     ('f`',('f`',lambda x : x)),
+     ('g',('g',lambda x : x)),
+     ('g`',('g`',lambda x : x)),
+     ('h',('h',lambda x : x)),
+     ('h`',('h`',lambda x : x))
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
     expr_to_fun = dict(known_functions.values())
@@ -221,7 +231,7 @@ class VSF(Node):
         v=super(self.__class__, self).val
         if v is None or np.all(np.isnan(v)):
             v = self.op(self.var.val)
-            super(self.__class__, self.__class__).val.fset(self, ArrayOrScala(v))
+            super(self.__class__, self.__class__).val.fset(self, v)
         return v
 
 #Sum0 can be replaced by dot with 1s.
@@ -245,7 +255,7 @@ class Sum0(Node):
     @property
     def val(self):
         if not np.any(self._val):
-            self._val = SimplifyIfScalar(np.sum(self.var.val, axis=0).reshape(1,-1))
+            self._val = np.sum(self.var.val, axis=0).reshape(1,-1)
         return self._val
 
 class Transpose(Node):
@@ -275,7 +285,7 @@ class Transpose(Node):
     def val(self):
         v=super(self.__class__, self).val
         if not np.any(v):
-            v = SimplifyIfScalar(np.transpose(self.var.val))
+            v = np.transpose(self.var.val)
             super(self.__class__, self.__class__).val.fset(self, v)
         return v
     def diff_no_simplify(self, var):
@@ -320,7 +330,7 @@ class BinaryOperator(Node):
     def val(self):
         v=super(BinaryOperator, self).val
         if not np.any(v):
-            v = SimplifyIfScalar(self.op(self.x.val, self.y.val))
+            v = self.op(self.x.val, self.y.val)
             super(BinaryOperator, self.__class__).val.fset(self, v)
         return v
 
