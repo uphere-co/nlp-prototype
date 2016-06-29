@@ -7,6 +7,7 @@ import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (HashSet)
 import qualified Data.HashSet        as HS
+import           Data.List                 (intercalate)
 import           Text.Printf
 --
 import           Type
@@ -28,6 +29,9 @@ prettyPrint (RFun2 s e1 e2)
                                                  (showSym s :: String)
                                                  (prettyPrint e1 :: String)
                                                  (prettyPrint e2 :: String)
+prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
+
+showIdxSet = intercalate ","
 
 dotPrint :: HashMap Hash MExp -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
@@ -49,3 +53,4 @@ dotPrint' h (Val n)        = (printf "x%x [label=\"%d\"];\n" h n ,[])
 dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h (showSym s),[])
 dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h (showSym s) h h1,[h1])
 dotPrint' h (Fun2 s h1 h2) = (printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h (showSym s) h h1 h h2,[h1,h2])
+dotPrint' h (Sum is h1)    = (printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1,[h1])

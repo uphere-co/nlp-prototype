@@ -12,7 +12,7 @@ import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
-import           Data.Monoid
+import           Data.Monoid               ((<>))
 import           Text.Printf
 --
 import           Predefined
@@ -46,6 +46,9 @@ diff' m t (s,e) =
                         MExp e2 _ _ = justLookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
                          (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
+    Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
+                    in sum_ is (untrie t (s,e1))
+
 
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
@@ -90,6 +93,10 @@ exp2 = power 3 x -- power 10 (x `add'` y)
 exp3 :: (?expHash :: Exp :->: Hash) => MExp
 exp3 = ( (x_ "i") `mul'` (y_ "i")) `add'` ( (x_ "i") `mul` (x_ "i"))
 
+exp4 :: (?expHash :: Exp :->: Hash) => MExp
+exp4 = sum_ ["i"] exp3
+
+
 expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: MExp) -> Int -> MExp
 expfib' _ 0 = x
 expfib' _ 1 = y
@@ -128,6 +135,9 @@ digraph v = do
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
 
+sdiff :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp
+sdiff s (MExp e m _) = let diff = fix (diff' m . trie) in diff (s,e)
+
 main' :: IO ()
 main' = do
     let ?expHash = trie hash
@@ -139,22 +149,22 @@ main' = do
 main :: IO ()
 main = do
     let ?expHash = trie hash
-    let MExp e m _ = exp1
-        diff = fix (diff' m . trie)
-    putStrLn . prettyPrint . exp2RExp $ diff (Simple "x",e)
+    -- let MExp e m _ = exp1
+    --    diff = fix (diff' m . trie)
+    putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
     let lexp1 = expfib 100
         lexp2 = dexpfib (Simple "y",100)
     -- prettyPrintR $ lexp1
     -- prettyPrintR $ lexp2    
     (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
 
-    let MExp e' m' _ = exp2
-        ndiff = fix (diff' m' . trie)
-    prettyPrintR $ ndiff (Simple "x",e')
+    --let MExp e' m' _ = exp2
+    --     ndiff = fix (diff' m' . trie)
+    prettyPrintR $ sdiff (Simple "x") exp2
 
-    let MExp e3 m3 _ = exp3
-        diff3 = fix (diff' m3 . trie)
-        r = diff3 (Indexed "x" "j",e3)
+    --let MExp e3 m3 _ = exp3
+    --    diff3 = fix (diff' m3 . trie)
+    let r = sdiff (Indexed "x" "j") exp3
     prettyPrintR r
     digraph r
 
@@ -162,3 +172,7 @@ main = do
 
     print (mexpIdx exp1)
     print (mexpIdx exp3)
+
+    prettyPrintR exp4
+    let r' = sdiff (Indexed "x" "j") exp4
+    prettyPrintR r'

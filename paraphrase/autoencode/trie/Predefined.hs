@@ -6,6 +6,7 @@
 module Predefined where
 
 import qualified Data.HashMap.Strict as HM
+import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
@@ -54,6 +55,14 @@ add = biop (Simple "+")
 
 mul :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 mul = biop (Simple "*")
+
+sum_ :: (?expHash :: Exp :->: Hash) => [Index] -> MExp -> MExp
+sum_ is em@(MExp e1 m1 i1) =
+  let h1 = untrie ?expHash e1
+      i = i1 `difference` HS.fromList is
+      e = Sum is h1
+      m = HM.insert h1 em m1
+  in MExp e m i
 
 square :: (?expHash :: Exp :->: Hash) => MExp -> MExp
 square e = mul e e 
