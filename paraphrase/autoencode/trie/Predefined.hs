@@ -11,11 +11,14 @@ import           Data.MemoTrie
 import           Type
 --
 
+var :: String -> ExpMap
+var s = ExpMap (Var (Simple s)) HM.empty
+
 x :: ExpMap
-x = ExpMap (Var "x") HM.empty
+x = var "x" -- ExpMap (Var (Simple "x")) HM.empty
 
 y :: ExpMap
-y = ExpMap (Var "y") HM.empty
+y = var "y" -- ExpMap (Var (Simple "y")) HM.empty
 
 one :: ExpMap 
 one = ExpMap One HM.empty
@@ -35,10 +38,10 @@ biop sym em1@(ExpMap e1 m1) em2@(ExpMap e2 m2) =
   in ExpMap e m
 
 add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-add = biop "+"
+add = biop (Simple "+")
 
 mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-mul = biop "*"
+mul = biop (Simple "*")
 
 square :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap
 square e = mul e e 

@@ -19,14 +19,14 @@ import           Print
 import           Type
 --
 
-suffix' :: String -> String
-suffix' = (<> "'")
+suffix' :: Symbol -> Symbol
+suffix' (Simple s) = Simple (s <> "'")
 
-suffix_1 :: String -> String
-suffix_1 = (<> "_1")
+suffix_1 :: Symbol -> Symbol
+suffix_1 (Simple s) = Simple (s <> "_1")
 
-suffix_2 :: String -> String
-suffix_2 = (<> "_2")
+suffix_2 :: Symbol -> Symbol
+suffix_2 (Simple s) = Simple (s  <> "_2")
  
 diff'
   :: (?expHash :: Exp :->: Hash)
@@ -53,13 +53,13 @@ justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not
 
 simplify2 :: HashMap Hash ExpMap -> Symbol -> Pos -> Hash -> Hash -> ExpMap
 simplify2 m f pos h1 h2
-  | f == "+" = one
-  | f == "*" = case pos of
-                 Pos1 -> justLookup h2 m
-                 Pos2 -> justLookup h1 m
-  | otherwise = case pos of
-                  Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
-                  Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
+  | showSym f == "+" = one
+  | showSym f == "*" = case pos of
+                         Pos1 -> justLookup h2 m
+                         Pos2 -> justLookup h1 m
+  | otherwise        = case pos of
+                         Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
+                         Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
 
 add' :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
 add' e1                 (ExpMap Zero _)    = e1
@@ -130,9 +130,9 @@ main = do
     let ?expHash = trie hash
     let ExpMap e m = exp1
         diff = fix (diff' m . trie)
-    putStrLn . prettyPrint . exp2RExp $ diff ("x",e)
+    putStrLn . prettyPrint . exp2RExp $ diff (Simple "x",e)
     let lexp1 = expfib 6
-        lexp2 = dexpfib ("y",6)    
+        lexp2 = dexpfib (Simple "y",6)    
     putStrLn . prettyPrint . exp2RExp $ lexp1
     putStrLn . prettyPrint . exp2RExp $ lexp2    
     (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp2

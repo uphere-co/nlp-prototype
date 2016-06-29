@@ -12,9 +12,30 @@ import qualified Data.HashMap.Strict as HM
 import           Data.MemoTrie
 --
 
-type Symbol = String
-
 type Hash = Int
+
+
+data Symbol = Simple String
+            deriving (Show, Eq)
+
+showSym (Simple str) = str
+
+instance HasTrie Symbol where
+  data (Symbol :->: b) = SymbolTrie (String :->: b)
+  
+  trie :: (Symbol -> b) -> (Symbol :->: b)
+  trie f = SymbolTrie (trie (f . Simple))
+
+  untrie :: (Symbol :->: b) -> Symbol -> b
+  untrie (SymbolTrie t) (Simple s) = untrie t s
+
+  enumerate :: (Symbol :->: b) -> [(Symbol,b)]
+  enumerate (SymbolTrie t) = enum' Simple t
+
+instance Hashable Symbol where
+  hashWithSalt :: Hash -> Symbol -> Hash
+  hashWithSalt s (Simple str) = s `hashWithSalt` str
+
 
 data Exp = Zero
          | One
