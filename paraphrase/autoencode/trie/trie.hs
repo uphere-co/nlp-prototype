@@ -10,7 +10,6 @@ import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
-import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 import           Data.Monoid
 import           Text.Printf
@@ -28,7 +27,6 @@ suffix_1 (Simple s) = Simple (s <> "_1")
 
 suffix_2 :: Symbol -> Symbol
 suffix_2 (Simple s) = Simple (s  <> "_2")
-
                     
 diff'
   :: (?expHash :: Exp :->: Hash)
@@ -37,12 +35,12 @@ diff'
   -> (Symbol,Exp) -> ExpMap
 diff' m t (s,e) =
   case e of
-    Zero -> zero 
-    One ->  zero
-    Val _ -> zero
-    Var s' -> dvar s s' -- if s == s' then one else zero
-    Fun1 f h1 -> let Just (ExpMap e1 _) = HM.lookup h1 m
-                 in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
+    Zero         -> zero 
+    One          -> zero
+    Val _        -> zero
+    Var s'       -> dvar s s' 
+    Fun1 f h1    -> let Just (ExpMap e1 _) = HM.lookup h1 m
+                    in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
     Fun2 f h1 h2 -> let Just (ExpMap e1 _) = HM.lookup h1 m
                         Just (ExpMap e2 _) = HM.lookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
@@ -55,8 +53,6 @@ dvar (Indexed x j) (Indexed y k) = if x == y then delta j k else zero
 
 data Pos = Pos1 | Pos2 
 
-justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
-justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
 
 simplify2 :: HashMap Hash ExpMap -> Symbol -> Pos -> Hash -> Hash -> ExpMap
 simplify2 m f pos h1 h2

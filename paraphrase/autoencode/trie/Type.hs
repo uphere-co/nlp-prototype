@@ -9,6 +9,7 @@ import           Control.Lens              (over, _1)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 --
 
@@ -123,22 +124,16 @@ instance Hashable Exp where
   hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1
   hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (6 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
 
- 
+justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
+justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
+
 exp2RExp :: ExpMap -> RExp
-exp2RExp (ExpMap Zero _)    = RZero
-exp2RExp (ExpMap One _)     = ROne
-exp2RExp (ExpMap (Delta i j) _) = RDelta i j
-exp2RExp (ExpMap (Val n) _) = RVal n
-exp2RExp (ExpMap (Var s) _) = RVar s
-exp2RExp (ExpMap (Fun1 s h1) m)    = let e1 = case HM.lookup h1 m of
-                                                Nothing -> error " fun1 "
-                                                Just e' -> e'
-                                     in RFun1 s (exp2RExp e1)
-exp2RExp (ExpMap (Fun2 s h1 h2) m) = let e1 = case HM.lookup h1 m of
-                                                Nothing -> error " fun2 "
-                                                Just e' -> e'
-                                         e2 = case HM.lookup h2 m of
-                                                Nothing -> error "fun2 2"
-                                                Just e' -> e'
+exp2RExp (ExpMap Zero _)           = RZero
+exp2RExp (ExpMap One _)            = ROne
+exp2RExp (ExpMap (Delta i j) _)    = RDelta i j
+exp2RExp (ExpMap (Val n) _)        = RVal n
+exp2RExp (ExpMap (Var s) _)        = RVar s
+exp2RExp (ExpMap (Fun1 s h1) m)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
+exp2RExp (ExpMap (Fun2 s h1 h2) m) = let e1 = justLookup h1 m; e2 = justLookup h2 m
                                      in RFun2 s (exp2RExp e1) (exp2RExp e2)
 
