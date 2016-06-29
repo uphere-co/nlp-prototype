@@ -149,7 +149,7 @@ main' = do
 main :: IO ()
 main = do
     let ?expHash = trie hash
-    -- let MExp e m _ = exp1
+    {- -- let MExp e m _ = exp1
     --    diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
     let lexp1 = expfib 100
@@ -163,16 +163,20 @@ main = do
     prettyPrintR $ sdiff (Simple "x") exp2
 
     --let MExp e3 m3 _ = exp3
-    --    diff3 = fix (diff' m3 . trie)
+    --    diff3 = fix (diff' m3 . trie) 
+
+    
     let r = sdiff (Indexed "x" "j") exp3
     prettyPrintR r
-    digraph r
+    digraph r   -}
 
-    print (mexpIdx r)
 
-    print (mexpIdx exp1)
-    print (mexpIdx exp3)
-
-    prettyPrintR exp4
+    
+    
+    printf "f = %s\n" ((prettyPrint . exp2RExp) exp4 :: String)
     let r' = sdiff (Indexed "x" "j") exp4
-    prettyPrintR r'
+    printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
+
+    digraph r'
+
+    -- print (mexpIdx r')
