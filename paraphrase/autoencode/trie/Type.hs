@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Type where
 
@@ -9,14 +10,17 @@ import           Control.Lens              (over, _1)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
+import           Data.HashSet              (HashSet)
+import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 --
 
 type Hash = Int
 
+type Index = String
 
 data Symbol = Simple String
-            | Indexed String String
+            | Indexed String Index
             deriving (Show, Eq)
 
 showSym (Simple str) = str
@@ -42,44 +46,49 @@ instance Hashable Symbol where
 
 data Exp = Zero
          | One
-         | Delta String String
+         | Delta Index Index
          | Val Int
          | Var Symbol
          | Fun1 Symbol Hash
          | Fun2 Symbol Hash Hash
+         | Sum [Index] Hash
          deriving (Show,Eq)
 
-data ExpMap = ExpMap { expMapExp :: Exp
-                     , expMapMap :: HashMap Hash ExpMap
-                     }
+data MExp = MExp { mexpExp :: Exp
+                 , mexpMap :: HashMap Hash MExp
+                 , mexpIdx :: HashSet Index
+                 }
 
 data RExp = RZero
           | ROne
-          | RDelta String String
+          | RDelta Index Index
           | RVal Int
           | RVar Symbol
           | RFun1 Symbol RExp
           | RFun2 Symbol RExp RExp
+          | RSum [Index] RExp
 
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
-                              ((String,String) :->: b)
+                              ((String,Index) :->: b)
                               (Int :->: b)
                               (Symbol :->: b)
                               ((Symbol,Hash) :->: b)
                               ((Symbol,Hash,Hash) :->: b)
+                              (([Index],Hash) :->: b)
   trie :: (Exp -> b) -> (Exp :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))
                    (trie (f . uncurry Delta))
                    (trie (f . Val))
                    (trie (f . Var))
-                   (trie (\(s,e)-> f (Fun1 s e)))
+                   (trie (f . uncurry Fun1)) -- (\(s,e)-> f (Fun1 s e)))
                    (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
+                   (trie (f . uncurry Sum))
            
   untrie :: (Exp :->: b) -> Exp -> b
-  untrie (ExpTrie z o d l v f1 f2) e =
+  untrie (ExpTrie z o d l v f1 f2 su) e =
     case e of
       Zero         -> untrie z ()
       One          -> untrie o ()
@@ -88,9 +97,10 @@ instance HasTrie Exp where
       Var s        -> untrie v s
       Fun1 s e1    -> untrie f1 (s,e1)
       Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
+      Sum is e1    -> untrie su (is,e1)
                                      
   enumerate :: (Exp :->: b) -> [(Exp,b)]
-  enumerate (ExpTrie z o d n v f1 f2) =
+  enumerate (ExpTrie z o d n v f1 f2 su) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
@@ -101,9 +111,11 @@ instance HasTrie Exp where
     `weave`
     enum' Var v
     `weave`
-    enum' (\(s,e)->Fun1 s e) f1
+    enum' (uncurry Fun1) f1
     `weave`
     enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+    `weave`
+    enum' (uncurry Sum) su
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
@@ -122,23 +134,20 @@ instance Hashable Exp where
   hashWithSalt s (Var s')        = s `hashWithSalt` (4 :: Int) `hashWithSalt` s'
   hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1
   hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (6 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
+  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` is `hashWithSalt` h1
 
- 
-exp2RExp :: ExpMap -> RExp
-exp2RExp (ExpMap Zero _)    = RZero
-exp2RExp (ExpMap One _)     = ROne
-exp2RExp (ExpMap (Delta i j) _) = RDelta i j
-exp2RExp (ExpMap (Val n) _) = RVal n
-exp2RExp (ExpMap (Var s) _) = RVar s
-exp2RExp (ExpMap (Fun1 s h1) m)    = let e1 = case HM.lookup h1 m of
-                                                Nothing -> error " fun1 "
-                                                Just e' -> e'
-                                     in RFun1 s (exp2RExp e1)
-exp2RExp (ExpMap (Fun2 s h1 h2) m) = let e1 = case HM.lookup h1 m of
-                                                Nothing -> error " fun2 "
-                                                Just e' -> e'
-                                         e2 = case HM.lookup h2 m of
-                                                Nothing -> error "fun2 2"
-                                                Just e' -> e'
+
+justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
+justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
+
+exp2RExp :: MExp -> RExp
+exp2RExp (mexpExp -> Zero)         = RZero
+exp2RExp (mexpExp -> One)          = ROne
+exp2RExp (mexpExp -> Delta i j)    = RDelta i j
+exp2RExp (mexpExp -> Val n)        = RVal n
+exp2RExp (mexpExp -> Var s)        = RVar s
+exp2RExp (MExp (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
+exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
                                      in RFun2 s (exp2RExp e1) (exp2RExp e2)
+exp2RExp (MExp (Sum is h1) m _)    = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 

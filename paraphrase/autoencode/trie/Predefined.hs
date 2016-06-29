@@ -6,58 +6,68 @@
 module Predefined where
 
 import qualified Data.HashMap.Strict as HM
+import           Data.HashSet              (difference)
+import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
 import           Type
 --
 
-var :: String -> ExpMap
-var s = ExpMap (Var (Simple s)) HM.empty
+var :: String -> MExp
+var s = MExp (Var (Simple s)) HM.empty HS.empty
 
-ivar :: String -> String -> ExpMap
-ivar x i = ExpMap (Var (Indexed x i)) HM.empty
+ivar :: String -> Index -> MExp
+ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.singleton i)
 
-x :: ExpMap
+x :: MExp
 x = var "x"
 
-y :: ExpMap
+y :: MExp
 y = var "y"
 
-x_ :: String -> ExpMap
+x_ :: Index -> MExp
 x_ i = ivar "x" i
 
-y_ :: String -> ExpMap
+y_ :: Index -> MExp
 y_ i = ivar "y" i
 
-one :: ExpMap 
-one = ExpMap One HM.empty
+one :: MExp 
+one = MExp One HM.empty HS.empty
 
-zero :: ExpMap
-zero = ExpMap Zero HM.empty
+zero :: MExp
+zero = MExp Zero HM.empty HS.empty
 
-val :: Int -> ExpMap
-val n = ExpMap (Val n) HM.empty
+val :: Int -> MExp
+val n = MExp (Val n) HM.empty HS.empty
 
-delta j k = ExpMap (Delta j k) HM.empty
+delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
-biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
-biop sym em1@(ExpMap e1 m1) em2@(ExpMap e2 m2) =
+biop :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp -> MExp
+biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
       e = Fun2 sym h1 h2
       m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
-  in ExpMap e m
+  in MExp e m (HS.union i1 i2)
 
-add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+add :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 add = biop (Simple "+")
 
-mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+mul :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 mul = biop (Simple "*")
 
-square :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap
+sum_ :: (?expHash :: Exp :->: Hash) => [Index] -> MExp -> MExp
+sum_ is em@(MExp e1 m1 i1) =
+  let h1 = untrie ?expHash e1
+      i = i1 `difference` HS.fromList is
+      e = Sum is h1
+      m = HM.insert h1 em m1
+  in MExp e m i
+
+square :: (?expHash :: Exp :->: Hash) => MExp -> MExp
 square e = mul e e 
 
-power :: (?expHash :: Exp :->: Hash) => Int -> ExpMap -> ExpMap
+power :: (?expHash :: Exp :->: Hash) => Int -> MExp -> MExp
 power n e
   | n < 0          = error "not supported"
   | n == 1         = e
