@@ -18,10 +18,10 @@ ivar :: String -> String -> ExpMap
 ivar x i = ExpMap (Var (Indexed x i)) HM.empty
 
 x :: ExpMap
-x = var "x" -- ExpMap (Var (Simple "x")) HM.empty
+x = var "x"
 
 y :: ExpMap
-y = var "y" -- ExpMap (Var (Simple "y")) HM.empty
+y = var "y"
 
 x_ :: String -> ExpMap
 x_ i = ivar "x" i
@@ -37,6 +37,8 @@ zero = ExpMap Zero HM.empty
 
 val :: Int -> ExpMap
 val n = ExpMap (Val n) HM.empty
+
+delta j k = ExpMap (Delta j k) HM.empty
 
 biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
 biop sym em1@(ExpMap e1 m1) em2@(ExpMap e2 m2) =

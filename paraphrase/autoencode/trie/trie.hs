@@ -28,7 +28,9 @@ suffix_1 (Simple s) = Simple (s <> "_1")
 
 suffix_2 :: Symbol -> Symbol
 suffix_2 (Simple s) = Simple (s  <> "_2")
- 
+
+
+                      
 diff'
   :: (?expHash :: Exp :->: Hash)
   => HashMap Hash ExpMap
@@ -39,13 +41,18 @@ diff' m t (s,e) =
     Zero -> zero 
     One ->  zero
     Val _ -> zero
-    Var s' -> if s == s' then one else zero
+    Var s' -> dvar s s' -- if s == s' then one else zero
     Fun1 f h1 -> let Just (ExpMap e1 _) = HM.lookup h1 m
                  in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
     Fun2 f h1 h2 -> let Just (ExpMap e1 _) = HM.lookup h1 m
                         Just (ExpMap e2 _) = HM.lookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
                          (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
+
+dvar (Simple s)    (Simple s')   = if s == s' then one else zero
+dvar (Simple s)    _             = zero
+dvar _             (Simple s')   = zero
+dvar (Indexed x j) (Indexed y k) = if x == y then delta j k else zero
 
 data Pos = Pos1 | Pos2 
 
@@ -149,4 +156,7 @@ main = do
         ndiff = fix (diff' m' . trie)
     prettyPrintR $ ndiff (Simple "x",e')
 
+    let ExpMap e3 m3 = exp3
+        diff3 = fix (diff' m3 . trie)
 
+    prettyPrintR $ diff3 (Indexed "x" "j",e3)

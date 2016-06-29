@@ -10,9 +10,10 @@ import           Text.Printf
 import           Type
 -- 
 
-prettyPrint :: PrintfType r => RExp -> r -- String
+prettyPrint :: PrintfType r => RExp -> r
 prettyPrint RZero = printf "0"
 prettyPrint ROne  = printf "1"
+prettyPrint (RDelta i j) = printf "delta_%s%s" i j
 prettyPrint (RVal n) = printf "%d" n 
 prettyPrint (RVar s) = printf "%s" (showSym s)
 prettyPrint (RFun1 s e1) = printf "(%s %s)" (showSym s) (prettyPrint e1 :: String)
@@ -41,6 +42,7 @@ dotPrint m h = do
 dotPrint' :: Hash -> Exp -> (String,[Hash])
 dotPrint' h Zero           = (printf "x%x [label=\"0\"];\n" h,[])
 dotPrint' h One            = (printf "x%x [label=\"1\"];\n" h,[])
+dotPrint' h (Delta i j)    = (printf "x%x [label=\"delta_%s%s\"];\n" h i j,[])
 dotPrint' h (Val n)        = (printf "x%x [label=\"%d\"];\n" h n ,[])
 dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h (showSym s),[])
 dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h (showSym s) h h1,[h1])
