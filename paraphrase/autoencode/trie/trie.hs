@@ -3,226 +3,138 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-import           Control.Arrow
-import           Control.Lens              (over, _1)
 import           Control.Monad.Trans.State
-import           Data.Bits                 (xor)
 import           Data.Function             (fix)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
-import           Data.HashSet              (HashSet)
 import qualified Data.HashSet        as HS
+import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
+import           Data.Monoid
 import           Text.Printf
 --
-import Debug.Trace
+import           Predefined
+import           Print
+import           Type
+--
 
-type Symbol = String
+suffix' :: String -> String
+suffix' = (<> "'")
 
-type Hash = Int
+suffix_1 :: String -> String
+suffix_1 = (<> "_1")
 
-data Exp = Zero
-          | One
-          | Val Int
-          | Var Symbol
-          | Fun1 Symbol Hash
-          | Fun2 Symbol Hash Hash
-          -- deriving (Show,Eq) -- Generic
+suffix_2 :: String -> String
+suffix_2 = (<> "_2")
+ 
+diff'
+  :: (?expHash :: Exp :->: Hash)
+  => HashMap Hash ExpMap
+  -> ((Symbol,Exp) :->: ExpMap)
+  -> (Symbol,Exp) -> ExpMap
+diff' m t (s,e) =
+  case e of
+    Zero -> zero 
+    One ->  zero
+    Val _ -> zero
+    Var s' -> if s == s' then one else zero
+    Fun1 f h1 -> let Just (ExpMap e1 _) = HM.lookup h1 m
+                 in ExpMap (Fun1 (suffix' f) h1) m `mul'` untrie t (s,e1)
+    Fun2 f h1 h2 -> let Just (ExpMap e1 _) = HM.lookup h1 m
+                        Just (ExpMap e2 _) = HM.lookup h2 m
+                    in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
+                         (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
 
-type ExpMap = (Exp,HashMap Hash Exp)
+data Pos = Pos1 | Pos2 
 
-data RExp = RZero
-          | ROne
-          | RVal Int
-          | RVar Symbol
-          | RFun1 Symbol RExp
-          | RFun2 Symbol RExp RExp
+justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
+justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
 
-instance HasTrie Exp where
-  data (Exp :->: b) = ExpTrie (() :->: b)
-                               (() :->: b)
-                               (Int :->: b)
-                               (Symbol :->: b)
-                               ((Symbol,Hash) :->: b)
-                               ((Symbol,Hash,Hash) :->: b)
-  trie :: (Exp -> b) -> (Exp :->: b)
-  trie f = ExpTrie (trie (\() -> f Zero))
-                    (trie (\() -> f One))
-                    (trie (f . Val))
-                    (trie (f . Var))
-                    (trie (\(s,e)-> f (Fun1 s e)))
-                    (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
-           
-  untrie :: (Exp :->: b) -> Exp -> b
-  untrie (ExpTrie z o l v f1 f2) e =
-    case e of
-      Zero         -> untrie z ()
-      One          -> untrie o ()
-      Val n        -> untrie l n
-      Var s        -> untrie v s
-      Fun1 s e     -> untrie f1 (s,e)
-      Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
-                                     
-  enumerate :: (Exp :->: b) -> [(Exp,b)]
-  enumerate (ExpTrie z o n v f1 f2) =
-    enum' (\()->Zero) z
-    `weave`
-    enum' (\()->One) o
-    `weave`
-    enum' Val n
-    `weave`
-    enum' Var v
-    `weave`
-    enum' (\(s,e)->Fun1 s e) f1
-    `weave`
-    enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+simplify2 :: HashMap Hash ExpMap -> Symbol -> Pos -> Hash -> Hash -> ExpMap
+simplify2 m f pos h1 h2
+  | f == "+" = one
+  | f == "*" = case pos of
+                 Pos1 -> justLookup h2 m
+                 Pos2 -> justLookup h1 m
+  | otherwise = case pos of
+                  Pos1 -> ExpMap (Fun2 (suffix_1 f) h1 h2) m
+                  Pos2 -> ExpMap (Fun2 (suffix_2 f) h1 h2) m
 
+add' :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+add' e1                 (ExpMap Zero _)    = e1
+add' (ExpMap Zero _)    e2                 = e2
+add' (ExpMap One _)     (ExpMap One _)     = val 2
+add' (ExpMap (Val m) _) (ExpMap One _)     = val (m+1)
+add' (ExpMap One _)     (ExpMap (Val m) _) = val (m+1)
+add' (ExpMap (Val m) _) (ExpMap (Val n) _) = val (m+n)
+add' e1               e2               = e1 `add` e2
 
+mul' :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
+mul' _e1             (ExpMap Zero _) = zero
+mul' (ExpMap Zero _) _e2             = zero
+mul' e1              (ExpMap One  _) = e1
+mul' (ExpMap One  _) e2              = e2
+mul' e1              e2              = e1 `mul` e2 
 
-
-enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
-enum' f = fmap (over _1 f) . enumerate
-
-weave :: [a] -> [a] -> [a]
-[] `weave` as = as
-as `weave` [] = as
-(a:as) `weave` bs = a : (bs `weave` as)
-                  
-instance Hashable Exp where
-  hashWithSalt :: Int -> Exp -> Int
-  hashWithSalt s Zero            = s `hashWithSalt` (0 :: Int)
-  hashWithSalt s One             = s `hashWithSalt` (1 :: Int)
-  hashWithSalt s (Val n)         = s `hashWithSalt` (2 :: Int) `hashWithSalt` n
-  hashWithSalt s (Var s')        = s `hashWithSalt` (3 :: Int) `hashWithSalt` s'
-  hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (4 :: Int) `hashWithSalt` s' `hashWithSalt` h1
-  hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
-
-combine :: Int -> Int -> Int
-combine h1 h2 = (h1 * 16777619) `xor` h2
-
-exp2RExp :: HashMap Hash Exp -> Exp -> RExp
-exp2RExp m Zero           = RZero
-exp2RExp m One            = ROne
-exp2RExp m (Val n)        = RVal n
-exp2RExp m (Var s)        = RVar s
-exp2RExp m (Fun1 s h1)    = let e1 = case HM.lookup h1 m of
-                                       Nothing -> error " fun1 "
-                                       Just e -> e
-                            in RFun1 s (exp2RExp m e1)
-exp2RExp m (Fun2 s h1 h2) = let e1 = case HM.lookup h1 m of
-                                            Nothing -> error " fun2 "
-                                            Just e -> e
-                                e2 = case HM.lookup h2 m of
-                                            Nothing -> error "fun2 2"
-                                            Just e -> e
-                            in RFun2 s (exp2RExp m e1) (exp2RExp m e2)
-  
-prettyPrint RZero = "0"
-prettyPrint ROne  = "1"
-prettyPrint (RVal n) = show n 
-prettyPrint (RVar s) = s
-prettyPrint (RFun1 s e1) = printf "( %s %s )" s (prettyPrint e1)
-prettyPrint (RFun2 s e1 e2) = printf "( %s %s %s )" s (prettyPrint e1) (prettyPrint e2)
-
-dotPrint :: HashMap Int Exp -> Hash -> State (HashSet Int) String
-dotPrint m h = do
-  s <- get
-  let Just e = HM.lookup h m
-  case h `HS.member` s of
-    True -> return ""
-    False -> do
-      let (str,hs) = dotPrint' h e
-      put (h `HS.insert` s)
-      lst <- mapM (dotPrint m) hs
-      return (concat (str : lst))
-      -- in str ++ concatMap dotPrint m (hs `HS.union` s) 
-
-dotPrint' h Zero           = (printf "x%x [label=\"0\"];\n" h,[])
-dotPrint' h One            = (printf "x%x [label=\"1\"];\n" h,[])
-dotPrint' h (Val n)        = (printf "x%x [label=\"%d\"];\n" h n ,[])
-dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h s,[])
-dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h s h h1,[h1]) --  ++ dotPrint ms h1
-dotPrint' h (Fun2 s h1 h2) = (printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2,[h1,h2])
-
-x = (Var "x", HM.empty)
-
-y = (Var "y", HM.empty)
-
-one = (One, HM.empty)
-zero = (Zero, HM.empty)
-
-val n = (Val n, HM.empty)
-
-biop :: (?expHash :: Exp :->: Hash) => Symbol -> ExpMap -> ExpMap -> ExpMap
-biop sym (e1,m1) (e2,m2) =
-  let h1 = untrie ?expHash e1
-      h2 = untrie ?expHash e2
-      e = Fun2 sym h1 h2
-      m = (HM.insert h1 e1 . HM.insert h2 e2) (m1 `HM.union` m2)
-  in (e,m)
-
-add :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-add = biop "+"
-
-mul :: (?expHash :: Exp :->: Hash) => ExpMap -> ExpMap -> ExpMap
-mul = biop "*"
-
-square :: (?expHash :: Exp :->: Int) => ExpMap -> ExpMap
-square e = mul e e 
-
-power :: (?expHash :: Exp :->: Int) => Int -> ExpMap -> ExpMap
-power n e
-  | n < 0          = error "not supported"
-  | n == 1         = e
-  | n == 0         = one
-  | n `mod` 2 == 0 = square (power (n `div` 2) e)
-  | otherwise      = square (power (n `div` 2) e) `mul` e
-
-
-exp1 :: (?expHash :: Exp :->: Int) => ExpMap
+exp1 :: (?expHash :: Exp :->: Hash) => ExpMap
 exp1 = square (x `add` y)
 
-exp2 :: (?expHash :: Exp :->: Int) => ExpMap
+exp2 :: (?expHash :: Exp :->: Hash) => ExpMap
 exp2 = power 10 (x `add` y)
 
-
-expfib' :: (?expHash :: Exp :->: Int) => (Int :->: ExpMap) -> Int -> ExpMap
-expfib' t 0 = val 0 -- let e = Val 0; h = hash e in (HM.singleton h e, Val 0)
-expfib' t 1 = val 1 -- let e = Val 1; h = hash e in (HM.singleton h e, Val 1)
+expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: ExpMap) -> Int -> ExpMap
+expfib' _ 0 = x
+expfib' _ 1 = y
 expfib' t n = let e1 = untrie t (n-1)
                   e2 = untrie t (n-2)
               in add e1 e2
 
-expfib :: (?expHash :: Exp :->: Int) => Int -> ExpMap 
+expfib :: (?expHash :: Exp :->: Hash) => Int -> ExpMap 
 expfib = 
     let t = trie expfib
         extfib = expfib' t
     in extfib
 
+dexpfib' :: (?expHash :: Exp :->: Hash) => 
+            (Int :->: ExpMap, (Symbol,Exp) :->: ExpMap)
+         -> (Symbol,Int) -> ExpMap
+dexpfib' (tfib,tdiff) (s,n) = let ExpMap e m = untrie tfib n in diff' m tdiff (s,e)
 
+dexpfib :: (?expHash :: Exp :->: Hash) => (Symbol,Int) -> ExpMap
+dexpfib (s,n) = let tfib = trie ffib
+                    ffib = expfib' tfib
+                    ExpMap _ m = untrie tfib n
+                    tdiff = trie (diff' m tdiff)
+                    f = dexpfib' (tfib,tdiff) 
+                in f (s,n)
 
-main = do
-    let ?expHash = trie hash
-    let (e,m) = exp2
-        (ex,mx) = x
-    putStrLn . prettyPrint . exp2RExp m $ e
-    putStrLn . prettyPrint . exp2RExp mx $ ex
-    -- putStrLn (prettyPrint (fst exp1))
-    -- putStrLn (prettyPrint (fst x))
-    -- printf "%x \n" (untrie ?expHash (Val 1))
-
+digraph :: (?expHash :: Exp :->: Hash) => ExpMap -> IO ()
 digraph v = do
-    let -- v = expfib 10
-        h = untrie ?expHash (fst v)
-    let m = HM.insert h (fst v) (snd v) 
+    let h = untrie ?expHash (expMapExp v)
+        m = HM.insert h v (expMapMap v) 
     putStrLn "digraph G {"
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
 
+main' :: IO ()
 main' = do
     let ?expHash = trie hash
-    
-    -- digraph (expfib 10)
+    -- digraph exp1
+    -- digraph (expfib 100)
     -- digraph exp1
     digraph exp2
+
+main :: IO ()
+main = do
+    let ?expHash = trie hash
+    let ExpMap e m = exp1
+        diff = fix (diff' m . trie)
+    putStrLn . prettyPrint . exp2RExp $ diff ("x",e)
+    let lexp1 = expfib 6
+        lexp2 = dexpfib ("y",6)    
+    putStrLn . prettyPrint . exp2RExp $ lexp1
+    putStrLn . prettyPrint . exp2RExp $ lexp2    
+    (printf "x : %x\n" . untrie ?expHash . expMapExp) lexp2
+
+
