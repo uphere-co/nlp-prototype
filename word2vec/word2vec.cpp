@@ -40,9 +40,9 @@ const long long vocab_hash_size = 30000000;
 
 // Variables
 long long vocab_size = 0;
-long long train_words = 0, word_count_actual = 0, file_size = 0, iter = 5, classes = 0;//, iter = 5; Threaded
+long long train_words = 0, word_count_actual = 0, file_size = 0, iter = 5, classes = 0;
 
-real alpha = 0.025, starting_alpha, sample = 1e-3; // 1e-5;
+real alpha = 0.025, starting_alpha, sample = 1e-3;
 
 std::array<real,(EXP_TABLE_SIZE + 1)> expTable;
 
@@ -336,7 +336,7 @@ void ReadVocab() {
   std::string line;
   std::vector<std::string> word;
   std::ifstream inFile;
-  inFile.open(read_vocab_file, std::ifstream::in);// | std::ifstream::binary);
+  inFile.open(read_vocab_file, std::ifstream::in);
   if(inFile.fail()) {
     std::cout << "Vocabulary file not found!\n";
     exit(1);
@@ -396,7 +396,6 @@ void InitUnigramTable() {
 void InitNet() {
   long long a, b;
 
-  // Precompute the exp() and f(x) = x / (x + 1) tables
   for (int i = 0; i < EXP_TABLE_SIZE; i++) {
     expTable[i] = exp((i / (real)EXP_TABLE_SIZE * 2 - 1) * MAX_EXP);
     expTable[i] = expTable[i] / (expTable[i] + 1);
@@ -421,7 +420,7 @@ void InitNet() {
     for(b = 0; b < layer1_size; b++)
       syn0[a * layer1_size + b] = (rand()/(double)RAND_MAX - 0.5) / layer1_size;
 
-  CreateBinaryTree(); // Why this position in the code?
+  CreateBinaryTree();
 
 }
 
@@ -473,14 +472,13 @@ void TrainModelThread(){
       }
       sentence_position = 0;
     }
-    if(inFile.eof() || (word_count > train_words )) { /// num_threads)) {
+    if(inFile.eof() || (word_count > train_words )) {
     word_count_actual += word_count - last_word_count;
     local_iter--;
     if(local_iter == 0) break;
     word_count = 0;
     last_word_count = 0;
     sentence_length = 0;
-    //inFile.seekg(file_size / (long long)num_threads * (long long)id, SEEK_SET);
     continue;
     }
     word = sen[sentence_position];
@@ -556,7 +554,6 @@ void TrainModel() {
   starting_alpha = alpha;
   if(read_vocab_file != "") ReadVocab(); else LearnVocabFromTrainFile();
   if(save_vocab_file != "") SaveVocab();
-  //LearnVocabFromTrainFile();
   if(output_file[0] == 0) return;
   InitNet();
   if(negative > 0) InitUnigramTable();
@@ -762,7 +759,7 @@ void ReadValue(std::string& word, std::ifstream& fin) {
 int main(int argc, char **argv) {
 
   // Seeding random function
-  std::srand((unsigned int)time(NULL)); // This is enought for subroutines
+  std::srand((unsigned int)time(NULL));
 
   if(argc == 1) {
     printHelp();
@@ -773,97 +770,6 @@ int main(int argc, char **argv) {
 
   
   TrainModel();
-
-
-
-
-  /*
-  long long a, b, c;
-  
-  vocab_size = 71291;
-  std::ifstream fin;
-  std::string value;
-  fin.open("vectors.bin", std::ifstream::in);
-  std::vector<std::string> my;
-  std::vector<std::string> smine;
-
-  my.reserve(vocab_size);
-  mine.reserve(vocab_size*layer1_size);
-  smine.reserve(vocab_size*layer1_size);
-  int number = 0;
-  while(!fin.eof()) {
-      ReadValue(value, fin);
-      my.push_back(value);
-
-      for(number = 0; number < 100; number++) {
-	ReadValue(value, fin);
-	smine.push_back(value);
-      }
-  }
-
-
-  for(a = 0; a < vocab_size*layer1_size; a++) {
-    mine[a] = std::atof(smine[a].c_str());
-  }
-  std::string qword;
-  std::vector< std::pair<std::string, double> > distM;
-  int p = 0;
-  double dist;
-
-  fin.close();
-  
-  while(1) {
-    std::cout << "Enter word (EXIT to break): ";
-    std::cin >> qword;
-
-    if(qword == "EXIT") {
-      std::cout << "Finishing the program!\n";
-      break;
-    }
-    
-    p = 0;
-    distM.clear();
-    
-    for(a = 0; a < vocab_size; a++) {
-      if(qword != my[a]) {
-	dist = cosDistBetweenWords(qword, my[a]);
-	//dist = sqrt(dist);
-	if(p<50) {
-	  distM.push_back(make_pair(my[a], dist));
-	  p++;
-	  continue;
-	}
-	if(p>=50) {
-	  double smallest = 0;
-	  int smallposition = 0;
-	  for(int w = 0; w < p; w++) {
-	    if(w == 0) {
-	      smallest = distM[w].second;
-	      smallposition = 0;
-	    }
-	    if(w != 0) {
-	      if(distM[w].second < smallest) {
-		smallest = distM[w].second;
-		smallposition = w;
-	      }
-	    }
-	  }
-	  
-	  if(smallest < dist) {
-	    distM.erase(distM.begin() + smallposition);
-	    distM.push_back(make_pair(my[a], dist));  
-	  }
-	}
-      }
-    }
-
-    // Print
-    for(int w = 0; w < 50; w++) {
-      std::cout << distM[w].first << "    " << distM[w].second << std::endl;
-    }
-    std::cout << std::endl;
-  }*/
-
   
   return 0;
 }
