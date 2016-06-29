@@ -3,54 +3,63 @@ import numpy as np
 
 def NormalizedMatrix(mat, l1norm):
     return l1norm*mat/np.abs(mat).sum()
-    
+
 def SimplifyIfScalar(arr):
     if np.product(arr.shape) ==1 :
         return arr.dtype.type(arr)
     return arr
-def ArrayOrScala(arr):
-    arr = SimplifyIfScalar(np.array(arr))
-    if len(arr.shape)==1:
-        arr=arr.reshape(1, -1)
-    return arr
 
-def IsScalar(x):
+def ScalarToMatrix(x):
+    if IsScalarValue(x):
+        return np.array(x).reshape(1,1)
+    return x
+    raise ValueError('x is not convertable to matrix')
+
+def IsScalarValue(x):
     try:
-        m=int(x.val)
+        m=float(x)
         return True
     except:
         pass
     return False
-def IsVector(x):
+def IsScalar(x):
+    return IsScalarValue(x.val)
+def IsVectorValue(x):
     try:
-        if len(x.val.shape)==1:
+        if len(x.shape)==1:
             return True
-        m,n=x.val.shape
+        m,n=x.shape
+        #m,n=x.val.shape[0],x.val.shape[1]
         return (m==1 and n>1) or (m>1 and n==1)
     except:
         pass
-    return False    
-def IsMatrix(x):
+    return False
+def IsVector(x):
+    return IsVectorValue(x.val)
+def IsMatrixValue(x):
     try:
-        m,n=x.val.shape
+        #m,n=x.val.shape[0],x.val.shape[1]
+        m,n=x.shape
         return m>1 and n>1
     except:
         pass
     return False
-    
-def IsZero(var):    
-    try : 
+def IsMatrix(x):
+    return IsMatrixValue(x.val)
+
+def IsZero(var):
+    try :
         return np.all(var.val==0)
     except:
         pass
     return False
-def IsAllOne(var):         
-    try : 
+def IsAllOne(var):
+    try :
         return np.all(var.val==1.0)
     except:
         pass
     return False
-def IsIdentity(var):     
+def IsIdentity(var):
     try :
         if not isinstance(var.val, np.ndarray) and var.val==1.0:
             return True
@@ -63,4 +72,3 @@ def IsIdentity(var):
     except:
         pass
     return False
-

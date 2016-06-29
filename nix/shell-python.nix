@@ -23,5 +23,6 @@ stdenv.mkDerivation {
                    toolz.nltk
                  ]);
   shellHook = ''
+     EDITOR=vim
   '';
 }
