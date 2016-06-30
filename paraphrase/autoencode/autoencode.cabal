@@ -95,6 +95,33 @@ Executable autoencode
                         --
                         autoencode
 
+-- rnnresult program. 
+--
+Executable rnnresult
+  Main-is:              rnnresult.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        text,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+
 -- treebank program. 
 --
 Executable treebank
