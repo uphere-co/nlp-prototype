@@ -71,12 +71,16 @@ prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 endl = putStrLn ""
 
 
-{- mkDepGraph1 :: (?expHash :: Exp :->: Hash) -> MExp -> [(Hash,Hash)]
+mkDepGraph1 :: (?expHash :: Exp :->: Hash) => MExp -> [(Hash,Hash)]
 mkDepGraph1 e = let e1 = mexpExp e
-                    h1 = untrie expHash e1
+                    h1 = untrie ?expHash e1
                     m1 = mexpMap e
-                in map (h1,) m1 
--}
+                    hs = daughters e1
+                    lst = map (h1,) hs
+                    lsts = map (mkDepGraph1 . flip justLookup m1) hs 
+                in concat (lst:lsts)
+
+
 
 test_digraph :: IO ()
 test_digraph = do
@@ -130,6 +134,7 @@ test5 = do
   printf "df/d(y_mn) = %s\n" ((prettyPrint . exp2RExp) r :: String)
   digraph r
 
+  mapM_ (\(h1,h2) -> printf "x%x -> x%x\n" h1 h2) $ mkDepGraph1 r
 
 main = do
   test5

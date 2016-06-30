@@ -163,4 +163,6 @@ daughters (Fun2 s h1 h2) = [h1,h2]
 daughters (Sum is h1)    = [h1]
  
 
+
+
 data Pos = Pos1 | Pos2 
