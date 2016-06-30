@@ -39,6 +39,7 @@ Library
                         Symbolic.Differential
                         Symbolic.Predefined
                         Symbolic.Print
+                        Symbolic.Simplify
                         Symbolic.Type
 
   Other-modules:        

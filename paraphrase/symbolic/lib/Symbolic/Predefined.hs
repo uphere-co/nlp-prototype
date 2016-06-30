@@ -9,6 +9,7 @@ import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
+import           Data.Monoid               ((<>))
 --
 import           Symbolic.Type
 --
@@ -74,4 +75,13 @@ power n e
   | n == 0         = one
   | n `mod` 2 == 0 = square (power (n `div` 2) e)
   | otherwise      = square (power (n `div` 2) e) `mul` e
+
+suffix' :: Symbol -> Symbol
+suffix' (Simple s) = Simple (s <> "'")
+
+suffix_1 :: Symbol -> Symbol
+suffix_1 (Simple s) = Simple (s <> "_1")
+
+suffix_2 :: Symbol -> Symbol
+suffix_2 (Simple s) = Simple (s  <> "_2")
 

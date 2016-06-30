@@ -44,20 +44,21 @@ dotPrint m h = do
   case h `HS.member` s of
     True -> return ""
     False -> do
-      let (str,hs) = dotPrint' h e
+      let str = dotPrint' h e
+          hs = daughters e
       put (h `HS.insert` s)
       lst <- mapM (dotPrint m) hs
       return (concat (str : lst))
 
-dotPrint' :: Hash -> Exp -> (String,[Hash])
-dotPrint' h Zero           = (printf "x%x [label=\"0\"];\n" h,[])
-dotPrint' h One            = (printf "x%x [label=\"1\"];\n" h,[])
-dotPrint' h (Delta i j)    = (printf "x%x [label=\"delta_%s%s\"];\n" h i j,[])
-dotPrint' h (Val n)        = (printf "x%x [label=\"%d\"];\n" h n ,[])
-dotPrint' h (Var s)        = (printf "x%x [label=\"%s\"];\n" h (showSym s),[])
-dotPrint' h (Fun1 s h1)    = (printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h (showSym s) h h1,[h1])
-dotPrint' h (Fun2 s h1 h2) = (printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h (showSym s) h h1 h h2,[h1,h2])
-dotPrint' h (Sum is h1)    = (printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1,[h1])
+dotPrint' :: Hash -> Exp -> String
+dotPrint' h Zero           = printf "x%x [label=\"0\"];\n" h
+dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
+dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h i j
+dotPrint' h (Val n)        = printf "x%x [label=\"%d\"];\n" h n
+dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
+dotPrint' h (Fun1 s h1)    = printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h (showSym s) h h1
+dotPrint' h (Fun2 s h1 h2) = printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h (showSym s) h h1 h h2
+dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 
 digraph :: (?expHash :: Exp :->: Hash) => MExp -> IO ()
 digraph v = do

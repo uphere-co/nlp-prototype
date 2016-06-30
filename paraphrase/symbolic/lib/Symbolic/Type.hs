@@ -151,3 +151,16 @@ exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h
                                      in RFun2 s (exp2RExp e1) (exp2RExp e2)
 exp2RExp (MExp (Sum is h1) m _)    = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 
+
+daughters :: Exp -> [Hash]
+daughters Zero           = []
+daughters One            = []
+daughters (Delta i j)    = []
+daughters (Val n)        = []
+daughters (Var s)        = []
+daughters (Fun1 s h1)    = [h1]
+daughters (Fun2 s h1 h2) = [h1,h2]
+daughters (Sum is h1)    = [h1]
+ 
+
+data Pos = Pos1 | Pos2 

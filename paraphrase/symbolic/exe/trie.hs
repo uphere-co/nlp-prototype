@@ -1,5 +1,6 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -18,6 +19,7 @@ import           Text.Printf
 import           Symbolic.Differential
 import           Symbolic.Predefined
 import           Symbolic.Print
+import           Symbolic.Simplify
 import           Symbolic.Type
 --
 
@@ -69,6 +71,12 @@ prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 endl = putStrLn ""
 
 
+{- mkDepGraph1 :: (?expHash :: Exp :->: Hash) -> MExp -> [(Hash,Hash)]
+mkDepGraph1 e = let e1 = mexpExp e
+                    h1 = untrie expHash e1
+                    m1 = mexpMap e
+                in map (h1,) m1 
+-}
 
 test_digraph :: IO ()
 test_digraph = do
