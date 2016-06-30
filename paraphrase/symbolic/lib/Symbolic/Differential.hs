@@ -55,7 +55,11 @@ diff' m t (s,e) =
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
 dvar _             (Simple s')   = zero
-dvar (Indexed x j) (Indexed y k) = if x == y then delta j k else zero
+dvar (Indexed x j) (Indexed y k)
+  | x == y && length j == length k = let djk = zipWith delta j k
+                                     in foldr1 mul djk
+  | otherwise = zero
+  -- if x == y then delta j k else zero
 
 data Pos = Pos1 | Pos2 
 

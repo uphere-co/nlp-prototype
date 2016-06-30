@@ -20,14 +20,14 @@ type Hash = Int
 type Index = String
 
 data Symbol = Simple String
-            | Indexed String Index
+            | Indexed String [Index]
             deriving (Show, Eq)
 
 showSym (Simple str) = str
-showSym (Indexed x k) = x ++ "_" ++ k
+showSym (Indexed x k) = x ++ "_" ++ concat k
 
 instance HasTrie Symbol where
-  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,String) :->: b)
+  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,[Index]) :->: b)
   
   trie :: (Symbol -> b) -> (Symbol :->: b)
   trie f = SymbolTrie (trie (f . Simple)) (trie (f . uncurry Indexed))

@@ -29,10 +29,13 @@ exp2 :: (?expHash :: Exp :->: Hash) => MExp
 exp2 = power 3 x -- power 10 (x `add'` y)
 
 exp3 :: (?expHash :: Exp :->: Hash) => MExp
-exp3 = ( (x_ "i") `mul'` (y_ "i")) `add'` ( (x_ "i") `mul` (x_ "i"))
+exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])
 
 exp4 :: (?expHash :: Exp :->: Hash) => MExp
 exp4 = sum_ ["i"] exp3
+
+exp5 :: (?expHash :: Exp :->: Hash) => MExp
+exp5 = sum_ ["i","j"] ((x_ ["i"] `mul` y_ ["i","j"]) `mul` x_ ["j"])
 
 
 expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: MExp) -> Int -> MExp
@@ -65,18 +68,20 @@ prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 
 endl = putStrLn ""
 
-main' :: IO ()
-main' = do
+
+
+test_digraph :: IO ()
+test_digraph = do
     let ?expHash = trie hash
     -- digraph exp1
     -- digraph (expfib 100)
     -- digraph exp1
     digraph exp2
 
-main :: IO ()
-main = do
+test123 :: IO ()
+test123 = do
     let ?expHash = trie hash
-    {- -- let MExp e m _ = exp1
+    -- let MExp e m _ = exp1
     --    diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
     let lexp1 = expfib 100
@@ -90,20 +95,36 @@ main = do
     prettyPrintR $ sdiff (Simple "x") exp2
 
     --let MExp e3 m3 _ = exp3
-    --    diff3 = fix (diff' m3 . trie) 
+    --    diff3 = fix (diff' m3 . trie)
+    
+test3 = do
+  let ?expHash = trie hash
+  let r = sdiff (Indexed "x" ["j"]) exp3
+  prettyPrintR r
+  digraph r  
+
+
+test4 = do
+  let ?expHash = trie hash
+  
+  printf "f = %s\n" ((prettyPrint . exp2RExp) exp4 :: String)
+  let r' = sdiff (Indexed "x" ["j"]) exp4
+  printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
+
+  digraph r'
+
+  -- print (mexpIdx r')
+
+test5 = do
+  let ?expHash = trie hash  
+  printf "f = %s\n" ((prettyPrint . exp2RExp) exp5 :: String)
+  let r = sdiff (Indexed "y" ["m","n"]) exp5
+  printf "df/d(y_mn) = %s\n" ((prettyPrint . exp2RExp) r :: String)
+  digraph r
+
+
+main = do
+  test5
+
 
     
-    let r = sdiff (Indexed "x" "j") exp3
-    prettyPrintR r
-    digraph r   -}
-
-
-    
-    
-    printf "f = %s\n" ((prettyPrint . exp2RExp) exp4 :: String)
-    let r' = sdiff (Indexed "x" "j") exp4
-    printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
-
-    digraph r'
-
-    -- print (mexpIdx r')
