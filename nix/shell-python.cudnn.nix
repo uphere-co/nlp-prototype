@@ -10,15 +10,19 @@ in
 stdenv.mkDerivation {
   name = "python-env";
   buildInputs = (with python27Packages;
-                 [ ipython
-                   #ipyparallel
-                   numpy scipy
-                   #jupyter
+                 [ ipython jupyter ipyparallel
+                   matplotlib seaborn
+                   numpy scipy pandas scikitlearn
                    pyzmq
-                   theano h5py pip
-                   toolz.gensim toolz.KerasCUDNN                   
+                   cython
+                   numba
+                   toolz.gensim toolz.untangle
+                   Theano Keras h5py
                    pytest toolz.pytest-mock
-                 ]) ++ [ wget screen gfortran ];
+                   toolz.guppy
+                   toolz.nltk
+                 ]) ++ [cudnn gcc49 wget];
   shellHook = ''
+     EDITOR=vim
   '';
 }
