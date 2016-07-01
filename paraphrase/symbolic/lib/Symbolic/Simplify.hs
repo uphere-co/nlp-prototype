@@ -22,7 +22,7 @@ import           Symbolic.Print
 import           Symbolic.Type
 --
 
-simplify2 :: HashMap Hash MExp -> String -> Pos -> Hash -> Hash -> MExp
+simplify2 :: HashMap Hash (MExp a) -> String -> Pos -> Hash -> Hash -> MExp a
 simplify2 m f pos h1 h2
   | f == "+"  = one
   | f == "*"  = case pos of
@@ -32,7 +32,7 @@ simplify2 m f pos h1 h2
                   Pos1 -> MExp (Fun2 (suffix_1 f) h1 h2) m HS.empty
                   Pos2 -> MExp (Fun2 (suffix_2 f) h1 h2) m HS.empty
 
-add' :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
+add' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
 add' e1                 (mexpExp -> Zero)  = e1
 add' (mexpExp -> Zero)  e2                 = e2
 add' (mexpExp -> One)   (mexpExp -> One)   = val 2
@@ -41,7 +41,7 @@ add' (mexpExp -> One)   (mexpExp -> Val m) = val (m+1)
 add' (mexpExp -> Val m) (mexpExp -> Val n) = val (m+n)
 add' e1                 e2                 = e1 `add` e2
 
-mul' :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
+mul' :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
 mul' _                   (mexpExp -> Zero) = zero
 mul' (mexpExp -> Zero)   _                 = zero
 mul' e1                  (mexpExp -> One)  = e1

@@ -14,36 +14,36 @@ import           Data.Monoid               ((<>))
 import           Symbolic.Type
 --
 
-var :: String -> MExp
+var :: String -> MExp a
 var s = MExp (Var (Simple s)) HM.empty HS.empty
 
-ivar :: String -> [Index] -> MExp
+ivar :: String -> [Index] -> MExp a
 ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.fromList i)
 
-x :: MExp
+x :: MExp a
 x = var "x"
 
-y :: MExp
+y :: MExp a
 y = var "y"
 
-x_ :: [Index] -> MExp
+x_ :: [Index] -> MExp a
 x_ i = ivar "x" i
 
-y_ :: [Index] -> MExp
+y_ :: [Index] -> MExp a
 y_ i = ivar "y" i
 
-one :: MExp 
+one :: MExp a
 one = MExp One HM.empty HS.empty
 
-zero :: MExp
+zero :: MExp a 
 zero = MExp Zero HM.empty HS.empty
 
-val :: Double -> MExp
+val :: a -> MExp a
 val n = MExp (Val n) HM.empty HS.empty
 
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
-biop :: (?expHash :: Exp :->: Hash) => String -> MExp -> MExp -> MExp
+biop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> MExp a -> MExp a -> MExp a
 biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
@@ -51,13 +51,13 @@ biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
       m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
   in MExp e m (HS.union i1 i2)
 
-add :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
+add :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
 add = biop ("+")
 
-mul :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
+mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
 mul = biop ("*")
 
-sum_ :: (?expHash :: Exp :->: Hash) => [Index] -> MExp -> MExp
+sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =
   let h1 = untrie ?expHash e1
       i = i1 `difference` HS.fromList is
@@ -65,10 +65,10 @@ sum_ is em@(MExp e1 m1 i1) =
       m = HM.insert h1 em m1
   in MExp e m i
 
-square :: (?expHash :: Exp :->: Hash) => MExp -> MExp
+square :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 square e = mul e e 
 
-power :: (?expHash :: Exp :->: Hash) => Int -> MExp -> MExp
+power :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Int -> MExp a -> MExp a
 power n e
   | n < 0          = error "not supported"
   | n == 1         = e
@@ -85,10 +85,10 @@ suffix_1 = (<> "_1")
 suffix_2 :: String -> String
 suffix_2 = (<> "_2")
 
-fun :: (?expHash :: Exp :->: Hash) => String -> MExp -> MExp
+fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> MExp a -> MExp a
 fun sym e@(MExp e1 m1 i1) =
   let h1 = untrie ?expHash e1
   in MExp (Fun1 sym h1) (HM.insert h1 e m1) i1 
 
-tanh_ :: (?expHash :: Exp :->: Hash) => MExp -> MExp
+tanh_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 tanh_ = fun "tanh" 
