@@ -30,14 +30,17 @@ def test_Equality(reset_NodeDict):
     x =Var('x')
     y =Var('y')
     fx=VSF('f',x)
-    #Each expressions are singletons.
-    assert(x ==Var('x'))
-    assert(fx==VSF('f',x))
+    #Each expressions are reused if cached.
+    assert(x is not Var('x'))
+    x.cache()
+    assert(x is Var('x'))
+    fx.cache()
+    assert(fx is VSF('f',x))
     assert(Var('x') == x)
     assert(Val(1)==Val(1))
     #Values are simplified to scalar when possible:
-    assert(Val(1)==Val([1]))
-    assert(Val(1)==Val([[1]]))
+    assert(Val(1)==Val(np.array([1])))
+    assert(Val(1)==Val(np.array([[1]])))
 
 def test_DiffOperations(reset_NodeDict):
     x =Var('x')
@@ -166,6 +169,7 @@ def test_CacheKnownValues(reset_NodeDict):
     x=Var('x')
     fx=VSF('cos', x, np.cos)
     gfx=VSF('exp', fx, np.exp)
+    gfx.cache()
     exp_cos=lambda x : np.exp(np.cos(x))
     for v in np.random.random(10):
         x.val=v
@@ -175,10 +179,12 @@ def test_CacheKnownValues(reset_NodeDict):
 
     y=Var('y')
     hy=VSF('tanh', y, np.tanh)
+    hy.cache()
     for v in np.random.random(10):
         y.val=v
         assert(hy.val==np.tanh(v))
     gfx_hy = CTimes(gfx, hy)
+    gfx_hy.cache()
     exp_cos_x_times_tanh_y = lambda x, y : exp_cos(x)*np.tanh(y)
     vx=5.7
     vy=np.array([1.1,2.1,0.5])
@@ -200,17 +206,32 @@ def test_CacheKnownValues(reset_NodeDict):
     #but it is not yet enforced by code.
     a=Var('a')
     b=Var('b')
-    assert(np.isnan(Mul(a,b).val))
+    ab=Mul(a,b)
+    ab.cache()
+    assert(np.isnan(ab.val))
     a.val=1.0
-    assert(np.isnan(Mul(a,b).val))
+    assert(np.isnan(ab.val))
     b.val=2.0
-    assert(Mul(a,b).val==2.0)
+    assert(ab.val==2.0)
 
-def test_ParentRelationships(reset_NodeDict):
+def test_ParentsSettingOfCache():
+    x=Var('x')
+    fx=VSF('sin',x)
+    dfx=fx.diff(x)
+    gfx=VSF('exp',Mul(Val(3), fx))
+    dgfx=gfx.diff(x)
+    dgfx.cache()
+    assert fx in x.parents and dfx in x.parents
+    for expr in dgfx.children:
+        assert dgfx in expr.parents
+
+def test_ExpressionMutations(reset_NodeDict):
     x=Var('x')
     fx=VSF('sin',x, np.sin)
     gx=VSF('exp',x, np.exp)
-    dfx=fx.diff(x)
+    #Mutable expression need to be cached.
+    fx.cache()
+    gx.cache()
     v=1.0
     for v in [1.0,0.5,0.1]:
         x.val=v
@@ -221,10 +242,15 @@ def test_DiffKnownFunctions(reset_NodeDict):
     x=Var('x')
     fx=VSF('sin',x)
     dfx=fx.diff(x)
+    dfx.cache()
+    #dfx is used in dgfx again. Forgetting to cache fx may casue subtle errors.
     assert(dfx.expression()=='cos(x)')
     gfx=VSF('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
     assert(dgfx.expression()==u'exp(3*sin(x))⊗3⊗cos(x)')
+    #Caching top expressions only is enough
+    gfx.cache()
+    dgfx.cache()
     for v in [1.0, 2.0, 14.2, 5.1, 5.72341] :
         x.val=v
         assert(dfx.val==np.cos(v))
