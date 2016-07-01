@@ -27,16 +27,21 @@ import           Symbolic.Type
 --
 
 -- data Args = Args { varMap :: HashMap Symbol Int }
-type Args = [(Symbol,Int)]
+type Args = [(Symbol,Double)]
+type IdxPoint = [(Index,Int)]
 
 justLookupL k = fromJust . lookup k
 
-eval :: (?expHash :: Exp :->: Hash) => HashMap Hash MExp -> ((Args,Exp) :->: Int) -> Args -> Exp -> Int
+eval :: (?expHash :: Exp :->: Hash) =>
+        HashMap Hash MExp -> ((Args,Exp) :->: Double) -> Args -> Exp -> Double
 eval _ _ _ Zero = 0
 eval _ _ _ One  = 1
 -- eval _ (mexpExp -> Delta i j) = 
 eval m t args (Var s) = justLookupL s args
--- eval args (mexpExp -> Fun1 o h1)
+eval m t args (Fun1 f h1) =
+  let e1 = mexpExp (justLookup h1 m)
+  in if | f == "tanh" -> tanh (untrie t (args,e1))
+        | otherwise   -> error (f ++ " is not supported yet")
 eval m t args (Fun2 o h1 h2) =
   let e1 = mexpExp (justLookup h1 m)
       e2 = mexpExp (justLookup h2 m)
@@ -89,7 +94,7 @@ dexpfib (s,n) = let tfib = trie ffib
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
 
-eval_fib :: (?expHash :: Exp :->: Hash) => Args -> Int -> Int
+eval_fib :: (?expHash :: Exp :->: Hash) => Args -> Int -> Double
 eval_fib a n = let tfib = trie ffib
                    ffib = expfib' tfib
                    e = mexpExp (ffib n)
@@ -190,7 +195,7 @@ test7 = do
   -- prettyPrintR lexp1
   let args = [(Simple "x",1),(Simple "y",1)]
      
-  printf "f(1,1) = %d\n" $ eval_fib args n -- eval args lexp1
+  printf "f(1,1) = %e\n" $ eval_fib args n -- eval args lexp1
 
 
 main = do

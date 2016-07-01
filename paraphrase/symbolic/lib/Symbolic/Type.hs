@@ -7,6 +7,8 @@
 module Symbolic.Type where
 
 import           Control.Lens              (over, _1)
+import qualified Data.Binary as Bi
+import qualified Data.ByteString.Lazy as LB
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -47,7 +49,7 @@ instance Hashable Symbol where
 data Exp = Zero
          | One
          | Delta Index Index
-         | Val Int
+         | Val Double
          | Var Symbol
          | Fun1 String Hash
          | Fun2 String Hash Hash
@@ -66,17 +68,28 @@ data MExp = MExp { mexpExp :: Exp
 data RExp = RZero
           | ROne
           | RDelta Index Index
-          | RVal Int
+          | RVal Double
           | RVar Symbol
           | RFun1 String RExp
           | RFun2 String RExp RExp
           | RSum [Index] RExp
 
+mangle :: Double -> [Int]
+mangle = map fromIntegral . LB.unpack . Bi.encode
+
+unmangle :: [Int] -> Double
+unmangle = Bi.decode . LB.pack . map fromIntegral
+
+instance HasTrie Double where
+  data Double :->: a = DoubleTrie ([Int] :->: a)
+  trie f = DoubleTrie $ trie $ f . unmangle
+  untrie (DoubleTrie t) = untrie t . mangle
+
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
                               ((Index,Index) :->: b)
-                              (Int :->: b)
+                              (Double :->: b)
                               (Symbol :->: b)
                               ((String,Hash) :->: b)
                               ((String,Hash,Hash) :->: b)

@@ -38,7 +38,7 @@ one = MExp One HM.empty HS.empty
 zero :: MExp
 zero = MExp Zero HM.empty HS.empty
 
-val :: Int -> MExp
+val :: Double -> MExp
 val n = MExp (Val n) HM.empty HS.empty
 
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
@@ -85,3 +85,10 @@ suffix_1 = (<> "_1")
 suffix_2 :: String -> String
 suffix_2 = (<> "_2")
 
+fun :: (?expHash :: Exp :->: Hash) => String -> MExp -> MExp
+fun sym e@(MExp e1 m1 i1) =
+  let h1 = untrie ?expHash e1
+  in MExp (Fun1 sym h1) (HM.insert h1 e m1) i1 
+
+tanh_ :: (?expHash :: Exp :->: Hash) => MExp -> MExp
+tanh_ = fun "tanh" 
