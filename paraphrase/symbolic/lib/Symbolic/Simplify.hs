@@ -22,15 +22,15 @@ import           Symbolic.Print
 import           Symbolic.Type
 --
 
-simplify2 :: HashMap Hash MExp -> Symbol -> Pos -> Hash -> Hash -> MExp
+simplify2 :: HashMap Hash MExp -> String -> Pos -> Hash -> Hash -> MExp
 simplify2 m f pos h1 h2
-  | showSym f == "+" = one
-  | showSym f == "*" = case pos of
-                         Pos1 -> justLookup h2 m
-                         Pos2 -> justLookup h1 m
-  | otherwise        = case pos of
-                         Pos1 -> MExp (Fun2 (suffix_1 f) h1 h2) m HS.empty
-                         Pos2 -> MExp (Fun2 (suffix_2 f) h1 h2) m HS.empty
+  | f == "+"  = one
+  | f == "*"  = case pos of
+                  Pos1 -> justLookup h2 m
+                  Pos2 -> justLookup h1 m
+  | otherwise = case pos of
+                  Pos1 -> MExp (Fun2 (suffix_1 f) h1 h2) m HS.empty
+                  Pos2 -> MExp (Fun2 (suffix_2 f) h1 h2) m HS.empty
 
 add' :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
 add' e1                 (mexpExp -> Zero)  = e1

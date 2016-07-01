@@ -52,7 +52,7 @@ dvar (Indexed x j) (Indexed y k)
   | x == y && length j == length k = let djk = zipWith delta j k
                                      in foldr1 mul djk
   | otherwise = zero
-  -- if x == y then delta j k else zero
+
 
 
 sdiff :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp
