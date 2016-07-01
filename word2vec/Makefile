@@ -1,25 +1,26 @@
 CXX = g++
-CFLAGS = -g -march=native -pthread -fopenmp -Wall -funroll-loops -Wno-unused-result --std=c++11 # -Ofast
-LDFLAGS = -pthread -lpca -larmadillo -lgfortran -lopenblas
+CFLAGS = -g -march=native -fopenmp -funroll-loops -Wall -Wno-unused-result --std=c++11 # -pthread -Ofast
+LDFLAGS = -lpca -larmadillo -lgfortran -lopenblas #-pthread
 BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
-
-#/home/wavewave/repo/srcp/nlp-prototype/tmp/OpenBLAS-0.2.17/libopenblas.a
-
-
-
-#/nix/store/nn5fmpqghzq6dx6g441py15f1p9a1q4h-openblas-0.2.17/lib/libopenblas.a
 
 #libopenblas.a  #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
 
-all: pca word2vec
+all: utils sptree tsne word2vec pca
+
+utils: utils.cpp
+	$(CXX) -c $(CFLAGS) utils.cpp
+
+sptree: sptree.cpp
+	$(CXX) -c sptree.cpp -O2
+
+tsne: tsne.cpp
+	$(CXX) -o bh_tsne tsne.cpp sptree.o -O2
 
 word2vec: word2vec.cpp
-	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp $(CFLAGS)
+	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp utils.o $(CFLAGS) -Ofast -pthread
 
-pca: pca.o
-	$(CXX) -o pca pca.o $(LDFLAGS) $(BOOSTFLAGS) 
+pca: pca.cpp
+	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o pca pca.cpp utils.o $(CFLAGS)  
 
-pca.o: pca.cpp
-	$(CXX) -c $(CFLAGS) pca.cpp 
 clean:
-	rm -rf word2vec pca pca.o
+	rm -rf utils.o sptree.o bh_tsne word2vec pca

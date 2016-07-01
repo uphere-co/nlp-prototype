@@ -1,13 +1,9 @@
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
-#include <iterator>
 #include <fstream>
-#include <string>
-#include <vector>
 
 #include <boost/tuple/tuple.hpp>
 
@@ -15,6 +11,8 @@
 #include <string.h>
 
 #include "gnuplot-iostream.h"
+
+#include "utils.h"
 
 #define EXP_TABLE_SIZE 1000
 #define MAX_EXP 6
@@ -42,9 +40,9 @@ const long long vocab_hash_size = 30000000;
 
 // Variables
 long long vocab_size = 0;
-long long train_words = 0, word_count_actual = 0, file_size = 0, iter = 5, classes = 0;//, iter = 5; Threaded
+long long train_words = 0, word_count_actual = 0, file_size = 0, iter = 5, classes = 0;
 
-real alpha = 0.025, starting_alpha, sample = 1e-3; // 1e-5;
+real alpha = 0.025, starting_alpha, sample = 1e-3;
 
 std::array<real,(EXP_TABLE_SIZE + 1)> expTable;
 
@@ -57,7 +55,7 @@ std::vector<real> syn1neg;
 
 
 std::string train_file, output_file;
-std::string save_vocab_file, read_vocab_file;
+std::string save_vocab_file = "", read_vocab_file = "";
 
 // Struct
 std::vector<vocab_word> vocab;
@@ -66,49 +64,8 @@ std::vector<vocab_word> vocab;
 std::array<unsigned long long, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
 std::array<int, table_size> table;
 
+std::vector<double> mine;
 
-// Begin of Tokenizer
-
-void makeLower(std::string& str) {
-  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-}
-
-
-void remove_punctuations(std::string& str) {
-  std::vector<char> punctuations {'.',',','?',':',';','!'}; // 6 punctuations
-    for(std::vector<char>::const_iterator it = punctuations.begin(); it != punctuations.end(); ++it) {
-      str.erase(std::remove(str.begin(),str.end(), (*it)), str.end());
-   }
-}
-
-
-void remove_stopwords(std::vector<std::string>& tokens) {
-  std::vector<std::string> stopwords {"a","able","about","across","after","all","almost","also","am","among","an","and","any","are","as","at","be","because","been","but","by","can","cannot","could","dear","did","do","does","either","else","ever","every","for","from","get","got","had","has","have","he","her","hers","him","his","how","however","i","if","in","into","is","it","its","just","least","let","like","likely","may","me","might","most","must","my","neither","no","nor","not","of","off","often","on","only","or","other","our","own","rather","said","say","says","she","should","since","so","some","than","that","the","their","them","then","there","these","they","this","tis","to","too","twas","us","wants","was","we","were","what","when","where","which","while","who","whom","why","will","with","would","yet","you","your"}; // 119 stopwords.
-
-  for(std::vector<std::string>::const_iterator it = stopwords.begin(); it != stopwords.end(); ++it) {
-    if(std::find(tokens.begin(), tokens.end(), (*it)) != tokens.end())
-      tokens.erase(std::remove(tokens.begin(), tokens.end(), (*it)), tokens.end());  
-  }
-}
-
-
-void Tokenize(const std::string& str, std::vector<std::string>& tokens, const std::string& delimiters = " ") {
-  std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-  std::string::size_type pos= str.find_first_of(delimiters, lastPos);
-
-  while (std::string::npos != pos || std::string::npos != lastPos) {
-    std::string a = str.substr(lastPos, pos-lastPos);
-    //makeLower(a); // Converting into lowercase characters.
-    //remove_punctuations(a);
-    if(std::find(tokens.begin(), tokens.end(), a) == tokens.end()) // find() returns tokens.end if tarket is not found. 
-      tokens.push_back(a);
-    lastPos = str.find_first_not_of(delimiters, pos);
-    pos = str.find_first_of(delimiters, lastPos);
-  }
-  remove_stopwords(tokens);
-}
-
-// End of Tokenizer
 
 
 
@@ -368,11 +325,50 @@ void SaveVocab() {
   std::ofstream outFile;
   outFile.open(save_vocab_file, std::ofstream::out | std::ofstream::binary);
   for(i = 0; i < vocab_size; i++) {
-    outFile << vocab[i].word << "    ";
+    outFile << vocab[i].word << " ";
     outFile << vocab[i].cn << "\n";
   }
   outFile.close();
 }
+
+void ReadVocab() {
+  long long a, i = 0;
+  std::string line;
+  std::vector<std::string> word;
+  std::ifstream inFile;
+  inFile.open(read_vocab_file, std::ifstream::in);
+  if(inFile.fail()) {
+    std::cout << "Vocabulary file not found!\n";
+    exit(1);
+  }
+  initVocabHash();
+  vocab_size = 0;
+  while(1) {
+    word.clear();
+    std::getline(inFile,line);
+    if(inFile.eof()) break;
+    split(line, word);
+    a = AddWordToVocab(word[0]);
+    std::cout << word[0] << " ";
+    std::cout << word[1] << "\n";
+    vocab[a].cn = atof(word[1].c_str());
+  }
+  SortVocab();
+  if(debug_mode > 0) {
+    std::cout << "Vocab size : " << vocab_size << std::endl;
+    std::cout << "Words in train file : " << train_words << std::endl;
+  }
+  inFile.close();
+  inFile.open(train_file, std::ifstream::in | std::ifstream::binary);
+  if(inFile.fail()) {
+    std::cout << "Training data file not found!\n";
+    exit(1);
+  }
+  
+  file_size = inFile.tellg();
+  inFile.close();
+}
+
 
 // End of HashMap for dictionary
 
@@ -400,7 +396,6 @@ void InitUnigramTable() {
 void InitNet() {
   long long a, b;
 
-  // Precompute the exp() and f(x) = x / (x + 1) tables
   for (int i = 0; i < EXP_TABLE_SIZE; i++) {
     expTable[i] = exp((i / (real)EXP_TABLE_SIZE * 2 - 1) * MAX_EXP);
     expTable[i] = expTable[i] / (expTable[i] + 1);
@@ -425,7 +420,7 @@ void InitNet() {
     for(b = 0; b < layer1_size; b++)
       syn0[a * layer1_size + b] = (rand()/(double)RAND_MAX - 0.5) / layer1_size;
 
-  CreateBinaryTree(); // Why this position in the code?
+  CreateBinaryTree();
 
 }
 
@@ -477,14 +472,13 @@ void TrainModelThread(){
       }
       sentence_position = 0;
     }
-    if(inFile.eof() || (word_count > train_words )) { /// num_threads)) {
+    if(inFile.eof() || (word_count > train_words )) {
     word_count_actual += word_count - last_word_count;
     local_iter--;
     if(local_iter == 0) break;
     word_count = 0;
     last_word_count = 0;
     sentence_length = 0;
-    //inFile.seekg(file_size / (long long)num_threads * (long long)id, SEEK_SET);
     continue;
     }
     word = sen[sentence_position];
@@ -558,9 +552,8 @@ void TrainModel() {
   std::ofstream outFile;
   std::cout << "Starting training using file " << train_file << std::endl;
   starting_alpha = alpha;
-  //if(read_vocab_file[0] != 0) ReadVocab(); else LearnVocabFromTrainFile();
-  //if(save_vocab_file[0] != 0) SaveVocab();
-  LearnVocabFromTrainFile();
+  if(read_vocab_file != "") ReadVocab(); else LearnVocabFromTrainFile();
+  if(save_vocab_file != "") SaveVocab();
   if(output_file[0] == 0) return;
   InitNet();
   if(negative > 0) InitUnigramTable();
@@ -568,7 +561,7 @@ void TrainModel() {
   TrainModelThread();
   outFile.open(output_file, std::ofstream::out | std::ofstream::binary);
   if(classes == 0) {
-    outFile << vocab_size << "    " << layer1_size << std::endl;
+    outFile << vocab_size << " " << layer1_size << std::endl;
     for(a = 0; a < vocab_size; a++) {
       outFile << vocab[a].word << " ";
       if(binary) for(b = 0; b < layer1_size; b++) outFile << syn0[a * layer1_size + b] << " ";
@@ -630,6 +623,28 @@ void TrainModel() {
 
 // Begin of Distance Measurement
 
+double cosDistBetweenWords(std::string& str1, std::string& str2)
+{
+  double str1mag = 0, str2mag = 0;
+  double dist = 0;
+
+  long long str1pos, str2pos;
+
+  str1pos = vocab_hash[GetWordHash(str1)];
+  str2pos = vocab_hash[GetWordHash(str2)];
+  
+  for(int a = 0; a < layer1_size; a++) {
+    str1mag += mine[layer1_size*str1pos + a]*mine[layer1_size*str1pos + a];
+    str2mag += mine[layer1_size*str2pos + a]*mine[layer1_size*str2pos + a];
+  }
+
+  str1mag = sqrt(str1mag);
+  str2mag = sqrt(str2mag);
+  
+  for(int a = 0; a < layer1_size; a++) {
+    dist += (mine[layer1_size*str1pos + a]/str1mag) * (mine[layer1_size*str2pos + a]/str2mag);
+  }
+}
 
 // End of Distance Measurement
 
@@ -744,7 +759,7 @@ void ReadValue(std::string& word, std::ifstream& fin) {
 int main(int argc, char **argv) {
 
   // Seeding random function
-  std::srand((unsigned int)time(NULL)); // This is enought for subroutines
+  std::srand((unsigned int)time(NULL));
 
   if(argc == 1) {
     printHelp();
@@ -754,137 +769,7 @@ int main(int argc, char **argv) {
   ArgPass(argc, argv);
 
   
-  //TrainModel();
-
-  long long a, b, c;
-
-  /*
-  // Too many memory consumption
-  distM.resize(vocab_size, std::vector<real>(vocab_size, 0));
-  
-  for(a = 0; a < vocab_size; a++) {
-    for(b = 0; b < vocab_size; b++) {
-      for(c = 0; c < layer1_size; c++) {
-	distM[a][b] += pow(syn0[a * layer1_size + c] - syn0[b * layer1_size + c],2);
-      }
-    }
-  }
-  
-  */
-
-  vocab_size = 71291;
-  std::ifstream fin;
-  std::string value;
-  fin.open("vectors.bin", std::ifstream::in);
-  std::vector<std::string> my;
-  std::vector<std::string> smine;
-  std::vector<double> mine;
-  my.reserve(vocab_size);
-  mine.reserve(vocab_size*layer1_size);
-  smine.reserve(vocab_size*layer1_size);
-  int number = 0;
-  while(!fin.eof()) {
-      ReadValue(value, fin);
-      my.push_back(value);
-
-      for(number = 0; number < 100; number++) {
-	ReadValue(value, fin);
-	smine.push_back(value);
-      }
-  }
-
-  /*
-  for(a=0;a<vocab_size;a++) {
-    std::cout << my[a] << "  ";
-    for(b=0;b<layer1_size;b++) {
-      std::cout << smine[a*layer1_size + b] << "  ";
-    }
-    std::cout << std::endl;
-  }*/
-
-
-  for(a = 0; a < vocab_size*layer1_size; a++) {
-    mine[a] = std::atof(smine[a].c_str());
-  }
-  std::string qword;
-  std::vector< std::pair<std::string, double> > distM;
-  int p = 0;
-  double dist;
-  long long qword_position=0;
-  double aaa, bbb;
-
-  fin.close();
-
-
-  
-  while(1) {
-    std::cout << "Enter word (EXIT to break): ";
-    std::cin >> qword;
-
-    for(a = 0; a < vocab_size; a++) if(qword == my[a]) qword_position = a;
-    
-    if(qword == "EXIT") {
-      std::cout << "Finishing the program!\n";
-      break;
-    }
-    
-    dist = 0;
-    aaa = 0;
-    bbb = 0;
-    p = 0;
-    distM.clear();
-    
-    for(a = 0; a < vocab_size; a++) {
-      if(qword != my[a]) {
-	dist = 0;
-	aaa = 0;
-	bbb = 0;
-	for(b = 0; b < layer1_size; b++) {
-	  aaa += mine[layer1_size*qword_position+b]*mine[layer1_size*qword_position+b];
-	  bbb += mine[layer1_size*a+b]*mine[layer1_size*a+b];
-	}
-	aaa = sqrt(aaa);
-	bbb = sqrt(bbb);
-	for(b = 0; b < layer1_size; b++) {
-	  dist += (mine[qword_position * layer1_size + b]/aaa) * (mine[a * layer1_size + b]/bbb);
-	}
-	//dist = sqrt(dist);
-	if(p<50) {
-	  distM.push_back(make_pair(my[a], dist));
-	  p++;
-	  continue;
-	}
-	if(p>=50) {
-	  double smallest = 0;
-	  int smallposition = 0;
-	  for(int w = 0; w < p; w++) {
-	    if(w == 0) {
-	      smallest = distM[w].second;
-	      smallposition = 0;
-	    }
-	    if(w != 0) {
-	      if(distM[w].second < smallest) {
-		smallest = distM[w].second;
-		smallposition = w;
-	      }
-	    }
-	  }
-	  
-	  if(smallest < dist) {
-	    distM.erase(distM.begin() + smallposition);
-	    distM.push_back(make_pair(my[a], dist));  
-	  }
-	}
-      }
-    }
-
-    // Print
-    for(int w = 0; w < 50; w++) {
-      std::cout << distM[w].first << "    " << distM[w].second << std::endl;
-    }
-    std::cout << std::endl;
-  }
-
+  TrainModel();
   
   return 0;
 }
