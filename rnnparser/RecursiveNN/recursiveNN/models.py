@@ -9,6 +9,7 @@ class Word(object):
 #class Word():
     __slots__= ["vec"]
     def __init__(self, word, vec=np.random.random((5,1)) ):
+
         self.vec = Var(word, vec)#
     def __unicode__(self):
         return self.vec.name
@@ -19,23 +20,23 @@ class Word(object):
     #def __eq__(self)
     def expression(self):
         return 'w2v(%s)'%self.vec.name
-        
+
 class Phrase(object):
 #class Phrase():
     __slots__= ["left","right","vec"]
     def __init__(self, left, right, vec):
         self.left = left
-        self.right = right                
-        self.vec = vec 
+        self.right = right
+        self.vec = vec
     def __unicode__(self):
-        return u'(%s,%s)'%(self.left,self.right)        
+        return u'(%s,%s)'%(self.left,self.right)
     def toBinaryTreeRep(self):
         return u'(%s %s)'%(self.left.toBinaryTreeRep(),self.right.toBinaryTreeRep())
     def __repr__(self):
         return "Phrase(%r,%r)"%(self.left,self.right)
     def expression(self):
         return self.vec.expression()
-            
+
 class RecursiveNN(object):
 #class RecursiveNN():
     __slots__= ["W","bias","u_score"]
@@ -48,11 +49,11 @@ class RecursiveNN(object):
     def combineTwoNodes(self, left,right):
         #TODO: there can be too many vec...
         vec = Var(u'(%s⊕%s)'%(left,right))
-        vec.val=np.concatenate([left.vec.val,right.vec.val],0)        
+        vec.val=np.concatenate([left.vec.val,right.vec.val],0)
         Wxh=Dot(self.W, vec)
         x=Add(Wxh, self.bias)
         vec=VSF('tanh', x)
-        phrase=Phrase(left,right, vec)        
+        phrase=Phrase(left,right, vec)
         return phrase
     def score(self, phrase):
         return Dot(Transpose(self.u_score),phrase.vec)
@@ -63,7 +64,7 @@ class RecursiveNN(object):
             if len(nodes)==1:
                 return nodes[0], score
             phrases=[self.combineTwoNodes(x,y) for x,y in zip(nodes,nodes[1:])]
-            scores=[self.score(node).val for node in phrases]   
+            scores=[self.score(node).val for node in phrases]
             idx_max=np.argmax(scores)
             #print nodes
             phrase=phrases[idx_max]
@@ -72,7 +73,7 @@ class RecursiveNN(object):
             nodes.insert(idx_max, phrase)
             return mergeHighestPair(nodes,Add(score,self.score(phrase)))
         return mergeHighestPair(nodes, Val(0))
-        
+
 class Word2VecFactory(object):
     __slots__= ["model"]
     def __init__(self, w2v_path):
@@ -84,8 +85,8 @@ class Word2VecFactory(object):
         except:
             words=[]
         return  words
-        
-"""                
+
+"""
 class Word2VecFactory2(object):
     def __init__(self):
         self.context = zmq.Context()
@@ -102,4 +103,4 @@ class Word2VecFactory2(object):
             dtype,bytes = packet[:idx_split],packet[idx_split+1:]
             self.dict[word]=np.fromstring(bytes,dtype=dtype).reshape(-1,1)
         return [Word(word, self.dict[word]) for word in words]
-"""    
+"""

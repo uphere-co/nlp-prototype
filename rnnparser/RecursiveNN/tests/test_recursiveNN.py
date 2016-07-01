@@ -33,6 +33,7 @@ def test_GradientNumericalChecks(reset_NodeDict):
     assert unicode(rnn.score(the_cat_on))==u'u0ᵀ⋅tanh(W0⋅((the,cat)⊕on)+b0)'
 
     score=rnn.score(the_cat_on_a_hat)
+    score.cache()
     s0=score.val
     gradient=Differentiation(score, w0)
     #TODO:Check parents management and makes the for-loop works.

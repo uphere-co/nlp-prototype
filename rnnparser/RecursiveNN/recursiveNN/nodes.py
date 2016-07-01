@@ -28,6 +28,7 @@ def deregister(instance):
     NodeDict.deregister(instance)
 class NodeDict(type):
     _dict = {}
+    #TODO: _dict_instance could be array.But it is hardly used and not worth to change overhead.
     _dict_instance = {}
     def __call__(cls, *args):
         #TODO: change this to 128-bit hash
@@ -39,9 +40,10 @@ class NodeDict(type):
         else:
             #print 'NEW: %s'%(str(cls)+str(args))
             pass
+
         instance = super(NodeDict, cls).__call__(*args)
         cls._dict[name] = instance
-        cls._dict_instance[instance]=name
+        cls._dict_instance[instance]=name #._uid
         return instance
     @staticmethod
     def reset():
@@ -50,7 +52,12 @@ class NodeDict(type):
         NodeDict._dict_instance={}
     @staticmethod
     def getKey(instance):
-        return NodeDict._dict_instance[instance]
+        return NodeDict._dict_instance[instance]#._uid
+    @staticmethod
+    def deregister(instance):
+        key=NodeDict.getKey(instance)
+        NodeDict._dict.pop(key)
+        NodeDict._dict_instance.pop(instance)
     @staticmethod
     def deregister(instance):
         key=NodeDict.getKey(instance)
@@ -58,13 +65,18 @@ class NodeDict(type):
         NodeDict._dict_instance.pop(instance)
 
 class Node(object):
-    __slots__= ["_parents", "name","_val"]
+    __slots__= ["_parents", "name","_val", "_uid"] #
     __metaclass__ = NodeDict
+    #_uid_count = 0
     def __init__(self, name):
         self._parents=[]
         self.name=name
         self._val=None
+        self._uid=None
+        #self._uid = Node._uid_count
+        #Node._uid_count+=1
     def __eq__(self, other):
+        #return self._uid is other._uid
         return self is other
     def __unicode__(self):
         return self.name
@@ -81,9 +93,11 @@ class Node(object):
     def children(self):
         return []
     def add_parent(self,parent):
+        pass
         if not parent in self._parents:
             self._parents.append(parent)
     def remove_parent(self,parent):
+        #Due to no duplication of parents, .remove, which delete first occurence only, is enough.
         self._parents.remove(parent)
     @property
     def val(self):
@@ -108,6 +122,10 @@ class Node(object):
             return True
         else :
             return np.any([child.isContain(expr) for child in self.children])
+    def cache(self):
+        for child in self.children:
+            child.add_parent(self)
+            child.cache()
 
 class Val(Node):
     __slots__ = []
@@ -194,7 +212,7 @@ class VSF(Node):
         #self.op_expr=op_expr #cos
         self.op=op0
         self.var=var
-        self.var.add_parent(self)
+        #self.var.add_parent(self)
     def __unicode__(self):
         return u"%s(%s)"%(self.op_expr, self.var)
     def __repr__(self):
@@ -207,7 +225,7 @@ class VSF(Node):
         tmp=self.var.simplify()
         if not tmp is self.var:
             self.var=tmp
-            self.var.add_parent(self)
+            #self.var.add_parent(self)
         return self
     def diff_no_simplify(self, var):
         expr=CTimes(VSF(self.op_expr+"`", self.var),
@@ -240,7 +258,7 @@ class Sum0(Node):
     def __init__(self, x):
         Node.__init__(self,name=None)
         self.var=x
-        self.var.add_parent(self)
+        #self.var.add_parent(self)
     def __unicode__(self):
         return u"Σ_0(%s)"%(self.var)
     def __repr__(self):
@@ -249,7 +267,7 @@ class Sum0(Node):
         self.var=self.var.simplify()
         if IsScalar(self.var):
             return self.var
-        self.var.add_parent(self)
+        #self.var.add_parent(self)
         return self
     #TODO: remove this class or refactoring the val property
     @property
@@ -264,7 +282,7 @@ class Transpose(Node):
         Node.__init__(self,name=None)
         self.op=np.transpose
         self.var=x
-        self.var.add_parent(self)
+        #self.var.add_parent(self)
         self._format=u"[%s]ᵀ"
         if isinstance(self.var, Var) or isinstance(self.var, Val):
             self._format=u"%sᵀ"
@@ -276,7 +294,7 @@ class Transpose(Node):
         self.var=self.var.simplify()
         if IsScalar(self.var):
             return self.var
-        self.var.add_parent(self)
+        #self.var.add_parent(self)
         return self
     @property
     def children(self):
@@ -304,8 +322,8 @@ class BinaryOperator(Node):
         self.op=None
         self._format=u"%s%s%s"
         self.x, self.y = x,y
-        self.x.add_parent(self)
-        self.y.add_parent(self)
+        #self.x.add_parent(self)
+        #self.y.add_parent(self)
     def __unicode__(self):
         return self._format%(self.x, self.name, self.y)
     def expression(self):
@@ -320,9 +338,9 @@ class BinaryOperator(Node):
         return self._format%(x_expr, self.name, y_expr)
     def simplify(self):
         self.x=self.x.simplify()
-        self.x.add_parent(self)
+        #self.x.add_parent(self)
         self.y=self.y.simplify()
-        self.y.add_parent(self)
+        #self.y.add_parent(self)
     @property
     def children(self):
         return [self.x, self.y]

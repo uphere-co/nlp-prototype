@@ -111,6 +111,7 @@ def test_GradientNumericalChecks(reset_NodeDict):
     D,C,B,A = Var('D'), Var('C'), Var('B'), Var('A')
     #g:= x⋅C⋅sin(B⋅sin(A⋅y+a)+b)
     g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+    g.cache()
 
     #0.01 is may not small enough for g=x⋅C⋅sin(B⋅sin(A⋅y+a)+b).
     scale=0.001
@@ -122,6 +123,7 @@ def test_GradientNumericalChecks(reset_NodeDict):
             #D,C,B,A = Var('D', ran((4,4))), Var('C', ran((4,6))), Var('B', ran((6,5))), Var('A', ran((5,4)))
             D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))
             gradient=Differentiation(g,var)
+            gradient.cache()
             var0=var.val
             delta=NormalizedMatrix(ran(var.val.shape), scale)
             rand_grad=gradient.val.copy()
