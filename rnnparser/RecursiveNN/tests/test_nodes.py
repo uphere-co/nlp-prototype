@@ -30,14 +30,17 @@ def test_Equality(reset_NodeDict):
     x =Var('x')
     y =Var('y')
     fx=VSF('f',x)
-    #Each expressions are singletons.
-    assert(x ==Var('x'))
-    assert(fx==VSF('f',x))
+    #Each expressions are reused if cached.
+    assert(x is not Var('x'))
+    x.cache()
+    assert(x is Var('x'))
+    fx.cache()
+    assert(fx is VSF('f',x))
     assert(Var('x') == x)
     assert(Val(1)==Val(1))
     #Values are simplified to scalar when possible:
-    assert(Val(1)==Val([1]))
-    assert(Val(1)==Val([[1]]))
+    assert(Val(1)==Val(np.array([1])))
+    assert(Val(1)==Val(np.array([[1]])))
 
 def test_DiffOperations(reset_NodeDict):
     x =Var('x')
@@ -239,6 +242,8 @@ def test_DiffKnownFunctions(reset_NodeDict):
     x=Var('x')
     fx=VSF('sin',x)
     dfx=fx.diff(x)
+    dfx.cache()
+    #dfx is used in dgfx again. Forgetting to cache fx may casue subtle errors.
     assert(dfx.expression()=='cos(x)')
     gfx=VSF('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)

@@ -83,24 +83,36 @@ def test_ReuseExistingExpressions(reset_NodeDict):
     D.val,C.val,B.val,A.val = ran((4,4)), ran((4,6)), ran((6,5)),ran((5,4))
 
     xDy = Dot(x,Dot(D,y))
-    xDy2 = Dot(Dot(x,D),y)
+    xDy.cache()
+    assert Var('x') is xDy.x
+    assert  Dot(D,y).y is Var('y')
     assert  Dot(D,y) is xDy.y
+    xDy2 = Dot(Dot(x,D),y)
     tmp=Differentiation(xDy2, x)
     tmp2=Differentiation(xDy2, x)
-    assert tmp is tmp2
+    assert tmp2 is not tmp
+    tmp.cache()
+    tmp2=Differentiation(xDy2, x)
+    assert tmp2 is tmp
     tmp3=Differentiation(xDy, x)
     assert tmp3 is tmp
 
     f = Dot(Dot(x,C),Dot(B,VSF('sin',Add(Dot(A,y),a))))
+    f.cache()
     dfdy=Differentiation(f,y)
+    dfdy2=Differentiation(f,y)
+    assert dfdy2 is not dfdy
+    dfdy.cache()
     dfdy2=Differentiation(f,y)
     assert dfdy2 is dfdy
     dfda=Differentiation(f,a)
     assert dfda.var is dfdy.var.x
 
     g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
+    g.cache()
     assert g.y.var.x is f.y
     dgdA=Differentiation(g,A)
+    dgdA.cache()
     dgdB=Differentiation(g,B)
     assert dgdB.y.var is f.y.y
     assert dgdA.x.var.x.x is dgdB.x.var

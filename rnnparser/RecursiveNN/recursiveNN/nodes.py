@@ -23,46 +23,40 @@ def reset_NodeDict():
     pass
 
 @pytest.fixture(scope="function")
-def deregister(instance):
-    print 'Delete an instance :', NodeDict.getKey(instance)
-    NodeDict.deregister(instance)
+def deregister(node):
+    print 'Deregister an instance :', NodeDict.getKey(instance)
+    NodeDict.deregister(node)
+
+def register(node):
+    NodeDict.register(node)
+
 class NodeDict(type):
     _dict = {}
-    #TODO: _dict_instance could be array.But it is hardly used and not worth to change overhead.
-    _dict_instance = {}
     def __call__(cls, *args):
-        #TODO: change this to 128-bit hash
-        #print cls, args
-        name = hash(str(cls)+str(args))
-        if name in cls._dict:
-            #print '%s EXISTS'%(str(cls)+str(args))
-            return cls._dict[name]
-        else:
-            #print 'NEW: %s'%(str(cls)+str(args))
-            pass
-
         instance = super(NodeDict, cls).__call__(*args)
-        cls._dict[name] = instance
-        cls._dict_instance[instance]=name #._uid
+        key = NodeDict.getKey(instance)
+        if key in cls._dict.keys():
+            #print '%s EXISTS'%(str(cls)+str(args))
+            return cls._dict[key]
         return instance
     @staticmethod
     def reset():
         #print 'Reset NodeDict'
         NodeDict._dict={}
-        NodeDict._dict_instance={}
     @staticmethod
-    def getKey(instance):
-        return NodeDict._dict_instance[instance]#._uid
+    def getKey(node):
+        return str(node)
     @staticmethod
-    def deregister(instance):
-        key=NodeDict.getKey(instance)
+    def deregister(node):
+        key=NodeDict.getKey(node)
         NodeDict._dict.pop(key)
-        NodeDict._dict_instance.pop(instance)
+        NodeDict._dict_instance.pop(node)
     @staticmethod
-    def deregister(instance):
-        key=NodeDict.getKey(instance)
-        NodeDict._dict.pop(key)
-        NodeDict._dict_instance.pop(instance)
+    def register(node):
+        key=NodeDict.getKey(node)
+        if not key in NodeDict._dict.keys():
+            print 'Register an instance :', key
+            NodeDict._dict[key] = node
 
 class Node(object):
     __slots__= ["_parents", "name","_val", "_uid"] #
@@ -123,6 +117,7 @@ class Node(object):
         else :
             return np.any([child.isContain(expr) for child in self.children])
     def cache(self):
+        register(self)
         for child in self.children:
             child.add_parent(self)
             child.cache()
@@ -356,7 +351,7 @@ class Add(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = '+'
+        self.name = u'+'
         self.op = np.add
     def __repr__(self):
         return "Add(%r,%r)"%(self.x, self.y)
@@ -375,7 +370,7 @@ class Mul(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = '*'
+        self.name = u'*'
         self.op=np.dot
         self.update_format()
     def __repr__(self):
