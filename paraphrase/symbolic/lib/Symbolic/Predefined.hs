@@ -9,6 +9,7 @@ import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
+import           Data.Monoid               ((<>))
 --
 import           Symbolic.Type
 --
@@ -42,7 +43,7 @@ val n = MExp (Val n) HM.empty HS.empty
 
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
-biop :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp -> MExp
+biop :: (?expHash :: Exp :->: Hash) => String -> MExp -> MExp -> MExp
 biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   let h1 = untrie ?expHash e1
       h2 = untrie ?expHash e2
@@ -51,10 +52,10 @@ biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   in MExp e m (HS.union i1 i2)
 
 add :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
-add = biop (Simple "+")
+add = biop ("+")
 
 mul :: (?expHash :: Exp :->: Hash) => MExp -> MExp -> MExp
-mul = biop (Simple "*")
+mul = biop ("*")
 
 sum_ :: (?expHash :: Exp :->: Hash) => [Index] -> MExp -> MExp
 sum_ is em@(MExp e1 m1 i1) =
@@ -74,4 +75,13 @@ power n e
   | n == 0         = one
   | n `mod` 2 == 0 = square (power (n `div` 2) e)
   | otherwise      = square (power (n `div` 2) e) `mul` e
+
+suffix' :: String -> String
+suffix' = (<> "'")
+
+suffix_1 :: String -> String
+suffix_1 = (<> "_1")
+
+suffix_2 :: String -> String
+suffix_2 = (<> "_2")
 

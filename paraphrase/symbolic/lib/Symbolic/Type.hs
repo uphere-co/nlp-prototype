@@ -49,10 +49,14 @@ data Exp = Zero
          | Delta Index Index
          | Val Int
          | Var Symbol
-         | Fun1 Symbol Hash
-         | Fun2 Symbol Hash Hash
+         | Fun1 String Hash
+         | Fun2 String Hash Hash
          | Sum [Index] Hash
          deriving (Show,Eq)
+
+isDelta :: Exp -> Bool
+isDelta (Delta _ _) = True
+isDelta _           = False
 
 data MExp = MExp { mexpExp :: Exp
                  , mexpMap :: HashMap Hash MExp
@@ -64,18 +68,18 @@ data RExp = RZero
           | RDelta Index Index
           | RVal Int
           | RVar Symbol
-          | RFun1 Symbol RExp
-          | RFun2 Symbol RExp RExp
+          | RFun1 String RExp
+          | RFun2 String RExp RExp
           | RSum [Index] RExp
 
 instance HasTrie Exp where
   data (Exp :->: b) = ExpTrie (() :->: b)
                               (() :->: b)
-                              ((String,Index) :->: b)
+                              ((Index,Index) :->: b)
                               (Int :->: b)
                               (Symbol :->: b)
-                              ((Symbol,Hash) :->: b)
-                              ((Symbol,Hash,Hash) :->: b)
+                              ((String,Hash) :->: b)
+                              ((String,Hash,Hash) :->: b)
                               (([Index],Hash) :->: b)
   trie :: (Exp -> b) -> (Exp :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
@@ -83,7 +87,7 @@ instance HasTrie Exp where
                    (trie (f . uncurry Delta))
                    (trie (f . Val))
                    (trie (f . Var))
-                   (trie (f . uncurry Fun1)) -- (\(s,e)-> f (Fun1 s e)))
+                   (trie (f . uncurry Fun1))
                    (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
                    (trie (f . uncurry Sum))
            
@@ -151,3 +155,16 @@ exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h
                                      in RFun2 s (exp2RExp e1) (exp2RExp e2)
 exp2RExp (MExp (Sum is h1) m _)    = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 
+
+daughters :: Exp -> [Hash]
+daughters Zero           = []
+daughters One            = []
+daughters (Delta i j)    = []
+daughters (Val n)        = []
+daughters (Var s)        = []
+daughters (Fun1 s h1)    = [h1]
+daughters (Fun2 s h1 h2) = [h1,h2]
+daughters (Sum is h1)    = [h1]
+ 
+
+data Pos = Pos1 | Pos2 
