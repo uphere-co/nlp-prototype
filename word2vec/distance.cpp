@@ -78,13 +78,7 @@ std::vector<real> getWordVector(std::string& word) {
 
   std::vector<real> wordvector;
   int position;
-
-  for(int i = 0; i < word_vector_label.size(); i++) {
-    if(word_vector_label[i] == word) {
-      position = i;
-      break;
-    }
-  }
+  position = vocab_hash[GetWordHash(word)];
   for(int i = 0; i < layer1_size; i++) {
     wordvector.push_back(word_vector[position*layer1_size + i]);
   }
