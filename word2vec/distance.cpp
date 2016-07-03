@@ -21,13 +21,6 @@ std::array<unsigned long long, vocab_hash_size> vocab_hash;
 
 std::vector<double> mine;
 
-int findPosition(std::string& word) {
-  for(int i = 0 ; i < word_vector_label.size(); i++) {
-    if(word == word_vector_label[i]) return i;
-  }
-  return -1;
-}
-
 void initVocabHash() {
   vocab_hash.fill(-1);
 }
