@@ -74,7 +74,7 @@ void ReadWordVector() {
   inFile.close();
 }
 
-std::vector<real> getWordVector(std::string& word) {
+std::vector<real> GetWordVector(std::string& word) {
 
   std::vector<real> wordvector;
   int position;
@@ -85,6 +85,85 @@ std::vector<real> getWordVector(std::string& word) {
   return wordvector;
 }
 
+std::vector<real> AddVectors(std::string& word1, std::string& word2) {
+  std::vector<real> result;
+  std::vector<real> wordvec1;
+  std::vector<real> wordvec2;
+
+  wordvec1 = GetWordVector(word1);
+  wordvec2 = GetWordVector(word2);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] + wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> AddVectors(std::string& word1, std::vector<real> wordvec2) {
+  std::vector<real> result;
+  std::vector<real> wordvec1;
+
+  wordvec1 = GetWordVector(word1);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] + wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> AddVectors(std::vector<real> wordvec1, std::string& word2) {
+  std::vector<real> result;
+  std::vector<real> wordvec2;
+
+  wordvec2 = GetWordVector(word2);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] + wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> AddVectors(std::vector<real> wordvec1, std::vector<real> wordvec2) {
+  std::vector<real> result;
+
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] + wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> SubtractVectors(std::string& word1, std::string& word2) {
+  std::vector<real> result;
+  std::vector<real> wordvec1;
+  std::vector<real> wordvec2;
+
+  wordvec1 = GetWordVector(word1);
+  wordvec2 = GetWordVector(word2);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] - wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> SubtractVectors(std::string& word1, std::vector<real> wordvec2) {
+  std::vector<real> result;
+  std::vector<real> wordvec1;
+
+  wordvec1 = GetWordVector(word1);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] - wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> SubtractVectors(std::vector<real> wordvec1, std::string& word2) {
+  std::vector<real> result;
+  std::vector<real> wordvec2;
+
+  wordvec2 = GetWordVector(word2);
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] - wordvec2[i]);
+
+  return result;
+}
+
+std::vector<real> SubtractVectors(std::vector<real> wordvec1, std::vector<real> wordvec2) {
+  std::vector<real> result;
+  for(int i = 0; i < layer1_size; i++) result.push_back(wordvec1[i] - wordvec2[i]);
+
+  return result;
+}
+  
 double cosDistBetweenWords(std::string& str1, std::string& str2)
 {
   double str1mag = 0, str2mag = 0;
@@ -110,7 +189,75 @@ double cosDistBetweenWords(std::string& str1, std::string& str2)
   return dist;
 }
 
-std::vector<std::string> GetSimilarWord(std::string& word, int n) {
+double cosDistBetweenWords(std::vector<real>& vec1, std::string& str2)
+{
+  double str1mag = 0, str2mag = 0;
+  double dist = 0;
+
+  long long str2pos;
+
+  str2pos = vocab_hash[GetWordHash(str2)];
+  
+  for(int a = 0; a < layer1_size; a++) {
+    str1mag += vec1[a]*vec1[a];
+    str2mag += word_vector[layer1_size*str2pos + a]*word_vector[layer1_size*str2pos + a];
+  }
+
+  str1mag = sqrt(str1mag);
+  str2mag = sqrt(str2mag);
+  
+  for(int a = 0; a < layer1_size; a++) {
+    dist += (vec1[a]/str1mag) * (word_vector[layer1_size*str2pos + a]/str2mag);
+  }
+
+  return dist;
+}
+
+double cosDistBetweenWords(std::string& str1, std::vector<real>& vec2)
+{
+  double str1mag = 0, str2mag = 0;
+  double dist = 0;
+
+  long long str1pos;
+
+  str1pos = vocab_hash[GetWordHash(str1)];
+  
+  for(int a = 0; a < layer1_size; a++) {
+    str1mag += word_vector[layer1_size*str1pos + a]*word_vector[layer1_size*str1pos + a];
+    str2mag += vec2[a]*vec2[a];
+  }
+
+  str1mag = sqrt(str1mag);
+  str2mag = sqrt(str2mag);
+  
+  for(int a = 0; a < layer1_size; a++) {
+    dist += (word_vector[layer1_size*str1pos + a]/str1mag) * (vec2[a]/str2mag);
+  }
+
+  return dist;
+}
+
+double cosDistBetweenWords(std::vector<real>& vec1, std::vector<real>& vec2)
+{
+  double str1mag = 0, str2mag = 0;
+  double dist = 0;
+
+  for(int a = 0; a < layer1_size; a++) {
+    str1mag += vec1[a]*vec1[a];
+    str2mag += vec2[a]*vec2[a];
+  }
+
+  str1mag = sqrt(str1mag);
+  str2mag = sqrt(str2mag);
+  
+  for(int a = 0; a < layer1_size; a++) {
+    dist += (vec1[a]/str1mag) * (vec2[a]/str2mag);
+  }
+
+  return dist;
+}
+
+std::vector<std::string> GetSimilarWords(std::string& word, int n) {
   std::string top[n];
   int count = 0;
   for(int i = 0; i < word_vector_label.size(); i++) {
@@ -130,7 +277,6 @@ std::vector<std::string> GetSimilarWord(std::string& word, int n) {
 	    }
 	  }
 	}
-	if(i % 1000 == 0) {std::cout << i << "  ";fflush(stdout);}
 	//sort top[n]
 	if(cosDistBetweenWords(word, top[n-1]) < cosDistBetweenWords(word, word_vector_label[i])) {
 	  top[n-1] = word_vector_label[i];
@@ -148,6 +294,45 @@ std::vector<std::string> GetSimilarWord(std::string& word, int n) {
   return result;
   
 }
+
+std::vector<std::string> GetSimilarWords(std::vector<real>& wordvector, int n) {
+  std::string top[n];
+  int count = 0;
+  for(int i = 0; i < word_vector_label.size(); i++) {
+      if(count < n) {
+	top[count] = word_vector_label[i];
+	count++;
+      }
+      else {
+	std::string temp;
+	//sort top[n]
+	for(int q = 0; q < n - 1; q++) {
+	  for(int p = q + 1 ; p < n; p++) {
+	    if(cosDistBetweenWords(wordvector, top[q])
+	       < cosDistBetweenWords(wordvector, top[p])) {
+	      temp = top[q]; top[q] = top[p]; top[p] = temp;
+	    }
+	  }
+	}
+	//sort top[n]
+	std::vector<real> topn1;
+	std::vector<real> topi;
+	if(cosDistBetweenWords(wordvector, top[n-1]) < cosDistBetweenWords(wordvector, word_vector_label[i])) {
+	  top[n-1] = word_vector_label[i];
+	}
+      }
+    
+  }
+
+  std::vector<std::string> result;
+  for(int i = 0; i < n; i++) {
+    result.push_back(top[i]);
+  }
+
+  return result;
+  
+}
+
 // End of Distance Measurement
 
 
@@ -156,9 +341,21 @@ int main(int argc, char **argv) {
   wordvector_file = "vec.txt";
   ReadWordVector();
   std::vector<std::string> testa;
+  std::vector<real> testb;
+  std::vector<real> ccc;
+  std::vector<std::string> testc;
   std::string aaa;
-  aaa = "witten";
-  testa = GetSimilarWord(aaa,10);
-  for(int i = 0; i < 10; i++) std::cout << testa[i] << " ";
+  std::string bbb;
+  std::string ddd;
+  aaa = "king";
+  bbb = "man";
+  ddd = "woman";
+  //testa = GetSimilarWords(aaa,10);
+  testb = GetWordVector(ddd);
+  ccc = AddVectors(SubtractVectors(aaa,bbb),testb);
+  ccc = AddVectors(ccc,ddd);
+  testc = GetSimilarWords(ccc, 10);
+  //for(int i = 0; i < 10; i++) std::cout << testa[i] << " ";
+  for(int i = 0; i < 10; i++) std::cout << testc[i] << " ";
   return 0;
 }
