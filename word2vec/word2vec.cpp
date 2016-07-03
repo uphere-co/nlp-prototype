@@ -5,12 +5,8 @@
 #include <iostream>
 #include <fstream>
 
-#include <boost/tuple/tuple.hpp>
-
 #include <stdlib.h>
 #include <string.h>
-
-#include "gnuplot-iostream.h"
 
 #include "utils.h"
 
@@ -53,8 +49,7 @@ std::vector<real> syn0;
 std::vector<real> syn1;
 std::vector<real> syn1neg;
 
-
-std::string train_file, output_file;
+std::string train_file, output_file, wordvector_file;
 std::string save_vocab_file = "", read_vocab_file = "";
 
 // Struct
@@ -63,8 +58,6 @@ std::vector<vocab_word> vocab;
 // Tables
 std::array<unsigned long long, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
 std::array<int, table_size> table;
-
-std::vector<double> mine;
 
 
 
@@ -336,7 +329,7 @@ void ReadVocab() {
   std::string line;
   std::vector<std::string> word;
   std::ifstream inFile;
-  inFile.open(read_vocab_file, std::ifstream::in);
+  inFile.open(read_vocab_file, std::ifstream::in | std::ifstream::binary);
   if(inFile.fail()) {
     std::cout << "Vocabulary file not found!\n";
     exit(1);
@@ -368,7 +361,6 @@ void ReadVocab() {
   file_size = inFile.tellg();
   inFile.close();
 }
-
 
 // End of HashMap for dictionary
 
@@ -621,36 +613,6 @@ void TrainModel() {
 // End of Learning Net
 
 
-// Begin of Distance Measurement
-
-double cosDistBetweenWords(std::string& str1, std::string& str2)
-{
-  double str1mag = 0, str2mag = 0;
-  double dist = 0;
-
-  long long str1pos, str2pos;
-
-  str1pos = vocab_hash[GetWordHash(str1)];
-  str2pos = vocab_hash[GetWordHash(str2)];
-  
-  for(int a = 0; a < layer1_size; a++) {
-    str1mag += mine[layer1_size*str1pos + a]*mine[layer1_size*str1pos + a];
-    str2mag += mine[layer1_size*str2pos + a]*mine[layer1_size*str2pos + a];
-  }
-
-  str1mag = sqrt(str1mag);
-  str2mag = sqrt(str2mag);
-  
-  for(int a = 0; a < layer1_size; a++) {
-    dist += (mine[layer1_size*str1pos + a]/str1mag) * (mine[layer1_size*str2pos + a]/str2mag);
-  }
-}
-
-// End of Distance Measurement
-
-
-
-
 // main function arguments
 
 void printHelp() {
@@ -692,6 +654,8 @@ void printHelp() {
   std::cout << "\t\tThe vocabulary will be read from <file>, not constructed from the training data\n";
   std::cout << "\t-cbow <int>\n";
   std::cout << "\t\tUse the continuous bag of words model; default is 1 (use 0 for skip-gram model)\n";
+  std::cout << "\t-wordvector <file>\n";
+  std::cout << "\t\tRead the trained word vector file\n";
   std::cout << "\nExamples:\n";
   std::cout << "./word2vec -train data.txt -output vec.txt -size 200 -window 5 -sample 1e-4 -negative 5 -hs 0 -binary 0 -cbow 1 -iter 3\n\n";
   
@@ -736,6 +700,7 @@ void ArgPass(int argc, char **argv) {
   if ((i = ArgPos((char *)"-iter", argc, argv)) > 0) iter = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-min-count", argc, argv)) > 0) min_count = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-classes", argc, argv)) > 0) classes = atoi(argv[i + 1]);
+  if ((i = ArgPos((char *)"-wordvector", argc, argv)) > 0) wordvector_file = argv[i + 1];
 }
 
 // main function arguments
@@ -767,9 +732,7 @@ int main(int argc, char **argv) {
   }
 
   ArgPass(argc, argv);
-
-  
   TrainModel();
-  
+
   return 0;
 }
