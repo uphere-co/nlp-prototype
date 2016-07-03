@@ -23,12 +23,12 @@ import           Symbolic.Simplify
 import           Symbolic.Type
 --
 
-                    
+                   
 diff'
-  :: (?expHash :: Exp :->: Hash)
-  => HashMap Hash MExp
-  -> ((Symbol,Exp) :->: MExp)
-  -> (Symbol,Exp) -> MExp
+  :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
+  => HashMap Hash (MExp a)
+  -> ((Symbol,Exp a) :->: MExp a)
+  -> (Symbol,Exp a) -> MExp a
 diff' m t (s,e) =
   case e of
     Zero         -> zero 
@@ -45,6 +45,7 @@ diff' m t (s,e) =
                     in sum_ is (untrie t (s,e1))
 
 
+dvar :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
 dvar _             (Simple s')   = zero
@@ -54,7 +55,6 @@ dvar (Indexed x j) (Indexed y k)
   | otherwise = zero
 
 
-
-sdiff :: (?expHash :: Exp :->: Hash) => Symbol -> MExp -> MExp
+sdiff :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> MExp a -> MExp a
 sdiff s (MExp e m _) = let diff = fix (diff' m . trie) in diff (s,e)
 

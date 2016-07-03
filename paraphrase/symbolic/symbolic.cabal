@@ -28,6 +28,8 @@ source-repository HEAD
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
+                        binary,
+                        bytestring,
                         hashable,
                         lens,
                         MemoTrie,

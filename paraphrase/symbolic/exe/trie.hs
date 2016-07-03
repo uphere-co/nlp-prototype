@@ -27,16 +27,22 @@ import           Symbolic.Type
 --
 
 -- data Args = Args { varMap :: HashMap Symbol Int }
-type Args = [(Symbol,Int)]
+type Args a = [(Symbol,a)]
+type IdxPoint = [(Index,Int)]
 
+justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
-eval :: (?expHash :: Exp :->: Hash) => HashMap Hash MExp -> ((Args,Exp) :->: Int) -> Args -> Exp -> Int
+eval :: (Num a, Floating a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
+        HashMap Hash (MExp a) -> ((Args a,Exp a) :->: a) -> Args a -> Exp a -> a
 eval _ _ _ Zero = 0
 eval _ _ _ One  = 1
 -- eval _ (mexpExp -> Delta i j) = 
 eval m t args (Var s) = justLookupL s args
--- eval args (mexpExp -> Fun1 o h1)
+eval m t args (Fun1 f h1) =
+  let e1 = mexpExp (justLookup h1 m)
+  in if | f == "tanh" -> tanh (untrie t (args,e1))
+        | otherwise   -> error (f ++ " is not supported yet")
 eval m t args (Fun2 o h1 h2) =
   let e1 = mexpExp (justLookup h1 m)
       e2 = mexpExp (justLookup h2 m)
@@ -47,41 +53,41 @@ eval m t args (Fun2 o h1 h2) =
 
 
 
-exp1 :: (?expHash :: Exp :->: Hash) => MExp
+exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = square (x `add'` y)
 
-exp2 :: (?expHash :: Exp :->: Hash) => MExp
+exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 3 x -- power 10 (x `add'` y)
 
-exp3 :: (?expHash :: Exp :->: Hash) => MExp
+exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])
 
-exp4 :: (?expHash :: Exp :->: Hash) => MExp
+exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = sum_ ["i"] exp3
 
-exp5 :: (?expHash :: Exp :->: Hash) => MExp
+exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp5 = sum_ ["i","j"] ((x_ ["i"] `mul` y_ ["i","j"]) `mul` x_ ["j"])
 
 
-expfib' :: (?expHash :: Exp :->: Hash) => (Int :->: MExp) -> Int -> MExp
+expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
 expfib' _ 0 = x -- x_ ["i"]
 expfib' _ 1 = y -- y_ ["i"]
 expfib' t n = let e1 = untrie t (n-1)
                   e2 = untrie t (n-2)
               in add e1 e2
 
-expfib :: (?expHash :: Exp :->: Hash) => Int -> MExp 
+expfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Int -> MExp a
 expfib = 
     let t = trie expfib
         extfib = expfib' t
     in extfib
 
-dexpfib' :: (?expHash :: Exp :->: Hash) => 
-            (Int :->: MExp, (Symbol,Exp) :->: MExp)
-         -> (Symbol,Int) -> MExp
+dexpfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => 
+            (Int :->: MExp a, (Symbol,Exp a) :->: MExp a)
+         -> (Symbol,Int) -> MExp a
 dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' m tdiff (s,e)
 
-dexpfib :: (?expHash :: Exp :->: Hash) => (Symbol,Int) -> MExp
+dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Symbol,Int) -> MExp a
 dexpfib (s,n) = let tfib = trie ffib
                     ffib = expfib' tfib
                     MExp _ m _ = untrie tfib n
@@ -89,7 +95,7 @@ dexpfib (s,n) = let tfib = trie ffib
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
 
-eval_fib :: (?expHash :: Exp :->: Hash) => Args -> Int -> Int
+eval_fib :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) => Args a -> Int -> a
 eval_fib a n = let tfib = trie ffib
                    ffib = expfib' tfib
                    e = mexpExp (ffib n)
@@ -104,7 +110,7 @@ prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 endl = putStrLn ""
 
 
-mkDepGraph :: (?expHash :: Exp :->: Hash) => MExp -> [(Hash,Hash)]
+mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepGraph e = let e1 = mexpExp e
                    h1 = untrie ?expHash e1
                    m1 = mexpMap e
@@ -121,7 +127,7 @@ test_digraph = do
     -- digraph exp1
     -- digraph (expfib 100)
     -- digraph exp1
-    digraph exp2
+    digraph (exp2 :: MExp Int)
 
 test123 :: IO ()
 test123 = do
@@ -129,7 +135,7 @@ test123 = do
     -- let MExp e m _ = exp1
     --    diff = fix (diff' m . trie)
     putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
-    let lexp1 = expfib 100
+    let lexp1 = expfib 100 :: MExp Int
         lexp2 = dexpfib (Simple "y",100)
     -- prettyPrintR $ lexp1
     -- prettyPrintR $ lexp2    
@@ -144,7 +150,7 @@ test123 = do
     
 test3 = do
   let ?expHash = trie hash
-  let r = sdiff (Indexed "x" ["j"]) exp3
+  let r = sdiff (Indexed "x" ["j"]) (exp3 :: MExp Int)
   prettyPrintR r
   digraph r  
 
@@ -152,7 +158,7 @@ test3 = do
 test4 = do
   let ?expHash = trie hash
   
-  printf "f = %s\n" ((prettyPrint . exp2RExp) exp4 :: String)
+  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp4 :: MExp Int) :: String)
   let r' = sdiff (Indexed "x" ["j"]) exp4
   printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
 
@@ -162,7 +168,7 @@ test4 = do
 
 test5 = do
   let ?expHash = trie hash  
-  printf "f = %s\n" ((prettyPrint . exp2RExp) exp5 :: String)
+  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp5 ::  MExp Int) :: String)
   let r = sdiff (Indexed "y" ["m","n"]) exp5
   printf "df/d(y_mn) = %s\n" ((prettyPrint . exp2RExp) r :: String)
   digraph r
@@ -174,7 +180,7 @@ test6 = do
   let ?expHash = trie hash    
   -- let lexp1 = expfib 10
   let n = 3
-      lexp1 = expfib n
+      lexp1 = expfib n :: MExp Int
       lexp2 = dexpfib (Indexed "x" ["j"],n)
   prettyPrintR $ lexp1
   prettyPrintR $ lexp2    
@@ -182,15 +188,15 @@ test6 = do
 
 test7 :: IO ()
 test7 = do
-  let ?expHash = trie hash
+  let ?expHash = trie hash :: Exp Double :->: Hash
   let n = 100
       -- lexp1 = expfib n
       -- lexp2 = dexpfib (Indexed "x" ["j"],n)
   
   -- prettyPrintR lexp1
-  let args = [(Simple "x",1),(Simple "y",1)]
+  let args = [(Simple "x",1),(Simple "y",1 :: Double)]
      
-  printf "f(1,1) = %d\n" $ eval_fib args n -- eval args lexp1
+  printf "f(1,1) = %e\n" $ eval_fib args n -- eval args lexp1
 
 
 main = do
