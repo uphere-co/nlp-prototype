@@ -16,14 +16,22 @@ import           Text.Printf
 import           Symbolic.Type
 -- 
 
+
+listPrintf :: PrintfType r => String -> [String] -> r
+listPrintf sep []     = printf ""
+listPrintf sep (x:[]) = printf "%s" x
+listPrintf sep (x:xs) = printf "%s%s%s" x sep (listPrintf sep xs :: String)
+
 prettyPrint :: (Show a, PrintfType r) => RExp a -> r
 prettyPrint RZero = printf "0"
 prettyPrint ROne  = printf "1"
 prettyPrint (RDelta i j) = printf "delta_%s%s" i j
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showSym s)
-prettyPrint (RFun1 s e1) = printf "(%s %s)" s (prettyPrint e1 :: String)
-prettyPrint (RFun2 s e1 e2)
+prettyPrint (RAdd es) = listPrintf "+" (map prettyPrint es)
+-- prettyPrint (RAdd s) = printf "%s" 
+{- prettyPrint (RFun1 s e1) = printf "(%s %s)" s (prettyPrint e1 :: String)
+-- prettyPrint (RFun2 s e1 e2)
   | s == "+" || s == "*" = printf "(%s%s%s)"
                              (prettyPrint e1 :: String)
                              (s :: String)
@@ -31,7 +39,7 @@ prettyPrint (RFun2 s e1 e2)
   | otherwise            = printf "(%s%s%s)"
                              (s :: String)
                              (prettyPrint e1 :: String)
-                             (prettyPrint e2 :: String)
+                             (prettyPrint e2 :: String) -}
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 
 showIdxSet :: [Index] -> String
@@ -56,8 +64,9 @@ dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
 dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h i j
 dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
-dotPrint' h (Fun1 s h1)    = printf "x%x [label=\"%s\"];\n%s -> x%x;\n" h s h h1
-dotPrint' h (Fun2 s h1 h2) = printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2
+dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
+-- dotPrint' h (Fun1 s h1)    = printf "x%x [label=\"%s\"];\n%x -> x%x;\n" h s h h1
+-- dotPrint' h (Fun2 s h1 h2) = printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 
 digraph :: (HasTrie a, Show a, ?expHash :: Exp a :->: Hash) => MExp a -> IO ()

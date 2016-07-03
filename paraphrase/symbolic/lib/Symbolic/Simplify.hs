@@ -22,6 +22,7 @@ import           Symbolic.Print
 import           Symbolic.Type
 --
 
+{- 
 simplify2 :: HashMap Hash (MExp a) -> String -> Pos -> Hash -> Hash -> MExp a
 simplify2 m f pos h1 h2
   | f == "+"  = one
@@ -48,4 +49,4 @@ mul' e1                  (mexpExp -> One)  = e1
 mul' (mexpExp -> One)    e2                = e2
 mul' e1                  e2                = e1 `mul` e2 
 
-
+-}

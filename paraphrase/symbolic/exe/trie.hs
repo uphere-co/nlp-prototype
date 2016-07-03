@@ -33,6 +33,7 @@ type IdxPoint = [(Index,Int)]
 justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
+{- 
 eval :: (Num a, Floating a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
         HashMap Hash (MExp a) -> ((Args a,IdxPoint,Exp a) :->: EExp a) -> (Args a,IdxPoint,Exp a) -> EExp a
 eval _ _ (_,_,Zero) = EVal 0
@@ -223,7 +224,14 @@ test7 = do
 
 
 
-main = do
-  test7
+-}
 
+test8 :: IO ()
+test8 = do
+  let ?expHash = trie hash
+  let exp = add [x_ ["i"], y_ ["i"], x_ ["j"]] 
+  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp ::  MExp Int) :: String)
+    
+
+main = test8
     
