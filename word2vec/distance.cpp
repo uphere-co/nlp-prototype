@@ -8,7 +8,7 @@
 
 typedef float real;
 
-std::string wordvector_file;
+std::string word_vector_file;
 
 int layer1_size = 100;
 
@@ -41,7 +41,7 @@ void ReadWordVector() {
   std::string line;
   unsigned long long hash;
   long long pos = 0;
-  inFile.open(wordvector_file, std::ifstream::in | std::ifstream::binary);
+  inFile.open(word_vector_file, std::ifstream::in | std::ifstream::binary);
   if(inFile.fail()) {
     std::cout << "Word vector file not found!\n";
     exit(1);
@@ -328,27 +328,72 @@ std::vector<std::string> GetSimilarWords(std::vector<real>& wordvector, int n) {
 
 // End of Distance Measurement
 
+//main function arguments
+
+void printHelp() {
+  std::cout << "c++ distance implementation \n\n";
+  std::cout << "Options:\n";
+  std::cout << "Parameters for calculating distance:\n";
+  std::cout << "\t-word-vector <file>\n";
+  std::cout << "\t\tUse word vector stored in <file>\n";
+  std::cout << "\nExamples:\n";
+  std::cout << "./distance -word-vector data.txt";
+  
+}
+
+int ArgPos(char *str, int argc, char **argv) {
+  int i;
+  std::string s_str;
+  std::string s_argv[argc];
+  
+  for(i = 1; i < argc; i++) s_argv[i] = argv[i];
+  s_str = str;
+  
+  for(i = 1; i < argc; i++) if(s_str == s_argv[i]) {
+      if(i == argc - 1) {
+	std::cout << "Argument missing for " << s_str << std::endl;;
+	exit(1);
+      }
+      return i;
+  }
+  return -1;
+}
+
+void ArgPass(int argc, char **argv) {
+  int i;
+  if ((i = ArgPos((char *)"-word-vector", argc, argv)) > 0) word_vector_file = argv[i + 1];
+}
+
+// main function arguments
+
+
+
+
 
 int main(int argc, char **argv) {
+
+  if(argc == 1) {
+    printHelp();
+    return 0;
+  }
+
+  ArgPass(argc, argv);
+  
   initVocabHash();
-  wordvector_file = "vec.txt";
   ReadWordVector();
-  std::vector<std::string> testa;
-  std::vector<real> testb;
-  std::vector<real> ccc;
-  std::vector<std::string> testc;
+  std::vector<std::string> test_list;
+  std::vector<real> test_vector;
   std::string aaa;
   std::string bbb;
-  std::string ddd;
+  std::string ccc;
   aaa = "king";
   bbb = "man";
-  ddd = "woman";
+  ccc = "woman";
+  test_vector = AddVectors(SubtractVectors(aaa,bbb),ccc);
   //testa = GetSimilarWords(aaa,10);
-  testb = GetWordVector(ddd);
-  ccc = AddVectors(SubtractVectors(aaa,bbb),testb);
-  ccc = AddVectors(ccc,ddd);
-  testc = GetSimilarWords(ccc, 10);
+  
+  test_list = GetSimilarWords(test_vector, 20);
   //for(int i = 0; i < 10; i++) std::cout << testa[i] << " ";
-  for(int i = 0; i < 10; i++) std::cout << testc[i] << " ";
+  for(int i = 0; i < 20; i++) std::cout << test_list[i] << " ";
   return 0;
 }
