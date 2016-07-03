@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gnuplot-iostream.h"
-
 #include "utils.h"
 
 #define EXP_TABLE_SIZE 1000
@@ -53,8 +51,10 @@ std::vector<real> syn0;
 std::vector<real> syn1;
 std::vector<real> syn1neg;
 
+std::vector<std::string> word_vector_label;
+std::vector<real> word_vector;
 
-std::string train_file, output_file;
+std::string train_file, output_file, wordvector_file;
 std::string save_vocab_file = "", read_vocab_file = "";
 
 // Struct
@@ -336,7 +336,7 @@ void ReadVocab() {
   std::string line;
   std::vector<std::string> word;
   std::ifstream inFile;
-  inFile.open(read_vocab_file, std::ifstream::in);
+  inFile.open(read_vocab_file, std::ifstream::in | std::ifstream::binary);
   if(inFile.fail()) {
     std::cout << "Vocabulary file not found!\n";
     exit(1);
@@ -366,6 +366,30 @@ void ReadVocab() {
   }
   
   file_size = inFile.tellg();
+  inFile.close();
+}
+
+void ReadWordVector() {
+  std::ifstream inFile;
+  std::vector<std::string> word;
+  std::string line;
+  inFile.open(wordvector_file, std::ifstream::in | std::ifstream::binary);
+  if(inFile.fail()) {
+    std::cout << "Word vector file not found!\n";
+    exit(1);
+  }
+  std::getline(inFile,line); // Ignoring the first line : ( vocab_size, layer1_size)
+  while(1) {
+    word.clear();
+    std::getline(inFile,line);
+    if(inFile.eof()) break;
+    split(line, word);
+    word_vector_label.push_back(word[0]);
+    for(int i = 0; i < layer1_size; i++) {
+      word_vector.push_back(atof(word[i+1].c_str()));
+    }  
+  }
+
   inFile.close();
 }
 
@@ -650,7 +674,6 @@ double cosDistBetweenWords(std::string& str1, std::string& str2)
 
 
 
-
 // main function arguments
 
 void printHelp() {
@@ -692,6 +715,8 @@ void printHelp() {
   std::cout << "\t\tThe vocabulary will be read from <file>, not constructed from the training data\n";
   std::cout << "\t-cbow <int>\n";
   std::cout << "\t\tUse the continuous bag of words model; default is 1 (use 0 for skip-gram model)\n";
+  std::cout << "\t-wordvector <file>\n";
+  std::cout << "\t\tRead the trained word vector file\n";
   std::cout << "\nExamples:\n";
   std::cout << "./word2vec -train data.txt -output vec.txt -size 200 -window 5 -sample 1e-4 -negative 5 -hs 0 -binary 0 -cbow 1 -iter 3\n\n";
   
@@ -736,6 +761,7 @@ void ArgPass(int argc, char **argv) {
   if ((i = ArgPos((char *)"-iter", argc, argv)) > 0) iter = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-min-count", argc, argv)) > 0) min_count = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-classes", argc, argv)) > 0) classes = atoi(argv[i + 1]);
+  if ((i = ArgPos((char *)"-wordvector", argc, argv)) > 0) wordvector_file = argv[i + 1];
 }
 
 // main function arguments
@@ -767,9 +793,6 @@ int main(int argc, char **argv) {
   }
 
   ArgPass(argc, argv);
-
-  
-  TrainModel();
-  
+  if(wordvector_file != "") ReadWordVector(); else TrainModel();
   return 0;
 }
