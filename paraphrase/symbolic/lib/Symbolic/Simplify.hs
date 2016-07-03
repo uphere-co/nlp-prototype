@@ -46,11 +46,21 @@ mul' e1                  e2                = e1 `mul` e2
 -}
 
 add' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-add' es = let es' = filter (not . isZero . mexpExp) es
+add' es = let es' = (filter (not . isZero . mexpExp) . concatMap (flatten1 argsAdd)) es
           in if null es' then zero else add es'
 
 mul' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-mul' es = let es' = filter (not . isOne . mexpExp) es
+mul' es = let es' = (filter (not . isOne . mexpExp) . concatMap (flatten1 argsMul)) es
           in if | null es'                                     -> one
                 | getAny (foldMap (Any . isZero . mexpExp) es) -> zero
                 | otherwise                                    -> mul es'
+
+flatten1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (MExp a -> Maybe [MExp a]) -> MExp a -> [MExp a]
+flatten1 f e = maybe [e] id (f e)
+
+
+argsAdd (MExp (Add hs) m i) = Just (map (flip justLookup m) hs)
+argsAdd _                   = Nothing
+
+argsMul (MExp (Mul hs) m i) = Just (map (flip justLookup m) hs)
+argsMul _                   = Nothing

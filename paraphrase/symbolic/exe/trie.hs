@@ -236,7 +236,7 @@ test8 = do
   printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
   -- digraph e2
 
-  let e3 = mul' [x, x, x, x]
+  let e3 = mul' [x, x, mul' [x, x , x] , x]
       de3 = (sdiff (Simple "x") e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
