@@ -647,6 +647,23 @@ void TrainModel() {
 
 // Begin of Distance Measurement
 
+std::vector<real> getWordVector(std::string& word) {
+
+  std::vector<real> wordvector;
+  int position;
+
+  for(int i = 0; word_vector_label.size(); i++) {
+    if(word_vector_label[i] == word) {
+      position = i;
+      break;
+    }
+  }
+  for(int i = 0; i < layer1_size; i++) {
+    wordvector.push_back(word_vector[position*layer1_size + i]);
+  }
+  return wordvector;
+}
+
 double cosDistBetweenWords(std::string& str1, std::string& str2)
 {
   double str1mag = 0, str2mag = 0;
@@ -794,5 +811,14 @@ int main(int argc, char **argv) {
 
   ArgPass(argc, argv);
   if(wordvector_file != "") ReadWordVector(); else TrainModel();
+
+  std::vector<real> testa;
+  std::string aaa;
+  aaa = "witten";
+  testa = getWordVector(aaa);
+
+  for(int i = 0; i < layer1_size; i++) {
+    std::cout << testa[i] << " ";
+  }
   return 0;
 }
