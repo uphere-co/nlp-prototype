@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -14,6 +15,9 @@ int layer1_size = 100;
 std::vector<std::string> word_vector_label;
 std::vector<real> word_vector;
 
+const long long vocab_hash_size = 30000000;
+
+std::array<unsigned long long, vocab_hash_size> vocab_hash;
 
 std::vector<double> mine;
 
@@ -24,12 +28,26 @@ int findPosition(std::string& word) {
   return -1;
 }
 
+void initVocabHash() {
+  vocab_hash.fill(-1);
+}
+
+int GetWordHash(std::string& word) {
+  unsigned long long a;
+  unsigned long long hash = 0;
+  for(a = 0; a < word.length(); a++) hash = hash * 257 + word.at(a);
+  hash = hash % vocab_hash_size;
+  return hash;
+}
+
+
 // Begin of Distance Measurement
 void ReadWordVector() {
   std::ifstream inFile;
   std::vector<std::string> word;
   std::string line;
-
+  unsigned long long hash;
+  long long pos = 0;
   inFile.open(wordvector_file, std::ifstream::in | std::ifstream::binary);
   if(inFile.fail()) {
     std::cout << "Word vector file not found!\n";
@@ -44,6 +62,10 @@ void ReadWordVector() {
     if(inFile.eof()) break;
     split(line, word);
     word_vector_label.push_back(word[0]);
+    hash = GetWordHash(word[0]);
+    while(vocab_hash[hash] != -1) hash = (hash + 1) % vocab_hash_size;
+    vocab_hash[hash] = pos;
+    pos++;
     for(int i = 0; i < layer1_size; i++) {
       word_vector.push_back(atof(word[i+1].c_str()));
     }  
@@ -76,8 +98,8 @@ double cosDistBetweenWords(std::string& str1, std::string& str2)
 
   long long str1pos, str2pos;
 
-  str1pos = findPosition(str1);
-  str2pos = findPosition(str2);
+  str1pos = vocab_hash[GetWordHash(str1)];
+  str2pos = vocab_hash[GetWordHash(str2)];
   
   for(int a = 0; a < layer1_size; a++) {
     str1mag += word_vector[layer1_size*str1pos + a]*word_vector[layer1_size*str1pos + a];
@@ -136,8 +158,13 @@ std::vector<std::string> GetSimilarWord(std::string& word, int n) {
 
 
 int main(int argc, char **argv) {
-
+  initVocabHash();
   wordvector_file = "vec.txt";
   ReadWordVector();
+  std::vector<std::string> testa;
+  std::string aaa;
+  aaa = "witten";
+  testa = GetSimilarWord(aaa,10);
+  for(int i = 0; i < 10; i++) std::cout << testa[i] << " ";
   return 0;
 }
