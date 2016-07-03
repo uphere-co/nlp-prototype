@@ -5,8 +5,6 @@
 #include <iostream>
 #include <fstream>
 
-#include <boost/tuple/tuple.hpp>
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,9 +49,6 @@ std::vector<real> syn0;
 std::vector<real> syn1;
 std::vector<real> syn1neg;
 
-std::vector<std::string> word_vector_label;
-std::vector<real> word_vector;
-
 std::string train_file, output_file, wordvector_file;
 std::string save_vocab_file = "", read_vocab_file = "";
 
@@ -63,8 +58,6 @@ std::vector<vocab_word> vocab;
 // Tables
 std::array<unsigned long long, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
 std::array<int, table_size> table;
-
-std::vector<double> mine;
 
 
 
@@ -369,31 +362,6 @@ void ReadVocab() {
   inFile.close();
 }
 
-void ReadWordVector() {
-  std::ifstream inFile;
-  std::vector<std::string> word;
-  std::string line;
-  inFile.open(wordvector_file, std::ifstream::in | std::ifstream::binary);
-  if(inFile.fail()) {
-    std::cout << "Word vector file not found!\n";
-    exit(1);
-  }
-  std::getline(inFile,line); // Ignoring the first line : ( vocab_size, layer1_size)
-  while(1) {
-    word.clear();
-    std::getline(inFile,line);
-    if(inFile.eof()) break;
-    split(line, word);
-    word_vector_label.push_back(word[0]);
-    for(int i = 0; i < layer1_size; i++) {
-      word_vector.push_back(atof(word[i+1].c_str()));
-    }  
-  }
-
-  inFile.close();
-}
-
-
 // End of HashMap for dictionary
 
 
@@ -645,52 +613,6 @@ void TrainModel() {
 // End of Learning Net
 
 
-// Begin of Distance Measurement
-
-std::vector<real> getWordVector(std::string& word) {
-
-  std::vector<real> wordvector;
-  int position;
-
-  for(int i = 0; word_vector_label.size(); i++) {
-    if(word_vector_label[i] == word) {
-      position = i;
-      break;
-    }
-  }
-  for(int i = 0; i < layer1_size; i++) {
-    wordvector.push_back(word_vector[position*layer1_size + i]);
-  }
-  return wordvector;
-}
-
-double cosDistBetweenWords(std::string& str1, std::string& str2)
-{
-  double str1mag = 0, str2mag = 0;
-  double dist = 0;
-
-  long long str1pos, str2pos;
-
-  str1pos = vocab_hash[GetWordHash(str1)];
-  str2pos = vocab_hash[GetWordHash(str2)];
-  
-  for(int a = 0; a < layer1_size; a++) {
-    str1mag += mine[layer1_size*str1pos + a]*mine[layer1_size*str1pos + a];
-    str2mag += mine[layer1_size*str2pos + a]*mine[layer1_size*str2pos + a];
-  }
-
-  str1mag = sqrt(str1mag);
-  str2mag = sqrt(str2mag);
-  
-  for(int a = 0; a < layer1_size; a++) {
-    dist += (mine[layer1_size*str1pos + a]/str1mag) * (mine[layer1_size*str2pos + a]/str2mag);
-  }
-}
-
-// End of Distance Measurement
-
-
-
 // main function arguments
 
 void printHelp() {
@@ -810,15 +732,7 @@ int main(int argc, char **argv) {
   }
 
   ArgPass(argc, argv);
-  if(wordvector_file != "") ReadWordVector(); else TrainModel();
+  TrainModel();
 
-  std::vector<real> testa;
-  std::string aaa;
-  aaa = "witten";
-  testa = getWordVector(aaa);
-
-  for(int i = 0; i < layer1_size; i++) {
-    std::cout << testa[i] << " ";
-  }
   return 0;
 }
