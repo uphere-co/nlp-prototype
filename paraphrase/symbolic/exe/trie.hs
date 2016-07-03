@@ -229,9 +229,14 @@ test7 = do
 test8 :: IO ()
 test8 = do
   let ?expHash = trie hash
-  let exp = add [x_ ["i"], y_ ["i"], x_ ["j"]] 
-  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp ::  MExp Int) :: String)
-    
+  let e1 = add' [x_ ["i"], zero,  y_ ["i"], x_ ["j"], zero] 
+  printf "e1 = %s\n" ((prettyPrint . exp2RExp) (e1 ::  MExp Int) :: String)
+
+  let e2 = mul' [x_ ["i"], one,  y_ ["j"], x_ ["i"], one] 
+  printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
+
+  digraph e2
+
 
 main = test8
     

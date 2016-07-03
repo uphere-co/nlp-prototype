@@ -1,5 +1,6 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -8,13 +9,14 @@ module Symbolic.Simplify where
 
 import           Control.Monad ((>=>))
 import           Control.Monad.Trans.State
+import           Data.Foldable
 import           Data.Function             (fix)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
-import           Data.Monoid               ((<>))
+import           Data.Monoid
 import           Text.Printf
 --
 import           Symbolic.Predefined
@@ -33,14 +35,6 @@ simplify2 m f pos h1 h2
                   Pos1 -> MExp (Fun2 (suffix_1 f) h1 h2) m HS.empty
                   Pos2 -> MExp (Fun2 (suffix_2 f) h1 h2) m HS.empty
 
-add' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
-add' e1                 (mexpExp -> Zero)  = e1
-add' (mexpExp -> Zero)  e2                 = e2
-add' (mexpExp -> One)   (mexpExp -> One)   = val 2
-add' (mexpExp -> Val m) (mexpExp -> One)   = val (m+1)
-add' (mexpExp -> One)   (mexpExp -> Val m) = val (m+1)
-add' (mexpExp -> Val m) (mexpExp -> Val n) = val (m+n)
-add' e1                 e2                 = e1 `add` e2
 
 mul' :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
 mul' _                   (mexpExp -> Zero) = zero
@@ -50,3 +44,13 @@ mul' (mexpExp -> One)    e2                = e2
 mul' e1                  e2                = e1 `mul` e2 
 
 -}
+
+add' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
+add' es = let es' = filter (not . isZero . mexpExp) es
+          in if null es' then zero else add es'
+
+mul' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
+mul' es = let es' = filter (not . isOne . mexpExp) es
+          in if | null es'                                     -> one
+                | getAny (foldMap (Any . isZero . mexpExp) es) -> zero
+                | otherwise                                    -> mul es'

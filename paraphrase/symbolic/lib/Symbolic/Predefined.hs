@@ -53,15 +53,30 @@ biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
   in MExp e m (HS.union i1 i2)
 -}
 
+varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
+varop op es = let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
+                  ms = map mexpMap es
+                  is = map mexpIdx es
+                  m' = foldl1 HM.union ms
+                  i' = foldl1 HS.union is
+                  m'' = foldr (uncurry HM.insert) m' hes
+              in MExp (op (map fst hes)) m'' i'
+
 add :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-add es = let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
+add = varop Add
+
+mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
+mul = varop Mul
+
+{- 
+  let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
              ms = map mexpMap es
              is = map mexpIdx es
              m' = foldl1 HM.union ms
              i' = foldl1 HS.union is
              m'' = foldr (uncurry HM.insert) m' hes
           in MExp (Add (map fst hes)) m'' i'
-
+-}
 
 
 

@@ -29,6 +29,7 @@ prettyPrint (RDelta i j) = printf "delta_%s%s" i j
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showSym s)
 prettyPrint (RAdd es) = listPrintf "+" (map prettyPrint es)
+prettyPrint (RMul es) = listPrintf "*" (map prettyPrint es)
 -- prettyPrint (RAdd s) = printf "%s" 
 {- prettyPrint (RFun1 s e1) = printf "(%s %s)" s (prettyPrint e1 :: String)
 -- prettyPrint (RFun2 s e1 e2)
@@ -65,6 +66,7 @@ dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h i j
 dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
 dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
+dotPrint' h (Mul hs)       = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 -- dotPrint' h (Fun1 s h1)    = printf "x%x [label=\"%s\"];\n%x -> x%x;\n" h s h h1
 -- dotPrint' h (Fun2 s h1 h2) = printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
