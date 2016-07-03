@@ -34,16 +34,16 @@ justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
 eval :: (Num a, Floating a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
-        HashMap Hash (MExp a) -> ((Args a,Exp a) :->: a) -> Args a -> Exp a -> a
-eval _ _ _ Zero = 0
-eval _ _ _ One  = 1
+        HashMap Hash (MExp a) -> ((Args a,Exp a) :->: a) -> (Args a,Exp a) -> a
+eval _ _ (_, Zero) = 0
+eval _ _ (_, One)  = 1
 -- eval _ (mexpExp -> Delta i j) = 
-eval m t args (Var s) = justLookupL s args
-eval m t args (Fun1 f h1) =
+eval m t (args, Var s) = justLookupL s args
+eval m t (args, Fun1 f h1) =
   let e1 = mexpExp (justLookup h1 m)
   in if | f == "tanh" -> tanh (untrie t (args,e1))
         | otherwise   -> error (f ++ " is not supported yet")
-eval m t args (Fun2 o h1 h2) =
+eval m t (args, Fun2 o h1 h2) =
   let e1 = mexpExp (justLookup h1 m)
       e2 = mexpExp (justLookup h2 m)
   in if | o == "+" -> untrie t (args,e1) + untrie t (args,e2)
@@ -55,6 +55,9 @@ eval m t args (Fun2 o h1 h2) =
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = square (x `add'` y)
+
+exp1' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp1' = tanh_ exp1
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 3 x -- power 10 (x `add'` y)
@@ -100,9 +103,16 @@ eval_fib a n = let tfib = trie ffib
                    ffib = expfib' tfib
                    e = mexpExp (ffib n)
                    m = mexpMap (ffib n)
-                   feval = uncurry (eval m teval)
+                   feval = eval m teval
                    teval = trie feval 
                in untrie teval (a,e)
+
+
+seval :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) =>
+         Args a -> MExp a -> a
+seval a e = let f = fix (eval (mexpMap e) . trie)
+            in f (a,mexpExp e)
+
 
 
 prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
@@ -196,7 +206,7 @@ test7 = do
   -- prettyPrintR lexp1
   let args = [(Simple "x",1),(Simple "y",1 :: Double)]
      
-  printf "f(1,1) = %e\n" $ eval_fib args n -- eval args lexp1
+  printf "f(1,1) = %e\n" $ seval args exp1' -- eval_fib args n -- eval args lexp1
 
 
 main = do
