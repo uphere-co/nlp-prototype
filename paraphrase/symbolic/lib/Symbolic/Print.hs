@@ -67,3 +67,7 @@ digraph v = do
     putStrLn "digraph G {"
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
+
+prettyPrintE :: (Show a, PrintfType r) => EExp a -> r
+prettyPrintE (EDelta i j) = printf "delta_%s%s" i j
+prettyPrintE (EVal n) = printf "%s" (show n) 

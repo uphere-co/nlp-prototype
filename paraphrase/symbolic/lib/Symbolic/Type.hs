@@ -181,3 +181,9 @@ daughters (Sum is h1)    = [h1]
  
 
 data Pos = Pos1 | Pos2 
+
+data EExp a = EDelta Index Index
+            | EVal a
+
+
+
