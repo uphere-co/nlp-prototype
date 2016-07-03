@@ -182,8 +182,14 @@ daughters (Sum is h1)    = [h1]
 
 data Pos = Pos1 | Pos2 
 
-data EExp a = EDelta Index Index
-            | EVal a
+data TDelta = TDelta2 Index Index
+            | TDelta1 Index Int
 
+data EExp a = EVal a
+            | EDelta TDelta            
+            | EAdd a TDelta
+            | EAdd2 TDelta TDelta
+            | EMul a TDelta
+            | EMul2 TDelta TDelta
 
 

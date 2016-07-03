@@ -69,5 +69,14 @@ digraph v = do
     putStrLn "}"
 
 prettyPrintE :: (Show a, PrintfType r) => EExp a -> r
-prettyPrintE (EDelta i j) = printf "delta_%s%s" i j
-prettyPrintE (EVal n) = printf "%s" (show n) 
+prettyPrintE (EVal n) = printf "%s" (show n)
+prettyPrintE (EDelta t) = prettyPrintT t
+prettyPrintE (EAdd n t) = printf "(%s+%s)" (show n) (prettyPrintT t :: String)
+prettyPrintE (EAdd2 t1 t2) = printf "(%s+%s)" (prettyPrintT t1 :: String) (prettyPrintT t2 :: String)
+prettyPrintE (EMul n t) = printf "(%s*%s)" (show n) (prettyPrintT t :: String)
+prettyPrintE (EMul2 t1 t2) = printf "(%s*%s)" (prettyPrintT t1 :: String) (prettyPrintT t2 :: String)
+
+
+prettyPrintT :: (PrintfType r) => TDelta -> r
+prettyPrintT (TDelta2 i j) = printf "delta_%s%s" i j
+prettyPrintT (TDelta1 i n) = printf "delta_%s%d" i n
