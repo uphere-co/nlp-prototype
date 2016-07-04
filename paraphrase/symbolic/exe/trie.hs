@@ -33,28 +33,44 @@ type IdxPoint = [(Index,Int)]
 justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
+{- 
 eval :: (Num a, Floating a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
-        HashMap Hash (MExp a) -> ((Args a,Exp a) :->: a) -> Args a -> Exp a -> a
-eval _ _ _ Zero = 0
-eval _ _ _ One  = 1
--- eval _ (mexpExp -> Delta i j) = 
-eval m t args (Var s) = justLookupL s args
-eval m t args (Fun1 f h1) =
+        HashMap Hash (MExp a) -> ((Args a,IdxPoint,Exp a) :->: EExp a) -> (Args a,IdxPoint,Exp a) -> EExp a
+eval _ _ (_,_,Zero) = EVal 0
+eval _ _ (_,_,One)  = EVal 1
+eval _ _ (_,_,Val n) = EVal n
+eval _ _ (_,ip,Delta i j) = evalDelta ip i j 
+eval m t (args,ip,Var s) = EVal (justLookupL s args)
+eval m t (args,ip,Fun1 f h1) =
   let e1 = mexpExp (justLookup h1 m)
-  in if | f == "tanh" -> tanh (untrie t (args,e1))
-        | otherwise   -> error (f ++ " is not supported yet")
-eval m t args (Fun2 o h1 h2) =
+  in case untrie t (args,ip,e1) of
+       EVal e1' -> if | f == "tanh" -> EVal (tanh e1')
+                      | otherwise   -> error (f ++ " is not supported yet")
+       _ -> error "invalid function application"
+eval m t (args,ip,Fun2 o h1 h2) =
   let e1 = mexpExp (justLookup h1 m)
       e2 = mexpExp (justLookup h2 m)
-  in if | o == "+" -> untrie t (args,e1) + untrie t (args,e2)
-        | o == "*" -> untrie t (args,e1) * untrie t (args,e2)
-        | otherwise -> error "not supported"
+  in case (untrie t (args,ip,e1), untrie t (args,ip,e2)) of
+       (EVal e1',EVal e2') -> if | o == "+" -> EVal (e1' + e2')
+                                 | o == "*" -> EVal (e1' * e2')
+                                 | otherwise -> error "not supported"
+       _ -> error "strange" 
 -- eval args (Sum _ _) = 
 
+evalDelta ip i j = let mi = lookup i ip
+                       mj = lookup j ip
+                   in case (mi,mj) of
+                        (Just i',Just j') -> if i'==j' then EVal 1 else EVal 0
+                        (Just i',Nothing) -> EDelta (TDelta1 j i')
+                        (Nothing,Just j') -> EDelta (TDelta1 i j')
+                        (Nothing,Nothing) -> EDelta (TDelta2 i j)
 
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = square (x `add'` y)
+
+exp1' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp1' = tanh_ exp1
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 3 x -- power 10 (x `add'` y)
@@ -95,14 +111,21 @@ dexpfib (s,n) = let tfib = trie ffib
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
 
-eval_fib :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) => Args a -> Int -> a
-eval_fib a n = let tfib = trie ffib
-                   ffib = expfib' tfib
-                   e = mexpExp (ffib n)
-                   m = mexpMap (ffib n)
-                   feval = uncurry (eval m teval)
-                   teval = trie feval 
-               in untrie teval (a,e)
+eval_fib :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) => Args a -> IdxPoint -> Int -> EExp a
+eval_fib a ip n = let tfib = trie ffib
+                      ffib = expfib' tfib
+                      e = mexpExp (ffib n)
+                      m = mexpMap (ffib n)
+                      feval = eval m teval
+                      teval = trie feval 
+                  in untrie teval (a,ip,e)
+
+
+seval :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) =>
+         Args a -> IdxPoint -> MExp a -> EExp a
+seval a ip e = let f = fix (eval (mexpMap e) . trie)
+               in f (a,ip,mexpExp e)
+
 
 
 prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
@@ -195,11 +218,30 @@ test7 = do
   
   -- prettyPrintR lexp1
   let args = [(Simple "x",1),(Simple "y",1 :: Double)]
+  -- let args' = [(Indexed "x" 1,1),(Indexed "y" 1,1 :: Double)]  
      
-  printf "f(1,1) = %e\n" $ eval_fib args n -- eval args lexp1
+  prettyPrintE $ seval args [] exp3 -- eval_fib args n -- eval args lexp1
 
 
-main = do
-  test7
 
+-}
+
+test8 :: IO ()
+test8 = do
+  let ?expHash = trie hash
+  let e1 = add' [x_ ["i"], zero,  y_ ["i"], x_ ["j"], zero] 
+  printf "e1 = %s\n" ((prettyPrint . exp2RExp) (e1 ::  MExp Int) :: String)
+
+  let e2 = mul' [x_ ["i"], one,  y_ ["j"], x_ ["i"], one] 
+  printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
+  -- digraph e2
+
+  let e3 = mul' [x, x, mul' [x, x , x] , x]
+      de3 = (sdiff (Simple "x") e3 ::  MExp Int)
+  printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
+  printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
+
+  digraph de3
+
+main = test8
     

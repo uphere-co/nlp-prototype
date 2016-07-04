@@ -51,10 +51,20 @@ data Exp a = Zero
            | Delta Index Index
            | Val a
            | Var Symbol
-           | Fun1 String Hash
-           | Fun2 String Hash Hash
+           | Add [Hash]
+           | Mul [Hash]
+           -- | Fun1 String Hash
+           -- | Fun2 String Hash Hash
            | Sum [Index] Hash
          deriving (Show,Eq)
+
+isZero :: Exp a -> Bool
+isZero Zero = True
+isZero _ = False
+
+isOne :: Exp a -> Bool
+isOne One = True
+isOne _ = False
 
 isDelta :: Exp a -> Bool
 isDelta (Delta _ _) = True
@@ -70,8 +80,10 @@ data RExp a = RZero
             | RDelta Index Index
             | RVal a
             | RVar Symbol
-            | RFun1 String (RExp a)
-            | RFun2 String (RExp a) (RExp a)
+            | RAdd [RExp a]
+            | RMul [RExp a]              
+            -- | RFun1 String (RExp a)
+            -- | RFun2 String (RExp a) (RExp a)
             | RSum [Index] (RExp a)
 
 mangle :: Double -> [Int]
@@ -91,8 +103,10 @@ instance HasTrie a => HasTrie (Exp a) where
                                 ((Index,Index) :->: b)
                                 (a :->: b)
                                 (Symbol :->: b)
-                                ((String,Hash) :->: b)
-                                ((String,Hash,Hash) :->: b)
+                                ([Hash] :->: b)     -- ^ for Add
+                                ([Hash] :->: b)     -- ^ for Mul
+                                -- ((String,Hash) :->: b)
+                                -- ((String,Hash,Hash) :->: b)
                                 (([Index],Hash) :->: b)
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
@@ -100,24 +114,28 @@ instance HasTrie a => HasTrie (Exp a) where
                    (trie (f . uncurry Delta))
                    (trie (f . Val))
                    (trie (f . Var))
-                   (trie (f . uncurry Fun1))
-                   (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
+                   (trie (f . Add))
+                   (trie (f . Mul))
+                   -- (trie (f . uncurry Fun1))
+                   -- (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
                    (trie (f . uncurry Sum))
            
   untrie :: (Exp a :->: b) -> Exp a -> b
-  untrie (ExpTrie z o d l v f1 f2 su) e =
+  untrie (ExpTrie z o d l v a m {- f1 f2 -} su) e =
     case e of
       Zero         -> untrie z ()
       One          -> untrie o ()
       Delta i j    -> untrie d (i,j)
       Val n        -> untrie l n
       Var s        -> untrie v s
-      Fun1 s e1    -> untrie f1 (s,e1)
-      Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
+      Add hs       -> untrie a hs
+      Mul hs       -> untrie m hs
+      -- Fun1 s e1    -> untrie f1 (s,e1)
+      -- Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
       Sum is e1    -> untrie su (is,e1)
                                      
   enumerate :: (Exp a :->: b) -> [(Exp a,b)]
-  enumerate (ExpTrie z o d n v f1 f2 su) =
+  enumerate (ExpTrie z o d n v a m {- f1 f2 -} su) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
@@ -128,10 +146,14 @@ instance HasTrie a => HasTrie (Exp a) where
     `weave`
     enum' Var v
     `weave`
-    enum' (uncurry Fun1) f1
+    enum' Add a
     `weave`
-    enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+    enum' Mul m
     `weave`
+    -- enum' (uncurry Fun1) f1
+    --  `weave`
+    -- enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
+    -- `weave`
     enum' (uncurry Sum) su
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
@@ -149,9 +171,11 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt s (Delta i j)     = s `hashWithSalt` (2 :: Int) `hashWithSalt` i `hashWithSalt` j  
   hashWithSalt s (Val n)         = s `hashWithSalt` (3 :: Int) `hashWithSalt` n
   hashWithSalt s (Var s')        = s `hashWithSalt` (4 :: Int) `hashWithSalt` s'
-  hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (5 :: Int) `hashWithSalt` s' `hashWithSalt` h1
-  hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (6 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
-  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` is `hashWithSalt` h1
+  hashWithSalt s (Add hs)        = s `hashWithSalt` (5 :: Int) `hashWithSalt` hs
+  hashWithSalt s (Mul hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
+  -- hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (7 :: Int) `hashWithSalt` s' `hashWithSalt` h1
+  -- hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (8 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
+  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (9 :: Int) `hashWithSalt` is `hashWithSalt` h1
 
 
 justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
@@ -163,9 +187,11 @@ exp2RExp (mexpExp -> One)          = ROne
 exp2RExp (mexpExp -> Delta i j)    = RDelta i j
 exp2RExp (mexpExp -> Val n)        = RVal n
 exp2RExp (mexpExp -> Var s)        = RVar s
-exp2RExp (MExp (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
-exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
-                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
+exp2RExp (MExp (Add hs) m _)       = let es = map (exp2RExp . flip justLookup m) hs in RAdd es
+exp2RExp (MExp (Mul hs) m _)       = let es = map (exp2RExp . flip justLookup m) hs in RMul es
+-- exp2RExp (MExp (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
+-- exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
+--                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
 exp2RExp (MExp (Sum is h1) m _)    = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 
 
@@ -175,9 +201,23 @@ daughters One            = []
 daughters (Delta i j)    = []
 daughters (Val n)        = []
 daughters (Var s)        = []
-daughters (Fun1 s h1)    = [h1]
-daughters (Fun2 s h1 h2) = [h1,h2]
+daughters (Add hs)       = hs
+daughters (Mul hs)       = hs
+-- daughters (Fun1 s h1)    = [h1]
+-- daughters (Fun2 s h1 h2) = [h1,h2]
 daughters (Sum is h1)    = [h1]
  
 
 data Pos = Pos1 | Pos2 
+
+data TDelta = TDelta2 Index Index
+            | TDelta1 Index Int
+
+data EExp a = EVal a
+            | EDelta TDelta            
+            | EAdd a TDelta
+            | EAdd2 TDelta TDelta
+            | EMul a TDelta
+            | EMul2 TDelta TDelta
+
+

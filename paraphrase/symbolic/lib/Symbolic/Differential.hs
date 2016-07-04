@@ -1,5 +1,6 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -25,7 +26,7 @@ import           Symbolic.Type
 
                    
 diff'
-  :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
+  :: forall a. (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
   => HashMap Hash (MExp a)
   -> ((Symbol,Exp a) :->: MExp a)
   -> (Symbol,Exp a) -> MExp a
@@ -34,24 +35,38 @@ diff' m t (s,e) =
     Zero         -> zero 
     One          -> zero
     Val _        -> zero
-    Var s'       -> dvar s s' 
-    Fun1 f h1    -> let MExp e1 _ _ = justLookup h1 m
+    Var s'       -> dvar s s'
+    Add hs       -> let es = map (flip justLookup m) hs
+                    in add' (map (\e -> untrie t (s,mexpExp e)) es)
+    Mul hs       -> let es = map (flip justLookup m) hs
+                        diffmul :: [MExp a] -> [MExp a] 
+                        diffmul [] = []
+                        diffmul (x:xs) = let x' = untrie t (s,mexpExp x)
+                                             xs'all = diffmul xs
+                                         in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
+                    in add' (diffmul es)
+                    
+--    Add hs       -> let es = map (flip justLookup m) hs
+--                    in add' (map (\e -> untrie t (s,mexpExp e)) es)
+                       
+{-     Fun1 f h1    -> let MExp e1 _ _ = justLookup h1 m
                     in MExp (Fun1 (suffix' f) h1) m HS.empty `mul'` untrie t (s,e1)
     Fun2 f h1 h2 -> let MExp e1 _ _ = justLookup h1 m
                         MExp e2 _ _ = justLookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
-                         (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2)) 
+                         (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2))  -}
     Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
                     in sum_ is (untrie t (s,e1))
 
 
-dvar :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
+
+dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
 dvar _             (Simple s')   = zero
 dvar (Indexed x j) (Indexed y k)
   | x == y && length j == length k = let djk = zipWith delta j k
-                                     in foldr1 mul djk
+                                     in mul' djk
   | otherwise = zero
 
 
