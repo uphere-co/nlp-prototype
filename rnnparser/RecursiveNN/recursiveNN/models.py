@@ -61,7 +61,7 @@ class RecursiveNN(object):
         nodes=list(sentence_words)
         assert nodes[0] is sentence_words[0]
         def mergeHighestPair(nodes,score):
-            if len(nodes)00==1:
+            if len(nodes)==1:
                 return nodes[0], score
             phrases=[self.combineTwoNodes(x,y) for x,y in zip(nodes,nodes[1:])]
             scores=[self.score(node).val for node in phrases]
