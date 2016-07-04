@@ -28,6 +28,7 @@ source-repository HEAD
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
+                        array,
                         binary,
                         bytestring,
                         containers,

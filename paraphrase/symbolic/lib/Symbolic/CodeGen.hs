@@ -11,6 +11,9 @@ module Symbolic.CodeGen where
 
 import           Control.Lens                    (view, _1)
 import           Control.Monad.Trans.State
+import           Data.Array                      ((!))
+import qualified Data.Array                as A
+import           Data.Graph                      (topSort)
 import           Data.HashMap.Strict             (HashMap)
 import qualified Data.HashMap.Strict       as HM
 import           Data.HashSet                    (HashSet)
@@ -86,6 +89,8 @@ mkCompound stmts = CCompound [] stmts nodeinfo
 
 mkCall sym lst = CCall (mkVar sym) lst nodeinfo
 
+mkReturn exp = CReturn (Just exp) nodeinfo
+
 hVar h = printf "x%x" h
 
 cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
@@ -95,8 +100,8 @@ cPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo 
   where cond = mkBinary (mkVar i) CEqOp (mkVar j)
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-cPrint' name (mexpExp -> Var s)         = [ mkExpr (mkAssign name rhs) ] 
-  where rhs = mkVar (hVar (untrie ?expHash (Var s)))
+cPrint' name (mexpExp -> Var (Simple s))         = [ mkExpr (mkAssign name rhs) ] 
+  where rhs = mkVar s -- (hVar (untrie ?expHash (Var s)))
 cPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (mexpExp -> Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs
@@ -107,19 +112,26 @@ cPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym ls
 cPrint' name (mexpExp -> Sum is h1)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
                                           , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
   where innerstmt = mkExpr (mkAssignAdd name (mkVar (hVar h1)))
-  
+
+
+
+        
 cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
 cPrint name syms v = do
-  let 
-      exp0 = zero
-      exp1 = sum_ [("i",1,3),("j",2,4)] exp0
-      exp2 = delta "i" "j"
-      exp3 = var "x"
-      exp4 = val 3
-      exp5 = mul [exp1, exp2, exp3]
-      exp6 = fun "tanh3" [exp1,exp2,exp3] 
-      bodylst = map CBlockStmt (cPrint' "result" exp1)
-      ctu = CTranslUnit [CFDefExt (mkCFunction CVoidType name (mkArgs syms) bodylst)] nodeinfo 
+      
+  let h_result = untrie ?expHash (mexpExp v)
+      (hashmap,table,depgraph) = mkDepGraph v
+      bmap = HM.insert h_result v (mexpMap v)
+      hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+      es_ordered = map (flip justLookup bmap) hs_ordered
+  -- mapM_ (\(x,y) -> printf "%x -> %x\n" x y) depgraph
+  -- print depgraph
+  -- mapM_ prettyPrintR es_ordered
+  -- print (minBound :: Int)
+  -- print (maxBound :: Int)
+  let bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (untrie ?expHash (mexpExp e))) e) $ es_ordered
+      bodylst = bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
+      ctu = CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo  
   (putStrLn . render . pretty) ctu
 
 

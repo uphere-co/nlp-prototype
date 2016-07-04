@@ -1,5 +1,6 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -7,16 +8,20 @@
 module Symbolic.Type where
 
 import           Control.Lens              (over, _1)
+import qualified Data.Array  as A
 import qualified Data.Binary as Bi
 import qualified Data.ByteString.Lazy as LB
+import           Data.Graph
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (HashSet)
+import qualified Data.HashSet        as HS
 import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 import           Data.Vector.Storable      (Vector)
 --
+import           Debug.Trace
 
 type Hash = Int
 
@@ -175,8 +180,10 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt s (Sum is h1)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` is `hashWithSalt` h1
 
 
-justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
-justLookup h m = fromJust (HM.lookup h m)  -- this is very unsafe, but we do not have good solution yet.
+justLookup :: (Eq k, Hashable k,Show k) => k -> HashMap k v -> v
+justLookup h m = case (HM.lookup h m) of
+                   Nothing -> error ("justLookup: error in retrieving " ++ show h)   -- this is very unsafe, but we do not have good solution yet.
+                   Just v -> v
 
 exp2RExp :: MExp a -> RExp a
 exp2RExp (mexpExp -> Zero)         = RZero
@@ -205,7 +212,25 @@ daughters (Fun s hs)     = hs
 -- daughters (Fun1 s h1)    = [h1]
 -- daughters (Fun2 s h1 h2) = [h1,h2]
 daughters (Sum is h1)    = [h1]
- 
+
+mkDepEdges :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
+mkDepEdges e = let e1 = mexpExp e
+                   h1 = untrie ?expHash e1
+                   m1 = mexpMap e
+                   hs = daughters e1
+                   lst = map (h1,) hs
+                   lsts = map (mkDepEdges . flip justLookup m1) hs 
+               in concat (lst:lsts)
+
+mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> (HashMap Hash Vertex,Table Hash, Graph) -- [(Hash,Hash)]
+mkDepGraph e = let edgs = mkDepEdges e
+                   hs = HS.toList . HS.fromList . concatMap (\(i,j) -> [i,j]) $ edgs
+                   hmap = HM.fromList (zip hs [1..])
+                   n = length hs
+                   arr = A.listArray (1,n) hs
+                   edgs' :: [(Vertex,Vertex)]
+                   edgs' = flip map edgs $ \(i,j) -> let i' = justLookup i hmap; j' = justLookup j hmap; in (i',j')
+               in (hmap,arr,buildG (1,n) edgs')
 
 data Pos = Pos1 | Pos2 
 

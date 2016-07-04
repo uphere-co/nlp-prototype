@@ -84,9 +84,6 @@ eval_fib a ip n = let tfib = trie ffib
 
 
 
-prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
-
-endl = putStrLn ""
 
 
 mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
@@ -263,22 +260,21 @@ test12 = do
 test13 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Double
-      e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
-      e3 = add [e1,e2]
-      e4 = mul [e3,x_ ["m","n"]]
-      e5 = sum_ [("m",1,2),("n",1,2)] e4
+
+  let exp0 :: MExp Double
+      exp0 = var "y"
+      exp1 = sum_ [("i",1,3),("j",2,4)] exp0
+      exp2 = delta "i" "j"
+      exp3 = var "x"
+      exp4 = val 3
+      exp5 = mul [exp1, exp2, exp3]
+      -- exp6 = fun "tanh3" [exp1,exp2,exp3]
+
   
-  printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
-  putStrLn "---------------------------------------"
-  {-
-  let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
-      args = Args HM.empty (HM.fromList [("x",vals)])
-  forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
-    let idx = [("i",i),("j",j)] 
-    printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
-  -}
-  cPrint "func" [Simple "x", Indexed "y" ["i","j"] ] e5
+  printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
+  putStrLn "\n---------------------------------------\n"
+  cPrint "testfunction" [Simple "x", Simple "y"] exp5
+  
   
 main = test13 
     
