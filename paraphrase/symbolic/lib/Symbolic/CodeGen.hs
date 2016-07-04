@@ -24,25 +24,11 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint
 --
+import Symbolic.Predefined
 import Symbolic.Print
 import Symbolic.Type
 
-{-
-cPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
-cPrint m h = do
-  s <- get
-  let MExp e _ _ = justLookup h m
-  case h `HS.member` s of
-    True -> return ""
-    False -> do
-      let str = dotPrint' h e
-          hs = daughters e
-      put (h `HS.insert` s)
-      lst <- mapM (dotPrint m) hs
-      return (concat (str : lst))
--}
-
-
+uncurry3 f (a,b,c) = f a b c 
   
 pos = position 0 "test" 0 0
 
@@ -50,17 +36,22 @@ nodeinfo = OnlyPos pos (pos,0)
 
 ident name = Ident name 0 nodeinfo
 
--- CIntType
--- CVoidType
-
 ptr = CPtrDeclr [] nodeinfo
 
-mkIntConst v = CConst (CIntConst (cInteger (fromIntegral v)) nodeinfo)
+data Const = IConst Int
+           | FConst Double
+
+mkI = IConst
+mkF = FConst
+
+mkConst (IConst i) = CConst (CIntConst (cInteger (fromIntegral i)) nodeinfo)
+mkConst (FConst f) = CConst (CFloatConst (readCFloat (show f)) nodeinfo)
+
 
 mkDecl typ isPtr name mv =
   let cdeclr = CDeclr (Just (ident name)) (if isPtr then [ptr] else []) Nothing [] nodeinfo
       typespec = CTypeSpec (typ nodeinfo)
-      mv' = fmap (\v -> CInitExpr (mkIntConst v) nodeinfo) mv
+      mv' = fmap (\v -> CInitExpr (mkConst v) nodeinfo) mv
   in CDecl [typespec] [(Just cdeclr,mv',Nothing)] nodeinfo
 
 mkCFunction typ name decllst bodylst =
@@ -75,8 +66,8 @@ mkArgs = map mkArg
        mkArg (Indexed s is) = mkDecl CDoubleType True s Nothing
 
 mkFor name start end stmts =
- CFor (Right (mkDecl CIntType False name (Just start)))
-      (Just (mkBinary name CLeqOp end))
+ CFor (Right (mkDecl CIntType False name (Just (mkI start))))
+      (Just (mkBinary (mkVar name) CLeqOp (mkConst (mkI end))))
       (Just (mkUnary name CPostIncOp))
       stmts nodeinfo
 
@@ -84,44 +75,49 @@ mkVar name = CVar (ident name) nodeinfo
 
 mkUnary name op = CUnary op (mkVar name) nodeinfo
  
-mkBinary name op value = CBinary op (mkVar name) (mkIntConst value) nodeinfo
+mkBinary x op y = CBinary op x y nodeinfo
 
+mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
 
-cPrint' :: Hash -> Exp a -> CStat
-cPrint' h Zero           = CExpr (Just (mkIntConst 0)) nodeinfo
-cPrint' h One            = CExpr (Just (mkIntConst 1)) nodeinfo
-cPrint' h (Sum is h1)    = foldr (.) id (map mkFor' is) (CBreak nodeinfo)
- where mkFor' (i,s,e) = mkFor i s e
+mkExpr exp = CExpr (Just exp) nodeinfo 
+mkCompound stmts = CCompound [] stmts nodeinfo 
 
-  -- printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
+mkCall sym lst = CCall (mkVar sym) lst nodeinfo
 
+hVar h = printf "x%x" h
 
-{-
-cPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h i j
-cPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
-cPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
-cPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
-cPrint' h (Mul hs)       = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
-cPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
--}
-
-
-
-
-
+cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
+cPrint' name (mexpExp -> Zero)          = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
+cPrint' name (mexpExp -> One)           = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
+cPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo ]
+  where cond = mkBinary (mkVar i) CEqOp (mkVar j)
+        stru = mkExpr (mkAssign name (mkConst (mkI 1)))
+        sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+cPrint' name (mexpExp -> Var s)         = [ mkExpr (mkAssign name rhs) ] 
+  where rhs = mkVar (hVar (untrie ?expHash (Var s)))
+cPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
+cPrint' name (mexpExp -> Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
+  where lst = map (mkVar . hVar) hs
+cPrint' name (mexpExp -> Mul hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
+  where lst = map (mkVar . hVar) hs
+cPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym lst)) ]
+  where lst = map (mkVar . hVar) hs
+cPrint' name (mexpExp -> Sum is h1)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
+                                          , foldr (.) id (map (uncurry3 mkFor) is) (CBreak nodeinfo) ]
        
-cgraph :: (HasTrie a, Show a, ?expHash :: Exp a :->: Hash) => String -> [Symbol] -> MExp a -> IO ()
-cgraph name syms v = do
-  let -- decllst = [mkDecl CIntType "a"]
-      bodylst = [CBlockStmt ((cPrint' 3393 (Sum [("i",1,3),("j",2,4)] 339)))] -- [CBlockDecl (mkDecl CDoubleType False "b")]  
+cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
+cPrint name syms v = do
+  let 
+      exp0 = zero -- Zero
+      exp1 = sum_ [("i",1,3),("j",2,4)] exp0 -- (untrie ?expHash exp0)
+      exp2 = delta "i" "j"
+      exp3 = var "x"
+      exp4 = val 3
+      exp5 = mul [exp1, exp2, exp3]
+      exp6 = fun "tanh3" [exp1,exp2,exp3] 
+      bodylst = map CBlockStmt (cPrint' "result" exp6)
+                -- map CBlockStmt (cPrint' (untrie ?expHash exp1) exp1)
       ctu = CTranslUnit [CFDefExt (mkCFunction CVoidType name (mkArgs syms) bodylst)] nodeinfo 
   (putStrLn . render . pretty) ctu
 
 
-{-
-    let h = untrie ?expHash (mexpExp v)
-        m = HM.insert h v (mexpMap v) 
-    putStrLn "digraph G {"
-    putStrLn $ evalState (cPrint m h) HS.empty
-    putStrLn "}"
--}

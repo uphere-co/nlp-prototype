@@ -263,7 +263,7 @@ test12 = do
 test13 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
+  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Double
       e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
       e3 = add [e1,e2]
       e4 = mul [e3,x_ ["m","n"]]
@@ -278,7 +278,7 @@ test13 = do
     let idx = [("i",i),("j",j)] 
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
   -}
-  cgraph "func" [Simple "x", Indexed "y" ["i","j"] ] e5
+  cPrint "func" [Simple "x", Indexed "y" ["i","j"] ] e5
   
 main = test13 
     
