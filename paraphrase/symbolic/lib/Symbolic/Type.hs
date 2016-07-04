@@ -55,7 +55,7 @@ data Exp a = Zero
            | Mul [Hash]
            -- | Fun1 String Hash
            -- | Fun2 String Hash Hash
-           | Sum [Index] Hash
+           | Sum [(Index,Int,Int)] Hash
          deriving (Show,Eq)
 
 isZero :: Exp a -> Bool
@@ -84,7 +84,7 @@ data RExp a = RZero
             | RMul [RExp a]              
             -- | RFun1 String (RExp a)
             -- | RFun2 String (RExp a) (RExp a)
-            | RSum [Index] (RExp a)
+            | RSum [(Index,Int,Int)] (RExp a)
 
 mangle :: Double -> [Int]
 mangle = map fromIntegral . LB.unpack . Bi.encode
@@ -107,7 +107,7 @@ instance HasTrie a => HasTrie (Exp a) where
                                 ([Hash] :->: b)     -- ^ for Mul
                                 -- ((String,Hash) :->: b)
                                 -- ((String,Hash,Hash) :->: b)
-                                (([Index],Hash) :->: b)
+                                (([(Index,Int,Int)],Hash) :->: b)
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))

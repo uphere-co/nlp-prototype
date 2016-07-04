@@ -32,7 +32,8 @@ import           Symbolic.Type
 
 type IdxPoint = [(Index,Int)]
 
-data IdxVal a = IdxVal { flatIndex :: [Int] -> Int
+data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
+                       , flatIndex :: [Int] -> Int
                        , valStore :: Vector a }
 
 data Args a = Args { varSimple :: HashMap String a
@@ -302,11 +303,12 @@ test11 = do
       e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
       e3 = add [e1,e2]
       e4 = mul [e3,x_ ["m","n"]]
-  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) e4 :: String)
+      e5 = sum_ [("m",1,2),("n",1,2)] e4
+  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
   let idx = [("i",1),("j",2),("m",2),("n",1)]
-      vals = IdxVal (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
+      vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
       args = Args HM.empty (HM.fromList [("x",vals)])
-  printf "val(e1(i=1,j=2,m=2,n=1) = %d\n" (seval args idx e4)
+  printf "val(e5(i=1,j=2,m=2,n=1) = %d\n" (seval args idx e5)
 
 
   

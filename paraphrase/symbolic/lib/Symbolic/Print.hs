@@ -4,6 +4,7 @@
 
 module Symbolic.Print where
 
+import           Control.Lens              (view,_1)
 import           Control.Monad.Trans.State
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -42,8 +43,8 @@ prettyPrint (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: St
                              (prettyPrint e2 :: String) -}
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 
-showIdxSet :: [Index] -> String
-showIdxSet = intercalate ","
+showIdxSet :: [(Index,Int,Int)] -> String
+showIdxSet = intercalate "," . map (view _1)
 
 dotPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
 dotPrint m h = do

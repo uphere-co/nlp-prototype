@@ -5,6 +5,7 @@
 
 module Symbolic.Predefined where
 
+import           Control.Lens              (view,_1)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
@@ -58,10 +59,10 @@ add = varop Add
 mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 mul = varop Mul
 
-sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
+sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [(Index,Int,Int)] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =
   let h1 = untrie ?expHash e1
-      i = i1 `difference` HS.fromList is
+      i = i1 `difference` (HS.fromList . map (view _1)) is
       e = Sum is h1
       m = HM.insert h1 em m1
   in MExp e m i
