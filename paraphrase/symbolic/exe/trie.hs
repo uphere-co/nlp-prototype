@@ -44,7 +44,12 @@ data Args a = Args { varSimple :: HashMap String a
 justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
-eval :: (Num a, Storable a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
+type FunctionMap a = HashMap String ([a] -> a)
+
+eval :: ( Num a, Storable a, HasTrie a
+        , ?expHash :: Exp a :->: Hash
+        , ?functionMap :: FunctionMap a
+        ) =>
         HashMap Hash (MExp a)
      -> (Args a,IdxPoint,Exp a)
      -> a
@@ -59,6 +64,10 @@ eval m (args,ip,Mul hs) =
 eval m (args,ip,Add hs) =
   let es = map (mexpExp . flip justLookup m) hs
   in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
+eval m (args,ip,Fun s hs) =
+  let es = map (mexpExp . flip justLookup m) hs
+      f = justLookup s ?functionMap      
+  in f (map (\e->eval m (args,ip,e)) es)
 eval m (args,ip,Sum is h) =
   let idx1lst (idx,start,end) = [(idx,v)| v <- [start..end]]
       sumip = traverse idx1lst is                
@@ -66,7 +75,10 @@ eval m (args,ip,Sum is h) =
       e = justLookup h m
   in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
 
-seval :: (Storable a, HasTrie a, Num a, ?expHash :: Exp a :->: Hash) =>
+seval :: ( Storable a, HasTrie a, Num a
+         , ?expHash :: Exp a :->: Hash
+         , ?functionMap :: FunctionMap a
+         ) =>
          Args a -> IdxPoint -> MExp a -> a
 seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
 
@@ -292,6 +304,7 @@ test9 = do
 test10 :: IO ()
 test10 = do
   let ?expHash = trie hash
+      ?functionMap = HM.empty
   let e = mul [x, y] :: MExp Int
       args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
   printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
@@ -301,6 +314,7 @@ test10 = do
 test11 :: IO ()
 test11 = do
   let ?expHash = trie hash
+      ?functionMap = HM.empty
   let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
       e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
       e3 = add [e1,e2]
@@ -317,13 +331,19 @@ test11 = do
 test12 :: IO ()
 test12 = do
   let ?expHash = trie hash
-  let e1 :: MExp Double
-      e1 = add' [x,y]
+      ?functionMap = HM.fromList [ ("f", \[x,y] -> x*x + y*y)
+                                 , ("f_1", \[x,y] -> 2*x)
+                                 , ("f_2", \[x,y] -> 2*y) ]
+  let e1 :: MExp Int
+      e1 = add' [mul' [val 2,x],y]
       fe1 = fun "f" [e1,x]
       dfe1 = sdiff (Simple "x") fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
-  printf "d(fe1)/dx = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
-  digraph dfe1
+  printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
+  --  digraph dfe1
+  let args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
+  
+  printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
   
 main = test12 
     
