@@ -11,6 +11,7 @@ stdenv.mkDerivation {
   name = "python-env";
   buildInputs = (with python27Packages;
                  [ ipython jupyter ipyparallel
+                   line_profiler
                    matplotlib seaborn
                    numpy scipy pandas scikitlearn
                    pyzmq

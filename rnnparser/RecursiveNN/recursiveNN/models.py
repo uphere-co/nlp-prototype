@@ -47,7 +47,7 @@ class RecursiveNN(object):
         self.bias=bias_init
         self.u_score=u_score_init
     def combineTwoNodes(self, left,right):
-        #TODO: there can be too many vec...
+        #TODO: there can be too many vec... replace Var to Val?
         vec = Var(u'(%s⊕%s)'%(left,right))
         vec.val=np.concatenate([left.vec.val,right.vec.val],0)
         Wxh=Dot(self.W, vec)
@@ -61,7 +61,7 @@ class RecursiveNN(object):
         nodes=list(sentence_words)
         assert nodes[0] is sentence_words[0]
         def mergeHighestPair(nodes,score):
-            if len(nodes)==1:
+            if len(nodes)00==1:
                 return nodes[0], score
             phrases=[self.combineTwoNodes(x,y) for x,y in zip(nodes,nodes[1:])]
             scores=[self.score(node).val for node in phrases]
@@ -104,3 +104,45 @@ class Word2VecFactory2(object):
             self.dict[word]=np.fromstring(bytes,dtype=dtype).reshape(-1,1)
         return [Word(word, self.dict[word]) for word in words]
 """
+
+import ipyparallel as ipp
+class ParallelRNN():
+    def __init__(self):
+        self.rc = ipp.Client()
+        self.dview=self.rc[:]
+        dview=self.dview
+        dview.block=True
+        dview.scatter('engine_uid',self.rc.ids)
+        dview.execute('engine_uid=engine_uid[0]')
+        dview.execute("""
+import os
+import sys
+import cProfile
+import pandas as pd
+import numpy as np
+import ipyparallel as ipp
+from ipyparallel import interactive
+
+sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/')
+from recursiveNN.models import Word,Phrase, RecursiveNN,Word2VecFactory
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose, reset_NodeDict, NodeDict
+from recursiveNN.differentiation import Differentiation
+""")
+    def SetWord2VecModel(self,model):
+        self.dview['word2vec']=model
+    def SetTestSentences(self,sents_test):
+        self.dview.scatter('sents_test', sents_test)
+        self.dview.execute("sents_vecs_test=[[Word(word, np.expand_dims(word2vec[word].values,1)) for word in line.split()] for line in sents_test]")
+    def SetParams(self,W,bias,u_score):
+        self.dview['vw0']=W.val
+        self.dview['vb0']=bias.val
+        self.dview['vu0']=u_score.val
+        self.dview.execute('''
+W,bias,u_score=Var('W'),Var('b'),Var('u')
+W.val,bias.val,u_score.val=vw0,vb0,vu0
+rnn=RecursiveNN(W,bias,u_score)
+''')
+    def EvalTestScores(self):
+        self.dview.execute("eval_test=[rnn.combineToSentence(sent) for sent in sents_vecs_test]")
+        self.dview.execute("scores_test=[x.val for _,x in eval_test]")
+        return np.array(self.dview.gather("scores_test")).reshape(-1,1)

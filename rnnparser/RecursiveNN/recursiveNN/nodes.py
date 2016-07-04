@@ -6,7 +6,7 @@ import numpy as np
 
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
-from recursiveNN.math import ScalarToMatrix,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
+from recursiveNN.math import dot,To2Darray,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 '''
 `self._val is None` of Node object indicates that there are no cache.
@@ -34,9 +34,12 @@ class NodeDict(type):
     _dict = {}
     def __call__(cls, *args):
         instance = super(NodeDict, cls).__call__(*args)
+        #Do not cache Val instances
+        if isinstance(instance, Val):
+            return instance
         key = NodeDict.getKey(instance)
         if key in cls._dict.keys():
-            #print '%s EXISTS'%(str(cls)+str(args))
+            #print "Reusing", key
             return cls._dict[key]
         return instance
     @staticmethod
@@ -55,7 +58,7 @@ class NodeDict(type):
     def register(node):
         key=NodeDict.getKey(node)
         if not key in NodeDict._dict.keys():
-            print 'Register an instance :', key
+            #print 'Register an instance :', key
             NodeDict._dict[key] = node
 
 class Node(object):
@@ -126,7 +129,7 @@ class Val(Node):
     __slots__ = []
     def __init__(self, val):
         Node.__init__(self, 'Val')
-        super(self.__class__, self.__class__).val.fset(self, ScalarToMatrix(val))
+        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
     def __unicode__(self):
         return unicode(SimplifyIfScalar(self.val))
     def __repr__(self):
@@ -150,7 +153,7 @@ class Var(Node):
     __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self.val=ScalarToMatrix(val)
+        self.val=To2Darray(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def diff_no_simplify(self, var):
@@ -164,7 +167,7 @@ class Var(Node):
         return super(self.__class__, self).val
     @val.setter
     def val(self, val):
-        super(self.__class__, self.__class__).val.fset(self, ScalarToMatrix(val))
+        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
 
 def softmax(x):
     x=x-np.max(x)
@@ -274,7 +277,7 @@ class Sum0(Node):
 class Transpose(Node):
     __slots__ = ["op","var", "_format"]
     def __init__(self, x):
-        Node.__init__(self,name=None)
+        Node.__init__(self,name='ᵀ')
         self.op=np.transpose
         self.var=x
         #self.var.add_parent(self)
@@ -403,7 +406,8 @@ class Dot(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = u'⋅'
-        self.op=np.dot
+        #self.op=np.dot
+        self.op=dot
         self.update_format()
     def __repr__(self):
         return "Dot(%r,%r)"%(self.x, self.y)
