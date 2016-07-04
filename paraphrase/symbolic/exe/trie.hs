@@ -262,18 +262,16 @@ test13 = do
       ?functionMap = HM.empty
 
   let exp0 :: MExp Double
-      exp0 = var "y"
-      exp1 = sum_ [("i",1,3),("j",2,4)] exp0
-      exp2 = delta "i" "j"
+      exp0 = y_ ["i","j"]
+      exp1 = delta "i" "j"      
+      exp2 = sum_ [("i",1,3),("j",2,4)] (add' [exp0,exp1])
       exp3 = var "x"
       exp4 = val 3
-      exp5 = mul [exp1, exp2, exp3]
-      -- exp6 = fun "tanh3" [exp1,exp2,exp3]
+      exp5 = mul [exp2, exp3, exp4]
 
-  
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
-  cPrint "testfunction" [Simple "x", Simple "y"] exp5
+  cPrint "testfunction" [Simple "x", Indexed "y" ["i","j"]] exp5
   
   
 main = test13 

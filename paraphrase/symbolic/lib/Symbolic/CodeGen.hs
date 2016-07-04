@@ -18,6 +18,7 @@ import           Data.HashMap.Strict             (HashMap)
 import qualified Data.HashMap.Strict       as HM
 import           Data.HashSet                    (HashSet)
 import qualified Data.HashSet              as HS
+import           Data.List                       (foldl')
 import           Data.MemoTrie
 import           Language.C.Data
 import           Language.C.Data.Ident
@@ -76,6 +77,8 @@ mkFor name start end stmts =
 
 mkVar name = CVar (ident name) nodeinfo
 
+mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar name) is
+
 mkUnary name op = CUnary op (mkVar name) nodeinfo
  
 mkBinary x op y = CBinary op x y nodeinfo
@@ -91,6 +94,9 @@ mkCall sym lst = CCall (mkVar sym) lst nodeinfo
 
 mkReturn exp = CReturn (Just exp) nodeinfo
 
+
+
+
 hVar h = printf "x%x" h
 
 cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
@@ -100,8 +106,10 @@ cPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo 
   where cond = mkBinary (mkVar i) CEqOp (mkVar j)
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-cPrint' name (mexpExp -> Var (Simple s))         = [ mkExpr (mkAssign name rhs) ] 
-  where rhs = mkVar s -- (hVar (untrie ?expHash (Var s)))
+cPrint' name (mexpExp -> Var v)         = [ mkExpr (mkAssign name rhs) ] 
+  where rhs = case v of
+                Simple s -> mkVar s
+                Indexed s is -> mkIVar s is
 cPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (mexpExp -> Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs
