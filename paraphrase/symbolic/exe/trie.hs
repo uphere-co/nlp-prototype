@@ -268,14 +268,17 @@ test13 = do
       e3 = add [e1,e2]
       e4 = mul [e3,x_ ["m","n"]]
       e5 = sum_ [("m",1,2),("n",1,2)] e4
+  
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
+  putStrLn "---------------------------------------"
+  {-
   let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
       args = Args HM.empty (HM.fromList [("x",vals)])
   forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
     let idx = [("i",i),("j",j)] 
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
-
-  cgraph e5
+  -}
+  cgraph "func" [Simple "x", Indexed "y" ["i","j"] ] e5
   
 main = test13 
     
