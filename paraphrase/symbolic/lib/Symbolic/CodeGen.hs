@@ -124,12 +124,7 @@ cPrint name syms v = do
       bmap = HM.insert h_result v (mexpMap v)
       hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
       es_ordered = map (flip justLookup bmap) hs_ordered
-  -- mapM_ (\(x,y) -> printf "%x -> %x\n" x y) depgraph
-  -- print depgraph
-  -- mapM_ prettyPrintR es_ordered
-  -- print (minBound :: Int)
-  -- print (maxBound :: Int)
-  let bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (untrie ?expHash (mexpExp e))) e) $ es_ordered
+      bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (untrie ?expHash (mexpExp e))) e) $ es_ordered
       bodylst = bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
       ctu = CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo  
   (putStrLn . render . pretty) ctu

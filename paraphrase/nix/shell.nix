@@ -194,7 +194,7 @@ let
               hblas
               lbfgs
               MemoTrie lens
-	      language-c containers
+              language-c containers
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
