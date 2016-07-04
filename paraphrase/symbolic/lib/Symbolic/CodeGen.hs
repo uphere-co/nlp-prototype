@@ -79,6 +79,8 @@ mkBinary x op y = CBinary op x y nodeinfo
 
 mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
 
+mkAssignAdd name value = CAssign CAddAssOp (mkVar name) value nodeinfo
+
 mkExpr exp = CExpr (Just exp) nodeinfo 
 mkCompound stmts = CCompound [] stmts nodeinfo 
 
@@ -103,20 +105,20 @@ cPrint' name (mexpExp -> Mul hs)        = [ (mkExpr . mkAssign name . foldr1 (fl
 cPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym lst)) ]
   where lst = map (mkVar . hVar) hs
 cPrint' name (mexpExp -> Sum is h1)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
-                                          , foldr (.) id (map (uncurry3 mkFor) is) (CBreak nodeinfo) ]
-       
+                                          , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
+  where innerstmt = mkExpr (mkAssignAdd name (mkVar (hVar h1)))
+  
 cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
 cPrint name syms v = do
   let 
-      exp0 = zero -- Zero
-      exp1 = sum_ [("i",1,3),("j",2,4)] exp0 -- (untrie ?expHash exp0)
+      exp0 = zero
+      exp1 = sum_ [("i",1,3),("j",2,4)] exp0
       exp2 = delta "i" "j"
       exp3 = var "x"
       exp4 = val 3
       exp5 = mul [exp1, exp2, exp3]
       exp6 = fun "tanh3" [exp1,exp2,exp3] 
-      bodylst = map CBlockStmt (cPrint' "result" exp6)
-                -- map CBlockStmt (cPrint' (untrie ?expHash exp1) exp1)
+      bodylst = map CBlockStmt (cPrint' "result" exp1)
       ctu = CTranslUnit [CFDefExt (mkCFunction CVoidType name (mkArgs syms) bodylst)] nodeinfo 
   (putStrLn . render . pretty) ctu
 
