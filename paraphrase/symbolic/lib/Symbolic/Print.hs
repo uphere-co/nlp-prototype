@@ -4,6 +4,7 @@
 
 module Symbolic.Print where
 
+import           Control.Lens              (view,_1)
 import           Control.Monad.Trans.State
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -28,23 +29,26 @@ prettyPrint ROne  = printf "1"
 prettyPrint (RDelta i j) = printf "delta_%s%s" i j
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showSym s)
-prettyPrint (RAdd es) = listPrintf "+" (map prettyPrint es)
-prettyPrint (RMul es) = listPrintf "*" (map prettyPrint es)
--- prettyPrint (RAdd s) = printf "%s" 
-{- prettyPrint (RFun1 s e1) = printf "(%s %s)" s (prettyPrint e1 :: String)
--- prettyPrint (RFun2 s e1 e2)
-  | s == "+" || s == "*" = printf "(%s%s%s)"
-                             (prettyPrint e1 :: String)
-                             (s :: String)
-                             (prettyPrint e2 ::String)
-  | otherwise            = printf "(%s%s%s)"
-                             (s :: String)
-                             (prettyPrint e1 :: String)
-                             (prettyPrint e2 :: String) -}
+prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
+prettyPrint (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: String)
+prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 
-showIdxSet :: [Index] -> String
-showIdxSet = intercalate ","
+{-
+prettyPrintX :: (PrintfType r) => RExp a -> r
+prettyPrintX RZero = printf "0"
+prettyPrintX ROne  = printf "1"
+prettyPrintX (RDelta i j) = printf "delta_%s%s" i j
+prettyPrintX (RVal n) = printf "%s" "some value"
+prettyPrintX (RVar s) = printf "%s" (showSym s)
+prettyPrintX (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrintX es) :: String)
+prettyPrintX (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrintX es) :: String)
+prettyPrintX (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrintX es) :: String)
+prettyPrintX (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrintX e1 :: String)
+-}
+
+showIdxSet :: [(Index,Int,Int)] -> String
+showIdxSet = intercalate "," . map (view _1)
 
 dotPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
 dotPrint m h = do
@@ -67,8 +71,7 @@ dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
 dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Mul hs)       = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
--- dotPrint' h (Fun1 s h1)    = printf "x%x [label=\"%s\"];\n%x -> x%x;\n" h s h h1
--- dotPrint' h (Fun2 s h1 h2) = printf "x%x [label=\"%s\"];\nx%x -> x%x;\nx%x -> x%x;\n" h s h h1 h h2
+dotPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 
 digraph :: (HasTrie a, Show a, ?expHash :: Exp a :->: Hash) => MExp a -> IO ()

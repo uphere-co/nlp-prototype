@@ -5,6 +5,7 @@
 
 module Symbolic.Predefined where
 
+import           Control.Lens              (view,_1)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
@@ -43,16 +44,6 @@ val n = MExp (Val n) HM.empty HS.empty
 
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
-{- 
-biop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> MExp a -> MExp a -> MExp a
-biop sym em1@(MExp e1 m1 i1) em2@(MExp e2 m2 i2) =
-  let h1 = untrie ?expHash e1
-      h2 = untrie ?expHash e2
-      e = Fun2 sym h1 h2
-      m = (HM.insert h1 em1 . HM.insert h2 em2) (m1 `HM.union` m2)
-  in MExp e m (HS.union i1 i2)
--}
-
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
 varop op es = let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
                   ms = map mexpMap es
@@ -68,34 +59,19 @@ add = varop Add
 mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 mul = varop Mul
 
-{- 
-  let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
-             ms = map mexpMap es
-             is = map mexpIdx es
-             m' = foldl1 HM.union ms
-             i' = foldl1 HS.union is
-             m'' = foldr (uncurry HM.insert) m' hes
-          in MExp (Add (map fst hes)) m'' i'
--}
-
-
-
-{- 
-mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a -> MExp a
-mul = biop ("*")
--}
-
-sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
+sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [(Index,Int,Int)] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =
   let h1 = untrie ?expHash e1
-      i = i1 `difference` HS.fromList is
+      i = i1 `difference` (HS.fromList . map (view _1)) is
       e = Sum is h1
       m = HM.insert h1 em m1
   in MExp e m i
 
-{- 
+fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> [MExp a] -> MExp a
+fun sym = varop (Fun sym)
+
 square :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
-square e = mul e e 
+square e = mul [e,e] 
 
 power :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Int -> MExp a -> MExp a
 power n e
@@ -103,9 +79,9 @@ power n e
   | n == 1         = e
   | n == 0         = one
   | n `mod` 2 == 0 = square (power (n `div` 2) e)
-  | otherwise      = square (power (n `div` 2) e) `mul` e
+  | otherwise      = mul [square (power (n `div` 2) e), e]
 
--}
+
 
 suffix' :: String -> String
 suffix' = (<> "'")
@@ -116,12 +92,11 @@ suffix_1 = (<> "_1")
 suffix_2 :: String -> String
 suffix_2 = (<> "_2")
 
-{- 
-fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> MExp a -> MExp a
-fun sym e@(MExp e1 m1 i1) =
-  let h1 = untrie ?expHash e1
-  in MExp (Fun1 sym h1) (HM.insert h1 e m1) i1 
+suffix_n :: Int -> String -> String
+suffix_n n = (<> ("_" ++ show n))
 
+
+{-
 tanh_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 tanh_ = fun "tanh"
 -}
