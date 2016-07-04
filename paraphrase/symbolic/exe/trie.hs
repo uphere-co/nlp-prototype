@@ -8,6 +8,7 @@
 
 import           Control.Monad ((>=>))
 import           Control.Monad.Trans.State
+import           Data.Foldable             (forM_)
 import           Data.Function             (fix)
 import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
@@ -27,6 +28,7 @@ import           Symbolic.Print
 import           Symbolic.Simplify
 import           Symbolic.Type
 --
+import           Debug.Trace
 
 -- data Args = Args { varMap :: HashMap Symbol Int }
 
@@ -57,7 +59,12 @@ eval m (args,ip,Mul hs) =
 eval m (args,ip,Add hs) =
   let es = map (mexpExp . flip justLookup m) hs
   in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
-
+eval m (args,ip,Sum is h) =
+  let idx1lst (idx,start,end) = [(idx,v)| v <- [start..end]]
+      sumip = traverse idx1lst is                
+      ip' = map (ip ++) sumip
+      e = justLookup h m
+  in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
 
 seval :: (Storable a, HasTrie a, Num a, ?expHash :: Exp a :->: Hash) =>
          Args a -> IdxPoint -> MExp a -> a
@@ -304,11 +311,12 @@ test11 = do
       e3 = add [e1,e2]
       e4 = mul [e3,x_ ["m","n"]]
       e5 = sum_ [("m",1,2),("n",1,2)] e4
-  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
-  let idx = [("i",1),("j",2),("m",2),("n",1)]
-      vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
+  printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
+  let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
       args = Args HM.empty (HM.fromList [("x",vals)])
-  printf "val(e5(i=1,j=2,m=2,n=1) = %d\n" (seval args idx e5)
+  forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
+    let idx = [("i",i),("j",j)] 
+    printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
 
 
   
