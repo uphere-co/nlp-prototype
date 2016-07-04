@@ -90,9 +90,8 @@ mkBinary name op value = CBinary op (mkVar name) (mkIntConst value) nodeinfo
 cPrint' :: Hash -> Exp a -> CStat
 cPrint' h Zero           = CExpr (Just (mkIntConst 0)) nodeinfo
 cPrint' h One            = CExpr (Just (mkIntConst 1)) nodeinfo
-cPrint' h (Sum is h1)    = let (i,s,e) = head is
-                           in mkFor i s e (CBreak nodeinfo)
-
+cPrint' h (Sum is h1)    = foldr (.) id (map mkFor' is) (CBreak nodeinfo)
+ where mkFor' (i,s,e) = mkFor i s e
 
   -- printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 
@@ -114,7 +113,7 @@ cPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (pri
 cgraph :: (HasTrie a, Show a, ?expHash :: Exp a :->: Hash) => String -> [Symbol] -> MExp a -> IO ()
 cgraph name syms v = do
   let -- decllst = [mkDecl CIntType "a"]
-      bodylst = [CBlockStmt ((cPrint' 3393 (Sum [("i",1,3)] 339)))] -- [CBlockDecl (mkDecl CDoubleType False "b")]  
+      bodylst = [CBlockStmt ((cPrint' 3393 (Sum [("i",1,3),("j",2,4)] 339)))] -- [CBlockDecl (mkDecl CDoubleType False "b")]  
       ctu = CTranslUnit [CFDefExt (mkCFunction CVoidType name (mkArgs syms) bodylst)] nodeinfo 
   (putStrLn . render . pretty) ctu
 
