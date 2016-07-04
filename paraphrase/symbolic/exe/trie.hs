@@ -13,10 +13,12 @@ import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
-import           Data.List                 (lookup)
+import           Data.List                 (lookup,foldl')
 import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 import           Data.Monoid               ((<>))
+import           Data.Vector.Storable       (Vector(..),Storable(..),(!))
+import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
 import           Symbolic.Differential
@@ -27,43 +29,73 @@ import           Symbolic.Type
 --
 
 -- data Args = Args { varMap :: HashMap Symbol Int }
-type Args a = [(Symbol,a)]
+
 type IdxPoint = [(Index,Int)]
+
+data IdxVal a = IdxVal { flatIndex :: [Int] -> Int
+                       , valStore :: Vector a }
+
+data Args a = Args { varSimple :: HashMap String a
+                   , varIndexed :: HashMap String (IdxVal a) }
 
 justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
-{- 
-eval :: (Num a, Floating a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
-        HashMap Hash (MExp a) -> ((Args a,IdxPoint,Exp a) :->: EExp a) -> (Args a,IdxPoint,Exp a) -> EExp a
-eval _ _ (_,_,Zero) = EVal 0
-eval _ _ (_,_,One)  = EVal 1
-eval _ _ (_,_,Val n) = EVal n
-eval _ _ (_,ip,Delta i j) = evalDelta ip i j 
-eval m t (args,ip,Var s) = EVal (justLookupL s args)
-eval m t (args,ip,Fun1 f h1) =
-  let e1 = mexpExp (justLookup h1 m)
-  in case untrie t (args,ip,e1) of
-       EVal e1' -> if | f == "tanh" -> EVal (tanh e1')
-                      | otherwise   -> error (f ++ " is not supported yet")
-       _ -> error "invalid function application"
-eval m t (args,ip,Fun2 o h1 h2) =
-  let e1 = mexpExp (justLookup h1 m)
-      e2 = mexpExp (justLookup h2 m)
-  in case (untrie t (args,ip,e1), untrie t (args,ip,e2)) of
-       (EVal e1',EVal e2') -> if | o == "+" -> EVal (e1' + e2')
-                                 | o == "*" -> EVal (e1' * e2')
-                                 | otherwise -> error "not supported"
-       _ -> error "strange" 
+eval :: (Num a, Storable a, HasTrie a, ?expHash :: Exp a :->: Hash) =>
+        HashMap Hash (MExp a)
+     -> (Args a,IdxPoint,Exp a)
+     -> a
+eval _ (_,_,Zero) = 0
+eval _ (_,_,One)  = 1
+eval _ (_,_,Val n) = n
+eval _ (_,ip,Delta i j) = evalDelta ip i j 
+eval m (args,ip,Var v) = evalVar args ip v
+eval m (args,ip,Mul hs) =
+  let es = map (mexpExp . flip justLookup m) hs
+  in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
+eval m (args,ip,Add hs) =
+  let es = map (mexpExp . flip justLookup m) hs
+  in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
+
+
+seval :: (Storable a, HasTrie a, Num a, ?expHash :: Exp a :->: Hash) =>
+         Args a -> IdxPoint -> MExp a -> a
+seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
+
+evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
+evalVar args ip (Simple s) = ({- EVal . -} justLookup s . varSimple) args
+evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip) is
+                                     ival = justLookup s (varIndexed args)
+                                 in valStore ival ! flatIndex ival i's
+
+evalDelta ip i j = let i' = justLookupL i ip
+                       j' = justLookupL j ip
+                   in if i' == j' then 1 else 0 
+
+
+-- eval m t (args,ip,Fun1 f h1) =
+--   let e1 = mexpExp (justLookup h1 m)
+--   in case untrie t (args,ip,e1) of
+--        EVal e1' -> if | f == "tanh" -> EVal (tanh e1')
+--                       | otherwise   -> error (f ++ " is not supported yet")
+--       _ -> error "invalid function application"
+-- eval m t (args,ip,Fun2 o h1 h2) =
+--   let e1 = mexpExp (justLookup h1 m)
+--      e2 = mexpExp (justLookup h2 m)
+--   in case (untrie t (args,ip,e1), untrie t (args,ip,e2)) of
+--       (EVal e1',EVal e2') -> if | o == "+" -> EVal (e1' + e2')
+--                                 | o == "*" -> EVal (e1' * e2')
+--                                 | otherwise -> error "not supported"
+--       _ -> error "strange" 
 -- eval args (Sum _ _) = 
 
-evalDelta ip i j = let mi = lookup i ip
-                       mj = lookup j ip
-                   in case (mi,mj) of
-                        (Just i',Just j') -> if i'==j' then EVal 1 else EVal 0
-                        (Just i',Nothing) -> EDelta (TDelta1 j i')
-                        (Nothing,Just j') -> EDelta (TDelta1 i j')
-                        (Nothing,Nothing) -> EDelta (TDelta2 i j)
+
+
+{- 
+-}
+
+{- 
+
 
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
@@ -72,8 +104,6 @@ exp1 = square (x `add'` y)
 exp1' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1' = tanh_ exp1
 
-exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 3 x -- power 10 (x `add'` y)
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])
@@ -121,10 +151,6 @@ eval_fib a ip n = let tfib = trie ffib
                   in untrie teval (a,ip,e)
 
 
-seval :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) =>
-         Args a -> IdxPoint -> MExp a -> EExp a
-seval a ip e = let f = fix (eval (mexpMap e) . trie)
-               in f (a,ip,mexpExp e)
 
 
 
@@ -144,13 +170,6 @@ mkDepGraph e = let e1 = mexpExp e
 
 -- revDep :: HashMap Hash Hash -> Hash -> [Hash]
 
-test_digraph :: IO ()
-test_digraph = do
-    let ?expHash = trie hash
-    -- digraph exp1
-    -- digraph (expfib 100)
-    -- digraph exp1
-    digraph (exp2 :: MExp Int)
 
 test123 :: IO ()
 test123 = do
@@ -226,6 +245,17 @@ test7 = do
 
 -}
 
+exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp2 = power 3 x -- power 10 (x `add'` y)
+
+test2 :: IO ()
+test2 = do
+    let ?expHash = trie hash
+    -- digraph exp1
+    -- digraph (expfib 100)
+    -- digraph exp1
+    digraph (exp2 :: MExp Int)
+
 test8 :: IO ()
 test8 = do
   let ?expHash = trie hash
@@ -236,12 +266,51 @@ test8 = do
   printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
   -- digraph e2
 
-  let e3 = mul' [x, x, mul' [x, x , x] , x]
+  let e3 = mul [x, x, mul [x, x , x] , x]
       de3 = (sdiff (Simple "x") e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
 
   digraph de3
 
-main = test8
+
+test9 :: IO ()
+test9 = do
+  let ?expHash = trie hash
+  let e1 = mul [delta "i" "m", delta "j" "n"]
+      e2 = mul [delta "i" "n", delta "j" "m"]
+      e3 = add [e1,e2]
+      e4 = mul [e3,x_ ["m","n"]]
+  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) (e4 ::  MExp Int) :: String)
+
+  digraph e4
+
+
+test10 :: IO ()
+test10 = do
+  let ?expHash = trie hash
+  let e = mul [x, y] :: MExp Int
+      args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
+  printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
+  
+  printf "val(e) = %d\n" (eval (mexpMap e) (args,[],mexpExp e))
+
+test11 :: IO ()
+test11 = do
+  let ?expHash = trie hash
+  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
+      e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
+      e3 = add [e1,e2]
+      e4 = mul [e3,x_ ["m","n"]]
+  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) e4 :: String)
+  let idx = [("i",1),("j",2),("m",2),("n",1)]
+      vals = IdxVal (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
+      args = Args HM.empty (HM.fromList [("x",vals)])
+  printf "val(e1(i=1,j=2,m=2,n=1) = %d\n" (seval args idx e4)
+
+
+  
+
+
+main = test11 -- test10 -- test9 -- test2
     

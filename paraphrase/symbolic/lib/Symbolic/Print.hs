@@ -28,9 +28,8 @@ prettyPrint ROne  = printf "1"
 prettyPrint (RDelta i j) = printf "delta_%s%s" i j
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showSym s)
-prettyPrint (RAdd es) = listPrintf "+" (map prettyPrint es)
-prettyPrint (RMul es) = listPrintf "*" (map prettyPrint es)
--- prettyPrint (RAdd s) = printf "%s" 
+prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
+prettyPrint (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: String)
 {- prettyPrint (RFun1 s e1) = printf "(%s %s)" s (prettyPrint e1 :: String)
 -- prettyPrint (RFun2 s e1 e2)
   | s == "+" || s == "*" = printf "(%s%s%s)"

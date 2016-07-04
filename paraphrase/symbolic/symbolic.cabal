@@ -14,7 +14,7 @@ Maintainer:             Ian-Woo Kim <ianwookim@gmail.com>
 Homepage:               https://github.com/uphere-co/nlp-prototype
 Bug-reports:            https://github.com/uphere-co/nlp-prototype
 
-Category:               AI, Natural Language Processing
+Category:               Symbolic Computation
 Stability:              Experimental
 
 Extra-source-files:     
@@ -68,5 +68,6 @@ Executable trie
                         MemoTrie,
                         transformers,
                         unordered-containers,
+                        vector,
                         --
                         symbolic
