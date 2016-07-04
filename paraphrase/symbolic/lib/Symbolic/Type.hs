@@ -53,8 +53,7 @@ data Exp a = Zero
            | Var Symbol
            | Add [Hash]
            | Mul [Hash]
-           -- | Fun1 String Hash
-           -- | Fun2 String Hash Hash
+           | Fun String [Hash]
            | Sum [(Index,Int,Int)] Hash
          deriving (Show,Eq)
 
@@ -82,8 +81,7 @@ data RExp a = RZero
             | RVar Symbol
             | RAdd [RExp a]
             | RMul [RExp a]              
-            -- | RFun1 String (RExp a)
-            -- | RFun2 String (RExp a) (RExp a)
+            | RFun String [RExp a]
             | RSum [(Index,Int,Int)] (RExp a)
 
 mangle :: Double -> [Int]
@@ -105,8 +103,7 @@ instance HasTrie a => HasTrie (Exp a) where
                                 (Symbol :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
                                 ([Hash] :->: b)     -- ^ for Mul
-                                -- ((String,Hash) :->: b)
-                                -- ((String,Hash,Hash) :->: b)
+                                ((String,[Hash]) :->: b) -- ^ for Fun
                                 (([(Index,Int,Int)],Hash) :->: b)
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
@@ -116,12 +113,11 @@ instance HasTrie a => HasTrie (Exp a) where
                    (trie (f . Var))
                    (trie (f . Add))
                    (trie (f . Mul))
-                   -- (trie (f . uncurry Fun1))
-                   -- (trie (\(s,e1,e2)-> f (Fun2 s e1 e2)))
+                   (trie (f . uncurry Fun))
                    (trie (f . uncurry Sum))
            
   untrie :: (Exp a :->: b) -> Exp a -> b
-  untrie (ExpTrie z o d l v a m {- f1 f2 -} su) e =
+  untrie (ExpTrie z o d l v a m f su) e =
     case e of
       Zero         -> untrie z ()
       One          -> untrie o ()
@@ -130,12 +126,11 @@ instance HasTrie a => HasTrie (Exp a) where
       Var s        -> untrie v s
       Add hs       -> untrie a hs
       Mul hs       -> untrie m hs
-      -- Fun1 s e1    -> untrie f1 (s,e1)
-      -- Fun2 s e1 e2 -> untrie f2 (s,e1,e2)
+      Fun s hs     -> untrie f (s,hs) 
       Sum is e1    -> untrie su (is,e1)
                                      
   enumerate :: (Exp a :->: b) -> [(Exp a,b)]
-  enumerate (ExpTrie z o d n v a m {- f1 f2 -} su) =
+  enumerate (ExpTrie z o d n v a m f su) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
@@ -149,6 +144,8 @@ instance HasTrie a => HasTrie (Exp a) where
     enum' Add a
     `weave`
     enum' Mul m
+    `weave`
+    enum' (uncurry Fun) f
     `weave`
     -- enum' (uncurry Fun1) f1
     --  `weave`
@@ -173,9 +170,8 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt s (Var s')        = s `hashWithSalt` (4 :: Int) `hashWithSalt` s'
   hashWithSalt s (Add hs)        = s `hashWithSalt` (5 :: Int) `hashWithSalt` hs
   hashWithSalt s (Mul hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
-  -- hashWithSalt s (Fun1 s' h1)    = s `hashWithSalt` (7 :: Int) `hashWithSalt` s' `hashWithSalt` h1
-  -- hashWithSalt s (Fun2 s' h1 h2) = s `hashWithSalt` (8 :: Int) `hashWithSalt` s' `hashWithSalt` h1 `hashWithSalt` h2
-  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (9 :: Int) `hashWithSalt` is `hashWithSalt` h1
+  hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` s' `hashWithSalt` hs
+  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` is `hashWithSalt` h1
 
 
 justLookup :: (Eq k, Hashable k) => k -> HashMap k v -> v
@@ -187,8 +183,9 @@ exp2RExp (mexpExp -> One)          = ROne
 exp2RExp (mexpExp -> Delta i j)    = RDelta i j
 exp2RExp (mexpExp -> Val n)        = RVal n
 exp2RExp (mexpExp -> Var s)        = RVar s
-exp2RExp (MExp (Add hs) m _)       = let es = map (exp2RExp . flip justLookup m) hs in RAdd es
-exp2RExp (MExp (Mul hs) m _)       = let es = map (exp2RExp . flip justLookup m) hs in RMul es
+exp2RExp (MExp (Add hs) m _)       = RAdd $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Mul hs) m _)       = RMul $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Fun s hs) m _)     = RFun s $ map (exp2RExp . flip justLookup m) hs
 -- exp2RExp (MExp (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
 -- exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
 --                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
@@ -203,6 +200,7 @@ daughters (Val n)        = []
 daughters (Var s)        = []
 daughters (Add hs)       = hs
 daughters (Mul hs)       = hs
+daughters (Fun s hs)     = hs
 -- daughters (Fun1 s h1)    = [h1]
 -- daughters (Fun2 s h1 h2) = [h1,h2]
 daughters (Sum is h1)    = [h1]

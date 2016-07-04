@@ -67,7 +67,9 @@ sum_ is em@(MExp e1 m1 i1) =
       m = HM.insert h1 em m1
   in MExp e m i
 
- 
+fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> [MExp a] -> MExp a
+fun sym = varop (Fun sym)
+
 square :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 square e = mul [e,e] 
 
@@ -90,12 +92,11 @@ suffix_1 = (<> "_1")
 suffix_2 :: String -> String
 suffix_2 = (<> "_2")
 
-{- 
-fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> MExp a -> MExp a
-fun sym e@(MExp e1 m1 i1) =
-  let h1 = untrie ?expHash e1
-  in MExp (Fun1 sym h1) (HM.insert h1 e m1) i1 
+suffix_n :: Int -> String -> String
+suffix_n n = (<> ("_" ++ show n))
 
+
+{-
 tanh_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 tanh_ = fun "tanh"
 -}

@@ -23,6 +23,7 @@ import           Symbolic.Print
 import           Symbolic.Simplify
 import           Symbolic.Type
 --
+import           Debug.Trace
 
                    
 diff'
@@ -39,12 +40,33 @@ diff' m t (s,e) =
     Add hs       -> let es = map (flip justLookup m) hs
                     in add' (map (\e -> untrie t (s,mexpExp e)) es)
     Mul hs       -> let es = map (flip justLookup m) hs
-                        diffmul :: [MExp a] -> [MExp a] 
-                        diffmul [] = []
-                        diffmul (x:xs) = let x' = untrie t (s,mexpExp x)
-                                             xs'all = diffmul xs
-                                         in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
                     in add' (diffmul es)
+    Fun sym hs   -> let ies = zip [1..] $ map (flip justLookup m) hs
+                    in add' (difff sym ies)
+    Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
+                    in sum_ is (untrie t (s,e1))
+ where
+  diffmul :: [MExp a] -> [MExp a] 
+  diffmul [] = []
+  diffmul (x:xs) = let x' = untrie t (s,mexpExp x)
+                       xs'all = diffmul xs
+                   in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
+
+  difff :: String -> [(Int,MExp a)] -> [MExp a]
+  difff sym args = map (difff' sym (map snd args)) args
+
+  difff' :: String -> [MExp a] -> (Int,MExp a) -> MExp a
+  difff' sym args (i,e) = let e' = untrie t (s,mexpExp e)
+                          in mul' [fun (suffix_n i sym) args , e'] 
+                      
+{- 
+                          difff :: [MExp a] -> [MExp a] 
+                        difff [] = []
+                        difff (x:xs) = let x' = untrie t (s,mexpExp x)
+                                           xs'all = difff xs
+                                       in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
+-}
+--                      add' (diffmul es)
                     
 --    Add hs       -> let es = map (flip justLookup m) hs
 --                    in add' (map (\e -> untrie t (s,mexpExp e)) es)
@@ -55,8 +77,6 @@ diff' m t (s,e) =
                         MExp e2 _ _ = justLookup h2 m
                     in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
                          (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2))  -}
-    Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
-                    in sum_ is (untrie t (s,e1))
 
 
 

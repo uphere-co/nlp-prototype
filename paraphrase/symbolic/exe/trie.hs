@@ -106,11 +106,6 @@ evalDelta ip i j = let i' = justLookupL i ip
 
 
 
-exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp1 = square (x `add'` y)
-
-exp1' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp1' = tanh_ exp1
 
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
@@ -319,8 +314,16 @@ test11 = do
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
 
 
+test12 :: IO ()
+test12 = do
+  let ?expHash = trie hash
+  let e1 :: MExp Double
+      e1 = add' [x,y]
+      fe1 = fun "f" [e1,x]
+      dfe1 = sdiff (Simple "x") fe1
+  printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
+  printf "d(fe1)/dx = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
+  digraph dfe1
   
-
-
-main = test11 -- test10 -- test9 -- test2
+main = test12 
     
