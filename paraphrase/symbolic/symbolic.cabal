@@ -30,15 +30,19 @@ Library
   Build-depends:        base,
                         binary,
                         bytestring,
+                        containers,
                         hashable,
+                        language-c,                        
                         lens,
                         MemoTrie,
+                        pretty,
                         transformers,
                         unordered-containers,
                         vector
                         
 
   Exposed-modules:
+                        Symbolic.CodeGen
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined

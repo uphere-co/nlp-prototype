@@ -22,6 +22,7 @@ import           Data.Vector.Storable       (Vector(..),Storable(..),(!))
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
+import           Symbolic.CodeGen
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Predefined
@@ -258,6 +259,23 @@ test12 = do
   let args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
+
+test13 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
+      e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
+      e3 = add [e1,e2]
+      e4 = mul [e3,x_ ["m","n"]]
+      e5 = sum_ [("m",1,2),("n",1,2)] e4
+  printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
+  let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
+      args = Args HM.empty (HM.fromList [("x",vals)])
+  forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
+    let idx = [("i",i),("j",j)] 
+    printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
+
+  cgraph e5
   
-main = test12 
+main = test13 
     
