@@ -23,6 +23,7 @@ import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
 import           Symbolic.Differential
+import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Simplify
@@ -30,95 +31,8 @@ import           Symbolic.Type
 --
 import           Debug.Trace
 
--- data Args = Args { varMap :: HashMap Symbol Int }
-
-type IdxPoint = [(Index,Int)]
-
-data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
-                       , flatIndex :: [Int] -> Int
-                       , valStore :: Vector a }
-
-data Args a = Args { varSimple :: HashMap String a
-                   , varIndexed :: HashMap String (IdxVal a) }
-
-justLookupL :: (Eq k) => k -> [(k,v)] -> v
-justLookupL k = fromJust . lookup k
-
-type FunctionMap a = HashMap String ([a] -> a)
-
-eval :: ( Num a, Storable a, HasTrie a
-        , ?expHash :: Exp a :->: Hash
-        , ?functionMap :: FunctionMap a
-        ) =>
-        HashMap Hash (MExp a)
-     -> (Args a,IdxPoint,Exp a)
-     -> a
-eval _ (_,_,Zero) = 0
-eval _ (_,_,One)  = 1
-eval _ (_,_,Val n) = n
-eval _ (_,ip,Delta i j) = evalDelta ip i j 
-eval m (args,ip,Var v) = evalVar args ip v
-eval m (args,ip,Mul hs) =
-  let es = map (mexpExp . flip justLookup m) hs
-  in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
-eval m (args,ip,Add hs) =
-  let es = map (mexpExp . flip justLookup m) hs
-  in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
-eval m (args,ip,Fun s hs) =
-  let es = map (mexpExp . flip justLookup m) hs
-      f = justLookup s ?functionMap      
-  in f (map (\e->eval m (args,ip,e)) es)
-eval m (args,ip,Sum is h) =
-  let idx1lst (idx,start,end) = [(idx,v)| v <- [start..end]]
-      sumip = traverse idx1lst is                
-      ip' = map (ip ++) sumip
-      e = justLookup h m
-  in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
-
-seval :: ( Storable a, HasTrie a, Num a
-         , ?expHash :: Exp a :->: Hash
-         , ?functionMap :: FunctionMap a
-         ) =>
-         Args a -> IdxPoint -> MExp a -> a
-seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
-
-evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
-evalVar args ip (Simple s) = ({- EVal . -} justLookup s . varSimple) args
-evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip) is
-                                     ival = justLookup s (varIndexed args)
-                                 in valStore ival ! flatIndex ival i's
-
-evalDelta ip i j = let i' = justLookupL i ip
-                       j' = justLookupL j ip
-                   in if i' == j' then 1 else 0 
-
-
--- eval m t (args,ip,Fun1 f h1) =
---   let e1 = mexpExp (justLookup h1 m)
---   in case untrie t (args,ip,e1) of
---        EVal e1' -> if | f == "tanh" -> EVal (tanh e1')
---                       | otherwise   -> error (f ++ " is not supported yet")
---       _ -> error "invalid function application"
--- eval m t (args,ip,Fun2 o h1 h2) =
---   let e1 = mexpExp (justLookup h1 m)
---      e2 = mexpExp (justLookup h2 m)
---   in case (untrie t (args,ip,e1), untrie t (args,ip,e2)) of
---       (EVal e1',EVal e2') -> if | o == "+" -> EVal (e1' + e2')
---                                 | o == "*" -> EVal (e1' * e2')
---                                 | otherwise -> error "not supported"
---       _ -> error "strange" 
--- eval args (Sum _ _) = 
-
-
 
 {- 
--}
-
-{- 
-
-
-
-
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])

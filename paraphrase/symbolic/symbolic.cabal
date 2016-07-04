@@ -34,11 +34,13 @@ Library
                         lens,
                         MemoTrie,
                         transformers,
-                        unordered-containers
+                        unordered-containers,
+                        vector
                         
 
   Exposed-modules:
                         Symbolic.Differential
+                        Symbolic.Eval
                         Symbolic.Predefined
                         Symbolic.Print
                         Symbolic.Simplify

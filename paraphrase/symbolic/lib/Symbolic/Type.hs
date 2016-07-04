@@ -15,6 +15,7 @@ import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (HashSet)
 import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
+import           Data.Vector.Storable      (Vector)
 --
 
 type Hash = Int
@@ -218,4 +219,18 @@ data EExp a = EVal a
             | EMul a TDelta
             | EMul2 TDelta TDelta
 
+
+type IdxPoint = [(Index,Int)]
+
+data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
+                       , flatIndex :: [Int] -> Int
+                       , valStore :: Vector a }
+
+data Args a = Args { varSimple :: HashMap String a
+                   , varIndexed :: HashMap String (IdxVal a) }
+
+justLookupL :: (Eq k) => k -> [(k,v)] -> v
+justLookupL k = fromJust . lookup k
+
+type FunctionMap a = HashMap String ([a] -> a)
 
