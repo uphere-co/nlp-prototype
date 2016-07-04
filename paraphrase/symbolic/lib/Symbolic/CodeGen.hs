@@ -58,6 +58,8 @@ mkDecl typ isPtr name mv =
       mv' = fmap (\v -> CInitExpr (mkConst v) nodeinfo) mv
   in CDecl [typespec] [(Just cdeclr,mv',Nothing)] nodeinfo
 
+mkDblVarDecl str = mkDecl CDoubleType False str (Just (mkF 0))
+
 mkCFunction typ name decllst bodylst =
   let typspec  = CTypeSpec (typ nodeinfo)
       fun = CFunDeclr (Right (decllst,False)) [] nodeinfo
@@ -132,9 +134,10 @@ cPrint name syms v = do
       bmap = HM.insert h_result v (mexpMap v)
       hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
       es_ordered = map (flip justLookup bmap) hs_ordered
-      bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (untrie ?expHash (mexpExp e))) e) $ es_ordered
-      bodylst = bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
-      ctu = CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo  
+      decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
+      bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (getMHash e)) e) $ es_ordered
+      bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
+      ctu = CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
   (putStrLn . render . pretty) ctu
 
 

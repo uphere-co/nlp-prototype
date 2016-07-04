@@ -75,10 +75,15 @@ isDelta :: Exp a -> Bool
 isDelta (Delta _ _) = True
 isDelta _           = False
 
+
 data MExp a = MExp { mexpExp :: Exp a
                    , mexpMap :: HashMap Hash (MExp a)
                    , mexpIdx :: HashSet Index
                    }
+
+getMHash :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> Hash
+getMHash e = untrie ?expHash (mexpExp e)
+
 
 data RExp a = RZero
             | ROne
