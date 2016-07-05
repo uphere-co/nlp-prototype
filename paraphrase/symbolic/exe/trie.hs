@@ -262,15 +262,20 @@ test13 = do
       ?functionMap = HM.empty
 
   let exp0 :: MExp Double
-      exp0 = y_ ["i","j"]
-      exp1 = delta "i" "j"      
-      exp2 = sum_ [("i",1,3),("j",2,4)] (add' [exp0,exp1])
-      exp3 = var "x"
-      exp4 = val 3
-      exp5 = mul [exp2, exp3, exp4]
+      exp0 = y_ ["m","n"]
+      exp1 = delta "m" "n"      
+      exp2 = sum_ [("m",1,3)] (add' [exp0,exp1])
+      exp3 = mul' [ x_ ["k"], x_ ["k"] ]
+      exp4 = sum_ [("k",1,3)] exp3
+      exp5 = sum_ [("n",1,3)] (mul [exp2,  exp4])
 
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
+
+  -- let (hmap,_,_) = mkDepGraph exp5
+  
+  -- mapM_ (\(h,i)->printf "%x -> %s\n" h i) $ mkDepEdges4Index exp5
+  
   cPrint "testfunction" [Simple "x", Indexed "y" ["i","j"]] exp5
   
   
