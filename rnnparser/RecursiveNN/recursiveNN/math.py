@@ -4,12 +4,16 @@ from numba.decorators import jit, autojit
 from numba import int32,uint64, float32, void,int_,float64, char
 
 #@autojit
-@jit(nopython=True,nogil=True)
+#@jit(nopython=True,nogil=True)
 def dot(a, b):
-    l,m = a.shape
-    m2,n = b.shape
+#    return np.dot(a,b)
+    l,m = a.shape[-2],a.shape[-1]
+    m2,n = b.shape[-2],b.shape[-1]
     if m!=m2:
         raise ValueError('Incorrect dimensions')
+    a2=np.expand_dims(a,-1)
+    b2=np.expand_dims(b,-3)
+    return np.sum(a2*b2, 1)
     d = np.empty((l, n), dtype=a.dtype)
     for i in range(l):
         for j in range(n):
