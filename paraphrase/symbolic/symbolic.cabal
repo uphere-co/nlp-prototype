@@ -28,17 +28,24 @@ source-repository HEAD
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
+                        array,
                         binary,
                         bytestring,
+                        containers,
                         hashable,
+                        language-c,                        
                         lens,
                         MemoTrie,
+                        pretty,
                         transformers,
-                        unordered-containers
+                        unordered-containers,
+                        vector
                         
 
   Exposed-modules:
+                        Symbolic.CodeGen
                         Symbolic.Differential
+                        Symbolic.Eval
                         Symbolic.Predefined
                         Symbolic.Print
                         Symbolic.Simplify

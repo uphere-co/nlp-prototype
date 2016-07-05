@@ -5,6 +5,7 @@
 module Symbolic.Print where
 
 import           Control.Lens              (view,_1)
+import           Control.Monad             ((>=>))
 import           Control.Monad.Trans.State
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -34,18 +35,11 @@ prettyPrint (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: St
 prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 
-{-
-prettyPrintX :: (PrintfType r) => RExp a -> r
-prettyPrintX RZero = printf "0"
-prettyPrintX ROne  = printf "1"
-prettyPrintX (RDelta i j) = printf "delta_%s%s" i j
-prettyPrintX (RVal n) = printf "%s" "some value"
-prettyPrintX (RVar s) = printf "%s" (showSym s)
-prettyPrintX (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrintX es) :: String)
-prettyPrintX (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrintX es) :: String)
-prettyPrintX (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrintX es) :: String)
-prettyPrintX (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrintX e1 :: String)
--}
+prettyPrintR :: (Show a) => MExp a -> IO ()
+prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
+
+endl = putStrLn ""
+
 
 showIdxSet :: [(Index,Int,Int)] -> String
 showIdxSet = intercalate "," . map (view _1)
@@ -94,3 +88,4 @@ prettyPrintE (EMul2 t1 t2) = printf "(%s*%s)" (prettyPrintT t1 :: String) (prett
 prettyPrintT :: (PrintfType r) => TDelta -> r
 prettyPrintT (TDelta2 i j) = printf "delta_%s%s" i j
 prettyPrintT (TDelta1 i n) = printf "delta_%s%d" i n
+
