@@ -75,6 +75,10 @@ isDelta :: Exp a -> Bool
 isDelta (Delta _ _) = True
 isDelta _           = False
 
+isSum :: Exp a -> Bool
+isSum (Sum _ _) = True
+isSum _         = False
+
 
 data MExp a = MExp { mexpExp :: Exp a
                    , mexpMap :: HashMap Hash (MExp a)
@@ -185,10 +189,6 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt s (Sum is h1)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` is `hashWithSalt` h1
 
 
-justLookup :: (Eq k, Hashable k,Show k) => k -> HashMap k v -> v
-justLookup h m = case (HM.lookup h m) of
-                   Nothing -> error ("justLookup: error in retrieving " ++ show h)   -- this is very unsafe, but we do not have good solution yet.
-                   Just v -> v
 
 exp2RExp :: MExp a -> RExp a
 exp2RExp (mexpExp -> Zero)         = RZero
@@ -227,7 +227,56 @@ mkDepEdges e = let e1 = mexpExp e
                    lsts = map (mkDepEdges . flip justLookup m1) hs 
                in concat (lst:lsts)
 
-mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> (HashMap Hash Vertex,Table Hash, Graph) -- [(Hash,Hash)]
+mkDepEdges4Index :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Index)]
+mkDepEdges4Index e = let e1 = mexpExp e
+                         h1 = untrie ?expHash e1
+                         m1 = mexpMap e
+                         i1 = HS.toList (mexpIdx e)
+                         hs = daughters e1
+                         lst = map (h1,) i1
+                         lsts = map (mkDepEdges4Index . flip justLookup m1) hs 
+                     in concat (lst:lsts)
+
+mkDepEdgesNoSum :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
+mkDepEdgesNoSum e =
+  let e1 = mexpExp e
+  in if isSum e1
+     then []
+     else  
+       let h1 = untrie ?expHash e1
+           m1 = mexpMap e
+           hs = daughters e1
+           lst = map (h1,) hs
+           lsts = map (mkDepEdgesNoSum . flip justLookup m1) hs 
+       in concat (lst:lsts)
+
+{-
+data HashAndIndex = HIHash Hash
+                  | HIIndex Index
+
+instance Hashable HashAndIndex where
+  hashWithSalt :: Hash -> HashAndIndex -> Hash
+  hashWithSalt s (HIHash h)  = s `hashWithSalt` (0 :: Int) `hashWithSalt` h
+  hashWithSalt s (HIIndex i) = s `hashWithSalt` (1 :: Int) `hashWithSalt` i
+-}
+{-
+mkDepEdgesHI :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(HashAndIndex,HashAndIndex)]
+mkDepEdgesHI e = let hedges = mkDepEdges e
+                     iedges = mkDepEdges4Index e
+
+ 
+
+  e1 = mexpExp e
+                         h1 = untrie ?expHash e1
+                         m1 = mexpMap e
+                         i1 = HS.toList (mexpIdx e)
+                         hs = daughters e1
+                         lst = map (h1,) i1
+                         lsts = map (mkDepEdges4Index . flip justLookup m1) hs 
+                     in concat (lst:lsts)
+-}
+
+mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> (HashMap Hash Vertex,Table Hash, Graph)
 mkDepGraph e = let edgs = mkDepEdges e
                    hs = HS.toList . HS.fromList . concatMap (\(i,j) -> [i,j]) $ edgs
                    hmap = HM.fromList (zip hs [1..])
@@ -236,6 +285,18 @@ mkDepGraph e = let edgs = mkDepEdges e
                    edgs' :: [(Vertex,Vertex)]
                    edgs' = flip map edgs $ \(i,j) -> let i' = justLookup i hmap; j' = justLookup j hmap; in (i',j')
                in (hmap,arr,buildG (1,n) edgs')
+
+mkDepGraphNoSum :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> (HashMap Hash Vertex,Table Hash, Graph)
+mkDepGraphNoSum e =
+  let edgs = mkDepEdgesNoSum e
+      hs = HS.toList . HS.fromList . concatMap (\(i,j) -> [i,j]) $ edgs
+      hmap = HM.fromList (zip hs [1..])
+      n = length hs
+      arr = A.listArray (1,n) hs
+      edgs' :: [(Vertex,Vertex)]
+      edgs' = flip map edgs $ \(i,j) -> let i' = justLookup i hmap; j' = justLookup j hmap; in (i',j')
+  in (hmap,arr,buildG (1,n) edgs')
+
 
 data Pos = Pos1 | Pos2 
 
@@ -259,8 +320,16 @@ data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,
 data Args a = Args { varSimple :: HashMap String a
                    , varIndexed :: HashMap String (IdxVal a) }
 
+
+type FunctionMap a = HashMap String ([a] -> a)
+
+
+justLookup :: (Eq k, Hashable k,Show k) => k -> HashMap k v -> v
+justLookup h m = case (HM.lookup h m) of
+                   Nothing -> error ("justLookup: error in retrieving " ++ show h)   -- this is very unsafe, but we do not have good solution yet.
+                   Just v -> v
+
 justLookupL :: (Eq k) => k -> [(k,v)] -> v
 justLookupL k = fromJust . lookup k
 
-type FunctionMap a = HashMap String ([a] -> a)
 

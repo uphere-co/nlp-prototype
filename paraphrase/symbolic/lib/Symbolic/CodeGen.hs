@@ -28,9 +28,12 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint
 --
-import Symbolic.Predefined
-import Symbolic.Print
-import Symbolic.Type
+import           Symbolic.Predefined
+import           Symbolic.Print
+import           Symbolic.Type
+--
+import           Debug.Trace
+
 
 uncurry3 f (a,b,c) = f a b c 
   
@@ -96,9 +99,6 @@ mkCall sym lst = CCall (mkVar sym) lst nodeinfo
 
 mkReturn exp = CReturn (Just exp) nodeinfo
 
-
-
-
 hVar h = printf "x%x" h
 
 cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
@@ -119,25 +119,34 @@ cPrint' name (mexpExp -> Mul hs)        = [ (mkExpr . mkAssign name . foldr1 (fl
   where lst = map (mkVar . hVar) hs
 cPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym lst)) ]
   where lst = map (mkVar . hVar) hs
-cPrint' name (mexpExp -> Sum is h1)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
+cPrint' name (MExp (Sum is h1) m i)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
                                           , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
-  where innerstmt = mkExpr (mkAssignAdd name (mkVar (hVar h1)))
-
-
+  where v = justLookup h1 m
+        h_result = untrie ?expHash (mexpExp v)
+        (hashmap,table,depgraph) = mkDepGraphNoSum v
+        bmap = HM.insert h_result v (mexpMap v)
+        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        es_ordered = map (flip justLookup bmap) hs_ordered
+        decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
+        bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (getMHash e)) e) $ es_ordered
+        innerstmt =
+          mkCompound $  
+            decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
 
         
-cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
-cPrint name syms v = do
-      
+cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit
+cAST name syms v = 
   let h_result = untrie ?expHash (mexpExp v)
-      (hashmap,table,depgraph) = mkDepGraph v
+      (hashmap,table,depgraph) = mkDepGraphNoSum v
       bmap = HM.insert h_result v (mexpMap v)
       hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
       es_ordered = map (flip justLookup bmap) hs_ordered
       decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
       bodylst' = map CBlockStmt . concatMap (\e -> cPrint' (hVar (getMHash e)) e) $ es_ordered
       bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
-      ctu = CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
-  (putStrLn . render . pretty) ctu
+  in CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
+
+cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
+cPrint name syms v = let ctu = cAST name syms v in (putStrLn . render . pretty) ctu
 
 
