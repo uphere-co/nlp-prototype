@@ -1,5 +1,26 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from numba.decorators import jit, autojit
+from numba import int32,uint64, float32, void,int_,float64, char
+
+#@autojit
+@jit(nopython=True,nogil=True)
+def dot(a, b):
+    l,m = a.shape
+    m2,n = b.shape
+    if m!=m2:
+        raise ValueError('Incorrect dimensions')
+    d = np.empty((l, n), dtype=a.dtype)
+    for i in range(l):
+        for j in range(n):
+            tmp = 0.0
+            for k in range(m):
+                tmp += a[i, k]*b[k,j]
+            d[i, j] = tmp
+    return d
+#dot = autojit(InnerProduct)
+#Let dot compiled
+bb=dot(np.ones((2,2)),np.ones((2,2)))
 
 def NormalizedMatrix(mat, l1norm):
     return l1norm*mat/np.abs(mat).sum()
@@ -9,10 +30,14 @@ def SimplifyIfScalar(arr):
         return arr.dtype.type(arr)
     return arr
 
-def ScalarToMatrix(x):
+def To2Darray(x):
     if IsScalarValue(x):
         return np.array(x).reshape(1,1)
-    return x
+    v=np.array(x)
+    return v
+    if len(v.shape)==1:
+        return v.reshape(-1,1)
+    return v
     raise ValueError('x is not convertable to matrix')
 
 def IsScalarValue(x):

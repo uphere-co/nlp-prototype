@@ -11,7 +11,11 @@ import numpy as np
 from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
-
+def test_ConvertToArray():
+    a=Val(1)
+    assert a.val.shape == (1,1)
+    b=Val([[2]])
+    assert b.val.shape == (1,1)
 def test_ElementaryTypes(reset_NodeDict):
     val0 = Val(0)
     val2 = Val(2)
@@ -190,6 +194,7 @@ def test_CacheKnownValues(reset_NodeDict):
     vy=np.array([1.1,2.1,0.5])
     x.val=vx
     y.val=vy
+    print gfx_hy.val/exp_cos_x_times_tanh_y(vx,vy)
     assert_all(gfx_hy.val==exp_cos_x_times_tanh_y(vx,vy))
     print "Change x only:"
     #TODO: verify hy will not be evaluated, but use cache, instead.
