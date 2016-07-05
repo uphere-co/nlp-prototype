@@ -84,3 +84,12 @@ cat ~/repo/srcc/nixpkgs/pkgs/top-level/python-packages.nix
 cat ~/repo/srcc/nixpkgs/pkgs/development/python-modules/theano/default.nix
 grep -B 10 -A 10 theano  ~/repo/srcc/nixpkgs/pkgs/top-level/python-packages.nix
 ```
+
+##paraphrase directory
+### Run RNN parser result visualizer
+```bash
+nix-shell paraphrase/nix/shell.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
+cabal sandbox init
+cabal build
+dist/build/rnnresult/rnnresult /data/groups/uphere/tmp/nlp-data/rnnparser-result/rnn.sample
+```
