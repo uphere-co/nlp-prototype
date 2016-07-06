@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 from nodes import Val,Var,VSF, Add,Dot,Transpose
 import numpy as np
