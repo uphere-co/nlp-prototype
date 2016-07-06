@@ -63,7 +63,7 @@ class NodeDict(type):
 
 class Node(object):
     __slots__= ["_parents", "name","_val", "_uid"] #
-    __metaclass__ = NodeDict
+    #__metaclass__ = NodeDict
     #_uid_count = 0
     def __init__(self, name):
         self._parents=[]

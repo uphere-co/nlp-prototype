@@ -127,11 +127,11 @@ from recursiveNN.models import Word,Phrase, RecursiveNN,Word2VecFactory
 from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose, reset_NodeDict, NodeDict
 from recursiveNN.differentiation import Differentiation
 """)
-    def SetWord2VecModel(self,model):
-        self.dview['word2vec']=model
+    def SetWord2VecModel(self,model_path):
+        self.dview.execute("word2vec=pd.read_pickle(%r)"%model_path)
     def SetTestSentences(self,sents_test):
         self.dview.scatter('sents_test', sents_test)
-        self.dview.execute("sents_vecs_test=[[Word(word, np.expand_dims(word2vec[word].values,1)) for word in line.split()] for line in sents_test]")
+        self.dview.execute("sents_vecs_test=[[Word(word, np.expand_dims(word2vec.ix[word].values,1)) for word in line.split()] for line in sents_test]")
     def SetParams(self,W,bias,u_score):
         self.dview['vw0']=W.val
         self.dview['vb0']=bias.val
@@ -140,8 +140,33 @@ from recursiveNN.differentiation import Differentiation
 W,bias,u_score=Var('W'),Var('b'),Var('u')
 W.val,bias.val,u_score.val=vw0,vb0,vu0
 rnn=RecursiveNN(W,bias,u_score)
-''')
+        ''')
     def EvalTestScores(self):
         self.dview.execute("eval_test=[rnn.combineToSentence(sent) for sent in sents_vecs_test]")
         self.dview.execute("scores_test=[x.val for _,x in eval_test]")
         return np.array(self.dview.gather("scores_test")).reshape(-1,1)
+    def MiniBatch(self, mini_batch):
+        self.dview.scatter('sents_train', mini_batch)
+        self.dview.execute('''
+sent_str=sents_train[0]
+sent = [Word(word, np.expand_dims(word2vec.ix[word].values,1)) for word in sent_str.split()]
+sentence, score=rnn.combineToSentence(sent)
+#print sent_str
+#print unicode(sentence), score.val
+score.cache()
+w=rnn.W
+b=rnn.bias
+u=rnn.u_score
+w.cache()
+b.cache()
+u.cache()
+dsdW=Differentiation(score, w)
+dsdW.cache()
+dsdb=Differentiation(score, b)
+dsdb.cache()
+dsdu=Differentiation(score, u)
+        ''')
+        dsdW = np.mean(np.split(self.dview.gather('dsdW.val'),len(self.rc.ids)), axis=0)
+        dsdb = np.mean(np.split(self.dview.gather('dsdb.val'),len(self.rc.ids)), axis=0)
+        dsdu = np.mean(np.split(self.dview.gather('dsdu.val'),len(self.rc.ids)), axis=0)
+        return dsdW,dsdb, dsdu
