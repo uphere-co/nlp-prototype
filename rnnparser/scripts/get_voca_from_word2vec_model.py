@@ -1,3 +1,9 @@
+import os
+import sys
+import pandas as pd
+sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/')
+from recursiveNN.models import Word2VecFactory
+
 nlp_data_path = os.environ.get('HOME')+'/nlp-data/word2vec-dataset/'
 w2v_factory=Word2VecFactory(nlp_data_path+'1b.training.15epochs.model')
 vocab_total=w2v_factory.model.index2word
