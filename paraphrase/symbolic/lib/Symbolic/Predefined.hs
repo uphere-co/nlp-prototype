@@ -27,11 +27,20 @@ x = var "x"
 y :: MExp a
 y = var "y"
 
+z :: MExp a
+z = var "z"
+
+
+
 x_ :: [Index] -> MExp a
 x_ i = ivar "x" i
 
 y_ :: [Index] -> MExp a
 y_ i = ivar "y" i
+
+z_ :: [Index] -> MExp a
+z_ i = ivar "z" i
+
 
 one :: MExp a
 one = MExp One HM.empty HS.empty

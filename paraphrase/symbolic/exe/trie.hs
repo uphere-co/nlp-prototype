@@ -80,24 +80,6 @@ eval_fib a ip n = let tfib = trie ffib
                       teval = trie feval 
                   in untrie teval (a,ip,e)
 
-
-
-
-
-
-
-mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
-mkDepGraph e = let e1 = mexpExp e
-                   h1 = untrie ?expHash e1
-                   m1 = mexpMap e
-                   hs = daughters e1
-                   lst = map (h1,) hs
-                   lsts = map (mkDepGraph . flip justLookup m1) hs 
-               in concat (lst:lsts)
-
--- revDep :: HashMap Hash Hash -> Hash -> [Hash]
-
-
 test123 :: IO ()
 test123 = do
     let ?expHash = trie hash
@@ -262,18 +244,21 @@ test13 = do
       ?functionMap = HM.empty
 
   let exp0 :: MExp Double
-      exp0 = var "y"
-      exp1 = sum_ [("i",1,3),("j",2,4)] exp0
-      exp2 = delta "i" "j"
-      exp3 = var "x"
-      exp4 = val 3
-      exp5 = mul [exp1, exp2, exp3]
-      -- exp6 = fun "tanh3" [exp1,exp2,exp3]
+      exp0 = y_ ["m","n"]
+      exp1 = delta "m" "n"      
+      exp2 = sum_ [("m",1,3)] (add' [exp0,exp1])
+      exp3 = mul' [ z_ ["k"], z_ ["k"] ]
+      exp4 = sum_ [("k",1,3)] exp3
+      exp5 = add' [ sum_ [("n",1,3)] (mul [exp2,  exp4]), x ] 
 
-  
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
-  cPrint "testfunction" [Simple "x", Simple "y"] exp5
+
+  -- let (hmap,_,_) = mkDepGraph exp5
+  
+  -- mapM_ (\(h,i)->printf "%x -> %s\n" h i) $ mkDepEdges4Index exp5
+  
+  cPrint "testfunction" [Simple "x", Indexed "y" ["i","j"], Indexed "z" ["i"] ] exp5
   
   
 main = test13 
