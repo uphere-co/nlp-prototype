@@ -92,4 +92,18 @@ rec {
      meta = {
      };
    };
+   bllipparser = buildPythonPackage rec {
+     name = "bllipparser-2015.12.3";
+     src = pkgs.fetchurl {
+       #url = "https://pypi.python.org/packages/50/e1/39852026449d1ae146d3e7a26a531b5b4fc6c3bcdc0b3951d9ee41ed44fd/${name}.tar.gz";
+       url = "${mirror_url}/bllipparser/${name}.tar.gz";
+       sha256 = "00ddz0ckyxc1ks6i8xsja8n0jsrx149nmfm0324b3jmhg2yj1ppr";
+     };
+     buildInputs = [];
+     propagatedBuildInputs = [ python27Packages.six 
+                               python27Packages.flake8];
+     doCheck = false;
+     meta = {
+     };
+   };
 }

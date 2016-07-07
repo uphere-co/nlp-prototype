@@ -21,8 +21,8 @@ stdenv.mkDerivation {
                    Theano Keras h5py
                    pytest toolz.pytest-mock
                    toolz.guppy
-                   toolz.nltk
-                 ]) ++ [wget];
+                   toolz.nltk toolz.bllipparser
+                 ]) ++ [wget jdk];
   shellHook = ''
      EDITOR=vim
   '';
