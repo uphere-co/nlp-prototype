@@ -9,6 +9,16 @@ See tests for usages. Use pytest for unit testing.
 cd python/RecursiveNN
 py.test
 ```
+### Running other parsers.
+`bllip.py` is for running BLLIP parser. 
+Run `bllip_init.py` just once to download pre-trained parsers.
+By default, it downloads in `~/.local/share/bllipparser/` directory.
+Input of Python BLLIP parser must be ASCII; use `iconv` for non-ASCII inputs :
+``` bash
+cat 1b.training.sample |  iconv -f utf-8 -t ascii//TRANSLIT > 1b.training.sample.ascii
+cat 1b.training.sample.ascii | ipython bllip.py ~/.local/share/bllipparser/WSJ+Gigaword-v2/ > 1b.training.sample.bllip.WSJ+Gigaword-v2
+cat 1b.training.sample.ascii | ipython bllip.py ~/.local/share/bllipparser/WSJ-PTB3/ > 1b.training.sample.bllip.WSJ-PTB3
+```
 ## word2vec python directory
 
 ### Parsing Arxiv meta XMLs 
