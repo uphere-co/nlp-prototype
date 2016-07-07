@@ -55,13 +55,13 @@ mkConst (IConst i) = CConst (CIntConst (cInteger (fromIntegral i)) nodeinfo)
 mkConst (FConst f) = CConst (CFloatConst (readCFloat (show f)) nodeinfo)
 
 
-mkDecl typ isPtr name mv =
-  let cdeclr = CDeclr (Just (ident name)) (if isPtr then [ptr] else []) Nothing [] nodeinfo
+mkDecl typ ptrnum name mv =
+  let cdeclr = CDeclr (Just (ident name)) (replicate ptrnum ptr) Nothing [] nodeinfo
       typespec = CTypeSpec (typ nodeinfo)
       mv' = fmap (\v -> CInitExpr (mkConst v) nodeinfo) mv
   in CDecl [typespec] [(Just cdeclr,mv',Nothing)] nodeinfo
 
-mkDblVarDecl str = mkDecl CDoubleType False str (Just (mkF 0))
+mkDblVarDecl str = mkDecl CDoubleType 0 str (Just (mkF 0))
 
 mkCFunction typ name decllst bodylst =
   let typspec  = CTypeSpec (typ nodeinfo)
@@ -71,11 +71,13 @@ mkCFunction typ name decllst bodylst =
   in CFunDef [typspec] cdeclr [] ccompound nodeinfo
 
 mkArgs = map mkArg
- where mkArg (Simple s) = mkDecl CDoubleType False s Nothing
-       mkArg (Indexed s is) = mkDecl CDoubleType True s Nothing
+ where mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
+       mkArg (Indexed s is) = mkDecl CDoubleType (length is) s Nothing
+
+
 
 mkFor name start end stmts =
- CFor (Right (mkDecl CIntType False name (Just (mkI start))))
+ CFor (Right (mkDecl CIntType 0 name (Just (mkI start))))
       (Just (mkBinary (mkVar name) CLeqOp (mkConst (mkI end))))
       (Just (mkUnary name CPostIncOp))
       stmts nodeinfo
