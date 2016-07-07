@@ -38,6 +38,9 @@ class MatrixValues(object):
         else:
             self.vals[i]=val
     @property
+    def n_vals(self):
+        return self._idx
+    @property
     def vals(self):
         return self._val
     @property
@@ -55,11 +58,44 @@ class MatrixValues(object):
         i=self.allocate()
         self[i]=val
         return i
+    def reset(self):
+        self._idx=0
 
 class ValueHolder(object):
-    def __init__(self):
-        self._dict={}
-    def __getitem__(self, shape):
+    def __init__(self, dim, n_val_max):
+        self.dim = dim
+        self.n_val_max=n_val_max
+        self._dict = {}
+        #TODO: generalize this for non-RNN use cases.
+        self._dict[(dim,1)]=MatrixValues((n_val_max,dim,1))
+        self._dict[(2*dim,1)]=MatrixValues((n_val_max,2*dim,1))
+        self._dict[(dim,2*dim)]=MatrixValues((1000,dim,dim*2))
+        self._dict[(1,1)]=MatrixValues((n_val_max,1,1))
+    def __getitem__(self, value):
+        shape=value.shape
         if not shape in self._dict.keys():
-            self._dict[shape]=MatrixValues((10000,)+shape)
+            self._dict[shape]=MatrixValues((self.n_val_max,)+shape)
         return self._dict[shape]
+    def __call__(self,value):
+        return self.__getitem__(value)
+    def reset(self):
+        for mem in self._dict.values():
+            mem.reset()
+
+
+class vVal(object):
+    __slots__ = ["_mem", "_uid"]
+    #TODO: factory should hold mem_table.
+    mem_table = None
+    @staticmethod
+    def Init():
+        vVal.mem_table = ValueHolder(200, 1000000)
+    def __init__(self, val):
+        self._mem = vVal.mem_table(val)
+        self._uid=self._mem.save(val)
+    @property
+    def val(self):
+        return self._mem[self._uid]
+    @val.setter
+    def val(self, val):
+        raise TypeError('Val objects are immutable')
