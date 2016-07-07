@@ -250,32 +250,6 @@ mkDepEdgesNoSum e =
            lsts = map (mkDepEdgesNoSum . flip justLookup m1) hs 
        in concat (lst:lsts)
 
-{-
-data HashAndIndex = HIHash Hash
-                  | HIIndex Index
-
-instance Hashable HashAndIndex where
-  hashWithSalt :: Hash -> HashAndIndex -> Hash
-  hashWithSalt s (HIHash h)  = s `hashWithSalt` (0 :: Int) `hashWithSalt` h
-  hashWithSalt s (HIIndex i) = s `hashWithSalt` (1 :: Int) `hashWithSalt` i
--}
-{-
-mkDepEdgesHI :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(HashAndIndex,HashAndIndex)]
-mkDepEdgesHI e = let hedges = mkDepEdges e
-                     iedges = mkDepEdges4Index e
-
- 
-
-  e1 = mexpExp e
-                         h1 = untrie ?expHash e1
-                         m1 = mexpMap e
-                         i1 = HS.toList (mexpIdx e)
-                         hs = daughters e1
-                         lst = map (h1,) i1
-                         lsts = map (mkDepEdges4Index . flip justLookup m1) hs 
-                     in concat (lst:lsts)
--}
-
 mkDepGraph :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> (HashMap Hash Vertex,Table Hash, Graph)
 mkDepGraph e = let edgs = mkDepEdges e
                    hs = HS.toList . HS.fromList . concatMap (\(i,j) -> [i,j]) $ edgs
