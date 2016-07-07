@@ -22,7 +22,7 @@ stdenv.mkDerivation {
                    pytest toolz.pytest-mock
                    toolz.guppy
                    toolz.nltk toolz.bllipparser
-                 ]) ++ [wget jdk];
+                 ]) ++ [wget jdk zip unzip];
   shellHook = ''
      EDITOR=vim
   '';
