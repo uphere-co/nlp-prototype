@@ -1,6 +1,8 @@
 { pkgs ? (import <nixpkgs>{}) }:
 
 with pkgs;
+#with import <nixpkgs/pkgs/development/haskell-modules/lib.nix> { inherit pkgs; };
+
 
 let 
     hsconfig = self: super: {
@@ -178,6 +180,60 @@ let
           description = "Accelerate backend for NVIDIA GPUs";
           license = stdenv.lib.licenses.bsd3;
         }) {};
+  #     "llvm-general" = self.callPackage
+  #   ({ mkDerivation, array, base, bytestring, containers, HUnit
+  #    , llvm-config, llvm-general-pure, mtl, parsec, QuickCheck, setenv
+  #    , template-haskell, test-framework, test-framework-hunit
+  #    , test-framework-quickcheck2, transformers, transformers-compat
+  #    , utf8-string
+  #    }:
+  #    mkDerivation {
+  #      pname = "llvm-general";
+  #      version = "3.4.4.4";
+  #      sha256 = "1rx07pk6g46k4652mznga7v51pp6bi32h3wk0dnmihn8n4536m4x";
+
+  #      libraryHaskellDepends = [
+  #        array base bytestring containers llvm-general-pure mtl parsec
+  #        setenv template-haskell transformers transformers-compat
+  #        utf8-string
+  #      ];
+  #      libraryToolDepends = [ llvm-config ];
+  #      testHaskellDepends = [
+  #        base containers HUnit llvm-general-pure mtl QuickCheck
+  #        test-framework test-framework-hunit test-framework-quickcheck2
+  #        transformers transformers-compat
+  #      ];
+  #      homepage = "http://github.com/bscarlet/llvm-general/";
+  #      description = "General purpose LLVM bindings";
+  #      license = stdenv.lib.licenses.bsd3;
+  #    }) { llvm-config = llvm_34; };
+
+  # "llvm-general-pure" = self.callPackage
+  #   ({ mkDerivation, base, containers, HUnit, mtl, parsec, QuickCheck
+  #    , setenv, template-haskell, test-framework, test-framework-hunit
+  #    , test-framework-quickcheck2, transformers, transformers-compat
+  #    }:
+  #    mkDerivation {
+  #      pname = "llvm-general-pure";
+  #      version = "3.4.4.1";
+  #      sha256 = "147s03km3gp4v5gk5fi179qrha962w3xm7rnaxia9xzvh1161j9g";
+  #      #612d2e42ea69da99940357d88098ef30f1eaf8eda18a2f084fc300f097a3d2f8";
+  #      #revision = "1";
+  #      #editedCabalFile = "64ab5cdad51aaff9fcb168afee8ef6602287e8ee24c156564adc1adfd7ad1119";
+  #      libraryHaskellDepends = [
+  #        base containers mtl parsec setenv template-haskell transformers 
+  #        transformers-compat
+  #      ];
+  #      testHaskellDepends = [
+  #        base containers HUnit mtl QuickCheck test-framework
+  #        test-framework-hunit test-framework-quickcheck2
+  #      ];
+  #      description = "Pure Haskell LLVM functionality (no FFI)";
+  #      license = stdenv.lib.licenses.bsd3;
+  #      doCheck = false;
+  #      doHaddock = false; 
+  #    }) {};
+
     };
     
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
@@ -199,7 +255,7 @@ let
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv cudatoolkit graphviz llvm_35];
+     buildInputs = [ hsenv cudatoolkit graphviz llvm_34];
      shellHook = ''
        export CUDA_PATH=${pkgs.cudatoolkit}
      '';
