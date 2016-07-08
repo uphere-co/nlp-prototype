@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  getline(inFile, line);
+  std::getline(inFile, line);
   split(line, word);
   //int num_records = atoi(word[0].c_str());
   int num_records = 30;

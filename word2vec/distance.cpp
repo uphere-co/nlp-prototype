@@ -337,7 +337,7 @@ void printHelp() {
   std::cout << "\t-word-vector <file>\n";
   std::cout << "\t\tUse word vector stored in <file>\n";
   std::cout << "\nExamples:\n";
-  std::cout << "./distance -word-vector data.txt";
+  std::cout << "./distance -word-vector data.txt\n";
   
 }
 

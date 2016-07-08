@@ -51,8 +51,7 @@ void split(const std::string& str, std::vector<std::string>& tokens) {
 
   while (std::string::npos != pos || std::string::npos != lastPos) {
     std::string a = str.substr(lastPos, pos-lastPos);
-    if(std::find(tokens.begin(), tokens.end(), a) == tokens.end()) // find() returns tokens.end if tarket is not found. 
-      tokens.push_back(a);
+    tokens.push_back(a);
     lastPos = str.find_first_not_of(delimiters, pos);
     pos = str.find_first_of(delimiters, lastPos);
   }
