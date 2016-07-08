@@ -7,6 +7,7 @@
 #include "utils.h"
 
 std::string word_vector_file;
+std::vector<std::string> search_words;
 
 // main function arguments
 
@@ -16,8 +17,10 @@ void printHelp() {
   std::cout << "Parameters for drawing:\n";
   std::cout << "\t-word-vector <file>\n";
   std::cout << "\t\tUse word vector stored in <file>\n";
+  std::cout << "\t-draw-words <words>\n";
+  std::cout << "\t\tChoose <words> to be drawed\n";
   std::cout << "\nExamples:\n";
-  std::cout << "./pca -word-vector data.txt\n";
+  std::cout << "./pca -word-vector data.txt -draw-words king queen prince princess\n";
   
 }
 
@@ -42,6 +45,12 @@ int ArgPos(char *str, int argc, char **argv) {
 void ArgPass(int argc, char **argv) {
   int i;
   if ((i = ArgPos((char *)"-word-vector", argc, argv)) > 0) word_vector_file = argv[i + 1];
+  if ((i = ArgPos((char *)"-draw-words", argc, argv)) > 0) {
+    for(int j = 0; j < argc - 4; j++)
+      {
+	search_words.push_back(argv[i + 1 + j]);
+      }
+  }
 }
 
 // main function arguments
@@ -73,8 +82,7 @@ int main(int argc, char **argv) {
 
   std::getline(inFile, line);
   split(line, word);
-  //int num_records = atoi(word[0].c_str());
-  int num_records = 30;
+  int num_records = atoi(word[0].c_str());
   int num_variables = atoi(word[1].c_str());
   stats::pca pca(num_variables);
   pca.set_do_bootstrap(true, 100);
@@ -103,9 +111,10 @@ int main(int argc, char **argv) {
       <<eigenvalues[1]<<", "
 	   <<eigenvalues[2]<<std::endl;;
 
-  */
+  
   std::cout<<"Orthogonal Check = "<<pca.check_eigenvectors_orthogonal()<<std::endl;;
   std::cout<<"Projection Check = "<<pca.check_projection_accurate()<<std::endl;;
+  */
   
   //pca.save("pca_results");
 
@@ -115,7 +124,8 @@ int main(int argc, char **argv) {
   // Very simple use case of gnuplot
   
   std::vector< boost::tuple<std::string, double, double> > xy_pts_A;
- 
+
+  
   double x, y;
 
   for(int i = 0; i < num_records; i++) {
@@ -125,14 +135,33 @@ int main(int argc, char **argv) {
       x += principal_1[j] * data[i][j];
       y += principal_2[j] * data[i][j];
     }
-    xy_pts_A.push_back(boost::make_tuple(label[i],x,y));
+    //xy_pts_A.push_back(boost::make_tuple(label[i],x,y));
   }
 
-  for(const auto& i : xy_pts_A) {
-    std::fout << boost::get<0>(i) << boost::get<1>(i) << boost::get<2>(i) << std::endl;
+  for(int i = 0; i < num_records; i++) {
+    for(auto& k: search_words) {
+      if( label[i] == (k) ) {
+	x = 0;
+	y = 0;
+	for(int k = 0; k < num_variables; k++) {
+	  x += principal_1[k] * data[i][k];
+	  y += principal_2[k] * data[i][k];
+	}
+	xy_pts_A.push_back(boost::make_tuple(label[i],x,y));
+      }
+    }
   }
   
-  gp << "plot 'temp.dat' using 2:3:1 with labels offset 1 title 'word vectors'" << std::endl;
-  
+  for(const auto& i : xy_pts_A) {
+    fout << boost::get<0>(i) << " " << boost::get<1>(i)<< " " << boost::get<2>(i) << std::endl;
+  }
+
+  fout.open("script.gp",std::ofstream::out);
+
+  fout << "set term png" << std::endl;
+  fout << "set output \"sample.png\"" << std::endl;
+  fout << "plot 'temp.dat' using 2:3:1 with labels offset 1 title 'word vectors'" << std::endl;
+
+  fout.close();
   return 0;
 }
