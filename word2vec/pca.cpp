@@ -17,7 +17,7 @@ void printHelp() {
   std::cout << "\t-word-vector <file>\n";
   std::cout << "\t\tUse word vector stored in <file>\n";
   std::cout << "\nExamples:\n";
-  std::cout << "./pca -word-vector data.txt";
+  std::cout << "./pca -word-vector data.txt\n";
   
 }
 
@@ -47,12 +47,16 @@ void ArgPass(int argc, char **argv) {
 // main function arguments
 
 int main(int argc, char **argv) {
-
+  std::ofstream fout;
+  
   std::string line;
   std::vector<std::string> word;
 
   std::vector< std::vector<double> > data;
   std::vector<std::string> label;
+
+  fout.open("temp.dat", std::ofstream::out);
+  
   if(argc == 1) {
     printHelp();
     return 0;
@@ -72,7 +76,6 @@ int main(int argc, char **argv) {
   //int num_records = atoi(word[0].c_str());
   int num_records = 30;
   int num_variables = atoi(word[1].c_str());
-
   stats::pca pca(num_variables);
   pca.set_do_bootstrap(true, 100);
 
@@ -121,14 +124,15 @@ int main(int argc, char **argv) {
     for(int j = 0; j < num_variables; j++) {
       x += principal_1[j] * data[i][j];
       y += principal_2[j] * data[i][j];
-      std::cout << y << " ";
     }
     xy_pts_A.push_back(boost::make_tuple(label[i],x,y));
   }
 
-
+  for(const auto& i : xy_pts_A) {
+    std::fout << boost::get<0>(i) << boost::get<1>(i) << boost::get<2>(i) << std::endl;
+  }
   
-  //  gp << "plot" << gp.file1d(xy_pts_A, "temp.dat") << " using 2:3:1 with labels offset 1 title 'word vectors'" << std::endl;
+  gp << "plot 'temp.dat' using 2:3:1 with labels offset 1 title 'word vectors'" << std::endl;
   
   return 0;
 }
