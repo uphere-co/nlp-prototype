@@ -1,4 +1,6 @@
-module JIT where
+{-# LANGUAGE ForeignFunctionInterface #-}
+
+module Symbolic.CodeGen.LLVM.JIT where
 
 import Data.Int
 import Data.Word

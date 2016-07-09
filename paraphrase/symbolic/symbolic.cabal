@@ -33,9 +33,12 @@ Library
                         bytestring,
                         containers,
                         hashable,
-                        language-c,                        
+                        language-c,
+                        llvm-general,
+                        llvm-general-pure,
                         lens,
                         MemoTrie,
+                        mtl,
                         pretty,
                         transformers,
                         unordered-containers,
@@ -44,6 +47,8 @@ Library
 
   Exposed-modules:
                         Symbolic.CodeGen.C
+                        Symbolic.CodeGen.LLVM.Lang
+                        Symbolic.CodeGen.LLVM.JIT
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined
@@ -72,7 +77,6 @@ Executable trie
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
                         hashable,
-                        llvm-general,
                         MemoTrie,
                         transformers,
                         unordered-containers,
@@ -80,26 +84,26 @@ Executable trie
                         --
                         symbolic
 
--- Executable llvmgen
---   Main-is:              llvmgen.hs
---   hs-source-dirs:       exe
+Executable llvmgen
+  Main-is:              llvmgen.hs
+  hs-source-dirs:       exe
 
---   other-modules:       
---   ghc-options:          -Wall -O2
---                         -threaded
---                         -funbox-strict-fields
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
 
---   ghc-prof-options:     -auto-all
---   extra-libraries:     
---   c-sources:            
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
                         
---   build-depends:        base                            >= 4.7 && < 4.9,
---                         --
---                         containers,
---                         llvm-general,
---                         llvm-general-pure,
---                         mtl,
---                         transformers,
---                         --
---                         symbolic
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        containers,
+                        llvm-general,
+                        llvm-general-pure,
+                        mtl,
+                        transformers,
+                        --
+                        symbolic
                         

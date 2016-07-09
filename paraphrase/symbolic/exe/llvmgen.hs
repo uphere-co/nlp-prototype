@@ -1,8 +1,11 @@
-import JIT
-import Codegen
+
+
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Float as F
 import qualified LLVM.General.AST.Constant as C
+
+import Symbolic.CodeGen.LLVM.JIT
+import Symbolic.CodeGen.LLVM.Lang
 
 {-
 

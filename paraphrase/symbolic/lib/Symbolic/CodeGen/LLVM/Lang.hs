@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Codegen where
+module Symbolic.CodeGen.LLVM.Lang where
 
 import Data.Word
 import Data.String
