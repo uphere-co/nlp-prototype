@@ -258,7 +258,7 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
-
+{-
 getval :: String -> Codegen Operand
 getval var = do
   s <- get
@@ -270,7 +270,9 @@ getval var = do
       val <- load ref
       modify (\s -> s { symval = (var,val):symvs})
       return val
+-}
 
+getval = getvar
 -------------------------------------------------------------------------------
 
 -- References
@@ -341,9 +343,9 @@ uncurry3 f (a,b,c) = f a b c
 hVar h = printf "x%x" h
 
 mkAssign name val = do
-  ref <- alloca double
-  store ref val
-  assign name ref
+  -- ref <- alloca double
+  -- store ref val
+  assign name val -- ref
   return ()
 
 cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
@@ -359,10 +361,10 @@ mkMul = mkOp fmul
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
   val1 <- getval (hVar h)
-  ref <- alloca double
+  -- ref <- alloca double
   v' <- foldrM op val1 hs
-  store ref v'
-  assign name ref
+  -- store ref v'
+  assign name v' -- ref
   return ()
 
   
@@ -401,9 +403,9 @@ llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Doub
 llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
                         body
-                        ref <- getvar name'
-                        val <- load ref
-                        ret val
+                        -- ref <- getval name'
+                        -- val <- load ref
+                        ret =<< getval name' -- val
   where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)

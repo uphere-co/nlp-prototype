@@ -11,6 +11,7 @@ import qualified LLVM.General.AST.Constant as C
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Lang
 import           Symbolic.Predefined
+import           Symbolic.Print
 import           Symbolic.Type
 
 {-
@@ -35,7 +36,7 @@ exp1 = mul [val 1,val 3] -- val 3 -- zero
 
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 3 x -- power 10 (x `add'` y)
+exp2 = power 10 x -- power 10 (x `add'` y)
 
 
 {- 
@@ -50,6 +51,7 @@ logic = do
 
 main = do
   let ?expHash = trie hash
+  prettyPrintR exp2 
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [Simple "x"] exp2
               -- external double "sin" [(double, AST.Name "x")] 
