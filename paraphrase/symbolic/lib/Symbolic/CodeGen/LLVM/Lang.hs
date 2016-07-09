@@ -1,5 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Symbolic.CodeGen.LLVM.Lang where
 
@@ -12,7 +15,12 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Applicative
 
-import LLVM.General.AST
+import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
+                        , Terminator(..), Definition(..)
+                        , FastMathFlags(..), Module (..)
+                        , FloatingPointFormat(..)
+                        , defaultModule
+                        )
 import LLVM.General.AST.Global
 import qualified LLVM.General.AST as AST
 
@@ -20,6 +28,36 @@ import qualified LLVM.General.AST.Constant as C
 import qualified LLVM.General.AST.Attribute as A
 import qualified LLVM.General.AST.CallingConvention as CC
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+
+-----
+
+import           Control.Lens                    (view, _1)
+-- import           Control.Monad.Trans.State
+import           Data.Array                      ((!))
+import qualified Data.Array                as A
+import           Data.Graph                      (topSort)
+import           Data.HashMap.Strict             (HashMap)
+import qualified Data.HashMap.Strict       as HM
+import           Data.HashSet                    (HashSet)
+import qualified Data.HashSet              as HS
+import           Data.List                       (foldl')
+import           Data.MemoTrie
+import           Language.C.Data
+import           Language.C.Data.Ident
+import           Language.C.Data.Position
+import           Language.C.Pretty
+import           Language.C.Syntax
+import           Text.Printf
+import           Text.PrettyPrint hiding (double)
+--
+import           Symbolic.Predefined
+import           Symbolic.Print
+import           Symbolic.Type
+import qualified Symbolic.Type as S ( Exp(..))
+--
+import           Debug.Trace
+
+
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -39,10 +77,10 @@ addDefn d = do
   defs <- gets moduleDefinitions
   modify $ \s -> s { moduleDefinitions = defs ++ [d] }
 
-define ::  Type -> String -> [(Type, Name)] -> Codegen a -> LLVM ()
+define ::  Type -> String -> [(Type, AST.Name)] -> Codegen a -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name label
+    name        = AST.Name label
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = bls
@@ -53,10 +91,10 @@ define retty label argtys body = addDefn $
       void $ setBlock enter
       body
 
-external ::  Type -> String -> [(Type, Name)] -> LLVM ()
+external ::  Type -> String -> [(Type, AST.Name)] -> LLVM ()
 external retty label argtys = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name label
+    name        = AST.Name label
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = []
@@ -82,8 +120,8 @@ uniqueName nm ns =
     Nothing -> (nm,  Map.insert nm 1 ns)
     Just ix -> (nm ++ show ix, Map.insert nm (ix+1) ns)
 
-instance IsString Name where
-  fromString = Name . fromString
+instance IsString AST.Name where
+  fromString = AST.Name . fromString
 
 -------------------------------------------------------------------------------
 -- Codegen State
@@ -93,8 +131,8 @@ type SymbolTable = [(String, Operand)]
 
 data CodegenState
   = CodegenState {
-    currentBlock :: Name                     -- Name of the active block to append to
-  , blocks       :: Map.Map Name BlockState  -- Blocks for function
+    currentBlock :: AST.Name                     -- Name of the active block to append to
+  , blocks       :: Map.Map AST.Name BlockState  -- Blocks for function
   , symtab       :: SymbolTable              -- Function scope symbol table
   , blockCount   :: Int                      -- Count of basic blocks
   , count        :: Word                     -- Count of unnamed instructions
@@ -115,13 +153,13 @@ data BlockState
 newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
   deriving (Functor, Applicative, Monad, MonadState CodegenState )
 
-sortBlocks :: [(Name, BlockState)] -> [(Name, BlockState)]
+sortBlocks :: [(AST.Name, BlockState)] -> [(AST.Name, BlockState)]
 sortBlocks = sortBy (compare `on` (idx . snd))
 
 createBlocks :: CodegenState -> [BasicBlock]
 createBlocks m = map makeBlock $ sortBlocks $ Map.toList (blocks m)
 
-makeBlock :: (Name, BlockState) -> BasicBlock
+makeBlock :: (AST.Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s t)) = BasicBlock l s (maketerm t)
   where
     maketerm (Just x) = x
@@ -134,7 +172,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -148,7 +186,7 @@ fresh = do
 instr :: Instruction -> Codegen (Operand)
 instr ins = do
   n <- fresh
-  let ref = (UnName n)
+  let ref = (AST.UnName n)
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = i ++ [ref := ins] } )
@@ -164,28 +202,28 @@ terminator trm = do
 -- Block Stack
 -------------------------------------------------------------------------------
 
-entry :: Codegen Name
+entry :: Codegen AST.Name
 entry = gets currentBlock
 
-addBlock :: String -> Codegen Name
+addBlock :: String -> Codegen AST.Name
 addBlock bname = do
   bls <- gets blocks
   ix <- gets blockCount
   nms <- gets names
   let new = emptyBlock ix
       (qname, supply) = uniqueName bname nms
-  modify $ \s -> s { blocks = Map.insert (Name qname) new bls
+  modify $ \s -> s { blocks = Map.insert (AST.Name qname) new bls
                    , blockCount = ix + 1
                    , names = supply
                    }
-  return (Name qname)
+  return (AST.Name qname)
 
-setBlock :: Name -> Codegen Name
+setBlock :: AST.Name -> Codegen AST.Name
 setBlock bname = do
   modify $ \s -> s { currentBlock = bname }
   return bname
 
-getBlock :: Codegen Name
+getBlock :: Codegen AST.Name
 getBlock = gets currentBlock
 
 modifyBlock :: BlockState -> Codegen ()
@@ -220,13 +258,13 @@ getvar var = do
 -------------------------------------------------------------------------------
 
 -- References
-local ::  Name -> Operand
+local :: AST.Name -> Operand
 local = LocalReference double
 
-global ::  Name -> C.Constant
+global :: AST.Name -> C.Constant
 global = C.GlobalReference double
 
-externf :: Name -> Operand
+externf :: AST.Name -> Operand
 externf = ConstantOperand . C.GlobalReference double
 
 -- Arithmetic and Constants
@@ -268,14 +306,136 @@ load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
 
 -- Control Flow
-br :: Name -> Codegen (Named Terminator)
+br :: AST.Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
 
-cbr :: Operand -> Name -> Name -> Codegen (Named Terminator)
+cbr :: Operand -> AST.Name -> AST.Name -> Codegen (Named Terminator)
 cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
-phi :: Type -> [(Operand, Name)] -> Codegen Operand
+phi :: Type -> [(Operand, AST.Name)] -> Codegen Operand
 phi ty incoming = instr $ Phi ty incoming []
 
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
+
+
+
+-----------------------
+
+uncurry3 f (a,b,c) = f a b c 
+  
+pos = position 0 "test" 0 0
+
+nodeinfo = OnlyPos pos (pos,0)
+
+ident name = Ident name 0 nodeinfo
+
+ptr = CPtrDeclr [] nodeinfo
+
+data Const = IConst Int
+           | FConst Double
+
+mkI = IConst
+mkF = FConst
+
+mkConst (IConst i) = CConst (CIntConst (cInteger (fromIntegral i)) nodeinfo)
+mkConst (FConst f) = CConst (CFloatConst (readCFloat (show f)) nodeinfo)
+
+
+mkDecl typ ptrnum name mv =
+  let cdeclr = CDeclr (Just (ident name)) (replicate ptrnum ptr) Nothing [] nodeinfo
+      typespec = CTypeSpec (typ nodeinfo)
+      mv' = fmap (\v -> CInitExpr (mkConst v) nodeinfo) mv
+  in CDecl [typespec] [(Just cdeclr,mv',Nothing)] nodeinfo
+
+mkDblVarDecl str = mkDecl CDoubleType 0 str (Just (mkF 0))
+
+mkCFunction typ name decllst bodylst =
+  let typspec  = CTypeSpec (typ nodeinfo)
+      fun = CFunDeclr (Right (decllst,False)) [] nodeinfo
+      cdeclr = CDeclr (Just (ident name)) [fun] Nothing [] nodeinfo
+      ccompound = CCompound [] bodylst  nodeinfo
+  in CFunDef [typspec] cdeclr [] ccompound nodeinfo
+
+mkArgs = map mkArg
+ where mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
+       mkArg (Indexed s is) = mkDecl CDoubleType (length is) s Nothing
+
+
+
+mkFor name start end stmts =
+ CFor (Right (mkDecl CIntType 0 name (Just (mkI start))))
+      (Just (mkBinary (mkVar name) CLeqOp (mkConst (mkI end))))
+      (Just (mkUnary name CPostIncOp))
+      stmts nodeinfo
+
+mkVar name = CVar (ident name) nodeinfo
+
+mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar name) is
+
+mkUnary name op = CUnary op (mkVar name) nodeinfo
+ 
+mkBinary x op y = CBinary op x y nodeinfo
+
+mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
+
+mkAssignAdd name value = CAssign CAddAssOp (mkVar name) value nodeinfo
+
+mkExpr exp = CExpr (Just exp) nodeinfo 
+mkCompound stmts = CCompound [] stmts nodeinfo 
+
+mkCall sym lst = CCall (mkVar sym) lst nodeinfo
+
+mkReturn exp = CReturn (Just exp) nodeinfo
+
+hVar h = printf "x%x" h
+
+llvmPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
+llvmPrint' name (mexpExp -> Zero)          = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
+llvmPrint' name (mexpExp -> One)           = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
+llvmPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo ]
+  where cond = mkBinary (mkVar i) CEqOp (mkVar j)
+        stru = mkExpr (mkAssign name (mkConst (mkI 1)))
+        sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+llvmPrint' name (mexpExp -> Var v)         = [ mkExpr (mkAssign name rhs) ] 
+  where rhs = case v of
+                Simple s -> mkVar s
+                Indexed s is -> mkIVar s is
+llvmPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
+llvmPrint' name (mexpExp -> S.Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
+  where lst = map (mkVar . hVar) hs
+llvmPrint' name (mexpExp -> S.Mul hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
+  where lst = map (mkVar . hVar) hs
+llvmPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym lst)) ]
+  where lst = map (mkVar . hVar) hs
+llvmPrint' name (MExp (Sum is h1) m i)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
+                                          , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
+  where v = justLookup h1 m
+        h_result = untrie ?expHash (mexpExp v)
+        (hashmap,table,depgraph) = mkDepGraphNoSum v
+        bmap = HM.insert h_result v (mexpMap v)
+        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        es_ordered = map (flip justLookup bmap) hs_ordered
+        decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
+        bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
+        innerstmt =
+          mkCompound $  
+            decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
+
+        
+llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit
+llvmAST name syms v = 
+  let h_result = untrie ?expHash (mexpExp v)
+      (hashmap,table,depgraph) = mkDepGraphNoSum v
+      bmap = HM.insert h_result v (mexpMap v)
+      hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+      es_ordered = map (flip justLookup bmap) hs_ordered
+      decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
+      bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
+      bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
+  in CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
+
+llvmPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
+llvmPrint name syms v = let ctu = llvmAST name syms v in (putStrLn . render . pretty) ctu
+
+
