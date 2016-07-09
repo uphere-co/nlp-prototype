@@ -100,8 +100,10 @@ Executable llvmgen
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
                         containers,
+                        hashable,
                         llvm-general,
                         llvm-general-pure,
+                        MemoTrie,
                         mtl,
                         transformers,
                         --

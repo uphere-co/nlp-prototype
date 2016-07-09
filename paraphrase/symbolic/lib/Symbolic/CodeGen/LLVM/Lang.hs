@@ -21,12 +21,12 @@ import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
                         , FloatingPointFormat(..)
                         , defaultModule
                         )
-import LLVM.General.AST.Global
-import qualified LLVM.General.AST as AST
-
-import qualified LLVM.General.AST.Constant as C
-import qualified LLVM.General.AST.Attribute as A
-import qualified LLVM.General.AST.CallingConvention as CC
+import           LLVM.General.AST.Global
+import qualified LLVM.General.AST                        as AST
+import qualified LLVM.General.AST.Attribute              as A
+import qualified LLVM.General.AST.CallingConvention      as CC
+import qualified LLVM.General.AST.Constant               as C
+import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
 
 -----
@@ -390,26 +390,33 @@ mkReturn exp = CReturn (Just exp) nodeinfo
 
 hVar h = printf "x%x" h
 
-llvmPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
-llvmPrint' name (mexpExp -> Zero)          = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
-llvmPrint' name (mexpExp -> One)           = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
-llvmPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo ]
+llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
+llvmCodegen name (mexpExp -> Zero)          = do
+  ref <- alloca double
+  -- named name ref
+  store ref (cons (C.Float (F.Double 0)))
+  assign name ref
+  return ()
+  -- assign name (cons (C.Float (F.Double 0))) -- return () -- [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
+llvmCodegen name (mexpExp -> One)           = undefined -- [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
+llvmCodegen name (mexpExp -> Delta i j)     = undefined -- [ CIf cond  stru (Just sfal) nodeinfo ]
   where cond = mkBinary (mkVar i) CEqOp (mkVar j)
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-llvmPrint' name (mexpExp -> Var v)         = [ mkExpr (mkAssign name rhs) ] 
+llvmCodegen name (mexpExp -> Var v)         = undefined -- [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
                 Simple s -> mkVar s
                 Indexed s is -> mkIVar s is
-llvmPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
-llvmPrint' name (mexpExp -> S.Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
+llvmCodegen name (mexpExp -> Val n)         = undefined -- [ mkExpr (mkAssign name (mkConst (mkF n))) ]
+llvmCodegen name (mexpExp -> S.Add hs)        = return () -- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs
-llvmPrint' name (mexpExp -> S.Mul hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
+llvmCodegen name (mexpExp -> S.Mul hs)        = return () -- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
   where lst = map (mkVar . hVar) hs
-llvmPrint' name (mexpExp -> Fun sym hs)    = [ mkExpr (mkAssign name (mkCall sym lst)) ]
+llvmCodegen name (mexpExp -> Fun sym hs)    = return () -- [ mkExpr (mkAssign name (mkCall sym lst)) ]
   where lst = map (mkVar . hVar) hs
-llvmPrint' name (MExp (Sum is h1) m i)     = [ mkExpr (mkAssign name (mkConst (mkF 0)))
-                                          , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
+llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
+                                          -- , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
+  {-
   where v = justLookup h1 m
         h_result = untrie ?expHash (mexpExp v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
@@ -421,10 +428,22 @@ llvmPrint' name (MExp (Sum is h1) m i)     = [ mkExpr (mkAssign name (mkConst (m
         innerstmt =
           mkCompound $  
             decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
-
+  -}
         
-llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit
-llvmAST name syms v = 
+llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM () -- CTranslUnit
+llvmAST name syms v = define double name [] $ do  
+                        llvmCodegen name' v
+                        {- let ref = AST.Name name' -}
+                        -- let ref = local (AST.Name name') 
+                        --res <- load ref
+                        ref <- getvar name'
+                        -- ret res
+                        val <- load ref
+                        ret val -- (cons (C.Float (F.Double 0))) 
+  where h_result = getMHash v
+        name' = hVar h_result
+  -- return ()
+{-
   let h_result = untrie ?expHash (mexpExp v)
       (hashmap,table,depgraph) = mkDepGraphNoSum v
       bmap = HM.insert h_result v (mexpMap v)
@@ -433,9 +452,11 @@ llvmAST name syms v =
       decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
       bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
       bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
-  in CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
+  in return () -- CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
+-}
 
+{- 
 llvmPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
 llvmPrint name syms v = let ctu = llvmAST name syms v in (putStrLn . render . pretty) ctu
-
+-}
 

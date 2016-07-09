@@ -39,7 +39,7 @@ passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 runJIT :: AST.Module -> IO (Either String AST.Module)
 runJIT mod = do
   withContext $ \context ->
-    jit context $ \executionEngine ->
+    jit context $ \executionEngine -> do
       runExceptT $ withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
@@ -47,7 +47,7 @@ runJIT mod = do
           optmod <- moduleAST m
           s <- moduleLLVMAssembly m
           putStrLn s
-
+          
           EE.withModuleInEngine executionEngine m $ \ee -> do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
@@ -57,4 +57,6 @@ runJIT mod = do
               Nothing -> return ()
 
           -- Return the optimized module
-          return optmod
+          return optmod 
+      --print r
+      --return r

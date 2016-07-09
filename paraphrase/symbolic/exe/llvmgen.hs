@@ -1,11 +1,17 @@
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE TypeOperators #-}
 
+import           Data.Hashable
+import           Data.MemoTrie
 
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Float as F
 import qualified LLVM.General.AST.Constant as C
 
-import Symbolic.CodeGen.LLVM.JIT
-import Symbolic.CodeGen.LLVM.Lang
+import           Symbolic.CodeGen.LLVM.JIT
+import           Symbolic.CodeGen.LLVM.Lang
+import           Symbolic.Predefined
+import           Symbolic.Type
 
 {-
 
@@ -22,14 +28,27 @@ entry:
 initModule :: AST.Module
 initModule = emptyModule "my cool jit"
 
+
+exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp1 = zero
+
+
+exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp2 = power 3 x -- power 10 (x `add'` y)
+
+{- 
 logic = do
   define double "main" [] $ do
     let a = cons $ C.Float (F.Double 10)
     let b = cons $ C.Float (F.Double 20)
     res <- fadd a b
     ret res
+-}
+
 
 main = do
-  let ast = runLLVM initModule logic
+  let ?expHash = trie hash
+  let ast = runLLVM initModule (llvmAST "main" [] exp1)
+  print ast
   runJIT ast
   return ast
