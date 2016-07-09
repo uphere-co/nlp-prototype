@@ -1,6 +1,8 @@
 { pkgs ? (import <nixpkgs>{}) }:
 
 with pkgs;
+#with import <nixpkgs/pkgs/development/haskell-modules/lib.nix> { inherit pkgs; };
+
 
 let 
     hsconfig = self: super: {
@@ -195,10 +197,11 @@ let
               lbfgs
               MemoTrie lens
               language-c containers
+	      llvm-general
             ]);
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv cudatoolkit graphviz ];
+     buildInputs = [ hsenv cudatoolkit graphviz llvm_35];
      shellHook = ''
        export CUDA_PATH=${pkgs.cudatoolkit}
      '';

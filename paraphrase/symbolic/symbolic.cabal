@@ -72,9 +72,34 @@ Executable trie
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
                         hashable,
+                        llvm-general,
                         MemoTrie,
                         transformers,
                         unordered-containers,
                         vector,
                         --
                         symbolic
+
+-- Executable llvmgen
+--   Main-is:              llvmgen.hs
+--   hs-source-dirs:       exe
+
+--   other-modules:       
+--   ghc-options:          -Wall -O2
+--                         -threaded
+--                         -funbox-strict-fields
+
+--   ghc-prof-options:     -auto-all
+--   extra-libraries:     
+--   c-sources:            
+                        
+--   build-depends:        base                            >= 4.7 && < 4.9,
+--                         --
+--                         containers,
+--                         llvm-general,
+--                         llvm-general-pure,
+--                         mtl,
+--                         transformers,
+--                         --
+--                         symbolic
+                        
