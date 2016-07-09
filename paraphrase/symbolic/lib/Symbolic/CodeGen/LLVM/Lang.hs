@@ -136,7 +136,7 @@ data CodegenState
     currentBlock :: AST.Name                     -- Name of the active block to append to
   , blocks       :: Map.Map AST.Name BlockState  -- Blocks for function
   , symtab       :: SymbolTable              -- Function scope symbol table
-  , symval       :: SymbolTable              -- Function scope symbol-value table
+  -- , symval       :: SymbolTable              -- Function scope symbol-value table
   , blockCount   :: Int                      -- Count of basic blocks
   , count        :: Word                     -- Count of unnamed instructions
   , names        :: Names                    -- Name Supply
@@ -175,7 +175,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] [] 1 0 Map.empty
+emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] {- [] -} 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -342,18 +342,11 @@ uncurry3 f (a,b,c) = f a b c
   
 hVar h = printf "x%x" h
 
-mkAssign name val = do
-  -- ref <- alloca double
-  -- store ref val
-  assign name val -- ref
-  return ()
+mkAssign name val = assign name val >> return ()
 
 cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
 
-mkOp op h val = do 
-  val' <- getval (hVar h)
-  -- val' <- load ref'
-  op val val'
+mkOp op h val = getval (hVar h) >>= op val
 
 mkAdd = mkOp fadd
 mkMul = mkOp fmul
@@ -361,10 +354,8 @@ mkMul = mkOp fmul
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
   val1 <- getval (hVar h)
-  -- ref <- alloca double
   v' <- foldrM op val1 hs
-  -- store ref v'
-  assign name v' -- ref
+  assign name v'
   return ()
 
   
@@ -399,13 +390,11 @@ llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign na
             decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
   -}
         
-llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM () -- CTranslUnit
+llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
                         body
-                        -- ref <- getval name'
-                        -- val <- load ref
-                        ret =<< getval name' -- val
+                        ret =<< getval name' 
   where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
