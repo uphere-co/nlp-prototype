@@ -52,7 +52,7 @@ main = do
   let ?expHash = trie hash
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [Simple "x"] exp2
-              external double "sin" [(double, AST.Name "x")] 
+              -- external double "sin" [(double, AST.Name "x")] 
               define double "main" [] $ do
                 res <- call (externf (AST.Name "fun1")) [ cons (C.Float (F.Double 10)) ]
                 ret res 

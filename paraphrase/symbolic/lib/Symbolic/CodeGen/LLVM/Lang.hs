@@ -136,6 +136,7 @@ data CodegenState
     currentBlock :: AST.Name                     -- Name of the active block to append to
   , blocks       :: Map.Map AST.Name BlockState  -- Blocks for function
   , symtab       :: SymbolTable              -- Function scope symbol table
+  , symval       :: SymbolTable              -- Function scope symbol-value table
   , blockCount   :: Int                      -- Count of basic blocks
   , count        :: Word                     -- Count of unnamed instructions
   , names        :: Names                    -- Name Supply
@@ -174,7 +175,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] [] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -257,6 +258,19 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
+
+getval :: String -> Codegen Operand
+getval var = do
+  s <- get
+  let symvs = symval s
+  case lookup var symvs of
+    Just v -> return v
+    Nothing -> do 
+      ref <- getvar var
+      val <- load ref
+      modify (\s -> s { symval = (var,val):symvs})
+      return val
+
 -------------------------------------------------------------------------------
 
 -- References
@@ -320,105 +334,33 @@ phi ty incoming = instr $ Phi ty incoming []
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
 
-
-
 -----------------------
 
 uncurry3 f (a,b,c) = f a b c 
   
-pos = position 0 "test" 0 0
-
-nodeinfo = OnlyPos pos (pos,0)
-
-ident name = Ident name 0 nodeinfo
-
-ptr = CPtrDeclr [] nodeinfo
-
-data Const = IConst Int
-           | FConst Double
-
-mkI = IConst
-mkF = FConst
-
-mkConst (IConst i) = CConst (CIntConst (cInteger (fromIntegral i)) nodeinfo)
-mkConst (FConst f) = CConst (CFloatConst (readCFloat (show f)) nodeinfo)
-
-
-mkDecl typ ptrnum name mv =
-  let cdeclr = CDeclr (Just (ident name)) (replicate ptrnum ptr) Nothing [] nodeinfo
-      typespec = CTypeSpec (typ nodeinfo)
-      mv' = fmap (\v -> CInitExpr (mkConst v) nodeinfo) mv
-  in CDecl [typespec] [(Just cdeclr,mv',Nothing)] nodeinfo
-
-mkDblVarDecl str = mkDecl CDoubleType 0 str (Just (mkF 0))
-
-mkCFunction typ name decllst bodylst =
-  let typspec  = CTypeSpec (typ nodeinfo)
-      fun = CFunDeclr (Right (decllst,False)) [] nodeinfo
-      cdeclr = CDeclr (Just (ident name)) [fun] Nothing [] nodeinfo
-      ccompound = CCompound [] bodylst  nodeinfo
-  in CFunDef [typspec] cdeclr [] ccompound nodeinfo
-
-mkArgs = map mkArg
- where mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
-       mkArg (Indexed s is) = mkDecl CDoubleType (length is) s Nothing
-
-
-
-mkFor name start end stmts =
- CFor (Right (mkDecl CIntType 0 name (Just (mkI start))))
-      (Just (mkBinary (mkVar name) CLeqOp (mkConst (mkI end))))
-      (Just (mkUnary name CPostIncOp))
-      stmts nodeinfo
-
-mkVar name = CVar (ident name) nodeinfo
-
-mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar name) is
-
-mkUnary name op = CUnary op (mkVar name) nodeinfo
- 
-mkBinary x op y = CBinary op x y nodeinfo
-
--- mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
-
-mkAssignAdd name value = CAssign CAddAssOp (mkVar name) value nodeinfo
-
-mkExpr exp = CExpr (Just exp) nodeinfo 
-mkCompound stmts = CCompound [] stmts nodeinfo 
-
-mkCall sym lst = CCall (mkVar sym) lst nodeinfo
-
-mkReturn exp = CReturn (Just exp) nodeinfo
-
 hVar h = printf "x%x" h
-
 
 mkAssign name val = do
   ref <- alloca double
-  store ref val 
+  store ref val
   assign name ref
   return ()
 
 cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
 
 mkOp op h val = do 
-  -- val <- load ref
-  ref' <- getvar (hVar h)
-  val' <- load ref'
+  val' <- getval (hVar h)
+  -- val' <- load ref'
   op val val'
-  -- r_val <- op val val'
-  --- store ref r_val
-  -- return ref
 
 mkAdd = mkOp fadd
 mkMul = mkOp fmul
 
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
-  ref1 <- getvar (hVar h)
-  val1 <- load ref1
+  val1 <- getval (hVar h)
   ref <- alloca double
-  v' <- foldrM op val1  hs
+  v' <- foldrM op val1 hs
   store ref v'
   assign name ref
   return ()
@@ -438,8 +380,7 @@ llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
-llvmCodegen name (mexpExp -> Fun sym hs)    = return () -- [ mkExpr (mkAssign name (mkCall sym lst)) ]
-  where lst = map (mkVar . hVar) hs
+llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
 llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
                                           -- , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
   {-
@@ -459,7 +400,6 @@ llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign na
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM () -- CTranslUnit
 llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
-                        -- llvmCodegen name' v
                         body
                         ref <- getvar name'
                         val <- load ref
@@ -471,17 +411,4 @@ llvmAST name syms v = define double name symsllvm $ do
         hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
         es_ordered = map (flip justLookup bmap) hs_ordered
         body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
-  -- return ()
-{-
-  let 
-      decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
-      bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
-      bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
-  in return () -- CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
--}
-
-{- 
-llvmPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
-llvmPrint name syms v = let ctu = llvmAST name syms v in (putStrLn . render . pretty) ctu
--}
 
