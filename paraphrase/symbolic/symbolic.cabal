@@ -43,7 +43,7 @@ Library
                         
 
   Exposed-modules:
-                        Symbolic.CodeGen
+                        Symbolic.CodeGen.C
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined

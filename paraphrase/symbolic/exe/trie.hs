@@ -22,7 +22,7 @@ import           Data.Vector.Storable       (Vector(..),Storable(..),(!))
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
-import           Symbolic.CodeGen
+import           Symbolic.CodeGen.C
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Predefined
