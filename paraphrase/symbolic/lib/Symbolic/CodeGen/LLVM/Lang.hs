@@ -7,6 +7,7 @@
 
 module Symbolic.CodeGen.LLVM.Lang where
 
+import Data.Foldable ( foldrM )
 import Data.Word
 import Data.String
 import Data.List
@@ -391,11 +392,34 @@ mkReturn exp = CReturn (Just exp) nodeinfo
 
 hVar h = printf "x%x" h
 
-cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
 
 mkAssign name val = do
   ref <- alloca double
   store ref val 
+  assign name ref
+  return ()
+
+cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
+
+mkOp op h val = do 
+  -- val <- load ref
+  ref' <- getvar (hVar h)
+  val' <- load ref'
+  op val val'
+  -- r_val <- op val val'
+  --- store ref r_val
+  -- return ref
+
+mkAdd = mkOp fadd
+mkMul = mkOp fmul
+
+cgen4fold name op ini [] = cgen4Const name ini
+cgen4fold name op ini (h:hs) = do
+  ref1 <- getvar (hVar h)
+  val1 <- load ref1
+  ref <- alloca double
+  v' <- foldrM op val1  hs
+  store ref v'
   assign name ref
   return ()
 
@@ -412,24 +436,8 @@ llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs
                 Simple s -> s -- mkVar s
                 -- Indexed s is -> mkIVar s is
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
--- llvmCodegen name (mexpExp -> S.Add hs)      = return ()
--- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
---  where lst = map (mkVar . hVar) hs
-llvmCodegen name (mexpExp -> S.Add [h1,h2]) = do
-  ref <- alloca double
-  let n1 = hVar h1
-      n2 = hVar h2
-  ref1 <- getvar n1
-  val1 <- load ref1 
-  ref2 <- getvar n2
-  val2 <- load ref2
-  val <- fadd val1 val2
-  store ref val
-  assign name ref
-  return ()
-  
-llvmCodegen name (mexpExp -> S.Mul hs)        = return () -- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
-  where lst = map (mkVar . hVar) hs
+llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
+llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
 llvmCodegen name (mexpExp -> Fun sym hs)    = return () -- [ mkExpr (mkAssign name (mkCall sym lst)) ]
   where lst = map (mkVar . hVar) hs
 llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
