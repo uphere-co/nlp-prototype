@@ -30,11 +30,12 @@ initModule = emptyModule "my cool jit"
 
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp1 = zero
+exp1 = add [val 1,val 3] -- val 3 -- zero
 
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 3 x -- power 10 (x `add'` y)
+
 
 {- 
 logic = do
@@ -48,7 +49,12 @@ logic = do
 
 main = do
   let ?expHash = trie hash
-  let ast = runLLVM initModule (llvmAST "main" [] exp1)
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [Simple "x"] exp1
+              external double "sin" [(double, AST.Name "x")] 
+              define double "main" [] $ do
+                res <- call (externf (AST.Name "fun1")) [ cons (C.Float (F.Double 10)) ]
+                ret res 
   print ast
   runJIT ast
   return ast

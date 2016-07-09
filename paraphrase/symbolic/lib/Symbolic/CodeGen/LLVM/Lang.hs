@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -377,7 +378,7 @@ mkUnary name op = CUnary op (mkVar name) nodeinfo
  
 mkBinary x op y = CBinary op x y nodeinfo
 
-mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
+-- mkAssign name value = CAssign CAssignOp (mkVar name) value nodeinfo
 
 mkAssignAdd name value = CAssign CAddAssOp (mkVar name) value nodeinfo
 
@@ -390,26 +391,43 @@ mkReturn exp = CReturn (Just exp) nodeinfo
 
 hVar h = printf "x%x" h
 
-llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
-llvmCodegen name (mexpExp -> Zero)          = do
+cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
+
+mkAssign name val = do
   ref <- alloca double
-  -- named name ref
-  store ref (cons (C.Float (F.Double 0)))
+  store ref val 
   assign name ref
   return ()
-  -- assign name (cons (C.Float (F.Double 0))) -- return () -- [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
-llvmCodegen name (mexpExp -> One)           = undefined -- [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
-llvmCodegen name (mexpExp -> Delta i j)     = undefined -- [ CIf cond  stru (Just sfal) nodeinfo ]
-  where cond = mkBinary (mkVar i) CEqOp (mkVar j)
-        stru = mkExpr (mkAssign name (mkConst (mkI 1)))
-        sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-llvmCodegen name (mexpExp -> Var v)         = undefined -- [ mkExpr (mkAssign name rhs) ] 
+
+  
+llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
+llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
+llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
+llvmCodegen name (mexpExp -> Delta i j)     = return () -- [ CIf cond  stru (Just sfal) nodeinfo ]
+  -- where cond = mkBinary (mkVar i) CEqOp (mkVar j)
+  --       stru = mkExpr (mkAssign name (mkConst (mkI 1)))
+  --       sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs))
   where rhs = case v of
-                Simple s -> mkVar s
-                Indexed s is -> mkIVar s is
-llvmCodegen name (mexpExp -> Val n)         = undefined -- [ mkExpr (mkAssign name (mkConst (mkF n))) ]
-llvmCodegen name (mexpExp -> S.Add hs)        = return () -- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
-  where lst = map (mkVar . hVar) hs
+                Simple s -> s -- mkVar s
+                -- Indexed s is -> mkIVar s is
+llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
+-- llvmCodegen name (mexpExp -> S.Add hs)      = return ()
+-- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
+--  where lst = map (mkVar . hVar) hs
+llvmCodegen name (mexpExp -> S.Add [h1,h2]) = do
+  ref <- alloca double
+  let n1 = hVar h1
+      n2 = hVar h2
+  ref1 <- getvar n1
+  val1 <- load ref1 
+  ref2 <- getvar n2
+  val2 <- load ref2
+  val <- fadd val1 val2
+  store ref val
+  assign name ref
+  return ()
+  
 llvmCodegen name (mexpExp -> S.Mul hs)        = return () -- [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
   where lst = map (mkVar . hVar) hs
 llvmCodegen name (mexpExp -> Fun sym hs)    = return () -- [ mkExpr (mkAssign name (mkCall sym lst)) ]
@@ -431,24 +449,23 @@ llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign na
   -}
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM () -- CTranslUnit
-llvmAST name syms v = define double name [] $ do  
-                        llvmCodegen name' v
-                        {- let ref = AST.Name name' -}
-                        -- let ref = local (AST.Name name') 
-                        --res <- load ref
+llvmAST name syms v = define double name symsllvm $ do
+                        let name' = hVar h_result
+                        -- llvmCodegen name' v
+                        body
                         ref <- getvar name'
-                        -- ret res
                         val <- load ref
-                        ret val -- (cons (C.Float (F.Double 0))) 
-  where h_result = getMHash v
-        name' = hVar h_result
+                        ret val
+  where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
+        h_result = getMHash v
+        bmap = HM.insert h_result v (mexpMap v)
+        (hashmap,table,depgraph) = mkDepGraphNoSum v
+        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        es_ordered = map (flip justLookup bmap) hs_ordered
+        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
   -- return ()
 {-
-  let h_result = untrie ?expHash (mexpExp v)
-      (hashmap,table,depgraph) = mkDepGraphNoSum v
-      bmap = HM.insert h_result v (mexpMap v)
-      hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
-      es_ordered = map (flip justLookup bmap) hs_ordered
+  let 
       decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
       bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
       bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]

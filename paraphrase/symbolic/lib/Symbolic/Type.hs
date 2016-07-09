@@ -31,6 +31,18 @@ data Symbol = Simple String
             | Indexed String [Index]
             deriving (Show, Eq)
 
+isSimple :: Symbol -> Bool
+isSimple (Simple _) = True
+isSimple _          = False
+
+isIndexed :: Symbol -> Bool
+isIndexed (Indexed _ _) = True
+isIndexed _             = False
+
+varName (Simple v) = v
+varName (Indexed v _) = v
+
+
 showSym (Simple str) = str
 showSym (Indexed x k) = x ++ "_" ++ concat k
 
