@@ -379,11 +379,15 @@ mkMul = mkOp fmul
 -- false = cons $ C.Float (F.Double 0.0)
 -- true = cons $ C.Float (F.Double 1.0)
 
-fzero = cons $ C.Float (F.Double 0.0)
-fone  = cons $ C.Float (F.Double 1.0)
+fval v = cons $ C.Float (F.Double v)
 
-izero = cons $ C.Int 64 0 
-ione  = cons $ C.Int 64 1
+fzero = fval 0
+fone  = fval 1
+
+ival v = cons $ C.Int 64 v
+
+izero = ival 0
+ione = ival 1
 
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
@@ -425,11 +429,12 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
 llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
   -- let arr = local (AST.Name s)
-  let arr = LocalReference (ptr (arrtype double 10)) (AST.Name "y")
-  v <- fadd fzero arr
+  -- let arr = LocalReference (ptr (arrtype double 10)) (AST.Name "y")
+  let arr = LocalReference (ptr double) (AST.Name "y")  --test
+  -- v <- fadd fzero arr
   let [(i,il,ih)] = is
       idx1 = local (AST.Name i) 
-  ptr <- getElementPtr arr [ izero, idx1 ]
+  ptr <- getElementPtr arr [idx1] -- [ izero, idx1 ]
   val <- load ptr
   
   assign name val
@@ -472,7 +477,9 @@ llvmAST name syms v = define double name symsllvm $ do
                        , (ptr (arrtype double 10),AST.Name "y")
                        ] -}
         symsllvm = [ (i64, AST.Name ("i"))
-                   , (ptr (arrtype double 10), AST.Name "y") ]
+                   -- , (ptr (arrtype double 10), AST.Name "y")
+                   , (ptr double, AST.Name "y")
+                   ]
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v

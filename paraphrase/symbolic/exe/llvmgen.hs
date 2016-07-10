@@ -39,12 +39,14 @@ main = do
               external double "sin" [(double, AST.Name "x")] 
               define double "main" [] $ do
                 yref <- alloca (arrtype double 10)
-                ptr <- getElementPtr yref [ izero, ione ] 
-                store ptr fone
-                
-                res <- call (externf (AST.Name "fun1")) [ ione, yref ]
+                let setarr arr (n,v) = do
+                      ptr <- getElementPtr arr [ ival 0, ival n ]
+                      store ptr (fval v)
+                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10]
 
-                  -- cons (C.Float (F.Double 10)) ]
+                
+                res <- call (externf (AST.Name "fun1")) [ ival 5, yref ]
+
                 ret res 
   runJIT ast
   return ast
