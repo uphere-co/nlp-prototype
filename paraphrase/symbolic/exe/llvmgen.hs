@@ -28,9 +28,15 @@ exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = add [ x , delta "i" "j", delta "k" "l" ] 
 
 exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] --  add [ y_ [("i",1,2)], one ]
+exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
-main = do
+exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp5 = add [ sum_ [("i",0,3)] zero , zero ]
+
+-- add [ zero , y_ [("i",0,3),("j",1,2)] ] 
+
+
+main' = do
   let ?expHash = trie hash
   -- putStr "pow(10,x) = "
   prettyPrintR exp4
@@ -50,3 +56,24 @@ main = do
                 ret res 
   runJIT ast
   return ast
+
+main = do
+  let ?expHash = trie hash
+  -- putStr "pow(10,x) = "
+  prettyPrintR exp5
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [] exp5
+              define double "main" [] $ do
+{-                 yref <- alloca (arrtype double 10)
+                let setarr arr (n,v) = do
+                      ptr <- getElementPtr arr [ ival 0, ival n ]
+                      store ptr (fval v)
+                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10] -}
+
+                
+                res <- call (externf (AST.Name "fun1")) [ ]
+
+                ret res 
+  runJIT ast
+  return ast
+

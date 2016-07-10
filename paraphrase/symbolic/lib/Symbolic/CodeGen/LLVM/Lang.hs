@@ -409,22 +409,44 @@ cgencond label cond tr fl = do
   ifthen <- addBlock (label ++ ".then")
   ifelse <- addBlock (label ++ ".else")
   ifexit <- addBlock (label ++ ".exit")
-
+  --
   condval <- cond
   cbr condval ifthen ifelse
-
+  --
   setBlock ifthen
   trval <- tr
   br ifexit
   ifthen <- getBlock
-
+  --
   setBlock ifelse
   flval <- fl
   br ifexit
   ifelse <- getBlock
-
+  --
   setBlock ifexit
   phi double [(trval,ifthen), (flval,ifelse)]
+
+cgenfor :: String -> Index -> Codegen () -> Codegen ()
+cgenfor label (ivar,start,end) body = do
+  forloop <- addBlock (label ++ ".loop")
+  forexit <- addBlock (label ++ ".exit")
+  --
+  iref <- alloca i64
+  store iref (ival start)
+  assign ivar iref
+  br forloop
+  --
+  setBlock forloop
+  body
+  i <- load iref
+  i' <- iadd i (ival 1)
+  store iref i'
+  --
+  test <- icmp IP.ULE i' (ival end)
+  cbr test forloop forexit
+  --
+  setBlock forexit
+  return ()  
 
   
 llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
@@ -436,7 +458,7 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
 llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
-  let arr = LocalReference (ptr double) (AST.Name s)  --test
+  let arr = LocalReference (ptr double) (AST.Name s)
       factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
   indices <- mapM (\(i,s,_) -> let x = local (AST.Name i) in if s == 0 then return x else isub x (ival s)) is
   (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
@@ -446,17 +468,30 @@ llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
   val <- load ptr
   assign name val
   return ()
-
-
-{-
-  where rhs = case v of
-                Simple s -> s -- mkVar s
-                Indexed s is -> mkIVar s is -}
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
 llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
-llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
+llvmCodegen name (MExp (Sum is h1) m i)     = do
+  sumref <- alloca double
+  store sumref (fval 0)
+  
+  cgenfor "for" ("ii",0,9) $ do
+    iref <- getvar "ii"
+    i <- load iref
+    s <- load sumref
+    s' <- fadd s (fval 1)
+    store sumref s'
+    return ()
+  -- cgen4Const name 0
+
+
+  rval <- load sumref
+  assign name rval
+
+
+
+  -- return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
                                           -- , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
   {-
   where v = justLookup h1 m
