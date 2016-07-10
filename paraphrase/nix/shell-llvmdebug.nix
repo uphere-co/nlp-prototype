@@ -182,18 +182,14 @@ let
         }) {};
     };
     
-    newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
+    newhaskellPackages = haskell.packages.ghc7103.override { overrides = hsconfig; };
     
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
-              xml-conduit split unordered-containers vector-algorithms storable-tuple
+              xml-conduit split unordered-containers #vector-algorithms
+	      storable-tuple
               tagged either
-              #accelerate
-              #accelerate-io
-              #accelerate-cuda
               mersenne-random
               math-functions
-              #cuda
-              #cublas
               hblas
               lbfgs
               MemoTrie lens
@@ -209,10 +205,7 @@ let
 
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv cudatoolkit graphviz llvm_35
-                     #llvmPackages_35.lldb
-		   ];
+     buildInputs = [ hsenv graphviz llvm_35_debug ];
      shellHook = ''
-       export CUDA_PATH=${pkgs.cudatoolkit}
      '';
    }

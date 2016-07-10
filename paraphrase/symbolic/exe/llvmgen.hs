@@ -27,16 +27,24 @@ exp2 = power 10 x -- power 10 (x `add'` y)
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = add [ x , delta "i" "j", delta "k" "l" ] 
 
+exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp4 = add [ one , y_ [("i",1,2)] ] --  add [ y_ [("i",1,2)], one ]
 
 main = do
   let ?expHash = trie hash
   -- putStr "pow(10,x) = "
-  prettyPrintR exp3
+  prettyPrintR exp4
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [Simple "x"] exp3
+              llvmAST "fun1" [Indexed "y" [("i",1,2)] ] exp4
               external double "sin" [(double, AST.Name "x")] 
               define double "main" [] $ do
-                res <- call (externf (AST.Name "sin")) [ cons (C.Float (F.Double 10)) ]
+                yref <- alloca (arrtype double 10)
+                ptr <- getElementPtr yref [ izero, ione ] 
+                store ptr fone
+                
+                res <- call (externf (AST.Name "fun1")) [ ione, yref ]
+
+                  -- cons (C.Float (F.Double 10)) ]
                 ret res 
   runJIT ast
   return ast

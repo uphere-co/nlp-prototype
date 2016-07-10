@@ -7,6 +7,9 @@
 
 module Symbolic.CodeGen.LLVM.Lang where
 
+import Control.Monad.State
+import Control.Applicative
+
 import Data.Foldable ( foldrM )
 import Data.Word
 import Data.String
@@ -14,8 +17,6 @@ import Data.List
 import Data.Function
 import qualified Data.Map as Map
 
-import Control.Monad.State
-import Control.Applicative
 
 import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
                         , Terminator(..), Definition(..)
@@ -31,8 +32,8 @@ import qualified LLVM.General.AST.Constant               as C
 import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
 import qualified LLVM.General.AST.IntegerPredicate       as IP
-import           LLVM.General.AST.Type                           ( double, i64 )
-
+import           LLVM.General.AST.Type                           ( double, i64, ptr)
+import qualified LLVM.General.AST.Type                   as T    ( void ) 
 -----
 
 import           Control.Lens                    (view, _1)
@@ -114,6 +115,9 @@ external retty label argtys = addDefn $
 
 -- int64 :: Type
 -- int64 = Int64
+
+arrtype :: Type -> Int -> Type 
+arrtype typ n = ArrayType (fromIntegral n) typ
 
 -------------------------------------------------------------------------------
 -- Names
@@ -338,6 +342,12 @@ store ptr val = instr $ Store False ptr val Nothing 0 []
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
 
+-- Array
+getElementPtr :: Operand -> [Operand] -> Codegen Operand
+getElementPtr arr is = instr $ GetElementPtr True arr is []
+
+
+
 -- Control Flow
 br :: AST.Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
@@ -372,6 +382,8 @@ mkMul = mkOp fmul
 fzero = cons $ C.Float (F.Double 0.0)
 fone  = cons $ C.Float (F.Double 1.0)
 
+izero = cons $ C.Int 64 0 
+ione  = cons $ C.Int 64 1
 
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
@@ -410,10 +422,25 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
   x <- cgencond ("delta"++i++j) (icmp IP.EQ (idxval i) (idxval j)) (return fone) (return fzero)
   assign name x
   return () 
-llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs))
+llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
+llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
+  -- let arr = local (AST.Name s)
+  let arr = LocalReference (ptr (arrtype double 10)) (AST.Name "y")
+  v <- fadd fzero arr
+  let [(i,il,ih)] = is
+      idx1 = local (AST.Name i) 
+  ptr <- getElementPtr arr [ izero, idx1 ]
+  val <- load ptr
+  
+  assign name val
+  -- assign name v
+  return ()
+
+
+{-
   where rhs = case v of
                 Simple s -> s -- mkVar s
-                -- Indexed s is -> mkIVar s is
+                Indexed s is -> mkIVar s is -}
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
@@ -439,9 +466,13 @@ llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
                         body
                         ret =<< getval name' 
-  where symsllvm = (map ((double,) . AST.Name . varName ). filter isSimple $ syms)
-                    ++ [(i64,AST.Name "i"),(i64,AST.Name "j")
-                       ,(i64,AST.Name "k"),(i64,AST.Name "l")]
+  where {- symsllvm = (map ((double,) . AST.Name . varName ). filter isSimple $ syms)
+                    ++ [ (i64,AST.Name "i"), (i64,AST.Name "j")
+                       , (i64,AST.Name "k"), (i64,AST.Name "l")
+                       , (ptr (arrtype double 10),AST.Name "y")
+                       ] -}
+        symsllvm = [ (i64, AST.Name ("i"))
+                   , (ptr (arrtype double 10), AST.Name "y") ]
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
