@@ -30,6 +30,8 @@ import qualified LLVM.General.AST.CallingConvention      as CC
 import qualified LLVM.General.AST.Constant               as C
 import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+import qualified LLVM.General.AST.IntegerPredicate       as IP
+import           LLVM.General.AST.Type                           ( double, i64 )
 
 -----
 
@@ -107,8 +109,11 @@ external retty label argtys = addDefn $
 -------------------------------------------------------------------------------
 
 -- IEEE 754 double
-double :: Type
-double = FloatingPointType 64 IEEE
+-- double :: Type
+-- double = FloatingPointType 64 IEEE
+
+-- int64 :: Type
+-- int64 = Int64
 
 -------------------------------------------------------------------------------
 -- Names
@@ -279,6 +284,10 @@ getval = getvar
 local :: AST.Name -> Operand
 local = LocalReference double
 
+idxval :: IndexSymbol -> Operand
+idxval = LocalReference i64 . AST.Name
+
+
 global :: AST.Name -> C.Constant
 global = C.GlobalReference double
 
@@ -292,6 +301,9 @@ fadd a b = instr $ FAdd NoFastMathFlags a b []
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr $ FSub NoFastMathFlags a b []
 
+sub :: Operand -> Operand -> Codegen Operand
+sub a b = instr $ Sub False False a b []
+
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr $ FMul NoFastMathFlags a b []
 
@@ -300,6 +312,9 @@ fdiv a b = instr $ FDiv NoFastMathFlags a b []
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr $ FCmp cond a b []
+
+icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+icmp cond a b = instr $ ICmp cond a b [] 
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand
@@ -351,6 +366,13 @@ mkOp op h val = getval (hVar h) >>= op val
 mkAdd = mkOp fadd
 mkMul = mkOp fmul
 
+-- false = cons $ C.Float (F.Double 0.0)
+-- true = cons $ C.Float (F.Double 1.0)
+
+fzero = cons $ C.Float (F.Double 0.0)
+fone  = cons $ C.Float (F.Double 1.0)
+
+
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
   val1 <- getval (hVar h)
@@ -358,14 +380,36 @@ cgen4fold name op ini (h:hs) = do
   assign name v'
   return ()
 
+cgencond :: String -> Codegen Operand -> Codegen Operand -> Codegen Operand -> Codegen Operand
+cgencond label cond tr fl = do
+  ifthen <- addBlock (label ++ ".then")
+  ifelse <- addBlock (label ++ ".else")
+  ifexit <- addBlock (label ++ ".exit")
+
+  condval <- cond
+  cbr condval ifthen ifelse
+
+  setBlock ifthen
+  trval <- tr
+  br ifexit
+  ifthen <- getBlock
+
+  setBlock ifelse
+  flval <- fl
+  br ifexit
+  ifelse <- getBlock
+
+  setBlock ifexit
+  phi double [(trval,ifthen), (flval,ifelse)]
+
   
 llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
 llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
 llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
-llvmCodegen name (mexpExp -> Delta i j)     = return () -- [ CIf cond  stru (Just sfal) nodeinfo ]
-  -- where cond = mkBinary (mkVar i) CEqOp (mkVar j)
-  --       stru = mkExpr (mkAssign name (mkConst (mkI 1)))
-  --       sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+llvmCodegen name (mexpExp -> Delta i j)     = do
+  x <- cgencond ("delta"++i++j) (icmp IP.EQ (idxval i) (idxval j)) (return fone) (return fzero)
+  assign name x
+  return () 
 llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs))
   where rhs = case v of
                 Simple s -> s -- mkVar s
@@ -395,7 +439,9 @@ llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
                         body
                         ret =<< getval name' 
-  where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
+  where symsllvm = (map ((double,) . AST.Name . varName ). filter isSimple $ syms)
+                    ++ [(i64,AST.Name "i"),(i64,AST.Name "j")
+                       ,(i64,AST.Name "k"),(i64,AST.Name "l")]
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
