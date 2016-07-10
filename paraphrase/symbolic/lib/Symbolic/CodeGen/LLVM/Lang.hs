@@ -55,7 +55,7 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint hiding (double)
 --
-import           Symbolic.Predefined
+import           Symbolic.Predefined hiding (add)
 import           Symbolic.Print
 import           Symbolic.Type
 import qualified Symbolic.Type as S ( Exp(..))
@@ -302,14 +302,20 @@ externf = ConstantOperand . C.GlobalReference double
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr $ FAdd NoFastMathFlags a b []
 
+iadd :: Operand -> Operand -> Codegen Operand
+iadd a b = instr $ AST.Add False False a b []
+
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr $ FSub NoFastMathFlags a b []
 
-sub :: Operand -> Operand -> Codegen Operand
-sub a b = instr $ Sub False False a b []
+isub :: Operand -> Operand -> Codegen Operand
+isub a b = instr $ Sub False False a b []
 
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr $ FMul NoFastMathFlags a b []
+
+imul :: Operand -> Operand -> Codegen Operand
+imul a b = instr $ AST.Mul False False a b []
 
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr $ FDiv NoFastMathFlags a b []
@@ -379,12 +385,14 @@ mkMul = mkOp fmul
 -- false = cons $ C.Float (F.Double 0.0)
 -- true = cons $ C.Float (F.Double 1.0)
 
+fval :: Double -> Operand
 fval v = cons $ C.Float (F.Double v)
 
 fzero = fval 0
 fone  = fval 1
 
-ival v = cons $ C.Int 64 v
+ival :: Int -> Operand
+ival v = cons $ C.Int 64 (fromIntegral v)
 
 izero = ival 0
 ione = ival 1
@@ -428,17 +436,15 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
 llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
-  -- let arr = local (AST.Name s)
-  -- let arr = LocalReference (ptr (arrtype double 10)) (AST.Name "y")
-  let arr = LocalReference (ptr double) (AST.Name "y")  --test
-  -- v <- fadd fzero arr
-  let [(i,il,ih)] = is
-      idx1 = local (AST.Name i) 
-  ptr <- getElementPtr arr [idx1] -- [ izero, idx1 ]
+  let arr = LocalReference (ptr double) (AST.Name s)  --test
+      factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
+  indices <- mapM (\(i,s,_) -> let x = local (AST.Name i) in if s == 0 then return x else isub x (ival s)) is
+  (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
+                  indices factors 
+  theindex <- foldrM iadd i1 irest       
+  ptr <- getElementPtr arr [theindex]
   val <- load ptr
-  
   assign name val
-  -- assign name v
   return ()
 
 
@@ -477,6 +483,7 @@ llvmAST name syms v = define double name symsllvm $ do
                        , (ptr (arrtype double 10),AST.Name "y")
                        ] -}
         symsllvm = [ (i64, AST.Name ("i"))
+                   , (i64, AST.Name ("j"))
                    -- , (ptr (arrtype double 10), AST.Name "y")
                    , (ptr double, AST.Name "y")
                    ]
