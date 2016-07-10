@@ -154,24 +154,27 @@ test7 = do
 
 -}
 
+idxi = ("i",1,2)
+idxj = ("j",1,2)
+idxk = ("k",1,2)
+idxm = ("m",1,2)
+idxn = ("n",1,2)
+
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 3 x -- power 10 (x `add'` y)
 
 test2 :: IO ()
 test2 = do
     let ?expHash = trie hash
-    -- digraph exp1
-    -- digraph (expfib 100)
-    -- digraph exp1
     digraph (exp2 :: MExp Int)
 
 test8 :: IO ()
 test8 = do
   let ?expHash = trie hash
-  let e1 = add' [x_ ["i"], zero,  y_ ["i"], x_ ["j"], zero] 
+  let e1 = add' [x_ [idxi], zero,  y_ [idxi], x_ [idxj], zero] 
   printf "e1 = %s\n" ((prettyPrint . exp2RExp) (e1 ::  MExp Int) :: String)
 
-  let e2 = mul' [x_ ["i"], one,  y_ ["j"], x_ ["i"], one] 
+  let e2 = mul' [x_ [idxi], one,  y_ [idxj], x_ [idxi], one] 
   printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
   -- digraph e2
 
@@ -189,7 +192,7 @@ test9 = do
   let e1 = mul [delta "i" "m", delta "j" "n"]
       e2 = mul [delta "i" "n", delta "j" "m"]
       e3 = add [e1,e2]
-      e4 = mul [e3,x_ ["m","n"]]
+      e4 = mul [e3,x_ [idxm,idxn]]
   printf "e4 = %s\n"  ((prettyPrint . exp2RExp) (e4 ::  MExp Int) :: String)
 
   digraph e4
@@ -212,8 +215,8 @@ test11 = do
   let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
       e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
       e3 = add [e1,e2]
-      e4 = mul [e3,x_ ["m","n"]]
-      e5 = sum_ [("m",1,2),("n",1,2)] e4
+      e4 = mul [e3,x_ [idxm,idxn]]
+      e5 = sum_ [idxm,idxn] e4
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
   let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
       args = Args HM.empty (HM.fromList [("x",vals)])
@@ -244,12 +247,12 @@ test13 = do
       ?functionMap = HM.empty
 
   let exp0 :: MExp Double
-      exp0 = y_ ["m","n"]
+      exp0 = y_ [idxm,idxn]
       exp1 = delta "m" "n"      
-      exp2 = sum_ [("m",1,3)] (add' [exp0,exp1])
-      exp3 = mul' [ z_ ["k"], z_ ["k"] ]
-      exp4 = sum_ [("k",1,3)] exp3
-      exp5 = add' [ sum_ [("n",1,3)] (mul [exp2,  exp4]), x ] 
+      exp2 = sum_ [idxm] (add' [exp0,exp1])
+      exp3 = mul' [ z_ [idxk], z_ [idxk] ]
+      exp4 = sum_ [(idxk)] exp3
+      exp5 = add' [ sum_ [idxn] (mul [exp2,  exp4]), x ] 
 
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
@@ -258,7 +261,7 @@ test13 = do
   
   -- mapM_ (\(h,i)->printf "%x -> %s\n" h i) $ mkDepEdges4Index exp5
   
-  cPrint "testfunction" [Simple "x", Indexed "y" ["i","j"], Indexed "z" ["i"] ] exp5
+  cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
   
   
 main = test13 

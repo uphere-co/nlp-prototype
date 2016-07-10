@@ -113,7 +113,7 @@ cPrint' name (mexpExp -> Delta i j)     = [ CIf cond  stru (Just sfal) nodeinfo 
 cPrint' name (mexpExp -> Var v)         = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
                 Simple s -> mkVar s
-                Indexed s is -> mkIVar s is
+                Indexed s is -> mkIVar s (map (view _1) is)
 cPrint' name (mexpExp -> Val n)         = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (mexpExp -> Add hs)        = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs

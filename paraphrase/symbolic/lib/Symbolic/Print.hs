@@ -41,7 +41,7 @@ prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 endl = putStrLn ""
 
 
-showIdxSet :: [(Index,Int,Int)] -> String
+showIdxSet :: [Index] -> String
 showIdxSet = intercalate "," . map (view _1)
 
 dotPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
@@ -75,17 +75,3 @@ digraph v = do
     putStrLn "digraph G {"
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
-
-prettyPrintE :: (Show a, PrintfType r) => EExp a -> r
-prettyPrintE (EVal n) = printf "%s" (show n)
-prettyPrintE (EDelta t) = prettyPrintT t
-prettyPrintE (EAdd n t) = printf "(%s+%s)" (show n) (prettyPrintT t :: String)
-prettyPrintE (EAdd2 t1 t2) = printf "(%s+%s)" (prettyPrintT t1 :: String) (prettyPrintT t2 :: String)
-prettyPrintE (EMul n t) = printf "(%s*%s)" (show n) (prettyPrintT t :: String)
-prettyPrintE (EMul2 t1 t2) = printf "(%s*%s)" (prettyPrintT t1 :: String) (prettyPrintT t2 :: String)
-
-
-prettyPrintT :: (PrintfType r) => TDelta -> r
-prettyPrintT (TDelta2 i j) = printf "delta_%s%s" i j
-prettyPrintT (TDelta1 i n) = printf "delta_%s%d" i n
-
