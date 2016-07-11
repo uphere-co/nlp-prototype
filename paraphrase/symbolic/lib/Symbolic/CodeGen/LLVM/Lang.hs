@@ -1,8 +1,13 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 
-module Codegen where
+module Symbolic.CodeGen.LLVM.Lang where
 
+import Data.Foldable ( foldrM )
 import Data.Word
 import Data.String
 import Data.List
@@ -12,14 +17,49 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Applicative
 
-import LLVM.General.AST
-import LLVM.General.AST.Global
-import qualified LLVM.General.AST as AST
-
-import qualified LLVM.General.AST.Constant as C
-import qualified LLVM.General.AST.Attribute as A
-import qualified LLVM.General.AST.CallingConvention as CC
+import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
+                        , Terminator(..), Definition(..)
+                        , FastMathFlags(..), Module (..)
+                        , FloatingPointFormat(..)
+                        , defaultModule
+                        )
+import           LLVM.General.AST.Global
+import qualified LLVM.General.AST                        as AST
+import qualified LLVM.General.AST.Attribute              as A
+import qualified LLVM.General.AST.CallingConvention      as CC
+import qualified LLVM.General.AST.Constant               as C
+import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+
+-----
+
+import           Control.Lens                    (view, _1)
+-- import           Control.Monad.Trans.State
+import           Data.Array                      ((!))
+import qualified Data.Array                as A
+import           Data.Graph                      (topSort)
+import           Data.HashMap.Strict             (HashMap)
+import qualified Data.HashMap.Strict       as HM
+import           Data.HashSet                    (HashSet)
+import qualified Data.HashSet              as HS
+import           Data.List                       (foldl')
+import           Data.MemoTrie
+import           Language.C.Data
+import           Language.C.Data.Ident
+import           Language.C.Data.Position
+import           Language.C.Pretty
+import           Language.C.Syntax
+import           Text.Printf
+import           Text.PrettyPrint hiding (double)
+--
+import           Symbolic.Predefined
+import           Symbolic.Print
+import           Symbolic.Type
+import qualified Symbolic.Type as S ( Exp(..))
+--
+import           Debug.Trace
+
+
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -39,10 +79,10 @@ addDefn d = do
   defs <- gets moduleDefinitions
   modify $ \s -> s { moduleDefinitions = defs ++ [d] }
 
-define ::  Type -> String -> [(Type, Name)] -> Codegen a -> LLVM ()
+define ::  Type -> String -> [(Type, AST.Name)] -> Codegen a -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name label
+    name        = AST.Name label
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = bls
@@ -53,10 +93,10 @@ define retty label argtys body = addDefn $
       void $ setBlock enter
       body
 
-external ::  Type -> String -> [(Type, Name)] -> LLVM ()
+external ::  Type -> String -> [(Type, AST.Name)] -> LLVM ()
 external retty label argtys = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name label
+    name        = AST.Name label
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = []
@@ -82,8 +122,8 @@ uniqueName nm ns =
     Nothing -> (nm,  Map.insert nm 1 ns)
     Just ix -> (nm ++ show ix, Map.insert nm (ix+1) ns)
 
-instance IsString Name where
-  fromString = Name . fromString
+instance IsString AST.Name where
+  fromString = AST.Name . fromString
 
 -------------------------------------------------------------------------------
 -- Codegen State
@@ -93,9 +133,10 @@ type SymbolTable = [(String, Operand)]
 
 data CodegenState
   = CodegenState {
-    currentBlock :: Name                     -- Name of the active block to append to
-  , blocks       :: Map.Map Name BlockState  -- Blocks for function
+    currentBlock :: AST.Name                     -- Name of the active block to append to
+  , blocks       :: Map.Map AST.Name BlockState  -- Blocks for function
   , symtab       :: SymbolTable              -- Function scope symbol table
+  -- , symval       :: SymbolTable              -- Function scope symbol-value table
   , blockCount   :: Int                      -- Count of basic blocks
   , count        :: Word                     -- Count of unnamed instructions
   , names        :: Names                    -- Name Supply
@@ -115,13 +156,13 @@ data BlockState
 newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
   deriving (Functor, Applicative, Monad, MonadState CodegenState )
 
-sortBlocks :: [(Name, BlockState)] -> [(Name, BlockState)]
+sortBlocks :: [(AST.Name, BlockState)] -> [(AST.Name, BlockState)]
 sortBlocks = sortBy (compare `on` (idx . snd))
 
 createBlocks :: CodegenState -> [BasicBlock]
 createBlocks m = map makeBlock $ sortBlocks $ Map.toList (blocks m)
 
-makeBlock :: (Name, BlockState) -> BasicBlock
+makeBlock :: (AST.Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s t)) = BasicBlock l s (maketerm t)
   where
     maketerm (Just x) = x
@@ -134,7 +175,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (AST.Name entryBlockName) Map.empty [] {- [] -} 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -148,7 +189,7 @@ fresh = do
 instr :: Instruction -> Codegen (Operand)
 instr ins = do
   n <- fresh
-  let ref = (UnName n)
+  let ref = (AST.UnName n)
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = i ++ [ref := ins] } )
@@ -164,28 +205,28 @@ terminator trm = do
 -- Block Stack
 -------------------------------------------------------------------------------
 
-entry :: Codegen Name
+entry :: Codegen AST.Name
 entry = gets currentBlock
 
-addBlock :: String -> Codegen Name
+addBlock :: String -> Codegen AST.Name
 addBlock bname = do
   bls <- gets blocks
   ix <- gets blockCount
   nms <- gets names
   let new = emptyBlock ix
       (qname, supply) = uniqueName bname nms
-  modify $ \s -> s { blocks = Map.insert (Name qname) new bls
+  modify $ \s -> s { blocks = Map.insert (AST.Name qname) new bls
                    , blockCount = ix + 1
                    , names = supply
                    }
-  return (Name qname)
+  return (AST.Name qname)
 
-setBlock :: Name -> Codegen Name
+setBlock :: AST.Name -> Codegen AST.Name
 setBlock bname = do
   modify $ \s -> s { currentBlock = bname }
   return bname
 
-getBlock :: Codegen Name
+getBlock :: Codegen AST.Name
 getBlock = gets currentBlock
 
 modifyBlock :: BlockState -> Codegen ()
@@ -217,16 +258,31 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
+{-
+getval :: String -> Codegen Operand
+getval var = do
+  s <- get
+  let symvs = symval s
+  case lookup var symvs of
+    Just v -> return v
+    Nothing -> do 
+      ref <- getvar var
+      val <- load ref
+      modify (\s -> s { symval = (var,val):symvs})
+      return val
+-}
+
+getval = getvar
 -------------------------------------------------------------------------------
 
 -- References
-local ::  Name -> Operand
+local :: AST.Name -> Operand
 local = LocalReference double
 
-global ::  Name -> C.Constant
+global :: AST.Name -> C.Constant
 global = C.GlobalReference double
 
-externf :: Name -> Operand
+externf :: AST.Name -> Operand
 externf = ConstantOperand . C.GlobalReference double
 
 -- Arithmetic and Constants
@@ -268,14 +324,82 @@ load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
 
 -- Control Flow
-br :: Name -> Codegen (Named Terminator)
+br :: AST.Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
 
-cbr :: Operand -> Name -> Name -> Codegen (Named Terminator)
+cbr :: Operand -> AST.Name -> AST.Name -> Codegen (Named Terminator)
 cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
-phi :: Type -> [(Operand, Name)] -> Codegen Operand
+phi :: Type -> [(Operand, AST.Name)] -> Codegen Operand
 phi ty incoming = instr $ Phi ty incoming []
 
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
+
+-----------------------
+
+uncurry3 f (a,b,c) = f a b c 
+  
+hVar h = printf "x%x" h
+
+mkAssign name val = assign name val >> return ()
+
+cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
+
+mkOp op h val = getval (hVar h) >>= op val
+
+mkAdd = mkOp fadd
+mkMul = mkOp fmul
+
+cgen4fold name op ini [] = cgen4Const name ini
+cgen4fold name op ini (h:hs) = do
+  val1 <- getval (hVar h)
+  v' <- foldrM op val1 hs
+  assign name v'
+  return ()
+
+  
+llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
+llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
+llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
+llvmCodegen name (mexpExp -> Delta i j)     = return () -- [ CIf cond  stru (Just sfal) nodeinfo ]
+  -- where cond = mkBinary (mkVar i) CEqOp (mkVar j)
+  --       stru = mkExpr (mkAssign name (mkConst (mkI 1)))
+  --       sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs))
+  where rhs = case v of
+                Simple s -> s -- mkVar s
+                -- Indexed s is -> mkIVar s is
+llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
+llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
+llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
+llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
+llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
+                                          -- , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
+  {-
+  where v = justLookup h1 m
+        h_result = untrie ?expHash (mexpExp v)
+        (hashmap,table,depgraph) = mkDepGraphNoSum v
+        bmap = HM.insert h_result v (mexpMap v)
+        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        es_ordered = map (flip justLookup bmap) hs_ordered
+        decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
+        bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
+        innerstmt =
+          mkCompound $  
+            decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
+  -}
+        
+llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
+llvmAST name syms v = define double name symsllvm $ do
+                        let name' = hVar h_result
+                        body
+                        ret =<< getval name' 
+  where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
+        h_result = getMHash v
+        bmap = HM.insert h_result v (mexpMap v)
+        (hashmap,table,depgraph) = mkDepGraphNoSum v
+        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        es_ordered = map (flip justLookup bmap) hs_ordered
+        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
+
