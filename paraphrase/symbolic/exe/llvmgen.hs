@@ -31,7 +31,7 @@ exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = add [ sum_ [idxi, idxj] (add [ y_ [idxi,idxj], one ] ), zero ]
+exp5 = sum_ [idxi, idxj] (add [ y_ [idxi,idxj], one ] )
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
 -- add [ zero , y_ [("i",0,3),("j",1,2)] ] 
@@ -60,7 +60,6 @@ main' = do
 
 main = do
   let ?expHash = trie hash
-  -- putStr "pow(10,x) = "
   prettyPrintR exp5
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5

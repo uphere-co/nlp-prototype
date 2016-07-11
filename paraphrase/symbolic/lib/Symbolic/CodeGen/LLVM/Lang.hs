@@ -375,7 +375,7 @@ hVar h = printf "x%x" h
 
 mkAssign name val = assign name val >> return ()
 
-cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
+cgen4Const name = mkAssign name . fval -- (cons (C.Float (F.Double v))) 
 
 mkOp op h val = getvar (hVar h) >>= op val
 
@@ -448,16 +448,6 @@ cgenfor label (ivar,start,end) body = do
   setBlock forexit
   return ()  
 
-{- summation1 sumref = do
-  cgenfor "for" ("ii",0,9) $ do
-    iref <- getvar "ii"
-    i <- load iref
-    s <- load sumref
-    s' <- fadd s (fval 1)
-    store sumref s'
-    return ()
-  -- cgen4Const name 0
--}
 
   
 llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
@@ -491,20 +481,14 @@ llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
 llvmCodegen name (MExp (Sum is h1) m i)     = do
   sumref <- alloca double
   store sumref (fval 0)
-  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
-  
-  let -- v1 = justLookup h1 m
-      -- name' = hVar h_result
-      innerstmt = do
+  let innerstmt = do
         body
-        -- llvmCodegen name' v1
         s <- load sumref
         v <- getvar (hVar h_result)
         s' <- fadd s v 
         store sumref s'
         return ()
   foldr (.) id (map mkFor is) innerstmt
-
   rval <- load sumref
   assign name rval
 
@@ -515,20 +499,13 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
         hs_ordered = reverse (h1 : map (\i -> table ! i) (topSort depgraph))
         es_ordered = map (flip justLookup bmap) hs_ordered
         body = trace ("hs_ordered : " ++ show hs_ordered) $ mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered                
-
-{-         innerstmt =
-
-          mkCompound $  
-            decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
--}
-
-
+        mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
-                        body
+                        trace ("name' = " ++ name' ++ "\n hs_ordered = " ++ show hs_ordered) $ body
                         ret =<< getvar name' 
   where mkarg (Simple v) = (double,AST.Name v)
         mkarg (Indexed v _) = (ptr double,AST.Name v)
@@ -536,7 +513,7 @@ llvmAST name syms v = define double name symsllvm $ do
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
-        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        hs_ordered = reverse (h_result: map (\i -> table ! i) (topSort depgraph))
         es_ordered = map (flip justLookup bmap) hs_ordered
         body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
 
