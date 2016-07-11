@@ -498,14 +498,14 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
         bmap = HM.insert h_result v (mexpMap v)
         hs_ordered = reverse (h1 : map (\i -> table ! i) (topSort depgraph))
         es_ordered = map (flip justLookup bmap) hs_ordered
-        body = trace ("hs_ordered : " ++ show hs_ordered) $ mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered                
+        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered                
         mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v = define double name symsllvm $ do
                         let name' = hVar h_result
-                        trace ("name' = " ++ name' ++ "\n hs_ordered = " ++ show hs_ordered) $ body
+                        body
                         ret =<< getvar name' 
   where mkarg (Simple v) = (double,AST.Name v)
         mkarg (Indexed v _) = (ptr double,AST.Name v)
