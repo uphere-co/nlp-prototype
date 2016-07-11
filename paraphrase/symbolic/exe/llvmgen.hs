@@ -3,6 +3,9 @@
 
 import           Data.Hashable
 import           Data.MemoTrie
+import qualified Foreign.Marshal.Alloc as Alloc
+import qualified Foreign.Marshal.Array as Array
+import           Foreign.Storable (poke, peek)
 
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
@@ -38,6 +41,11 @@ exp5 = sum_ [idxi, idxj] (add [ y_ [idxi,idxj], one ] )
 
 exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
+
+exp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp7 = add [ x, y ] 
+
+
 {-
 test1 = do
   let ?expHash = trie hash
@@ -71,14 +79,43 @@ test2 = do
              
               define void "main" [ (ptr double, AST.Name "res")
                                  , (ptr (ptr double), AST.Name "args")
-                                 -- , (ptr double, AST.Name "x")
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
-                res <- call (externf (AST.Name "fun1")) [ xref ] -- [ local (AST.Name "x") ]
+                res <- call (externf (AST.Name "fun1")) [ xref ]
+                store (local (AST.Name "res")) res
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        Alloc.alloca $ \pres -> 
+          Alloc.alloca $ \pargs -> 
+            Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \px -> do
+              poke pargs px
+              -- poke p 9.0
+              run fn pres pargs
+              res <- peek pres
+              putStrLn $ "Evaluated to: " ++ show res
+          
+  -- return ast
+
+{-
+test3 = do
+  let ?expHash = trie hash
+  prettyPrintR exp5
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5
+              external double "sin" [(double, AST.Name "x")] 
+             
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                res <- call (externf (AST.Name "fun1")) [ xref ]
                 store (local (AST.Name "res")) res
                 ret_
   runJIT ast
   return ast
-
+-}
 
 main = test2

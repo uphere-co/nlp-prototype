@@ -5,9 +5,6 @@ module Symbolic.CodeGen.LLVM.JIT where
 import Data.Int
 import Data.Word
 import Foreign.Ptr ( FunPtr, Ptr, castFunPtr )
-import qualified Foreign.Marshal.Alloc as Alloc
-import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable (poke, peek)
 
 import Control.Monad.Trans.Except
 
@@ -23,11 +20,13 @@ import LLVM.General.Analysis
 
 import qualified LLVM.General.ExecutionEngine as EE
 
-foreign import ccall "dynamic" haskFun :: FunPtr (Ptr Double -> Ptr (Ptr Double) -> IO ())
-                                       -> Ptr Double -> Ptr (Ptr Double) -> IO ()
+type JITFunction = Ptr Double -> Ptr (Ptr Double) -> IO ()
 
-run :: FunPtr a -> Ptr Double -> Ptr (Ptr Double) -> IO ()
-run fn = haskFun (castFunPtr fn :: FunPtr (Ptr Double -> Ptr (Ptr Double) -> IO ()))
+
+foreign import ccall "dynamic" haskFun :: FunPtr JITFunction -> JITFunction 
+
+run :: FunPtr a -> JITFunction
+run fn = haskFun (castFunPtr fn :: FunPtr JITFunction)
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -40,20 +39,26 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
-runJIT :: AST.Module -> IO (Either String AST.Module)
-runJIT mod = do
+runJIT :: AST.Module -> (Maybe (FunPtr ()) -> IO b) -> IO (Either String b)
+
+                                                             -- Maybe (FunPtr ())))
+runJIT mod action = do
   withContext $ \context ->
     jit context $ \executionEngine -> do
-      r <- runExceptT $ withModuleFromAST context mod $ \m ->
+      runExceptT $ withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
-          {-runPassManager pm m-}
+          -- runPassManager pm m
           optmod <- moduleAST m
           s <- moduleLLVMAssembly m
           putStrLn s
           
           EE.withModuleInEngine executionEngine m $ \ee -> do
-            mainfn <- EE.getFunction ee (AST.Name "main")
+            mfn <- EE.getFunction ee (AST.Name "main")
+            action mfn
+          -- return (optmod,mfn) 
+
+          {-
             case mainfn of
               Just fn -> do
                 Alloc.alloca $ \pres -> 
@@ -66,8 +71,8 @@ runJIT mod = do
                       res <- peek pres
                       putStrLn $ "Evaluated to: " ++ show res
               Nothing -> return ()
-
+          -}
           -- Return the optimized module
-          return optmod 
+          -- return optmod 
       --print r
-      return r
+      -- return r
