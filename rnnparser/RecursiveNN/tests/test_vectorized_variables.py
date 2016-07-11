@@ -93,3 +93,6 @@ def test_Block():
     assert np.all(a.get_value(u'bar')==np.array(range(9,18)).reshape(3,3))
     assert np.all(a.get_value(uid3)==np.array(range(6)).reshape(3,2))
     assert np.all(a.get_value(u'y')==np.array(range(6,12)).reshape(3,2))
+
+    word=u'\xa3'
+    a.declare(word)

@@ -94,18 +94,13 @@ class Block(object):
     def n_values(self):
         return self._idx
     def is_declared(self, name):
-        name=name.encode('utf-8')
-        idxs=np.where(self._names[:self._idx]==name)[0]
-        if len(idxs)>0:
-            return True
-        return False
+        return name.encode('utf-8') in self._names[:self.n_values]
     def declare(self, name, val=None):
         '''
         name : unicode string. Internally, stored as ASCII string
         '''
         if self.is_declared(name):
             return self.uid(name)
-            raise ValueError('%s is already declared'%name)
         uid=self.n_values
         self._names[uid]=name.encode('utf-8')
         self._idx +=1
@@ -121,7 +116,7 @@ class Block(object):
         if isinstance(key, unicode):
             name=key
             uid=self.uid(name)
-        elif isinstance(key, int):
+        elif is_integer(key, int):
             uid=key
         else :
             raise TypeError("key should be either name or uid")
@@ -131,8 +126,7 @@ class Block(object):
     def uid(self, name):
         if not self.is_declared(name):
             raise ValueError('%s is not declared'%name)
-        idxs=np.where(self._names[:self._idx]==name.encode('utf-8'))[0]
-        return idxs[0]
+        return np.argmax(self._names[:self._idx]==name.encode('utf-8'))
     #def __getitem__(self, uid):
     def name(self, uid):
         #TODO: this assumes uid start from 1.
