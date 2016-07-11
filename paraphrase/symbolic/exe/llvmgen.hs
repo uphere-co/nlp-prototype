@@ -7,7 +7,7 @@ import           Data.MemoTrie
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
 import qualified LLVM.General.AST.Constant as C
-import           LLVM.General.AST.Type            ( double, i64 )
+import           LLVM.General.AST.Type            ( double, i64, ptr )
 
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Lang
@@ -67,7 +67,7 @@ test2 = do
               llvmAST "fun1" [ Indexed "y" [("i",0,9)] ] exp6
               external double "sin" [(double, AST.Name "x")] 
              
-              define double "main" [(double, AST.Name "x")] $ do
+              define double "main" [(ptr double, AST.Name "x")] $ do
                 {-
                 yref <- alloca (arrtype double 10)
                 let setarr arr (n,v) = do
@@ -78,8 +78,8 @@ test2 = do
                 
                 res <- call (externf (AST.Name "fun1")) [ yref ] -}
                 -- res <- load (local "x")
-                
-                ret (local (AST.Name "x")) -- res 
+                res <- load (local (AST.Name "x"))
+                ret res 
   runJIT ast
   return ast
 

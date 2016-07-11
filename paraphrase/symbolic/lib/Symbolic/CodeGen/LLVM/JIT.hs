@@ -4,7 +4,9 @@ module Symbolic.CodeGen.LLVM.JIT where
 
 import Data.Int
 import Data.Word
-import Foreign.Ptr ( FunPtr, castFunPtr )
+import Foreign.Ptr ( FunPtr, Ptr, castFunPtr )
+import qualified Foreign.Marshal.Alloc as Alloc
+import           Foreign.Storable (poke)
 
 import Control.Monad.Trans.Except
 
@@ -20,10 +22,10 @@ import LLVM.General.Analysis
 
 import qualified LLVM.General.ExecutionEngine as EE
 
-foreign import ccall "dynamic" haskFun :: FunPtr (Double -> IO Double) -> Double -> IO Double
+foreign import ccall "dynamic" haskFun :: FunPtr (Ptr Double -> IO Double) -> Ptr Double -> IO Double
 
-run :: FunPtr a -> Double -> IO Double
-run fn = haskFun (castFunPtr fn :: FunPtr (Double -> IO Double))
+run :: FunPtr a -> Ptr Double -> IO Double
+run fn = haskFun (castFunPtr fn :: FunPtr (Ptr Double -> IO Double))
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -52,8 +54,10 @@ runJIT mod = do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
-                res <- run fn 8.0
-                putStrLn $ "Evaluated to: " ++ show res
+                Alloc.alloca $ \p -> do
+                  poke p 9.0
+                  res <- run fn p
+                  putStrLn $ "Evaluated to: " ++ show res
               Nothing -> return ()
 
           -- Return the optimized module
