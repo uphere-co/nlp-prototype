@@ -6,6 +6,7 @@ import Data.Int
 import Data.Word
 import Foreign.Ptr ( FunPtr, Ptr, castFunPtr )
 import qualified Foreign.Marshal.Alloc as Alloc
+import qualified Foreign.Marshal.Array as Array
 import           Foreign.Storable (poke)
 
 import Control.Monad.Trans.Except
@@ -54,8 +55,8 @@ runJIT mod = do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
-                Alloc.alloca $ \p -> do
-                  poke p 9.0
+                Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \p -> do
+                  -- poke p 9.0
                   res <- run fn p
                   putStrLn $ "Evaluated to: " ++ show res
               Nothing -> return ()

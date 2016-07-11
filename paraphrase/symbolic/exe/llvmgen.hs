@@ -62,23 +62,13 @@ test1 = do
 
 test2 = do
   let ?expHash = trie hash
-  prettyPrintR exp6
+  prettyPrintR exp5
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [("i",0,9)] ] exp6
+              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5
               external double "sin" [(double, AST.Name "x")] 
              
               define double "main" [(ptr double, AST.Name "x")] $ do
-                {-
-                yref <- alloca (arrtype double 10)
-                let setarr arr (n,v) = do
-                      ptr <- getElementPtr arr [ ival 0, ival n ]
-                      store ptr (fval v)
-                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10]
-
-                
-                res <- call (externf (AST.Name "fun1")) [ yref ] -}
-                -- res <- load (local "x")
-                res <- load (local (AST.Name "x"))
+                res <- call (externf (AST.Name "fun1")) [ local (AST.Name "x") ]
                 ret res 
   runJIT ast
   return ast
