@@ -22,10 +22,10 @@ initModule :: AST.Module
 initModule = emptyModule "my cool jit"
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp1 = mul [val 1,val 3] -- val 3 -- zero
+exp1 = mul [val 1,val 3]
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 10 x -- power 10 (x `add'` y)
+exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = add [ x , delta "i" "j", delta "k" "l" ] 
@@ -37,38 +37,12 @@ exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj]) --  (add [ y_ [idxi,idxj], one ] )
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
--- add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
 
 exp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp7 = add [ x, y ] 
-
-
-{-
-test1 = do
-  let ?expHash = trie hash
-  -- putStr "pow(10,x) = "
-  prettyPrintR exp5
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [Indexed "y" [("i",0,2),("j",0,2)] ] exp5
-              external double "sin" [(double, AST.Name "x")] 
-              define double "main" [] $ do
-                yref <- alloca (arrtype double 10)
-                let setarr arr (n,v) = do
-                      ptr <- getElementPtr arr [ ival 0, ival n ]
-                      store ptr (fval v)
-                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10]
-
-                
-                res <- call (externf (AST.Name "fun1")) [ yref ]
-
-                ret res 
-  runJIT ast
-  return ast
--}
-
 
 test2 = do
   let ?expHash = trie hash
@@ -92,7 +66,6 @@ test2 = do
           Alloc.alloca $ \pargs -> 
             Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \px -> do
               poke pargs px
-              -- poke p 9.0
               run fn pres pargs
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res

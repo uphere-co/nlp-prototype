@@ -48,7 +48,7 @@ runJIT mod action = do
       runExceptT $ withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
-          -- runPassManager pm m
+          runPassManager pm m
           optmod <- moduleAST m
           s <- moduleLLVMAssembly m
           putStrLn s
@@ -56,23 +56,5 @@ runJIT mod action = do
           EE.withModuleInEngine executionEngine m $ \ee -> do
             mfn <- EE.getFunction ee (AST.Name "main")
             action mfn
-          -- return (optmod,mfn) 
 
-          {-
-            case mainfn of
-              Just fn -> do
-                Alloc.alloca $ \pres -> 
-                  Alloc.alloca $ \pargs -> 
-                    Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \px -> do
-                      poke pargs px
-                      -- poke p 9.0
-                      -- res <-
-                      run fn pres pargs
-                      res <- peek pres
-                      putStrLn $ "Evaluated to: " ++ show res
-              Nothing -> return ()
-          -}
-          -- Return the optimized module
-          -- return optmod 
-      --print r
-      -- return r
+
