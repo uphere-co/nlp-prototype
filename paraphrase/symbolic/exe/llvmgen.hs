@@ -5,7 +5,7 @@ import           Data.Hashable
 import           Data.MemoTrie
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable (poke, peek)
+import           Foreign.Storable (poke, peek, pokeElemOff)
 
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
@@ -34,7 +34,7 @@ exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ [idxi, idxj] (add [ y_ [idxi,idxj], one ] )
+exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj]) --  (add [ y_ [idxi,idxj], one ] )
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
 -- add [ zero , y_ [("i",0,3),("j",1,2)] ] 
@@ -97,25 +97,39 @@ test2 = do
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res
           
-  -- return ast
 
-{-
 test3 = do
   let ?expHash = trie hash
-  prettyPrintR exp5
+  prettyPrintR exp7
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5
+              llvmAST "fun1" [ Simple "x", Simple "y" ] exp7
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
                                  , (ptr (ptr double), AST.Name "args")
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
-                res <- call (externf (AST.Name "fun1")) [ xref ]
+                yref <- getElem (ptr double) "args" (ival 1)
+                x <- load xref
+                y <- load yref
+                res <- call (externf (AST.Name "fun1")) [ x, y ]
                 store (local (AST.Name "res")) res
                 ret_
-  runJIT ast
-  return ast
--}
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        Alloc.alloca $ \pres -> 
+          Alloc.alloca $ \pargs -> 
+            Alloc.alloca $ \px ->
+              Alloc.alloca $ \py -> do
+                poke px 700
+                poke py 300
+                pokeElemOff pargs 0 px
+                pokeElemOff pargs 1 py
+                run fn pres pargs
+                res <- peek pres
+                putStrLn $ "Evaluated to: " ++ show res
 
-main = test2
+
+main = test3
