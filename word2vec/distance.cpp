@@ -33,6 +33,16 @@ int GetWordHash(std::string& word) {
   return hash;
 }
 
+int SearchWordHash(std::string& word) {
+  unsigned long long hash = GetWordHash(word);
+  while (1) {
+    if (vocab_hash[hash] == -1) return -1;
+    if (word == word_vector_label[vocab_hash[hash]]) return hash;
+    hash = (hash + 1) % vocab_hash_size;
+  }
+  return -1;
+}
+
 
 // Begin of Distance Measurement
 void ReadWordVector() {
@@ -71,7 +81,7 @@ std::vector<real> GetWordVector(std::string& word) {
 
   std::vector<real> wordvector;
   int position;
-  position = vocab_hash[GetWordHash(word)];
+  position = vocab_hash[SearchWordHash(word)];
   for(int i = 0; i < layer1_size; i++) {
     wordvector.push_back(word_vector[position*layer1_size + i]);
   }
@@ -164,8 +174,8 @@ double cosDistBetweenWords(std::string& str1, std::string& str2)
 
   long long str1pos, str2pos;
 
-  str1pos = vocab_hash[GetWordHash(str1)];
-  str2pos = vocab_hash[GetWordHash(str2)];
+  str1pos = vocab_hash[SearchWordHash(str1)];
+  str2pos = vocab_hash[SearchWordHash(str2)];
   
   for(int a = 0; a < layer1_size; a++) {
     str1mag += word_vector[layer1_size*str1pos + a]*word_vector[layer1_size*str1pos + a];
@@ -189,7 +199,7 @@ double cosDistBetweenWords(std::vector<real>& vec1, std::string& str2)
 
   long long str2pos;
 
-  str2pos = vocab_hash[GetWordHash(str2)];
+  str2pos = vocab_hash[SearchWordHash(str2)];
   
   for(int a = 0; a < layer1_size; a++) {
     str1mag += vec1[a]*vec1[a];
@@ -213,7 +223,7 @@ double cosDistBetweenWords(std::string& str1, std::vector<real>& vec2)
 
   long long str1pos;
 
-  str1pos = vocab_hash[GetWordHash(str1)];
+  str1pos = vocab_hash[SearchWordHash(str1)];
   
   for(int a = 0; a < layer1_size; a++) {
     str1mag += word_vector[layer1_size*str1pos + a]*word_vector[layer1_size*str1pos + a];
@@ -326,6 +336,27 @@ std::vector<std::string> GetSimilarWords(std::vector<real>& wordvector, int n) {
   
 }
 
+std::string GetSimilarWordsn1(std::vector<real>& wordvector) {
+  std::string top;
+  int count = 0;
+  for(int i = 0; i < word_vector_label.size(); i++) {
+      if(count == 0) {
+	top = word_vector_label[i];
+	count++;
+      }
+      else {
+	std::string temp;
+	if(cosDistBetweenWords(wordvector, top) < cosDistBetweenWords(wordvector, word_vector_label[i])) {
+	  top = word_vector_label[i];
+	}
+      }
+    
+  }
+
+  return top;
+  
+}
+
 // End of Distance Measurement
 
 //main function arguments
@@ -372,28 +403,71 @@ void ArgPass(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 
+  std::vector< std::vector<std::string> > test_set;
+  std::ifstream inFile;
+  std::string line;
+  std::vector<std::string> word;
+
   if(argc == 1) {
     printHelp();
     return 0;
   }
-
+  
   ArgPass(argc, argv);
+  
+  inFile.open("questions-words.txt", std::ifstream::in);
+  if(inFile.fail()) {
+    std::cout << "questions-words file not found!\n";
+    exit(1);
+  }
   
   initVocabHash();
   ReadWordVector();
-  std::vector<std::string> test_list;
-  std::vector<real> test_vector;
-  std::string aaa;
-  std::string bbb;
-  std::string ccc;
-  aaa = "king";
-  bbb = "man";
-  ccc = "woman";
-  test_vector = AddVectors(SubtractVectors(aaa,bbb),ccc);
-  //testa = GetSimilarWords(aaa,10);
   
-  test_list = GetSimilarWords(test_vector, 20);
-  //for(int i = 0; i < 10; i++) std::cout << testa[i] << " ";
-  for(int i = 0; i < 20; i++) std::cout << test_list[i] << " ";
+  while(1) {
+    word.clear();
+    std::getline(inFile,line);
+    if(inFile.eof()) break;
+    split(line, word);
+    if(word[0] == ":") continue;
+    std::vector<std::string> record;
+    for(int i = 0; i < 4; i++) record.push_back(word[i]);
+    test_set.push_back(record);
+  }
+ 
+  // Test part!
+  std::string word1, word2, word3, word4; // word1:word2 = word3:word4 -> word2 - word1 = word4 - word3
+  std::vector<real> test_vector1, test_vector2, test_vector3, test_vector4;
+  std::string target;
+  
+  int total = 0;
+  int score = 0;
+
+  for(int i = 0; i < test_set.size(); i++) {
+
+    word1 = test_set[i][0];
+    word2 = test_set[i][1];
+    word3 = test_set[i][2];
+    word4 = test_set[i][3];
+
+    makeLower(word1); makeLower(word2); makeLower(word3); makeLower(word4);
+    
+    test_vector1 = AddVectors(SubtractVectors(word3,word4),word2); // word1 = word2 + word3 - word4
+    test_vector2 = AddVectors(SubtractVectors(word1,word3),word4); // word2 = word1 - word3 + word4
+    test_vector3 = AddVectors(SubtractVectors(word4,word2),word1); // word3 = word4 - word2 + word1
+    test_vector4 = AddVectors(SubtractVectors(word2,word1),word3); // word4 = word3 + word2 - word1
+    
+    total = total + 4;
+
+    if(GetSimilarWordsn1(test_vector1) == word1) score++;
+    if(GetSimilarWordsn1(test_vector2) == word2) score++;
+    if(GetSimilarWordsn1(test_vector3) == word3) score++;
+    if(GetSimilarWordsn1(test_vector4) == word4) score++;
+    
+  }
+
+  std::cout << score/(double)total << std::endl;  
+  //
+  inFile.close();
   return 0;
 }
