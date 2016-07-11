@@ -8,6 +8,7 @@
 
 module Symbolic.Eval where
 
+import           Control.Lens              (view, _1)
 import           Data.HashMap.Strict       (HashMap)
 import           Data.List                 (foldl')
 import           Data.MemoTrie
@@ -54,8 +55,8 @@ seval :: ( Storable a, HasTrie a, Num a
 seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
 
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
-evalVar args ip (Simple s) = ({- EVal . -} justLookup s . varSimple) args
-evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip) is
+evalVar args ip (Simple s) = (justLookup s . varSimple) args
+evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip . view _1) is
                                      ival = justLookup s (varIndexed args)
                                  in valStore ival ! flatIndex ival i's
 

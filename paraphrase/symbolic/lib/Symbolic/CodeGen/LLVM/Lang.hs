@@ -7,6 +7,9 @@
 
 module Symbolic.CodeGen.LLVM.Lang where
 
+import Control.Monad.State
+import Control.Applicative
+
 import Data.Foldable ( foldrM )
 import Data.Word
 import Data.String
@@ -14,8 +17,6 @@ import Data.List
 import Data.Function
 import qualified Data.Map as Map
 
-import Control.Monad.State
-import Control.Applicative
 
 import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
                         , Terminator(..), Definition(..)
@@ -30,7 +31,9 @@ import qualified LLVM.General.AST.CallingConvention      as CC
 import qualified LLVM.General.AST.Constant               as C
 import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
-
+import qualified LLVM.General.AST.IntegerPredicate       as IP
+import           LLVM.General.AST.Type                           ( double, i64, ptr)
+import qualified LLVM.General.AST.Type                   as T    ( void ) 
 -----
 
 import           Control.Lens                    (view, _1)
@@ -52,7 +55,7 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint hiding (double)
 --
-import           Symbolic.Predefined
+import           Symbolic.Predefined hiding (add)
 import           Symbolic.Print
 import           Symbolic.Type
 import qualified Symbolic.Type as S ( Exp(..))
@@ -106,9 +109,8 @@ external retty label argtys = addDefn $
 -- Types
 -------------------------------------------------------------------------------
 
--- IEEE 754 double
-double :: Type
-double = FloatingPointType 64 IEEE
+arrtype :: Type -> Int -> Type 
+arrtype typ n = ArrayType (fromIntegral n) typ
 
 -------------------------------------------------------------------------------
 -- Names
@@ -258,26 +260,15 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
-{-
-getval :: String -> Codegen Operand
-getval var = do
-  s <- get
-  let symvs = symval s
-  case lookup var symvs of
-    Just v -> return v
-    Nothing -> do 
-      ref <- getvar var
-      val <- load ref
-      modify (\s -> s { symval = (var,val):symvs})
-      return val
--}
-
-getval = getvar
 -------------------------------------------------------------------------------
 
 -- References
 local :: AST.Name -> Operand
 local = LocalReference double
+
+idxval :: IndexSymbol -> Operand
+idxval = LocalReference i64 . AST.Name
+
 
 global :: AST.Name -> C.Constant
 global = C.GlobalReference double
@@ -289,17 +280,29 @@ externf = ConstantOperand . C.GlobalReference double
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr $ FAdd NoFastMathFlags a b []
 
+iadd :: Operand -> Operand -> Codegen Operand
+iadd a b = instr $ AST.Add False False a b []
+
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr $ FSub NoFastMathFlags a b []
 
+isub :: Operand -> Operand -> Codegen Operand
+isub a b = instr $ Sub False False a b []
+
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr $ FMul NoFastMathFlags a b []
+
+imul :: Operand -> Operand -> Codegen Operand
+imul a b = instr $ AST.Mul False False a b []
 
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr $ FDiv NoFastMathFlags a b []
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr $ FCmp cond a b []
+
+icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+icmp cond a b = instr $ ICmp cond a b [] 
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand
@@ -323,6 +326,12 @@ store ptr val = instr $ Store False ptr val Nothing 0 []
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
 
+-- Array
+getElementPtr :: Operand -> [Operand] -> Codegen Operand
+getElementPtr arr is = instr $ GetElementPtr True arr is []
+
+
+
 -- Control Flow
 br :: AST.Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
@@ -344,62 +353,138 @@ hVar h = printf "x%x" h
 
 mkAssign name val = assign name val >> return ()
 
-cgen4Const name v = mkAssign name (cons (C.Float (F.Double v))) 
+cgen4Const name = mkAssign name . fval
 
-mkOp op h val = getval (hVar h) >>= op val
+mkOp op h val = getvar (hVar h) >>= op val
 
 mkAdd = mkOp fadd
 mkMul = mkOp fmul
 
+fval :: Double -> Operand
+fval v = cons $ C.Float (F.Double v)
+
+fzero = fval 0
+fone  = fval 1
+
+ival :: Int -> Operand
+ival v = cons $ C.Int 64 (fromIntegral v)
+
+izero = ival 0
+ione = ival 1
+
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
-  val1 <- getval (hVar h)
+  val1 <- getvar (hVar h)
   v' <- foldrM op val1 hs
   assign name v'
   return ()
 
+cgencond :: String -> Codegen Operand -> Codegen Operand -> Codegen Operand -> Codegen Operand
+cgencond label cond tr fl = do
+  ifthen <- addBlock (label ++ ".then")
+  ifelse <- addBlock (label ++ ".else")
+  ifexit <- addBlock (label ++ ".exit")
+  --
+  condval <- cond
+  cbr condval ifthen ifelse
+  --
+  setBlock ifthen
+  trval <- tr
+  br ifexit
+  ifthen <- getBlock
+  --
+  setBlock ifelse
+  flval <- fl
+  br ifexit
+  ifelse <- getBlock
+  --
+  setBlock ifexit
+  phi double [(trval,ifthen), (flval,ifelse)]
+
+cgenfor :: String -> Index -> Codegen () -> Codegen ()
+cgenfor label (ivar,start,end) body = do
+  forloop <- addBlock (label ++ ".loop")
+  forexit <- addBlock (label ++ ".exit")
+  --
+  iref <- alloca i64
+  store iref (ival start)
+  assign ivar iref
+  br forloop
+  --
+  setBlock forloop
+  body
+  i <- load iref
+  i' <- iadd i (ival 1)
+  store iref i'
+  --
+  test <- icmp IP.ULE i' (ival end)
+  cbr test forloop forexit
+  --
+  setBlock forexit
+  return ()  
+
+mkInnerbody v = do
+  mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered
+  llvmCodegen (hVar h_result) v
+ where 
+  h_result = getMHash v
+  bmap = HM.insert h_result v (mexpMap v)
+  (hashmap,table,depgraph) = mkDepGraphNoSum v
+  hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
+  es_ordered = map (flip justLookup bmap) hs_ordered
   
 llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
 llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
 llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
-llvmCodegen name (mexpExp -> Delta i j)     = return () -- [ CIf cond  stru (Just sfal) nodeinfo ]
-  -- where cond = mkBinary (mkVar i) CEqOp (mkVar j)
-  --       stru = mkExpr (mkAssign name (mkConst (mkI 1)))
-  --       sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-llvmCodegen name (mexpExp -> Var v)         = mkAssign name (local (AST.Name rhs))
-  where rhs = case v of
-                Simple s -> s -- mkVar s
-                -- Indexed s is -> mkIVar s is
+llvmCodegen name (mexpExp -> Delta i j)     = do
+  x <- cgencond ("delta"++i++j) (icmp IP.EQ (idxval i) (idxval j)) (return fone) (return fzero)
+  assign name x
+  return () 
+llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
+llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
+  let arr = LocalReference (ptr double) (AST.Name s)
+      factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
+  indices <- forM is $ \(i,s,_) -> do
+    xref <- getvar i
+    x <- load xref
+    if s == 0
+      then return x
+      else isub x (ival s)
+  (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
+                  indices factors 
+  theindex <- foldrM iadd i1 irest       
+  ptr <- getElementPtr arr [theindex]
+  val <- load ptr
+  assign name val
+  return ()
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
-llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
-llvmCodegen name (MExp (Sum is h1) m i)     = return () -- [ mkExpr (mkAssign name (mkConst (mkF 0)))
-                                          -- , foldr (.) id (map (uncurry3 mkFor) is) innerstmt ]
-  {-
-  where v = justLookup h1 m
-        h_result = untrie ?expHash (mexpExp v)
-        (hashmap,table,depgraph) = mkDepGraphNoSum v
-        bmap = HM.insert h_result v (mexpMap v)
-        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
-        es_ordered = map (flip justLookup bmap) hs_ordered
-        decllst = map (CBlockDecl . mkDblVarDecl . hVar . getMHash) es_ordered
-        bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
-        innerstmt =
-          mkCompound $  
-            decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
-  -}
+llvmCodegen name (mexpExp -> Fun sym hs)    = do
+  lst <- mapM (getvar . hVar) hs
+  val <- call (externf (AST.Name sym)) lst
+  assign name val
+  return ()
+llvmCodegen name (MExp (Sum is h1) m i)     = do
+  sumref <- alloca double
+  store sumref (fval 0)
+  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
+      innerstmt = do
+        mkInnerbody (justLookup h1 m)
+        s <- load sumref
+        v <- getvar (hVar h1)
+        s' <- fadd s v 
+        store sumref s'
+        return ()
+  foldr (.) id (map mkFor is) innerstmt
+  rval <- load sumref
+  assign name rval
+
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v = define double name symsllvm $ do
-                        let name' = hVar h_result
-                        body
-                        ret =<< getval name' 
-  where symsllvm = map ((double,) . AST.Name . varName ). filter isSimple $ syms
-        h_result = getMHash v
-        bmap = HM.insert h_result v (mexpMap v)
-        (hashmap,table,depgraph) = mkDepGraphNoSum v
-        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
-        es_ordered = map (flip justLookup bmap) hs_ordered
-        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
-
+                        mkInnerbody v
+                        ret =<< getvar (hVar (getMHash v))
+  where mkarg (Simple v) = (double,AST.Name v)
+        mkarg (Indexed v _) = (ptr double,AST.Name v)
+        symsllvm = map mkarg syms 

@@ -7,7 +7,8 @@
 
 module Symbolic.Differential where
 
-import           Control.Monad ((>=>))
+import           Control.Lens              (view, _1)
+import           Control.Monad             ((>=>))
 import           Control.Monad.Trans.State
 import           Data.Function             (fix)
 import           Data.Hashable
@@ -59,33 +60,13 @@ diff' m t (s,e) =
   difff' sym args (i,e) = let e' = untrie t (s,mexpExp e)
                           in mul' [fun (suffix_n i sym) args , e'] 
                       
-{- 
-                          difff :: [MExp a] -> [MExp a] 
-                        difff [] = []
-                        difff (x:xs) = let x' = untrie t (s,mexpExp x)
-                                           xs'all = difff xs
-                                       in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
--}
---                      add' (diffmul es)
-                    
---    Add hs       -> let es = map (flip justLookup m) hs
---                    in add' (map (\e -> untrie t (s,mexpExp e)) es)
-                       
-{-     Fun1 f h1    -> let MExp e1 _ _ = justLookup h1 m
-                    in MExp (Fun1 (suffix' f) h1) m HS.empty `mul'` untrie t (s,e1)
-    Fun2 f h1 h2 -> let MExp e1 _ _ = justLookup h1 m
-                        MExp e2 _ _ = justLookup h2 m
-                    in (simplify2 m f Pos1 h1 h2 `mul'` untrie t (s,e1)) `add'`
-                         (simplify2 m f Pos2 h1 h2 `mul'` untrie t (s,e2))  -}
-
-
 
 dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
 dvar _             (Simple s')   = zero
 dvar (Indexed x j) (Indexed y k)
-  | x == y && length j == length k = let djk = zipWith delta j k
+  | x == y && length j == length k = let djk = zipWith (\x y -> delta (view _1 x) (view _1 y))  j k
                                      in mul' djk
   | otherwise = zero
 

@@ -7,7 +7,7 @@
 
 module Symbolic.Type where
 
-import           Control.Lens              (over, _1)
+import           Control.Lens              (over, view, _1)
 import qualified Data.Array  as A
 import qualified Data.Binary as Bi
 import qualified Data.ByteString.Lazy as LB
@@ -25,7 +25,9 @@ import           Debug.Trace
 
 type Hash = Int
 
-type Index = String
+type IndexSymbol = String
+
+type Index = (IndexSymbol,Int,Int)
 
 data Symbol = Simple String
             | Indexed String [Index]
@@ -44,7 +46,7 @@ varName (Indexed v _) = v
 
 
 showSym (Simple str) = str
-showSym (Indexed x k) = x ++ "_" ++ concat k
+showSym (Indexed x k) = x ++ "_" ++ concat (map (view _1) k)
 
 instance HasTrie Symbol where
   data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,[Index]) :->: b)
@@ -66,13 +68,13 @@ instance Hashable Symbol where
 
 data Exp a = Zero
            | One
-           | Delta Index Index
+           | Delta IndexSymbol IndexSymbol
            | Val a
            | Var Symbol
            | Add [Hash]
            | Mul [Hash]
            | Fun String [Hash]
-           | Sum [(Index,Int,Int)] Hash
+           | Sum [Index] Hash
          deriving (Show,Eq)
 
 isZero :: Exp a -> Bool
@@ -94,7 +96,7 @@ isSum _         = False
 
 data MExp a = MExp { mexpExp :: Exp a
                    , mexpMap :: HashMap Hash (MExp a)
-                   , mexpIdx :: HashSet Index
+                   , mexpIdx :: HashSet IndexSymbol
                    }
 
 getMHash :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> Hash
@@ -103,13 +105,13 @@ getMHash e = untrie ?expHash (mexpExp e)
 
 data RExp a = RZero
             | ROne
-            | RDelta Index Index
+            | RDelta IndexSymbol IndexSymbol
             | RVal a
             | RVar Symbol
             | RAdd [RExp a]
             | RMul [RExp a]              
             | RFun String [RExp a]
-            | RSum [(Index,Int,Int)] (RExp a)
+            | RSum [Index] (RExp a)
 
 mangle :: Double -> [Int]
 mangle = map fromIntegral . LB.unpack . Bi.encode
@@ -125,13 +127,13 @@ instance HasTrie Double where
 instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)
                                 (() :->: b)
-                                ((Index,Index) :->: b)
+                                ((IndexSymbol,IndexSymbol) :->: b)
                                 (a :->: b)
                                 (Symbol :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
                                 ([Hash] :->: b)     -- ^ for Mul
                                 ((String,[Hash]) :->: b) -- ^ for Fun
-                                (([(Index,Int,Int)],Hash) :->: b)
+                                (([Index],Hash) :->: b)
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))
@@ -239,7 +241,7 @@ mkDepEdges e = let e1 = mexpExp e
                    lsts = map (mkDepEdges . flip justLookup m1) hs 
                in concat (lst:lsts)
 
-mkDepEdges4Index :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Index)]
+mkDepEdges4Index :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,IndexSymbol)]
 mkDepEdges4Index e = let e1 = mexpExp e
                          h1 = untrie ?expHash e1
                          m1 = mexpMap e
@@ -286,18 +288,7 @@ mkDepGraphNoSum e =
 
 data Pos = Pos1 | Pos2 
 
-data TDelta = TDelta2 Index Index
-            | TDelta1 Index Int
-
-data EExp a = EVal a
-            | EDelta TDelta            
-            | EAdd a TDelta
-            | EAdd2 TDelta TDelta
-            | EMul a TDelta
-            | EMul2 TDelta TDelta
-
-
-type IdxPoint = [(Index,Int)]
+type IdxPoint = [(IndexSymbol,Int)]
 
 data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
                        , flatIndex :: [Int] -> Int
