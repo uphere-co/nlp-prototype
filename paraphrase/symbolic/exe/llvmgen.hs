@@ -31,8 +31,9 @@ exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = add [ sum_ [("i",0,3)] zero , zero ]
-
+exp5 = add [ sum_ [idxi, idxj] (y_ [idxi,idxj]), zero ]
+  where idxi = ("i",0,2)
+        idxj = ("j",0,3)
 -- add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 
@@ -62,16 +63,16 @@ main = do
   -- putStr "pow(10,x) = "
   prettyPrintR exp5
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [] exp5
+              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,3)] ] exp5
               define double "main" [] $ do
-{-                 yref <- alloca (arrtype double 10)
+                yref <- alloca (arrtype double 10)
                 let setarr arr (n,v) = do
                       ptr <- getElementPtr arr [ ival 0, ival n ]
                       store ptr (fval v)
-                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10] -}
+                mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10]
 
                 
-                res <- call (externf (AST.Name "fun1")) [ ]
+                res <- call (externf (AST.Name "fun1")) [ yref ]
 
                 ret res 
   runJIT ast
