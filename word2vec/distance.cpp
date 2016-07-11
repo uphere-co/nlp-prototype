@@ -51,6 +51,7 @@ void ReadWordVector() {
   std::string line;
   unsigned long long hash;
   long long pos = 0;
+  real mag;
   inFile.open(word_vector_file, std::ifstream::in | std::ifstream::binary);
   if(inFile.fail()) {
     std::cout << "Word vector file not found!\n";
@@ -69,12 +70,19 @@ void ReadWordVector() {
     while(vocab_hash[hash] != -1) hash = (hash + 1) % vocab_hash_size;
     vocab_hash[hash] = pos;
     pos++;
+    mag = 0;
     for(int i = 0; i < layer1_size; i++) {
-      word_vector.push_back(atof(word[i+1].c_str()));
-    }  
+      mag = mag + atof(word[i+1].c_str())*atof(word[i+1].c_str());
+    }
+    mag = sqrt(mag);
+    for(int i = 0; i < layer1_size; i++) {
+      word_vector.push_back(atof(word[i+1].c_str())/mag);
+    }
+    
   }
 
   inFile.close();
+
 }
 
 std::vector<real> GetWordVector(std::string& word) {
@@ -438,8 +446,7 @@ int main(int argc, char **argv) {
   // Test part!
   std::string word1, word2, word3, word4; // word1:word2 = word3:word4 -> word2 - word1 = word4 - word3
   std::vector<real> test_vector1, test_vector2, test_vector3, test_vector4;
-  std::string target;
-  
+
   int total = 0;
   int score = 0;
 
@@ -463,11 +470,12 @@ int main(int argc, char **argv) {
     if(GetSimilarWordsn1(test_vector2) == word2) score++;
     if(GetSimilarWordsn1(test_vector3) == word3) score++;
     if(GetSimilarWordsn1(test_vector4) == word4) score++;
-    
+
   }
 
-  std::cout << score/(double)total << std::endl;  
+  std::cout << score/(double)total << std::endl;
   //
+  
   inFile.close();
   return 0;
 }
