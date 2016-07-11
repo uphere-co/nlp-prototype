@@ -109,13 +109,6 @@ external retty label argtys = addDefn $
 -- Types
 -------------------------------------------------------------------------------
 
--- IEEE 754 double
--- double :: Type
--- double = FloatingPointType 64 IEEE
-
--- int64 :: Type
--- int64 = Int64
-
 arrtype :: Type -> Int -> Type 
 arrtype typ n = ArrayType (fromIntegral n) typ
 
@@ -360,15 +353,12 @@ hVar h = printf "x%x" h
 
 mkAssign name val = assign name val >> return ()
 
-cgen4Const name = mkAssign name . fval -- (cons (C.Float (F.Double v))) 
+cgen4Const name = mkAssign name . fval
 
 mkOp op h val = getvar (hVar h) >>= op val
 
 mkAdd = mkOp fadd
 mkMul = mkOp fmul
-
--- false = cons $ C.Float (F.Double 0.0)
--- true = cons $ C.Float (F.Double 1.0)
 
 fval :: Double -> Operand
 fval v = cons $ C.Float (F.Double v)

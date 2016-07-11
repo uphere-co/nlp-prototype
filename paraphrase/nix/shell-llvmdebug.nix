@@ -186,7 +186,7 @@ let
     
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
               xml-conduit split unordered-containers #vector-algorithms
-	      storable-tuple
+              storable-tuple
               tagged either
               mersenne-random
               math-functions
@@ -194,11 +194,11 @@ let
               lbfgs
               MemoTrie lens
               language-c containers
-	      llvm-general
-	      QuickCheck
-	      test-framework
-	      test-framework-hunit
-	      test-framework-quickcheck2
+              llvm-general
+              QuickCheck
+              test-framework
+              test-framework-hunit
+              test-framework-quickcheck2
             ]);
 
     llvm_35_debug = llvm_35.override { debugVersion = true; }; 
