@@ -345,6 +345,9 @@ phi ty incoming = instr $ Phi ty incoming []
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
 
+ret_ :: Codegen (Named Terminator)
+ret_ = terminator $ Do $ Ret Nothing []
+
 -----------------------
 
 uncurry3 f (a,b,c) = f a b c 
@@ -371,6 +374,11 @@ ival v = cons $ C.Int 64 (fromIntegral v)
 
 izero = ival 0
 ione = ival 1
+
+getElem ty s idx = 
+  let arr = LocalReference (ptr ty) (AST.Name s)
+  in load =<< getElementPtr arr [idx]
+      
 
 cgen4fold name op ini [] = cgen4Const name ini
 cgen4fold name op ini (h:hs) = do
@@ -442,8 +450,8 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
 llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
-  let arr = LocalReference (ptr double) (AST.Name s)
-      factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
+  -- let arr = LocalReference (ptr double) (AST.Name s)
+  let factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
   indices <- forM is $ \(i,s,_) -> do
     xref <- getvar i
     x <- load xref
@@ -453,8 +461,9 @@ llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
   (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
                   indices factors 
   theindex <- foldrM iadd i1 irest       
-  ptr <- getElementPtr arr [theindex]
-  val <- load ptr
+  -- ptr <- getElementPtr arr [theindex]
+  -- val <- load ptr
+  val <- getElem double s theindex
   assign name val
   return ()
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n

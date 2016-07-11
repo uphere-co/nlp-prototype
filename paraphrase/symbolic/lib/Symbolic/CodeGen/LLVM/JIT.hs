@@ -7,7 +7,7 @@ import Data.Word
 import Foreign.Ptr ( FunPtr, Ptr, castFunPtr )
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable (poke)
+import           Foreign.Storable (poke, peek)
 
 import Control.Monad.Trans.Except
 
@@ -23,10 +23,11 @@ import LLVM.General.Analysis
 
 import qualified LLVM.General.ExecutionEngine as EE
 
-foreign import ccall "dynamic" haskFun :: FunPtr (Ptr Double -> IO Double) -> Ptr Double -> IO Double
+foreign import ccall "dynamic" haskFun :: FunPtr (Ptr Double -> Ptr (Ptr Double) -> IO ())
+                                       -> Ptr Double -> Ptr (Ptr Double) -> IO ()
 
-run :: FunPtr a -> Ptr Double -> IO Double
-run fn = haskFun (castFunPtr fn :: FunPtr (Ptr Double -> IO Double))
+run :: FunPtr a -> Ptr Double -> Ptr (Ptr Double) -> IO ()
+run fn = haskFun (castFunPtr fn :: FunPtr (Ptr Double -> Ptr (Ptr Double) -> IO ()))
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -55,10 +56,15 @@ runJIT mod = do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
-                Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \p -> do
-                  -- poke p 9.0
-                  res <- run fn p
-                  putStrLn $ "Evaluated to: " ++ show res
+                Alloc.alloca $ \pres -> 
+                  Alloc.alloca $ \pargs -> 
+                    Array.withArray [100,200,300,400,500,600,700,800,900,1000] $ \px -> do
+                      poke pargs px
+                      -- poke p 9.0
+                      -- res <-
+                      run fn pres pargs
+                      res <- peek pres
+                      putStrLn $ "Evaluated to: " ++ show res
               Nothing -> return ()
 
           -- Return the optimized module

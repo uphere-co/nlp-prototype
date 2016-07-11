@@ -7,8 +7,8 @@ import           Data.MemoTrie
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
 import qualified LLVM.General.AST.Constant as C
-import           LLVM.General.AST.Type            ( double, i64, ptr )
-
+import           LLVM.General.AST.Type            ( double, i64, ptr, void )
+--
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Lang
 import           Symbolic.Predefined
@@ -38,7 +38,7 @@ exp5 = sum_ [idxi, idxj] (add [ y_ [idxi,idxj], one ] )
 
 exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
-
+{-
 test1 = do
   let ?expHash = trie hash
   -- putStr "pow(10,x) = "
@@ -59,6 +59,8 @@ test1 = do
                 ret res 
   runJIT ast
   return ast
+-}
+
 
 test2 = do
   let ?expHash = trie hash
@@ -67,9 +69,14 @@ test2 = do
               llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5
               external double "sin" [(double, AST.Name "x")] 
              
-              define double "main" [(ptr double, AST.Name "x")] $ do
-                res <- call (externf (AST.Name "fun1")) [ local (AST.Name "x") ]
-                ret res 
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 -- , (ptr double, AST.Name "x")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                res <- call (externf (AST.Name "fun1")) [ xref ] -- [ local (AST.Name "x") ]
+                store (local (AST.Name "res")) res
+                ret_
   runJIT ast
   return ast
 
