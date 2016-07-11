@@ -71,3 +71,70 @@ class ValueHolder(object):
     def reset(self):
         for mem in self._holders:
             mem.reset()
+
+@unique
+class NodeType(Enum):
+    Var = 1
+    F = 2
+    Add = 3
+    Dot = 4
+    CTimes = 5
+
+class Block(object):
+    '''
+    _names : ASCII string.
+    '''
+    def __init__(self, size):
+        len_max=100
+        self._names = np.empty((size), dtype='|S%s'%len_max)
+        self._idx=0
+        self._values_holder=ValueHolder(1000000)
+        self._values_info = np.empty((1000000, 5), dtype=np.int64)
+    @property
+    def n_values(self):
+        return self._idx
+    def is_declared(self, name):
+        idxs=np.where(self._names[:self._idx]==name)[0]
+        if len(idxs)>0:
+            return True
+        return False
+    def declare(self, name, val=None):
+        '''
+        name : unicode string. Internally, stored as ASCII string
+        '''
+        name=name.encode('utf-8')
+        if self.is_declared(name):
+            raise ValueError('%s is already declared'%name)
+        uid=self.n_values
+        self._names[uid]=name
+        self._idx +=1
+        if val is not None:
+            vals=self._values_holder[val.shape]
+            sidx=self._values_holder.shape_index(val.shape)
+            vidx=vals.save(val)
+            self._values_info[uid]=[NodeType.Var.value,sidx,vidx,-1,-1]
+        return uid
+    def node_type(self, uid):
+        return self._values_info[uid]
+    def get_value(self, key):
+        if isinstance(key, unicode):
+            name=key
+            uid=self.uid(name)
+        elif isinstance(key, int):
+            uid=key
+        else :
+            raise TypeError("key should be either name or uid")
+        _,sidx,vidx,_,_ = self.node_type(uid)
+        vals=self._values_holder[sidx]
+        return vals[vidx]
+    def uid(self, name):
+        name=name.encode('utf-8')
+        if not self.is_declared(name):
+            raise ValueError('%s is not declared'%name)
+        idxs=np.where(self._names[:self._idx]==name)[0]
+        return idxs[0]
+    #def __getitem__(self, uid):
+    def name(self, uid):
+        if not self._idx > uid:
+            raise IndexError('%d is not declared'%uid)
+        return self._names[uid].decode('utf-8')

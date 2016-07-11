@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import os
 sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/')
@@ -5,7 +6,7 @@ sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/
 import numpy as np
 import pytest
 
-from vecGraphComp.vnodes import MatrixValues, ValueHolder
+from vecGraphComp.base import MatrixValues, ValueHolder, Block, NodeType
 
 def test_numpy_structure_of_arrays_with_expand_dims():
     m,n = 200,100
@@ -57,3 +58,38 @@ def test_ValueHolder():
     #Indexing unknown shape raises ValueError exception.
     with pytest.raises(ValueError):
         vs.shape_index([500,500])
+
+def test_NodeType():
+    #Python Enum supports
+    i=NodeType.Var.value
+    assert isinstance(i, int)
+    assert NodeType(i) == NodeType.Var
+
+def test_Block():
+    a=Block(1000)
+    name='abcdefghijklmn'
+    a.declare(name)
+    a.uid(name)
+    name=name[:2]+name[5:]
+    #`name` is copied, not shared.
+    with pytest.raises(ValueError):
+        a.uid(name)
+
+    a.declare(u'가')
+    with pytest.raises(ValueError):
+        a.declare(u'가')
+    uid=a.declare(u'나')
+    assert a.uid(u'나')==uid
+    assert a.name(uid)==u'나'
+    with pytest.raises(ValueError):
+        a.uid(u'다')
+    assert a.name(a.uid(u'abcdefghijklmn'))==u'abcdefghijklmn'
+
+    uid1=a.declare(u'foo', np.array(range(9)).reshape(3,3))
+    uid2=a.declare(u'bar', np.array(range(9,18)).reshape(3,3))
+    uid3=a.declare(u'x', np.array(range(6)).reshape(3,2))
+    uid4=a.declare(u'y', np.array(range(6,12)).reshape(3,2))
+    assert np.all(a.get_value(uid1)==np.array(range(9)).reshape(3,3))
+    assert np.all(a.get_value(u'bar')==np.array(range(9,18)).reshape(3,3))
+    assert np.all(a.get_value(uid3)==np.array(range(6)).reshape(3,2))
+    assert np.all(a.get_value(u'y')==np.array(range(6,12)).reshape(3,2))
