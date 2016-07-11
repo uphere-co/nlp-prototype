@@ -20,10 +20,10 @@ import LLVM.General.Analysis
 
 import qualified LLVM.General.ExecutionEngine as EE
 
-foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
+foreign import ccall "dynamic" haskFun :: FunPtr (Double -> IO Double) -> Double -> IO Double
 
-run :: FunPtr a -> IO Double
-run fn = haskFun (castFunPtr fn :: FunPtr (IO Double))
+run :: FunPtr a -> Double -> IO Double
+run fn = haskFun (castFunPtr fn :: FunPtr (Double -> IO Double))
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -52,7 +52,7 @@ runJIT mod = do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
-                res <- run fn
+                res <- run fn 8.0
                 putStrLn $ "Evaluated to: " ++ show res
               Nothing -> return ()
 

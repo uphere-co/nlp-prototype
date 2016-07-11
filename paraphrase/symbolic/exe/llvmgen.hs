@@ -67,7 +67,8 @@ test2 = do
               llvmAST "fun1" [ Indexed "y" [("i",0,9)] ] exp6
               external double "sin" [(double, AST.Name "x")] 
              
-              define double "main" [] $ do
+              define double "main" [(double, AST.Name "x")] $ do
+                {-
                 yref <- alloca (arrtype double 10)
                 let setarr arr (n,v) = do
                       ptr <- getElementPtr arr [ ival 0, ival n ]
@@ -75,11 +76,12 @@ test2 = do
                 mapM_ (setarr yref) $ zip [0..9] [1,2,3,4,5,6,7,8,9,10]
 
                 
-                res <- call (externf (AST.Name "fun1")) [ yref ]
-
-                ret res 
+                res <- call (externf (AST.Name "fun1")) [ yref ] -}
+                -- res <- load (local "x")
+                
+                ret (local (AST.Name "x")) -- res 
   runJIT ast
   return ast
 
 
-main = test1
+main = test2
