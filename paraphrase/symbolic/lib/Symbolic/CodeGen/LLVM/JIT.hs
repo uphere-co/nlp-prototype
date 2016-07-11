@@ -58,5 +58,5 @@ runJIT mod = do
 
           -- Return the optimized module
           return optmod 
-      -- print r
+      --print r
       return r

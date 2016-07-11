@@ -267,21 +267,6 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
-{-
-getval :: String -> Codegen Operand
-getval var = do
-  s <- get
-  let symvs = symval s
-  case lookup var symvs of
-    Just v -> return v
-    Nothing -> do 
-      ref <- getvar var
-      val <- load ref
-      modify (\s -> s { symval = (var,val):symvs})
-      return val
--}
-
--- getval = getvar
 -------------------------------------------------------------------------------
 
 -- References
@@ -477,14 +462,18 @@ llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
-llvmCodegen name (mexpExp -> Fun sym hs)    = return ()
+llvmCodegen name (mexpExp -> Fun sym hs)    = do
+  lst <- mapM (getvar . hVar) hs
+  val <- call (externf (AST.Name sym)) lst
+  assign name val
+  return ()
 llvmCodegen name (MExp (Sum is h1) m i)     = do
   sumref <- alloca double
   store sumref (fval 0)
   let innerstmt = do
         body
         s <- load sumref
-        v <- getvar (hVar h_result)
+        v <- getvar (hVar h1)
         s' <- fadd s v 
         store sumref s'
         return ()
@@ -493,12 +482,14 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
   assign name rval
 
   where v = justLookup h1 m
-        h_result = untrie ?expHash (mexpExp v)
+        -- h_result = untrie ?expHash (mexpExp v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
-        bmap = HM.insert h_result v (mexpMap v)
-        hs_ordered = reverse (h1 : map (\i -> table ! i) (topSort depgraph))
+        bmap = HM.insert h1 v (mexpMap v)
+        hs_ordered = delete h1 (reverse (map (\i -> table ! i) (topSort depgraph)))
         es_ordered = map (flip justLookup bmap) hs_ordered
-        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered                
+        body = do
+          mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered
+          llvmCodegen (hVar h1) v
         mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
 
         
@@ -513,7 +504,9 @@ llvmAST name syms v = define double name symsllvm $ do
         h_result = getMHash v
         bmap = HM.insert h_result v (mexpMap v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
-        hs_ordered = reverse (h_result: map (\i -> table ! i) (topSort depgraph))
+        hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
         es_ordered = map (flip justLookup bmap) hs_ordered
-        body = mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered        
+        body = do
+          mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered
+          llvmCodegen (hVar h_result) v
 
