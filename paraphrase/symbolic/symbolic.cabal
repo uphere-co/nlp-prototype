@@ -33,9 +33,12 @@ Library
                         bytestring,
                         containers,
                         hashable,
-                        language-c,                        
+                        language-c,
+                        llvm-general,
+                        llvm-general-pure,
                         lens,
                         MemoTrie,
+                        mtl,
                         pretty,
                         transformers,
                         unordered-containers,
@@ -43,7 +46,9 @@ Library
                         
 
   Exposed-modules:
-                        Symbolic.CodeGen
+                        Symbolic.CodeGen.C
+                        Symbolic.CodeGen.LLVM.Lang
+                        Symbolic.CodeGen.LLVM.JIT
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined
@@ -78,3 +83,29 @@ Executable trie
                         vector,
                         --
                         symbolic
+
+Executable llvmgen
+  Main-is:              llvmgen.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        containers,
+                        hashable,
+                        llvm-general,
+                        llvm-general-pure,
+                        MemoTrie,
+                        mtl,
+                        transformers,
+                        --
+                        symbolic
+                        

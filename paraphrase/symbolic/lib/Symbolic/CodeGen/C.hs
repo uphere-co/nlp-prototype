@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Symbolic.CodeGen where
+module Symbolic.CodeGen.C where
 
 import           Control.Lens                    (view, _1)
 import           Control.Monad.Trans.State
