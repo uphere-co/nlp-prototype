@@ -493,39 +493,31 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
   store sumref (fval 0)
   let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
   
-  let v1 = justLookup h1 m
-      name' = hVar h1
+  let -- v1 = justLookup h1 m
+      -- name' = hVar h_result
       innerstmt = do
-        llvmCodegen name' v1
-        -- vref <- getvar name'
-        -- v <- load vref
-        
+        body
+        -- llvmCodegen name' v1
         s <- load sumref
-        s' <- fadd s (fval 1) -- (local (AST.Name name')) -- (fval 1) -- v
+        v <- getvar (hVar h_result)
+        s' <- fadd s v 
         store sumref s'
         return ()
-        
-      innerstmt' = do
-        iref <- getvar "i"
-        i <- load iref
-        s <- load sumref
-        s' <- fadd s (fval 1)
-        store sumref s'
-        return ()
-  
   foldr (.) id (map mkFor is) innerstmt
 
   rval <- load sumref
   assign name rval
-{-
+
   where v = justLookup h1 m
         h_result = untrie ?expHash (mexpExp v)
         (hashmap,table,depgraph) = mkDepGraphNoSum v
         bmap = HM.insert h_result v (mexpMap v)
-        hs_ordered = reverse (map (\i -> table ! i) (topSort depgraph))
+        hs_ordered = reverse (h1 : map (\i -> table ! i) (topSort depgraph))
         es_ordered = map (flip justLookup bmap) hs_ordered
-        bodylst' = map CBlockStmt . concatMap (\e -> llvmPrint' (hVar (getMHash e)) e) $ es_ordered
-        innerstmt =
+        body = trace ("hs_ordered : " ++ show hs_ordered) $ mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered                
+
+{-         innerstmt =
+
           mkCompound $  
             decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
 -}
