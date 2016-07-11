@@ -88,12 +88,13 @@ class Block(object):
         len_max=100
         self._names = np.empty((size), dtype='|S%s'%len_max)
         self._idx=0
-        self._values_holder=ValueHolder(1000000)
-        self._values_info = np.empty((1000000, 5), dtype=np.int64)
+        self._values_holder=ValueHolder(size)
+        self._values_info = np.empty((size, 5), dtype=np.int64)
     @property
     def n_values(self):
         return self._idx
     def is_declared(self, name):
+        name=name.encode('utf-8')
         idxs=np.where(self._names[:self._idx]==name)[0]
         if len(idxs)>0:
             return True
@@ -102,11 +103,11 @@ class Block(object):
         '''
         name : unicode string. Internally, stored as ASCII string
         '''
-        name=name.encode('utf-8')
         if self.is_declared(name):
+            return self.uid(name)
             raise ValueError('%s is already declared'%name)
         uid=self.n_values
-        self._names[uid]=name
+        self._names[uid]=name.encode('utf-8')
         self._idx +=1
         if val is not None:
             vals=self._values_holder[val.shape]
@@ -128,13 +129,13 @@ class Block(object):
         vals=self._values_holder[sidx]
         return vals[vidx]
     def uid(self, name):
-        name=name.encode('utf-8')
         if not self.is_declared(name):
             raise ValueError('%s is not declared'%name)
-        idxs=np.where(self._names[:self._idx]==name)[0]
+        idxs=np.where(self._names[:self._idx]==name.encode('utf-8'))[0]
         return idxs[0]
     #def __getitem__(self, uid):
     def name(self, uid):
+        #TODO: this assumes uid start from 1.
         if not self._idx > uid:
             raise IndexError('%d is not declared'%uid)
         return self._names[uid].decode('utf-8')

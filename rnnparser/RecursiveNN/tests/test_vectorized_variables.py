@@ -76,8 +76,8 @@ def test_Block():
         a.uid(name)
 
     a.declare(u'가')
-    with pytest.raises(ValueError):
-        a.declare(u'가')
+    #Declaring same name multiple times does nothing
+    a.declare(u'가')
     uid=a.declare(u'나')
     assert a.uid(u'나')==uid
     assert a.name(uid)==u'나'
