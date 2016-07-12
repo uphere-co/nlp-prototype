@@ -29,11 +29,11 @@ exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = add [ x , delta idxi idxj, delta idxk idxl ] 
+exp3 = delta idxi idxj  --  add [ x , delta idxi idxj, delta idxk idxl ] 
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
         idxk = ("k",0,2)
-        idxl = ("l",0,2)
+        idxl = ("l",0,2) 
 
 exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
@@ -124,5 +124,28 @@ test3 = do
                   res <- peek pres
                   putStrLn $ "Evaluated to: " ++ show res
 
+
+
+test4 = do
+  let ?expHash = trie hash
+  let exp = exp3
+  prettyPrintR (exp :: MExp Double)
+  -- print (mexpIdx exp)
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp
+  print ast
+              
+{-               external double "sin" [(double, AST.Name "x")] 
+             
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                res <- call (externf (AST.Name "fun1")) [ xref ]
+                store (local (AST.Name "res")) res
+                ret_ -}
+  {- runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?" -}
 
 main = test2
