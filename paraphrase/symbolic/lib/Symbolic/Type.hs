@@ -232,18 +232,6 @@ mkDepEdges e = let e1 = mexpExp e
                    lsts = map (mkDepEdges . flip justLookup m1) hs 
                in concat (lst:lsts)
 
-{- 
-mkDepEdges4Index :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Index)]
-mkDepEdges4Index e = let e1 = mexpExp e
-                         h1 = untrie ?expHash e1
-                         m1 = mexpMap e
-                         i1 = HS.toList (mexpIdx e)
-                         hs = daughters e1
-                         lst = map (h1,) i1
-                         lsts = map (mkDepEdges4Index . flip justLookup m1) hs 
-                     in concat (lst:lsts)
--}
-
 mkDepEdgesNoSum :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepEdgesNoSum e =
   let e1 = mexpExp e

@@ -184,26 +184,9 @@ test5 = do
             mv@(VS.MVector _ fpr) <- VS.thaw vr
             withForeignPtr fparg $ \pargs -> 
               withForeignPtr fpr $ \pres -> do
-                -- pokeElemOff pargs 0 px
-                -- pokeElemOff pargs 1 py
                 run fn pres pargs
-                --res <- Array.peekArray 10 pres
                 vr' <- VS.freeze mv
                 putStrLn $ "original : " ++ show vr
                 putStrLn $ "Evaluated to: " ++ show vr'
-          
-            
-
-{-           
-        Array.allocaArray 10 $ \pres -> 
-          Alloc.alloca $ \pargs -> do
-            Array.withArray [1..100] $ \px -> do
-              Array.withArray [1..10] $ \py -> do
-                pokeElemOff pargs 0 px
-                pokeElemOff pargs 1 py
-                run fn pres pargs
-                res <- Array.peekArray 10 pres
-                putStrLn $ "Evaluated to: " ++ show res
--}
 
 main = test5
