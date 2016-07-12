@@ -1,6 +1,7 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE TypeOperators #-}
 
+import           Control.Concurrent
 import           Data.Hashable
 import           Data.MemoTrie
 import qualified Foreign.Marshal.Alloc as Alloc
@@ -92,17 +93,32 @@ test3 = do
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
-        Alloc.alloca $ \pres -> 
-          Alloc.alloca $ \pargs -> 
-            Alloc.alloca $ \px ->
-              Alloc.alloca $ \py -> do
-                poke px 700
-                poke py 300
-                pokeElemOff pargs 0 px
-                pokeElemOff pargs 1 py
-                run fn pres pargs
-                res <- peek pres
-                putStrLn $ "Evaluated to: " ++ show res
+        forkIO $ do
+          --threadDelay 1000000
+          Alloc.alloca $ \pres -> 
+            Alloc.alloca $ \pargs -> 
+              Alloc.alloca $ \px ->
+                Alloc.alloca $ \py -> do
+                  poke px 700
+                  poke py 300
+                  pokeElemOff pargs 0 px
+                  pokeElemOff pargs 1 py
+                  run fn pres pargs
+                  res <- peek pres
+                  putStrLn $ "Evaluated to: " ++ show res
+        do
+          threadDelay 1000000
+          Alloc.alloca $ \pres -> 
+            Alloc.alloca $ \pargs -> 
+              Alloc.alloca $ \px ->
+                Alloc.alloca $ \py -> do
+                  poke px 500
+                  poke py 900
+                  pokeElemOff pargs 0 px
+                  pokeElemOff pargs 1 py
+                  run fn pres pargs
+                  res <- peek pres
+                  putStrLn $ "Evaluated to: " ++ show res
 
 
 main = test3
