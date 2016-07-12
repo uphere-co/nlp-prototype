@@ -28,7 +28,7 @@ eval :: ( Num a, Storable a, HasTrie a
 eval _ (_,_,Zero) = 0
 eval _ (_,_,One)  = 1
 eval _ (_,_,Val n) = n
-eval _ (_,ip,Delta i j) = evalDelta ip i j 
+eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j 
 eval m (args,ip,Var v) = evalVar args ip v
 eval m (args,ip,Mul hs) =
   let es = map (mexpExp . flip justLookup m) hs

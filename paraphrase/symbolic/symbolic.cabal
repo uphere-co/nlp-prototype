@@ -105,6 +105,7 @@ Executable llvmgen
                         llvm-general-pure,
                         MemoTrie,
                         mtl,
+                        vector,
                         transformers,
                         --
                         symbolic

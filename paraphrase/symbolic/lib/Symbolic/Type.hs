@@ -68,7 +68,7 @@ instance Hashable Symbol where
 
 data Exp a = Zero
            | One
-           | Delta IndexSymbol IndexSymbol
+           | Delta Index Index
            | Val a
            | Var Symbol
            | Add [Hash]
@@ -96,7 +96,7 @@ isSum _         = False
 
 data MExp a = MExp { mexpExp :: Exp a
                    , mexpMap :: HashMap Hash (MExp a)
-                   , mexpIdx :: HashSet IndexSymbol
+                   , mexpIdx :: HashSet Index -- IndexSymbol
                    }
 
 getMHash :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> Hash
@@ -105,7 +105,7 @@ getMHash e = untrie ?expHash (mexpExp e)
 
 data RExp a = RZero
             | ROne
-            | RDelta IndexSymbol IndexSymbol
+            | RDelta Index Index
             | RVal a
             | RVar Symbol
             | RAdd [RExp a]
@@ -127,7 +127,7 @@ instance HasTrie Double where
 instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)
                                 (() :->: b)
-                                ((IndexSymbol,IndexSymbol) :->: b)
+                                ((Index,Index) :->: b)
                                 (a :->: b)
                                 (Symbol :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
@@ -176,10 +176,6 @@ instance HasTrie a => HasTrie (Exp a) where
     `weave`
     enum' (uncurry Fun) f
     `weave`
-    -- enum' (uncurry Fun1) f1
-    --  `weave`
-    -- enum' (\(s,e1,e2)->Fun2 s e1 e2) f2
-    -- `weave`
     enum' (uncurry Sum) su
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
@@ -205,18 +201,15 @@ instance Hashable a => Hashable (Exp a) where
 
 
 exp2RExp :: MExp a -> RExp a
-exp2RExp (mexpExp -> Zero)         = RZero
-exp2RExp (mexpExp -> One)          = ROne
-exp2RExp (mexpExp -> Delta i j)    = RDelta i j
-exp2RExp (mexpExp -> Val n)        = RVal n
-exp2RExp (mexpExp -> Var s)        = RVar s
-exp2RExp (MExp (Add hs) m _)       = RAdd $ map (exp2RExp . flip justLookup m) hs
-exp2RExp (MExp (Mul hs) m _)       = RMul $ map (exp2RExp . flip justLookup m) hs
-exp2RExp (MExp (Fun s hs) m _)     = RFun s $ map (exp2RExp . flip justLookup m) hs
--- exp2RExp (MExp (Fun1 s h1) m _)    = let e1 = justLookup h1 m in RFun1 s (exp2RExp e1)
--- exp2RExp (MExp (Fun2 s h1 h2) m _) = let e1 = justLookup h1 m; e2 = justLookup h2 m
---                                     in RFun2 s (exp2RExp e1) (exp2RExp e2)
-exp2RExp (MExp (Sum is h1) m _)    = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
+exp2RExp (MExp Zero        _ _) = RZero
+exp2RExp (MExp One         _ _) = ROne
+exp2RExp (MExp (Delta i j) _ _) = RDelta i j
+exp2RExp (MExp (Val n)     _ _) = RVal n
+exp2RExp (MExp (Var s)     _ _) = RVar s
+exp2RExp (MExp (Add hs)    m _) = RAdd $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Mul hs)    m _) = RMul $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Fun s hs)  m _) = RFun s $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Sum is h1) m _) = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 
 
 daughters :: Exp a -> [Hash]
@@ -228,8 +221,6 @@ daughters (Var s)        = []
 daughters (Add hs)       = hs
 daughters (Mul hs)       = hs
 daughters (Fun s hs)     = hs
--- daughters (Fun1 s h1)    = [h1]
--- daughters (Fun2 s h1 h2) = [h1,h2]
 daughters (Sum is h1)    = [h1]
 
 mkDepEdges :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
@@ -240,16 +231,6 @@ mkDepEdges e = let e1 = mexpExp e
                    lst = map (h1,) hs
                    lsts = map (mkDepEdges . flip justLookup m1) hs 
                in concat (lst:lsts)
-
-mkDepEdges4Index :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,IndexSymbol)]
-mkDepEdges4Index e = let e1 = mexpExp e
-                         h1 = untrie ?expHash e1
-                         m1 = mexpMap e
-                         i1 = HS.toList (mexpIdx e)
-                         hs = daughters e1
-                         lst = map (h1,) i1
-                         lsts = map (mkDepEdges4Index . flip justLookup m1) hs 
-                     in concat (lst:lsts)
 
 mkDepEdgesNoSum :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepEdgesNoSum e =

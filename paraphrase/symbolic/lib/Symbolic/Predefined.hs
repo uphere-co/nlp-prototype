@@ -19,7 +19,7 @@ var :: String -> MExp a
 var s = MExp (Var (Simple s)) HM.empty HS.empty
 
 ivar :: String -> [Index] -> MExp a
-ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.fromList (map (view _1)  i))
+ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.fromList i)
 
 x :: MExp a
 x = var "x"
@@ -30,8 +30,6 @@ y = var "y"
 z :: MExp a
 z = var "z"
 
-
-
 x_ :: [Index] -> MExp a
 x_ i = ivar "x" i
 
@@ -40,7 +38,6 @@ y_ i = ivar "y" i
 
 z_ :: [Index] -> MExp a
 z_ i = ivar "z" i
-
 
 one :: MExp a
 one = MExp One HM.empty HS.empty
@@ -71,7 +68,7 @@ mul = varop Mul
 sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =
   let h1 = untrie ?expHash e1
-      i = i1 `difference` HS.fromList (map (view _1) is)
+      i = i1 `difference` HS.fromList is
       e = Sum is h1
       m = HM.insert h1 em m1
   in MExp e m i

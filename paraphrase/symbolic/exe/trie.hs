@@ -189,8 +189,8 @@ test8 = do
 test9 :: IO ()
 test9 = do
   let ?expHash = trie hash
-  let e1 = mul [delta "i" "m", delta "j" "n"]
-      e2 = mul [delta "i" "n", delta "j" "m"]
+  let e1 = mul [delta idxi idxm, delta idxj idxn]
+      e2 = mul [delta idxi idxn, delta idxj idxm]
       e3 = add [e1,e2]
       e4 = mul [e3,x_ [idxm,idxn]]
   printf "e4 = %s\n"  ((prettyPrint . exp2RExp) (e4 ::  MExp Int) :: String)
@@ -212,8 +212,8 @@ test11 :: IO ()
 test11 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let e1 = mul [delta "i" "m", delta "j" "n"] :: MExp Int
-      e2 = mul [val (-1), delta "i" "n", delta "j" "m"]
+  let e1 = mul [delta idxi idxm,  delta idxj idxn] :: MExp Int
+      e2 = mul [val (-1), delta idxi idxn, delta idxj idxm]
       e3 = add [e1,e2]
       e4 = mul [e3,x_ [idxm,idxn]]
       e5 = sum_ [idxm,idxn] e4
@@ -248,7 +248,7 @@ test13 = do
 
   let exp0 :: MExp Double
       exp0 = y_ [idxm,idxn]
-      exp1 = delta "m" "n"      
+      exp1 = delta idxm idxn      
       exp2 = sum_ [idxm] (add' [exp0,exp1])
       exp3 = mul' [ z_ [idxk], z_ [idxk] ]
       exp4 = sum_ [(idxk)] exp3
@@ -256,10 +256,6 @@ test13 = do
 
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
-
-  -- let (hmap,_,_) = mkDepGraph exp5
-  
-  -- mapM_ (\(h,i)->printf "%x -> %s\n" h i) $ mkDepEdges4Index exp5
   
   cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
   

@@ -66,7 +66,7 @@ dvar (Simple s)    (Simple s')   = if s == s' then one else zero
 dvar (Simple s)    _             = zero
 dvar _             (Simple s')   = zero
 dvar (Indexed x j) (Indexed y k)
-  | x == y && length j == length k = let djk = zipWith (\x y -> delta (view _1 x) (view _1 y))  j k
+  | x == y && length j == length k = let djk = zipWith delta j k
                                      in mul' djk
   | otherwise = zero
 

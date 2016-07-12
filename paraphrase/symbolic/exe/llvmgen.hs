@@ -1,11 +1,14 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE TypeOperators #-}
 
+import           Control.Concurrent
 import           Data.Hashable
 import           Data.MemoTrie
+import qualified Data.Vector.Storable  as VS
+import           Foreign.ForeignPtr             (withForeignPtr)
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable (poke, peek, pokeElemOff)
+import           Foreign.Storable               (poke, peek, pokeElemOff)
 
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
@@ -28,13 +31,17 @@ exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = add [ x , delta "i" "j", delta "k" "l" ] 
+exp3 = delta idxi idxj  --  add [ x , delta idxi idxj, delta idxk idxl ] 
+  where idxi = ("i",0,2)
+        idxj = ("j",0,2)
+        idxk = ("k",0,2)
+        idxl = ("l",0,2) 
 
 exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj]) --  (add [ y_ [idxi,idxj], one ] )
+exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj])
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
 
@@ -43,6 +50,12 @@ exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
 
 exp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp7 = add [ x, y ] 
+
+exp8 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+exp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
+  where idxi = ("i",0,9)
+        idxj = ("j",0,9)
+
 
 test2 = do
   let ?expHash = trie hash
@@ -55,8 +68,7 @@ test2 = do
                                  , (ptr (ptr double), AST.Name "args")
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
-                res <- call (externf (AST.Name "fun1")) [ xref ]
-                store (local (AST.Name "res")) res
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -85,24 +97,96 @@ test3 = do
                 yref <- getElem (ptr double) "args" (ival 1)
                 x <- load xref
                 y <- load yref
-                res <- call (externf (AST.Name "fun1")) [ x, y ]
-                store (local (AST.Name "res")) res
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), x, y ]
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
-        Alloc.alloca $ \pres -> 
-          Alloc.alloca $ \pargs -> 
-            Alloc.alloca $ \px ->
-              Alloc.alloca $ \py -> do
-                poke px 700
-                poke py 300
-                pokeElemOff pargs 0 px
-                pokeElemOff pargs 1 py
+        forkOS $ do
+          threadDelay 500000
+          Alloc.alloca $ \pres -> 
+            Alloc.alloca $ \pargs -> 
+              Alloc.alloca $ \px ->
+                Alloc.alloca $ \py -> do
+                  poke px 700
+                  poke py 300
+                  pokeElemOff pargs 0 px
+                  pokeElemOff pargs 1 py
+                  run fn pres pargs
+                  res <- peek pres
+                  putStrLn $ "Evaluated to: " ++ show res
+        do
+          threadDelay 1000000
+          Alloc.alloca $ \pres -> 
+            Alloc.alloca $ \pargs -> 
+              Alloc.alloca $ \px ->
+                Alloc.alloca $ \py -> do
+                  poke px 500
+                  poke py 900
+                  pokeElemOff pargs 0 px
+                  pokeElemOff pargs 1 py
+                  run fn pres pargs
+                  res <- peek pres
+                  putStrLn $ "Evaluated to: " ++ show res
+
+
+
+test4 = do
+  let ?expHash = trie hash
+  let exp = exp3
+  prettyPrintR (exp :: MExp Double)
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [] exp
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        Array.allocaArray 9 $ \pres -> 
+          Alloc.alloca $ \pargs -> do
+            run fn pres pargs
+            res <- Array.peekArray 9 pres
+            putStrLn $ "Evaluated to: " ++ show res
+
+test5 = do
+  let ?expHash = trie hash
+  let exp = exp8
+  prettyPrintR (exp :: MExp Double)
+  let idxi = ("i",0,9)
+      idxj = ("j",0,9)
+  let ast = runLLVM initModule $ do
+              
+              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ] exp
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                yref <- getElem (ptr double) "args" (ival 1)
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        let vx = VS.fromList [1..100] :: VS.Vector Double
+            vy = VS.fromList [1..10]  :: VS.Vector Double
+            vr = VS.replicate 10 0    :: VS.Vector Double
+        VS.unsafeWith vx $ \px ->
+          VS.unsafeWith vy $ \py -> do
+            let varg = VS.fromList [px,py]
+            mvarg@(VS.MVector _ fparg) <- VS.thaw varg
+            mv@(VS.MVector _ fpr) <- VS.thaw vr
+            withForeignPtr fparg $ \pargs -> 
+              withForeignPtr fpr $ \pres -> do
                 run fn pres pargs
-                res <- peek pres
-                putStrLn $ "Evaluated to: " ++ show res
+                vr' <- VS.freeze mv
+                putStrLn $ "original : " ++ show vr
+                putStrLn $ "Evaluated to: " ++ show vr'
 
-
-main = test3
+main = test5
