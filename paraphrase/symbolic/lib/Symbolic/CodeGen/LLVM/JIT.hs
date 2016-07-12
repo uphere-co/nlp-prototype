@@ -45,7 +45,7 @@ runJIT :: AST.Module -> (Maybe (FunPtr ()) -> IO b) -> IO (Either String b)
 runJIT mod action = do
   withContext $ \context ->
     jit context $ \executionEngine -> do
-      runExceptT $ withModuleFromAST context mod $ \m ->
+      r <- runExceptT $ withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
           runPassManager pm m
@@ -56,5 +56,7 @@ runJIT mod action = do
           EE.withModuleInEngine executionEngine m $ \ee -> do
             mfn <- EE.getFunction ee (AST.Name "main")
             action mfn
-
+      case r of
+        Left err -> putStrLn err >> return r
+        Right _ -> return r
 

@@ -456,11 +456,12 @@ mkInnerbody v = do
 llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
 llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
 llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
-llvmCodegen name (mexpExp -> Delta i j)     = do
-  let ni = view _1 i
-      nj = view _1 j
-  x <- cgencond ("delta"++ni++nj) (icmp IP.EQ (idxval ni) (idxval nj))
-         (return fone) (return fzero)
+llvmCodegen name (mexpExp -> Delta idxi idxj)     = do
+  let ni = view _1 idxi
+      nj = view _1 idxj
+  i <- getvar ni >>= load
+  j <- getvar nj >>= load
+  x <- cgencond ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
@@ -491,14 +492,25 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v = define T.void name symsllvm $ do
-                        mkInnerbody v
-                        if (HS.null (mexpIdx v))
+                        let rref = LocalReference (ptr double) (AST.Name "result")
+                            is = HS.toList (mexpIdx v)
+                        if null is
                           then do
-                            let rref = local (AST.Name "result")
+                            mkInnerbody v
                             val <- getvar (hVar (getMHash v))
                             store rref val
                             ret_
-                          else ret_
+                          else do
+                            let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
+                                innerstmt = do
+                                  theindex <- getIndex is
+                                  mkInnerbody v
+                                  val <- getvar (hVar (getMHash v))
+                                  p <- getElementPtr rref [theindex]
+                                  store p val -- (fval 5) -- val
+                                  return ()
+                            foldr (.) id (map mkFor is) innerstmt
+                            ret_
   where mkarg (Simple v) = (double,AST.Name v)
         mkarg (Indexed v _) = (ptr double,AST.Name v)
         symsllvm = trace (show (mexpIdx v)) $ (ptr double, AST.Name "result") : (map mkarg syms)
