@@ -60,8 +60,8 @@ test2 = do
                                  , (ptr (ptr double), AST.Name "args")
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
-                res <- call (externf (AST.Name "fun1")) [ xref ]
-                store (local (AST.Name "res")) res
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
+                -- store (local (AST.Name "res")) res
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -90,8 +90,9 @@ test3 = do
                 yref <- getElem (ptr double) "args" (ival 1)
                 x <- load xref
                 y <- load yref
-                res <- call (externf (AST.Name "fun1")) [ x, y ]
-                store (local (AST.Name "res")) res
+                -- res <-
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), x, y ]
+                -- store (local (AST.Name "res")) res
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -132,20 +133,33 @@ test4 = do
   prettyPrintR (exp :: MExp Double)
   -- print (mexpIdx exp)
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp
-  print ast
-              
-{-               external double "sin" [(double, AST.Name "x")] 
-             
+              llvmAST "fun1" [ ] exp
               define void "main" [ (ptr double, AST.Name "res")
                                  , (ptr (ptr double), AST.Name "args")
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
-                res <- call (externf (AST.Name "fun1")) [ xref ]
-                store (local (AST.Name "res")) res
-                ret_ -}
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
+                -- store (local (AST.Name "res")) res
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        Alloc.alloca $ \pres -> 
+          Alloc.alloca $ \pargs -> 
+            Alloc.alloca $ \px ->
+              Alloc.alloca $ \py -> do
+                poke px 700
+                poke py 300
+                pokeElemOff pargs 0 px
+                pokeElemOff pargs 1 py
+                run fn pres pargs
+                res <- peek pres
+                putStrLn $ "Evaluated to: " ++ show res
+
+                
   {- runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?" -}
 
-main = test2
+main = test4

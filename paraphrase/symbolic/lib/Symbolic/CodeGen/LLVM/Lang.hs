@@ -464,20 +464,7 @@ llvmCodegen name (mexpExp -> Delta i j)     = do
   assign name x
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))
-llvmCodegen name (mexpExp -> Var (Indexed s is)) = do
-  {- let factors = scanr (*) 1 (tail (map (\(i,s,e) -> e-s+1)  is ) ++ [1])
-  indices <- forM is $ \(i,s,_) -> do
-    xref <- getvar i
-    x <- load xref
-    if s == 0
-      then return x
-      else isub x (ival s)
-  (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
-                  indices factors  -}
-  theindex <- getIndex is -- foldrM iadd i1 irest       
-  val <- getElem double s theindex
-  assign name val
-  return ()
+llvmCodegen name (mexpExp -> Var (Indexed s is)) = getIndex is >>= getElem double s >>= mkAssign name
 llvmCodegen name (mexpExp -> Val n)         = cgen4Const name n
 llvmCodegen name (mexpExp -> S.Add hs)      = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (mexpExp -> S.Mul hs)      = cgen4fold name mkMul 1 hs 
@@ -503,9 +490,15 @@ llvmCodegen name (MExp (Sum is h1) m i)     = do
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
-llvmAST name syms v = define double name symsllvm $ do
+llvmAST name syms v = define T.void name symsllvm $ do
                         mkInnerbody v
-                        ret =<< getvar (hVar (getMHash v))
+                        if (HS.null (mexpIdx v))
+                          then do
+                            let rref = local (AST.Name "result")
+                            val <- getvar (hVar (getMHash v))
+                            store rref val
+                            ret_
+                          else ret_
   where mkarg (Simple v) = (double,AST.Name v)
         mkarg (Indexed v _) = (ptr double,AST.Name v)
-        symsllvm = trace (show (mexpIdx v)) $ map mkarg syms 
+        symsllvm = trace (show (mexpIdx v)) $ (ptr double, AST.Name "result") : (map mkarg syms)
