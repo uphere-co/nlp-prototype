@@ -43,6 +43,21 @@ int SearchWordHash(std::string& word) {
   return -1;
 }
 
+void normalizeWordVectors() {
+  real mag;
+  std::vector<real> vec;
+    for(int i = 0; i < word_vector_label.size(); i++) {
+      mag = 0;
+      for(int j = 0; j < layer1_size; j++) {
+	mag = mag + word_vector[i*layer1_size + j]*word_vector[i*layer1_size + j];
+      }
+      mag = sqrt(mag);
+      for(int j = 0; j < layer1_size; j++) {
+	vec.push_back(word_vector[i*layer1_size + j]/mag);
+      }
+    }
+    word_vector = vec;
+}
 
 // Begin of Distance Measurement
 void ReadWordVector() {
@@ -71,10 +86,12 @@ void ReadWordVector() {
     pos++;
     for(int i = 0; i < layer1_size; i++) {
       word_vector.push_back(atof(word[i+1].c_str()));
-    }  
+    }
+    
   }
 
   inFile.close();
+
 }
 
 std::vector<real> GetWordVector(std::string& word) {
@@ -423,7 +440,8 @@ int main(int argc, char **argv) {
   
   initVocabHash();
   ReadWordVector();
-  
+  //normalizeWordVectors();
+
   while(1) {
     word.clear();
     std::getline(inFile,line);
@@ -438,8 +456,7 @@ int main(int argc, char **argv) {
   // Test part!
   std::string word1, word2, word3, word4; // word1:word2 = word3:word4 -> word2 - word1 = word4 - word3
   std::vector<real> test_vector1, test_vector2, test_vector3, test_vector4;
-  std::string target;
-  
+
   int total = 0;
   int score = 0;
 
@@ -452,22 +469,26 @@ int main(int argc, char **argv) {
 
     makeLower(word1); makeLower(word2); makeLower(word3); makeLower(word4);
     
-    test_vector1 = AddVectors(SubtractVectors(word3,word4),word2); // word1 = word2 + word3 - word4
-    test_vector2 = AddVectors(SubtractVectors(word1,word3),word4); // word2 = word1 - word3 + word4
-    test_vector3 = AddVectors(SubtractVectors(word4,word2),word1); // word3 = word4 - word2 + word1
+    //test_vector1 = AddVectors(SubtractVectors(word3,word4),word2); // word1 = word2 + word3 - word4
+    //test_vector2 = AddVectors(SubtractVectors(word1,word3),word4); // word2 = word1 - word3 + word4
+    //test_vector3 = AddVectors(SubtractVectors(word4,word2),word1); // word3 = word4 - word2 + word1
     test_vector4 = AddVectors(SubtractVectors(word2,word1),word3); // word4 = word3 + word2 - word1
     
-    total = total + 4;
+    total = total + 1;
 
-    if(GetSimilarWordsn1(test_vector1) == word1) score++;
-    if(GetSimilarWordsn1(test_vector2) == word2) score++;
-    if(GetSimilarWordsn1(test_vector3) == word3) score++;
+    //if(GetSimilarWordsn1(test_vector1) == word1) score++;
+    //if(GetSimilarWordsn1(test_vector2) == word2) score++;
+    //if(GetSimilarWordsn1(test_vector3) == word3) score++;
     if(GetSimilarWordsn1(test_vector4) == word4) score++;
-    
+
+    if(i % 10 == 0) {
+      std::cout << i/(double)test_set.size()*100 << "% and current accuracy is " << score/(double)total << std::endl;
+    }
   }
 
-  std::cout << score/(double)total << std::endl;  
+  std::cout << score/(double)total << std::endl;
   //
+  
   inFile.close();
   return 0;
 }
