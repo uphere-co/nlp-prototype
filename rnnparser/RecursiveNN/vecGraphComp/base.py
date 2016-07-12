@@ -74,11 +74,12 @@ class ValueHolder(object):
 
 @unique
 class NodeType(Enum):
-    Var = 1
-    F = 2
-    Add = 3
-    Dot = 4
-    CTimes = 5
+    Var = 0
+    VSF = 1000
+    Transpose = 1001
+    Add = 2000
+    Dot = 2001
+    CTimes = 2002
 
 class Block(object):
     '''
@@ -90,33 +91,19 @@ class Block(object):
         self._idx=0
         self._values_holder=ValueHolder(size)
         self._values_info = np.empty((size, 5), dtype=np.int64)
+        self._is_updated = np.zeros((size), dtype=np.int8)
     @property
     def n_values(self):
         return self._idx
     def is_declared(self, name):
         return name.encode('utf-8') in self._names[:self.n_values]
-    def declare(self, name, val=None):
-        '''
-        name : unicode string. Internally, stored as ASCII string
-        '''
-        if self.is_declared(name):
-            return self.uid(name)
-        uid=self.n_values
-        self._names[uid]=name.encode('utf-8')
-        self._idx +=1
-        if val is not None:
-            vals=self._values_holder[val.shape]
-            sidx=self._values_holder.shape_index(val.shape)
-            vidx=vals.save(val)
-            self._values_info[uid]=[NodeType.Var.value,sidx,vidx,-1,-1]
-        return uid
     def node_type(self, uid):
         return self._values_info[uid]
     def get_value(self, key):
         if isinstance(key, unicode):
             name=key
             uid=self.uid(name)
-        elif is_integer(key, int):
+        elif is_integer(key):
             uid=key
         else :
             raise TypeError("key should be either name or uid")
@@ -133,3 +120,25 @@ class Block(object):
         if not self._idx > uid:
             raise IndexError('%d is not declared'%uid)
         return self._names[uid].decode('utf-8')
+
+class ExpressionWriter(object):
+    def __init__(self, block):
+        self._block=block
+    def Var(self, name, val):
+        '''
+        name : unicode string. Internally, stored as ASCII string
+        '''
+        block=self._block
+        if block.is_declared(name):
+            return block.uid(name)
+        uid=block.n_values
+        block._names[uid]=name.encode('utf-8')
+        block._idx +=1
+        vals=block._values_holder[val.shape]
+        sidx=block._values_holder.shape_index(val.shape)
+        vidx=vals.save(val)
+        block._values_info[uid]=[NodeType.Var.value,sidx,vidx,-1,-1]
+        block._is_updated[uid]=1
+        return uid
+    def Dot(self, uid1,uid2):
+        pass

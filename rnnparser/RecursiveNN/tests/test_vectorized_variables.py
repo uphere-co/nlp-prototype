@@ -6,7 +6,7 @@ sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/
 import numpy as np
 import pytest
 
-from vecGraphComp.base import MatrixValues, ValueHolder, Block, NodeType
+from vecGraphComp.base import MatrixValues, ValueHolder, Block, NodeType, ExpressionWriter
 
 def test_numpy_structure_of_arrays_with_expand_dims():
     m,n = 200,100
@@ -67,32 +67,33 @@ def test_NodeType():
 
 def test_Block():
     a=Block(1000)
+    b=ExpressionWriter(a)
     name='abcdefghijklmn'
-    a.declare(name)
+    b.Var(name, np.zeros((10,1)))
     a.uid(name)
     name=name[:2]+name[5:]
     #`name` is copied, not shared.
     with pytest.raises(ValueError):
         a.uid(name)
 
-    a.declare(u'가')
+    b.Var(u'가', np.zeros((10,1)))
     #Declaring same name multiple times does nothing
-    a.declare(u'가')
-    uid=a.declare(u'나')
+    b.Var(u'가', np.zeros((10,1)))
+    uid=b.Var(u'나', np.zeros((10,1)))
     assert a.uid(u'나')==uid
     assert a.name(uid)==u'나'
     with pytest.raises(ValueError):
         a.uid(u'다')
     assert a.name(a.uid(u'abcdefghijklmn'))==u'abcdefghijklmn'
 
-    uid1=a.declare(u'foo', np.array(range(9)).reshape(3,3))
-    uid2=a.declare(u'bar', np.array(range(9,18)).reshape(3,3))
-    uid3=a.declare(u'x', np.array(range(6)).reshape(3,2))
-    uid4=a.declare(u'y', np.array(range(6,12)).reshape(3,2))
+    uid1=b.Var(u'foo', np.array(range(9)).reshape(3,3))
+    uid2=b.Var(u'bar', np.array(range(9,18)).reshape(3,3))
+    uid3=b.Var(u'x', np.array(range(6)).reshape(3,2))
+    uid4=b.Var(u'y', np.array(range(6,12)).reshape(3,2))
     assert np.all(a.get_value(uid1)==np.array(range(9)).reshape(3,3))
     assert np.all(a.get_value(u'bar')==np.array(range(9,18)).reshape(3,3))
     assert np.all(a.get_value(uid3)==np.array(range(6)).reshape(3,2))
     assert np.all(a.get_value(u'y')==np.array(range(6,12)).reshape(3,2))
 
     word=u'\xa3'
-    a.declare(word)
+    b.Var(word, np.zeros((10,1)))
