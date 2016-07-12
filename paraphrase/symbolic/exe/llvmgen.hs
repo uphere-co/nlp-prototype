@@ -29,13 +29,17 @@ exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = add [ x , delta "i" "j", delta "k" "l" ] 
+exp3 = add [ x , delta idxi idxj, delta idxk idxl ] 
+  where idxi = ("i",0,2)
+        idxj = ("j",0,2)
+        idxk = ("k",0,2)
+        idxl = ("l",0,2)
 
 exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj]) --  (add [ y_ [idxi,idxj], one ] )
+exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj])
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
 
@@ -93,8 +97,8 @@ test3 = do
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
-        forkIO $ do
-          --threadDelay 1000000
+        forkOS $ do
+          threadDelay 500000
           Alloc.alloca $ \pres -> 
             Alloc.alloca $ \pargs -> 
               Alloc.alloca $ \px ->
@@ -121,4 +125,4 @@ test3 = do
                   putStrLn $ "Evaluated to: " ++ show res
 
 
-main = test3
+main = test2

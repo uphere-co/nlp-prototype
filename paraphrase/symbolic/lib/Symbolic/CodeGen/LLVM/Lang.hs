@@ -444,7 +444,10 @@ llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Cod
 llvmCodegen name (mexpExp -> Zero)          = cgen4Const name 0
 llvmCodegen name (mexpExp -> One)           = cgen4Const name 1
 llvmCodegen name (mexpExp -> Delta i j)     = do
-  x <- cgencond ("delta"++i++j) (icmp IP.EQ (idxval i) (idxval j)) (return fone) (return fzero)
+  let ni = view _1 i
+      nj = view _1 j
+  x <- cgencond ("delta"++ni++nj) (icmp IP.EQ (idxval ni) (idxval nj))
+         (return fone) (return fzero)
   assign name x
   return () 
 llvmCodegen name (mexpExp -> Var (Simple s))= mkAssign name (local (AST.Name s))

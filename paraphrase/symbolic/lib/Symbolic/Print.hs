@@ -27,7 +27,7 @@ listPrintf sep (x:xs) = printf "%s%s%s" x sep (listPrintf sep xs :: String)
 prettyPrint :: (Show a, PrintfType r) => RExp a -> r
 prettyPrint RZero = printf "0"
 prettyPrint ROne  = printf "1"
-prettyPrint (RDelta i j) = printf "delta_%s%s" i j
+prettyPrint (RDelta i j) = printf "delta_%s%s" (view _1 i) (view _1 j)
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showSym s)
 prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
@@ -60,7 +60,7 @@ dotPrint m h = do
 dotPrint' :: (Show a) => Hash -> Exp a -> String
 dotPrint' h Zero           = printf "x%x [label=\"0\"];\n" h
 dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
-dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h i j
+dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h (view _1 i) (view _1 j)
 dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showSym s)
 dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
