@@ -131,7 +131,6 @@ test4 = do
   let ?expHash = trie hash
   let exp = exp3
   prettyPrintR (exp :: MExp Double)
-  -- print (mexpIdx exp)
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [] exp
               define void "main" [ (ptr double, AST.Name "res")
@@ -139,7 +138,6 @@ test4 = do
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
-                -- store (local (AST.Name "res")) res
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -150,10 +148,5 @@ test4 = do
             run fn pres pargs
             res <- Array.peekArray 9 pres
             putStrLn $ "Evaluated to: " ++ show res
-
-                
-  {- runJIT ast $ \mfn -> 
-    case mfn of
-      Nothing -> putStrLn "Nothing?" -}
 
 main = test4

@@ -507,10 +507,10 @@ llvmAST name syms v = define T.void name symsllvm $ do
                                   mkInnerbody v
                                   val <- getvar (hVar (getMHash v))
                                   p <- getElementPtr rref [theindex]
-                                  store p val -- (fval 5) -- val
+                                  store p val
                                   return ()
                             foldr (.) id (map mkFor is) innerstmt
                             ret_
   where mkarg (Simple v) = (double,AST.Name v)
         mkarg (Indexed v _) = (ptr double,AST.Name v)
-        symsllvm = trace (show (mexpIdx v)) $ (ptr double, AST.Name "result") : (map mkarg syms)
+        symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)
