@@ -44,6 +44,7 @@ Library
                         text,
                         transformers,
                         unordered-containers,
+                        symbolic,
                         vector
                         
 
@@ -59,9 +60,9 @@ Library
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
                         Numeric.Kahan
-                        Symbolic.Diff
-                        Symbolic.Type
-                        Symbolic.Parser
+                        -- Symbolic.Diff
+                        -- Symbolic.Type
+                        -- Symbolic.Parser
   Other-modules:        
 
   ghc-options:          -O2 -Wall -funbox-strict-fields
@@ -176,27 +177,6 @@ Executable wordvecparser
 
 
 -- 
---
-Executable symbolic
-  Main-is:              symbolic.hs
-  hs-source-dirs:       exe
-
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
-
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
-                        
-  build-depends:        base                            >= 4.7 && < 4.9,
-                        --
-                        attoparsec,
-                        text,
-                        --
-                        autoencode
-
 
 
 Executable lbfgs
@@ -220,31 +200,3 @@ Executable lbfgs
                         autoencode
 
                         
--- -- acctest program. 
--- --
--- Executable acctest
---   Main-is:              acctest.hs
---   hs-source-dirs:       exe
-
---   other-modules:       
---   ghc-options:          -Wall -O2
---                         -threaded
---                         -funbox-strict-fields
-
---   ghc-prof-options:     -auto-all
---   extra-libraries:     
---   c-sources:            
-                        
---   build-depends:        base                            >= 4.7 && < 4.9,
---                         --
---                         accelerate                      == 2.*,
---                         accelerate-cuda                 == 2.*,
---                         accelerate-io                   == 2.*,
---                         bytestring,
---                         mersenne-random,
---                         text,
---                         transformers,
---                         unordered-containers,
---                         vector,
---                         --
---                         autoencode
