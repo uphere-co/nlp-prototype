@@ -7,26 +7,15 @@
 
 module Symbolic.Differential where
 
-import           Control.Lens              (view, _1)
-import           Control.Monad             ((>=>))
-import           Control.Monad.Trans.State
 import           Data.Function             (fix)
-import           Data.Hashable
 import           Data.HashMap.Strict       (HashMap)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet        as HS
 import           Data.MemoTrie
-import           Data.Monoid               ((<>))
-import           Text.Printf
 --
 import           Symbolic.Predefined
-import           Symbolic.Print
 import           Symbolic.Simplify
 import           Symbolic.Type
 --
-import           Debug.Trace
 
-                   
 diff'
   :: forall a. (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
   => HashMap Hash (MExp a)
@@ -36,10 +25,11 @@ diff' m t (s,e) =
   case e of
     Zero         -> zero 
     One          -> zero
+    Delta _ _    -> zero
     Val _        -> zero
     Var s'       -> dvar s s'
     Add hs       -> let es = map (flip justLookup m) hs
-                    in add' (map (\e -> untrie t (s,mexpExp e)) es)
+                    in add' (map (\e' -> untrie t (s,mexpExp e')) es)
     Mul hs       -> let es = map (flip justLookup m) hs
                     in add' (diffmul es)
     Fun sym hs   -> let ies = zip [1..] $ map (flip justLookup m) hs
@@ -49,25 +39,25 @@ diff' m t (s,e) =
  where
   diffmul :: [MExp a] -> [MExp a] 
   diffmul [] = []
-  diffmul (x:xs) = let x' = untrie t (s,mexpExp x)
-                       xs'all = diffmul xs
-                   in (mul' (x':xs) : map (\y -> mul' [x,y]) xs'all)    
+  diffmul (x1:xs) = let x' = untrie t (s,mexpExp x1)
+                        xs'all = diffmul xs
+                    in (mul' (x':xs) : map (\y1 -> mul' [x1,y1]) xs'all)    
 
   difff :: String -> [(Int,MExp a)] -> [MExp a]
   difff sym args = map (difff' sym (map snd args)) args
 
   difff' :: String -> [MExp a] -> (Int,MExp a) -> MExp a
-  difff' sym args (i,e) = let e' = untrie t (s,mexpExp e)
-                          in mul' [fun (suffix_n i sym) args , e'] 
+  difff' sym args (i,e1) = let e' = untrie t (s,mexpExp e1)
+                           in mul' [fun (suffix_n i sym) args , e'] 
                       
 
 dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
 dvar (Simple s)    (Simple s')   = if s == s' then one else zero
-dvar (Simple s)    _             = zero
-dvar _             (Simple s')   = zero
-dvar (Indexed x j) (Indexed y k)
-  | x == y && length j == length k = let djk = zipWith delta j k
-                                     in mul' djk
+dvar (Simple _)    _             = zero
+dvar _             (Simple _ )   = zero
+dvar (Indexed x1 j) (Indexed y1 k)
+  | x1 == y1 && length j == length k = let djk = zipWith delta j k
+                                       in mul' djk
   | otherwise = zero
 
 

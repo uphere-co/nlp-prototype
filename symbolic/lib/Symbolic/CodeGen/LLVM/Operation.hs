@@ -7,62 +7,29 @@
 
 module Symbolic.CodeGen.LLVM.Operation where
 
-import Control.Monad.State
-import Control.Applicative
-
-import Data.Foldable ( foldrM )
-import Data.Word
-import Data.String
-import Data.List
-import Data.Function
+import           Control.Monad.State
+import           Data.Function
+import           Data.List
 import qualified Data.Map as Map
-
-
-import LLVM.General.AST ( Type(..), Operand(..), Instruction(..), Named (..)
-                        , Terminator(..), Definition(..)
-                        , FastMathFlags(..), Module (..)
-                        , FloatingPointFormat(..)
-                        , defaultModule
-                        )
-import           LLVM.General.AST.Global
+import           Data.String
+import           LLVM.General.AST
+                   ( Type(..), Operand(..), Instruction(..), Named (..)
+                   , Terminator(..), Definition(..)
+                   , FastMathFlags(..), Module (..)
+                   , defaultModule
+                   )
 import qualified LLVM.General.AST                        as AST
 import qualified LLVM.General.AST.Attribute              as A
 import qualified LLVM.General.AST.CallingConvention      as CC
 import qualified LLVM.General.AST.Constant               as C
 import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+import           LLVM.General.AST.Global
 import qualified LLVM.General.AST.IntegerPredicate       as IP
-import           LLVM.General.AST.Type                           ( double, i64, ptr)
-import qualified LLVM.General.AST.Type                   as T    ( void ) 
------
-
-import           Control.Lens                    (view, _1)
--- import           Control.Monad.Trans.State
-import           Data.Array                      ((!))
-import qualified Data.Array                as A
-import           Data.Graph                      (topSort)
-import           Data.HashMap.Strict             (HashMap)
-import qualified Data.HashMap.Strict       as HM
-import           Data.HashSet                    (HashSet)
-import qualified Data.HashSet              as HS
-import           Data.List                       (foldl')
-import           Data.MemoTrie
-import           Language.C.Data
-import           Language.C.Data.Ident
-import           Language.C.Data.Position
-import           Language.C.Pretty
-import           Language.C.Syntax
-import           Text.Printf
-import           Text.PrettyPrint hiding (double)
+import           LLVM.General.AST.Type                           ( double, i64)
 --
-import           Symbolic.Predefined hiding (add)
-import           Symbolic.Print
 import           Symbolic.Type
-import qualified Symbolic.Type as S ( Exp(..))
 --
-import           Debug.Trace
-
-
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -353,12 +320,18 @@ ret_ = terminator $ Do $ Ret Nothing []
 fval :: Double -> Operand
 fval v = cons $ C.Float (F.Double v)
 
+fzero :: Operand
 fzero = fval 0
+
+fone :: Operand
 fone  = fval 1
 
 ival :: Int -> Operand
 ival v = cons $ C.Int 64 (fromIntegral v)
 
+izero :: Operand
 izero = ival 0
+
+ione :: Operand
 ione = ival 1
 

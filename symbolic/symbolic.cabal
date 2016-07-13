@@ -59,7 +59,7 @@ Library
 
   Other-modules:        
 
-  ghc-options:          -O2 -Wall -funbox-strict-fields
+  ghc-options:          -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fno-warn-orphans
   ghc-prof-options:     -caf-all -auto-all
   
 Executable trie

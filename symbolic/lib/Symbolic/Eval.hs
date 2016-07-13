@@ -29,7 +29,7 @@ eval _ (_,_,Zero) = 0
 eval _ (_,_,One)  = 1
 eval _ (_,_,Val n) = n
 eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j 
-eval m (args,ip,Var v) = evalVar args ip v
+eval _ (args,ip,Var v) = evalVar args ip v
 eval m (args,ip,Mul hs) =
   let es = map (mexpExp . flip justLookup m) hs
   in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
@@ -55,11 +55,12 @@ seval :: ( Storable a, HasTrie a, Num a
 seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
 
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
-evalVar args ip (Simple s) = (justLookup s . varSimple) args
+evalVar args _  (Simple s) = (justLookup s . varSimple) args
 evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip . view _1) is
                                      ival = justLookup s (varIndexed args)
                                  in valStore ival ! flatIndex ival i's
 
+evalDelta :: (Num a) => [(IndexSymbol,Int)] -> IndexSymbol -> IndexSymbol -> a
 evalDelta ip i j = let i' = justLookupL i ip
                        j' = justLookupL j ip
                    in if i' == j' then 1 else 0 
