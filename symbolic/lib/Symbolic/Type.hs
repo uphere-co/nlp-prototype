@@ -75,6 +75,7 @@ data Exp a = Zero
            | Mul [Hash]
            | Fun String [Hash]
            | Sum [Index] Hash
+           --  | Concat Index [Hash]
          deriving (Show,Eq)
 
 isZero :: Exp a -> Bool

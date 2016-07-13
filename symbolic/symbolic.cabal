@@ -47,8 +47,9 @@ Library
 
   Exposed-modules:
                         Symbolic.CodeGen.C
-                        Symbolic.CodeGen.LLVM.Lang
+                        Symbolic.CodeGen.LLVM.Exp
                         Symbolic.CodeGen.LLVM.JIT
+                        Symbolic.CodeGen.LLVM.Operation
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined
