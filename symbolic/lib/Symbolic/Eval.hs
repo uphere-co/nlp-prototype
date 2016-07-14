@@ -46,6 +46,8 @@ eval m (args,ip,Sum is h) =
       ip' = map (ip ++) sumip
       e = justLookup h m
   in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
+eval _m (_args,_ip,Concat _i _hs) = error "eval for Concat is not defined"
+
 
 seval :: ( Storable a, HasTrie a, Num a
          , ?expHash :: Exp a :->: Hash

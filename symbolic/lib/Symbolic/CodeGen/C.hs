@@ -148,6 +148,7 @@ cPrint' name (MExp (Sum is h1)  m _) = [ mkExpr (mkAssign name (mkConst (mkF 0))
         innerstmt =
           mkCompound $  
             decllst ++ bodylst' ++ [CBlockStmt (mkExpr (mkAssignAdd name (mkVar (hVar h1))))]
+cPrint' _name (MExp (Concat _i _hs)  _m _) = error "cPrint': Concat not implemented"
 
         
 cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit

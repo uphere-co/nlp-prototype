@@ -36,6 +36,7 @@ diff' m t (s,e) =
                     in add' (difff sym ies)
     Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
                     in sum_ is (untrie t (s,e1))
+    Concat _i _hs -> error "diff': Concat not implemented"
  where
   diffmul :: [MExp a] -> [MExp a] 
   diffmul [] = []

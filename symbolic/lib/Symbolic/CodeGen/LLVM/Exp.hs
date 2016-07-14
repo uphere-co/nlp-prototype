@@ -163,6 +163,7 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   foldr (.) id (map mkFor is) innerstmt
   rval <- load sumref
   assign name rval
+llvmCodegen _name (MExp (Concat _i _hs) _m _)    = error "llvmCodegen: Concat not implemented"
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
