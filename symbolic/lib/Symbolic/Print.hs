@@ -20,8 +20,8 @@ import           Symbolic.Type
 
 
 listPrintf :: PrintfType r => String -> [String] -> r
-listPrintf sep []     = printf ""
-listPrintf sep (x:[]) = printf "%s" x
+listPrintf _   []     = printf ""
+listPrintf _   (x:[]) = printf "%s" x
 listPrintf sep (x:xs) = printf "%s%s%s" x sep (listPrintf sep xs :: String)
 
 prettyPrint :: (Show a, PrintfType r) => RExp a -> r
@@ -38,8 +38,8 @@ prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e
 prettyPrintR :: (Show a) => MExp a -> IO ()
 prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 
+endl :: IO ()
 endl = putStrLn ""
-
 
 showIdxSet :: [Index] -> String
 showIdxSet = intercalate "," . map (view _1)

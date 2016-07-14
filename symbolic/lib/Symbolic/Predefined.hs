@@ -5,7 +5,6 @@
 
 module Symbolic.Predefined where
 
-import           Control.Lens              (view,_1)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (difference)
 import qualified Data.HashSet        as HS
@@ -19,7 +18,7 @@ var :: String -> MExp a
 var s = MExp (Var (Simple s)) HM.empty HS.empty
 
 ivar :: String -> [Index] -> MExp a
-ivar x i = MExp (Var (Indexed x i)) HM.empty (HS.fromList i)
+ivar n i = MExp (Var (Indexed n i)) HM.empty (HS.fromList i)
 
 x :: MExp a
 x = var "x"
@@ -48,6 +47,7 @@ zero = MExp Zero HM.empty HS.empty
 val :: a -> MExp a
 val n = MExp (Val n) HM.empty HS.empty
 
+delta :: Index -> Index -> MExp a
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a

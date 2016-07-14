@@ -2,23 +2,13 @@
 
 module Symbolic.CodeGen.LLVM.JIT where
 
-import Data.Int
-import Data.Word
-import Foreign.Ptr ( FunPtr, Ptr, castFunPtr )
-
-import Control.Monad.Trans.Except
-
-import LLVM.General.Target
-import LLVM.General.Context
-import LLVM.General.CodeModel
-import LLVM.General.Module as Mod
-import qualified LLVM.General.AST as AST
-
-import LLVM.General.PassManager
-import LLVM.General.Transforms
-import LLVM.General.Analysis
-
+import           Control.Monad.Trans.Except
+import           Foreign.Ptr                        (FunPtr, Ptr, castFunPtr)
+import qualified LLVM.General.AST            as AST
+import           LLVM.General.Context
 import qualified LLVM.General.ExecutionEngine as EE
+import           LLVM.General.Module         as Mod
+import           LLVM.General.PassManager
 
 type JITFunction = Ptr Double -> Ptr (Ptr Double) -> IO ()
 
@@ -40,16 +30,14 @@ passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
 runJIT :: AST.Module -> (Maybe (FunPtr ()) -> IO b) -> IO (Either String b)
-
-                                                             -- Maybe (FunPtr ())))
-runJIT mod action = do
+runJIT mod' action = do
   withContext $ \context ->
     jit context $ \executionEngine -> do
-      r <- runExceptT $ withModuleFromAST context mod $ \m ->
+      r <- runExceptT $ withModuleFromAST context mod' $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
           runPassManager pm m
-          optmod <- moduleAST m
+          _optmod <- moduleAST m
           s <- moduleLLVMAssembly m
           putStrLn s
           

@@ -21,7 +21,6 @@ import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 import           Data.Vector.Storable      (Vector)
 --
-import           Debug.Trace
 
 type Hash = Int
 
@@ -41,10 +40,11 @@ isIndexed :: Symbol -> Bool
 isIndexed (Indexed _ _) = True
 isIndexed _             = False
 
+varName :: Symbol -> String
 varName (Simple v) = v
 varName (Indexed v _) = v
 
-
+showSym :: Symbol -> String
 showSym (Simple str) = str
 showSym (Indexed x k) = x ++ "_" ++ concat (map (view _1) k)
 
@@ -55,8 +55,8 @@ instance HasTrie Symbol where
   trie f = SymbolTrie (trie (f . Simple)) (trie (f . uncurry Indexed))
 
   untrie :: (Symbol :->: b) -> Symbol -> b
-  untrie (SymbolTrie s i) (Simple x) = untrie s x
-  untrie (SymbolTrie s i) (Indexed x k) = untrie i (x,k)
+  untrie (SymbolTrie s _) (Simple x) = untrie s x
+  untrie (SymbolTrie _ i) (Indexed x k) = untrie i (x,k)
 
   enumerate :: (Symbol :->: b) -> [(Symbol,b)]
   enumerate (SymbolTrie s i) = enum' Simple s `weave` enum' (uncurry Indexed) i
@@ -75,6 +75,7 @@ data Exp a = Zero
            | Mul [Hash]
            | Fun String [Hash]
            | Sum [Index] Hash
+           --  | Concat Index [Hash]
          deriving (Show,Eq)
 
 isZero :: Exp a -> Bool
@@ -123,6 +124,9 @@ instance HasTrie Double where
   data Double :->: a = DoubleTrie ([Int] :->: a)
   trie f = DoubleTrie $ trie $ f . unmangle
   untrie (DoubleTrie t) = untrie t . mangle
+
+  -- for the time being
+  enumerate = error "enumerate of HasTrie instance of Double is undefined"
 
 instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)
@@ -215,13 +219,13 @@ exp2RExp (MExp (Sum is h1) m _) = let e1 = justLookup h1 m in RSum is (exp2RExp 
 daughters :: Exp a -> [Hash]
 daughters Zero           = []
 daughters One            = []
-daughters (Delta i j)    = []
-daughters (Val n)        = []
-daughters (Var s)        = []
+daughters (Delta _ _)    = []
+daughters (Val _)        = []
+daughters (Var _)        = []
 daughters (Add hs)       = hs
 daughters (Mul hs)       = hs
-daughters (Fun s hs)     = hs
-daughters (Sum is h1)    = [h1]
+daughters (Fun _ hs)     = hs
+daughters (Sum _ h1)     = [h1]
 
 mkDepEdges :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepEdges e = let e1 = mexpExp e

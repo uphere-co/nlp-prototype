@@ -15,8 +15,9 @@ import qualified LLVM.General.AST.Float    as F
 import qualified LLVM.General.AST.Constant as C
 import           LLVM.General.AST.Type            ( double, i64, ptr, void )
 --
+import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
-import           Symbolic.CodeGen.LLVM.Lang
+import           Symbolic.CodeGen.LLVM.Operation
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
