@@ -22,7 +22,7 @@ evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
 evalVar args _  (Simple s) = (justLookup s . varSimple) args
 evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip . view _1) is
                                      ival = justLookup s (varIndexed args)
-                                 in valStore ival ! flatIndex ival i's
+                                 in valStore ival ! ivalFlatIndex ival i's
 
 evalDelta :: (Num a) => [(IndexSymbol,Int)] -> IndexSymbol -> IndexSymbol -> a
 evalDelta ip i j = let i' = justLookupL i ip

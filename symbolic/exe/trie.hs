@@ -270,9 +270,15 @@ test14 = do
   let exp :: MExp Double
       exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   digraph exp
-  print (indexFlatteningFactors [idxi,idxj,idxk])
-  print (combinedIndex [idxi,idxj,idxk] [2,2,1])
-  print (splitIndex [idxi,idxj,idxk] 6)
-         
+  let idxset = [idxi,idxj,idxk]
+      idxset2 = [idxm,idxn]
+  print (indexFlatteningFactors idxset)
+  print (flatIndex idxset [2,2,1])
+  print (splitIndex idxset 6)
+  putStrLn $ "maxFlatIndex idxset =" ++ show (maxFlatIndex idxset)
+  putStrLn $ "maxFlatIndex idxset2 = " ++ show (maxFlatIndex idxset2)
+  print (flatIndex4DisjointSum [idxset,idxset2] [[2,2,1],[2,2]])
+  print (splitIndex4DisjointSum [idxset,idxset2] 27)
+    
 main = test14
     
