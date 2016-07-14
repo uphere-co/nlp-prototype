@@ -7,7 +7,7 @@
 
 module Symbolic.CodeGen.LLVM.Exp where
 
-import           Control.Lens                    (view, _1)
+import           Control.Lens                             (view, _1)
 import           Control.Monad.State
 import           Data.Array                               ((!))
 import           Data.Foldable                            (foldrM)
@@ -19,13 +19,14 @@ import           Data.MemoTrie
 import           LLVM.General.AST ( Operand(..) )
 import qualified LLVM.General.AST                  as AST
 import qualified LLVM.General.AST.IntegerPredicate as IP
-import           LLVM.General.AST.Type                    ( double, i64, ptr)
-import qualified LLVM.General.AST.Type             as T   ( void ) 
+import           LLVM.General.AST.Type                    (double, i64, ptr)
+import qualified LLVM.General.AST.Type             as T   (void) 
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Operation
 import           Symbolic.Type
-import qualified Symbolic.Type as S ( Exp(..))
+import qualified Symbolic.Type                     as S   (Exp(..))
+import           Symbolic.Util                            (indexFlatteningFactors)
 --
 
 hVar :: Int -> String
@@ -53,7 +54,8 @@ getElem ty s i =
 
 getIndex :: [Index] -> Codegen Operand
 getIndex is = do
-  let factors = scanr (*) 1 (tail (map (\(_,s,e) -> e-s+1)  is ) ++ [1])
+  -- let factors = scanr (*) 1 (tail (map (\(_,s,e) -> e-s+1)  is ) ++ [1])
+  let factors = indexFlatteningFactors is
   indices <- forM is $ \(i,s,_) -> do
     xref <- getvar i
     x <- load xref

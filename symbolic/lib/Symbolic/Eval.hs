@@ -29,6 +29,7 @@ evalDelta ip i j = let i' = justLookupL i ip
                        j' = justLookupL j ip
                    in if i' == j' then 1 else 0 
 
+
 eval :: ( Num a, Storable a, HasTrie a
         , ?expHash :: Exp a :->: Hash
         , ?functionMap :: FunctionMap a

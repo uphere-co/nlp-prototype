@@ -29,6 +29,7 @@ import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Simplify
 import           Symbolic.Type
+import           Symbolic.Util
 --
 import           Debug.Trace
 
@@ -269,7 +270,9 @@ test14 = do
   let exp :: MExp Double
       exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   digraph exp
-  -- cPrint "testfunction" [Indexed "x" [idxi], Indexed "y" [idxj]] exp
-  
+  print (indexFlatteningFactors [idxi,idxj,idxk])
+  print (combinedIndex [idxi,idxj,idxk] [2,2,1])
+  print (splitIndex [idxi,idxj,idxk] 6)
+         
 main = test14
     
