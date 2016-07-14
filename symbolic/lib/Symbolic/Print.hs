@@ -17,7 +17,7 @@ import           Text.Printf
 --
 import           Symbolic.Type
 -- 
-
+import           Debug.Trace
 
 listPrintf :: PrintfType r => String -> [String] -> r
 listPrintf _   []     = printf ""
@@ -45,19 +45,6 @@ endl = putStrLn ""
 showIdxSet :: [Index] -> String
 showIdxSet = intercalate "," . map (view _1)
 
-dotPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
-dotPrint m h = do
-  s <- get
-  let MExp e _ _ = justLookup h m
-  case h `HS.member` s of
-    True -> return ""
-    False -> do
-      let str = dotPrint' h e
-          hs = daughters e
-      put (h `HS.insert` s)
-      lst <- mapM (dotPrint m) hs
-      return (concat (str : lst))
-
 dotPrint' :: (Show a) => Hash -> Exp a -> String
 dotPrint' h Zero           = printf "x%x [label=\"0\"];\n" h
 dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
@@ -70,6 +57,19 @@ dotPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (p
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 dotPrint' h (Concat i hs)  = printf "x%x [label=\"concat_(%s)\"];\n" h (showIdxSet [i]) ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 
+-- |
+dotPrint :: (Show a) => HashMap Hash (MExp a) -> Hash -> State (HashSet Hash) String
+dotPrint m h = do
+  s <- get
+  let MExp e _ _ = justLookup h m
+  case h `HS.member` s of
+    True -> return ""
+    False -> do
+      let str = dotPrint' h e
+          hs = daughters e
+      put (h `HS.insert` s)
+      lst <- mapM (dotPrint m) hs
+      return (concat (str : lst))
 
 digraph :: (HasTrie a, Show a, ?expHash :: Exp a :->: Hash) => MExp a -> IO ()
 digraph v = do

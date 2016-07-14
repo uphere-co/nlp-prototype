@@ -156,6 +156,9 @@ test7 = do
 
 idxi = ("i",1,2)
 idxj = ("j",1,2)
+
+idxI = ("I",1,4)
+
 idxk = ("k",1,2)
 idxm = ("m",1,2)
 idxn = ("n",1,2)
@@ -258,7 +261,15 @@ test13 = do
   putStrLn "\n---------------------------------------\n"
   
   cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
+
+test14 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+
+  let exp :: MExp Double
+      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
+  digraph exp
+  -- cPrint "testfunction" [Indexed "x" [idxi], Indexed "y" [idxj]] exp
   
-  
-main = test13 
+main = test14
     
