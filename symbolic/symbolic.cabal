@@ -67,11 +67,16 @@ test-suite test
   hs-source-dirs:       tests
   main-is:              test.hs
   build-depends:        base >= 4 && < 5,
+                        --
+                        hashable,
+                        MemoTrie,
                         tasty,
                         tasty-hunit,
                         tasty-quickcheck,
-                        tasty-smallcheck
-                        
+                        tasty-smallcheck,
+                        unordered-containers,
+                        --
+                        symbolic
 
 -------------------------------------------------------
     
