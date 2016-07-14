@@ -25,3 +25,13 @@ def test_expressions_code_generation():
     score=Dot(u,phrase)
     assert phrase.code()=='np.tanh(np.add(np.dot(W,h),b))'
     assert score.code()=='np.dot(u,np.tanh(np.add(np.dot(W,h),b)))'
+
+def test_variables_of_expressions():
+    ran=lambda x : np.random.random(x)-0.5
+    x=Var('x',ran((1,4)))
+    y=Var('y',ran((1,4)))
+    z=Var('z',ran((1,4)))
+    expr=Add(Add(Add(x,y),x),z)
+    for var in ['x','y','z'] :
+        assert var in expr.variables
+        assert list(expr.variables).count(var)==1

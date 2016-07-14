@@ -91,6 +91,9 @@ class Node(object):
     @property
     def children(self):
         return []
+    @property
+    def variables(self):
+        return []
     def add_parent(self,parent):
         pass
         if not parent in self._parents:
@@ -167,6 +170,9 @@ class Var(Node):
         val=Val(v)
         return val
     @property
+    def variables(self):
+        return set([self.name])
+    @property
     def val(self):
         return super(self.__class__, self).val
     @val.setter
@@ -207,14 +213,14 @@ class VSF(Node):
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
     known_functions_code=dict(
-     [(np.cos ,'np.cos({code})'),
-      (np.sin ,'np.sin({code})'),
-      (cosprime__,'-np.sin({code})'),
-      (np.exp ,'np.exp({code})'),
-      (np.log ,'np.log({code})'),
-      (np.reciprocal,'np.reciprocal({code})'),
-      (np.tanh,'np.tanh({code})'),
-      (tanhprime__,'np.cosh({code})**-2'),
+     [(np.cos ,'np.cos({var})'),
+      (np.sin ,'np.sin({var})'),
+      (cosprime__,'-np.sin({var})'),
+      (np.exp ,'np.exp({var})'),
+      (np.log ,'np.log({var})'),
+      (np.reciprocal,'np.reciprocal({var})'),
+      (np.tanh,'np.tanh({var})'),
+      (tanhprime__,'np.cosh({var})**-2'),
       ])
     expr_to_fun = dict(known_functions.values())
     func_to_expr=dict(zip(expr_to_fun.values(),expr_to_fun.keys()))
@@ -232,7 +238,7 @@ class VSF(Node):
     def __repr__(self):
         return "VSF(%r)(%r)"%(self.op_expr, self.var)
     def code(self):
-        return VSF.known_functions_code[self.op].format(code=self.var.code())
+        return VSF.known_functions_code[self.op].format(var=self.var.code())
     def expression(self):
         if hasattr(self.var, 'expression'):
             return u"%s(%s)"%(self.op_expr, self.var.expression())
@@ -250,6 +256,9 @@ class VSF(Node):
     @property
     def children(self):
         return [self.var]
+    @property
+    def variables(self):
+        return self.var.variables
     @property
     def op_expr(self):
         return self.__class__.func_to_expr[self.op]
@@ -306,6 +315,8 @@ class Transpose(Node):
         return self._format%(self.var)
     def __repr__(self):
         return "Transpose(%r)"%(self.var)
+    def code(self):
+        return "np.transpose({var})".format(var=self.var.code())
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
@@ -315,6 +326,9 @@ class Transpose(Node):
     @property
     def children(self):
         return [self.var]
+    @property
+    def variables(self):
+        return self.var.variables
     @property
     def val(self):
         v=super(self.__class__, self).val
@@ -367,6 +381,9 @@ class BinaryOperator(Node):
     @property
     def children(self):
         return [self.x, self.y]
+    @property
+    def variables(self):
+        return self.x.variables.union(self.y.variables)
     @property
     def val(self):
         v=super(BinaryOperator, self).val
