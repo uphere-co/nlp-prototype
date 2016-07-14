@@ -25,6 +25,8 @@ source-repository HEAD
   branch:               master
   tag:                  0.0
 
+-------------------------------------------------------
+  
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
@@ -43,8 +45,6 @@ Library
                         transformers,
                         unordered-containers,
                         vector
-                        
-
   Exposed-modules:
                         Symbolic.CodeGen.C
                         Symbolic.CodeGen.LLVM.Exp
@@ -56,25 +56,35 @@ Library
                         Symbolic.Print
                         Symbolic.Simplify
                         Symbolic.Type
-
   Other-modules:        
-
   ghc-options:          -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fno-warn-orphans
   ghc-prof-options:     -caf-all -auto-all
-  
+
+-------------------------------------------------------
+
+test-suite test
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       tests
+  main-is:              test.hs
+  build-depends:        base >= 4 && < 5,
+                        tasty,
+                        tasty-hunit,
+                        tasty-quickcheck,
+                        tasty-smallcheck
+                        
+
+-------------------------------------------------------
+    
 Executable trie
   Main-is:              trie.hs
   hs-source-dirs:       exe
-
   other-modules:       
   ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
-
   ghc-prof-options:     -auto-all
   extra-libraries:     
   c-sources:            
-                        
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
                         hashable,
@@ -85,6 +95,9 @@ Executable trie
                         --
                         symbolic
 
+-------------------------------------------------------
+
+                        
 Executable llvmgen
   Main-is:              llvmgen.hs
   hs-source-dirs:       exe
