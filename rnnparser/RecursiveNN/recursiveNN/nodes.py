@@ -72,6 +72,18 @@ class Node(object):
         self._uid=None
         #self._uid = Node._uid_count
         #Node._uid_count+=1
+    @classmethod
+    def Compile(cls, name, expr, name_scope=None):
+        funcion_body, variables = expr.code(), expr.variables
+        code='''
+import numpy as np
+{name} = lambda {vars} : {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
+        if name_scope is None:
+            #exec(code,globals())
+            exec(fullcode,locals())
+            return
+        exec(code,name_scope)
+        return name_scope
     def __eq__(self, other):
         #return self._uid is other._uid
         return self is other
@@ -190,7 +202,7 @@ tanhprime__=lambda x : np.cosh(x)**-2
 cosprime__=lambda x : -np.sin(x)
 class VSF(Node):
     '''VectorizedScalaFunction'''
-    __slots__ = ["op_name","op","var"] #,"op_expr"
+    __slots__ = ["op","var"]
     known_functions=dict(
     [('cos' ,('cos',np.cos)),
      ('sin' ,('sin',np.sin)),
