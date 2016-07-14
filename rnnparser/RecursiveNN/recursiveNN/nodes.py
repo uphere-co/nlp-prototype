@@ -72,6 +72,18 @@ class Node(object):
         self._uid=None
         #self._uid = Node._uid_count
         #Node._uid_count+=1
+    @classmethod
+    def Compile(cls, name, expr, name_scope=None):
+        funcion_body, variables = expr.code(), expr.variables
+        code='''
+import numpy as np
+{name} = lambda {vars} : {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
+        if name_scope is None:
+            #exec(code,globals())
+            exec(fullcode,locals())
+            return
+        exec(code,name_scope)
+        return name_scope
     def __eq__(self, other):
         #return self._uid is other._uid
         return self is other
@@ -79,6 +91,8 @@ class Node(object):
         return self.name
     def __str__(self):
         return unicode(self).encode('utf-8')
+    def code(self):
+        pass
     def __del__(self):
         #print self, 'will be destructed!'
         #deregister(self)
@@ -88,6 +102,9 @@ class Node(object):
         return self._parents
     @property
     def children(self):
+        return []
+    @property
+    def variables(self):
         return []
     def add_parent(self,parent):
         pass
@@ -156,12 +173,17 @@ class Var(Node):
         self.val=To2Darray(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
+    def code(self):
+        return self.name
     def diff_no_simplify(self, var):
         v=np.ones(self.val.shape)
         if(var.name!= self.name):
             v=np.zeros(self.val.shape)
         val=Val(v)
         return val
+    @property
+    def variables(self):
+        return set([self.name])
     @property
     def val(self):
         return super(self.__class__, self).val
@@ -175,23 +197,25 @@ def softmax(x):
     return exp_x/exp_x.sum()
 
 identify_func=lambda x : x
+
+tanhprime__=lambda x : np.cosh(x)**-2
+cosprime__=lambda x : -np.sin(x)
 class VSF(Node):
     '''VectorizedScalaFunction'''
-    __slots__ = ["op_expr","op","var"]
+    __slots__ = ["op","var"]
     known_functions=dict(
     [('cos' ,('cos',np.cos)),
      ('sin' ,('sin',np.sin)),
      ('exp' ,('exp',np.exp)),
      ('log' ,('log',np.log)),
-     ('cos`',('-sin',lambda x : -np.sin(x) )),
+     ('cos`',('-sin',cosprime__ )),
      ('sin`',('cos',np.cos)),
      ('exp`',('exp',np.exp)),
-     ('log`' ,('1/',lambda x : 1.0/x)),
-     #('1/'   ,('1/',lambda x : 1.0/x)),
-     ('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
+     ('log`' ,('1/',np.reciprocal)),
      ('tanh',('tanh',np.tanh)),
-     ('tanh`',('tanh`',lambda x : np.cosh(x)**-2)),
-     ('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
+     ('tanh`',('tanh`',tanhprime__)),
+     #('sig' ,('sig', lambda x : 1/(1+np.exp(-x)))),
+     #('sig`',('sig`',lambda x : np.exp(-x)/(1+np.exp(-x))**2)),
      ('f',('f',lambda x : x)),
      ('f`',('f`',lambda x : x)),
      ('g',('g',lambda x : x)),
@@ -200,6 +224,16 @@ class VSF(Node):
      ('h`',('h`',lambda x : x))
      #('softmax',('softmax',softmax)), softmax is not VSF.
      ])
+    known_functions_code=dict(
+     [(np.cos ,'np.cos({var})'),
+      (np.sin ,'np.sin({var})'),
+      (cosprime__,'-np.sin({var})'),
+      (np.exp ,'np.exp({var})'),
+      (np.log ,'np.log({var})'),
+      (np.reciprocal,'np.reciprocal({var})'),
+      (np.tanh,'np.tanh({var})'),
+      (tanhprime__,'np.cosh({var})**-2'),
+      ])
     expr_to_fun = dict(known_functions.values())
     func_to_expr=dict(zip(expr_to_fun.values(),expr_to_fun.keys()))
     def __init__(self, op_name, var, op=None):
@@ -215,6 +249,8 @@ class VSF(Node):
         return u"%s(%s)"%(self.op_expr, self.var)
     def __repr__(self):
         return "VSF(%r)(%r)"%(self.op_expr, self.var)
+    def code(self):
+        return VSF.known_functions_code[self.op].format(var=self.var.code())
     def expression(self):
         if hasattr(self.var, 'expression'):
             return u"%s(%s)"%(self.op_expr, self.var.expression())
@@ -232,6 +268,9 @@ class VSF(Node):
     @property
     def children(self):
         return [self.var]
+    @property
+    def variables(self):
+        return self.var.variables
     @property
     def op_expr(self):
         return self.__class__.func_to_expr[self.op]
@@ -288,6 +327,8 @@ class Transpose(Node):
         return self._format%(self.var)
     def __repr__(self):
         return "Transpose(%r)"%(self.var)
+    def code(self):
+        return "np.transpose({var})".format(var=self.var.code())
     def simplify(self):
         self.var=self.var.simplify()
         if IsScalar(self.var):
@@ -297,6 +338,9 @@ class Transpose(Node):
     @property
     def children(self):
         return [self.var]
+    @property
+    def variables(self):
+        return self.var.variables
     @property
     def val(self):
         v=super(self.__class__, self).val
@@ -315,6 +359,11 @@ def TransposeIfVector(var):
 
 class BinaryOperator(Node):
     __slots__ = ["op","x","y","_format"]
+    known_operators_code=dict(
+     [(np.dot ,'np.dot({x},{y})'),
+      (np.multiply ,'np.multiply({x},{y})'),
+      (np.add ,'np.add({x},{y})'),
+      ])
     def __init__(self, x, y):
         Node.__init__(self,name=None)
         self.op=None
@@ -324,6 +373,8 @@ class BinaryOperator(Node):
         #self.y.add_parent(self)
     def __unicode__(self):
         return self._format%(self.x, self.name, self.y)
+    def code(self):
+        return BinaryOperator.known_operators_code[self.op].format(x=self.x.code(),y=self.y.code())
     def expression(self):
         if hasattr(self.x, 'expression'):
             x_expr = self.x.expression()
@@ -342,6 +393,9 @@ class BinaryOperator(Node):
     @property
     def children(self):
         return [self.x, self.y]
+    @property
+    def variables(self):
+        return self.x.variables.union(self.y.variables)
     @property
     def val(self):
         v=super(BinaryOperator, self).val
@@ -406,8 +460,8 @@ class Dot(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = u'⋅'
-        #self.op=np.dot
-        self.op=dot
+        self.op=np.dot
+        #self.op=dot
         self.update_format()
     def __repr__(self):
         return "Dot(%r,%r)"%(self.x, self.y)
@@ -441,7 +495,7 @@ class CTimes(BinaryOperator):
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
         self.name = u'⊗'
-        self.op = lambda x,y : np.array(x)*np.array(y)
+        self.op = np.multiply
         self.update_format()
     def __repr__(self):
         return "CTimes(%r,%r)"%(self.x, self.y)
