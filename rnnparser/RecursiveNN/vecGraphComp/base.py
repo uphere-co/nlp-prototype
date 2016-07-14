@@ -91,7 +91,6 @@ class Block(object):
         self._idx=0
         self._values_holder=ValueHolder(size)
         self._values_info = np.empty((size, 5), dtype=np.int64)
-        self._is_updated = np.zeros((size), dtype=np.int8)
     @property
     def n_values(self):
         return self._idx
@@ -106,7 +105,7 @@ class Block(object):
         elif is_integer(key):
             uid=key
         else :
-            raise TypeError("key should be either name or uid")
+            raise TypeError("key should be either name(unicode) or uid")
         _,sidx,vidx,_,_ = self.node_type(uid)
         vals=self._values_holder[sidx]
         return vals[vidx]
@@ -138,7 +137,6 @@ class ExpressionWriter(object):
         sidx=block._values_holder.shape_index(val.shape)
         vidx=vals.save(val)
         block._values_info[uid]=[NodeType.Var.value,sidx,vidx,-1,-1]
-        block._is_updated[uid]=1
         return uid
     def Dot(self, uid1,uid2):
         pass
