@@ -34,16 +34,6 @@ def SimplifyIfScalar(arr):
         return arr.dtype.type(arr)
     return arr
 
-def To2Darray(x):
-    if IsScalarValue(x):
-        return np.array(x).reshape(1,1)
-    v=np.array(x)
-    return v
-    if len(v.shape)==1:
-        return v.reshape(-1,1)
-    return v
-    raise ValueError('x is not convertable to matrix')
-
 def IsScalarValue(x):
     try:
         m=float(x)
@@ -90,14 +80,14 @@ def IsAllOne(var):
     return False
 def IsIdentity(var):
     try :
-        if not isinstance(var.val, np.ndarray) and var.val==1.0:
-            return True
-        else:
-            d1=np.min(var.val.shape)
-            d2=np.max(var.val.shape)
+        if len(var.val.shape)==2:
+            d1=var.val.shape[0]
+            d2=var.val.shape[1]
             if d1 != d2:
                 return False
             return np.all(var.val==np.identity(d1))
+        elif len(var.val.shape)==0:
+            return var.val==1
     except:
         pass
     return False
