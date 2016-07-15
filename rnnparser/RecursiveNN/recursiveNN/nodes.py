@@ -8,7 +8,7 @@ myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 from recursiveNN.math import dot,To2Darray,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
-'''
+'''Differentiation
 `self._val is None` of Node object indicates that there are no cache.
 `np.isnan(self._val)` indicates that some of its variables are set to NaN.
 It is parent's responsibility to set children's parents.
@@ -403,6 +403,28 @@ class Add(BinaryOperator):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
 
+class Concat(BinaryOperator):
+    __slots__ = []
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = u'⊕'
+        self.op = np.concatenate
+    def __repr__(self):
+        return "Concat(%r,%r)"%(self.x, self.y)
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        return self
+    def diff_no_simplify(self, var):
+        expr=Concat(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
+        return expr
+    @property
+    def val(self):
+        v=super(BinaryOperator, self).val
+        if not np.any(v):
+            v = self.op([self.x.val, self.y.val])
+            super(BinaryOperator, self.__class__).val.fset(self, v)
+        return v
+
 class Mul(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
@@ -446,9 +468,9 @@ class Dot(BinaryOperator):
     def __repr__(self):
         return "Dot(%r,%r)"%(self.x, self.y)
     def update_format(self):
-        if isinstance(self.x, Add):
+        if isinstance(self.x, Add) or isinstance(self.x, Concat):
             self._format=u'{%s}%s%s'
-        elif isinstance(self.y, Add):
+        elif isinstance(self.y, Add) or isinstance(self.y, Concat):
             self._format=u'%s%s{%s}'
         else:
             self._format=u'%s%s%s'

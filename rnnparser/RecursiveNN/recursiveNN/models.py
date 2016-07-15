@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from nodes import Val,Var,VSF, Add,Dot,Transpose
+from nodes import Val,Var,VSF, Add,Concat,Dot,Transpose
 import numpy as np
 #import zmq
 from gensim.models import Word2Vec
@@ -49,6 +49,7 @@ class RecursiveNN(object):
         #TODO: there can be too many vec... replace Var to Val?
         vec = Var(u'(%s⊕%s)'%(left,right))
         vec.val=np.concatenate([left.vec.val,right.vec.val],0)
+        #vec = Concat(left.vec,right.vec)
         Wxh=Dot(self.W, vec)
         x=Add(Wxh, self.bias)
         vec=VSF('tanh', x)

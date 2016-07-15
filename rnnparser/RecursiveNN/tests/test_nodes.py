@@ -8,7 +8,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose, reset_NodeDict
+from recursiveNN.nodes import Val,Var,VSF, Add,Concat,Mul,Dot,CTimes,Transpose, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 def test_ConvertToArray():
@@ -340,6 +340,25 @@ def test_Transpose(reset_NodeDict):
     xyt=Mul(x,Transpose(y))
     assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12)
+
+def test_concatenation(reset_NodeDict):
+    vx=np.array([5,1,2])
+    vy=np.array([1,3,2])
+    x=Var('x',vx)
+    y=Var('y',vy)
+    xpy=Concat(x,y)
+    dfdx = xpy.diff(x)
+    ones =Val(np.ones(3))
+    zero =Val(np.zeros(3))
+    oz = Concat(ones,zero)
+    assert_all(dfdx.val==oz.val)
+    #It is a bit tricky; it is limitation of current implementation.
+    assert oz is not dfdx
+    dfdx.cache()
+    ones =Val(np.ones(3))
+    zero =Val(np.zeros(3))
+    oz = Concat(ones,zero)
+    assert oz is dfdx
 
 def test_FeedForwardNNEvaluation(reset_NodeDict):
     pass
