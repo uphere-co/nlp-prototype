@@ -200,9 +200,14 @@ let
               language-c containers
 	      llvm-general
 	      QuickCheck
-	      test-framework
-	      test-framework-hunit
-	      test-framework-quickcheck2
+	      tasty
+	      tasty-golden
+	      tasty-hunit
+	      tasty-quickcheck
+	      tasty-smallcheck
+	      #test-framework
+	      #test-framework-hunit
+	      #test-framework-quickcheck2
             ]);
 
     llvm_35_debug = llvm_35.override { debugVersion = true; }; 
