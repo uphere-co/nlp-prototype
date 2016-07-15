@@ -56,8 +56,15 @@ Library
                         Symbolic.Print
                         Symbolic.Simplify
                         Symbolic.Type
+                        Symbolic.Util
+
   Other-modules:        
-  ghc-options:          -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind -fno-warn-orphans
+
+  ghc-options:          -O2 -Wall
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+                        -fno-warn-orphans
+
   ghc-prof-options:     -caf-all -auto-all
 
 -------------------------------------------------------
@@ -87,6 +94,8 @@ Executable trie
   ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+
   ghc-prof-options:     -auto-all
   extra-libraries:     
   c-sources:            
@@ -111,6 +120,7 @@ Executable llvmgen
   ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind
 
   ghc-prof-options:     -auto-all
   extra-libraries:     

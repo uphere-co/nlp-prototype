@@ -51,7 +51,7 @@ delta :: Index -> Index -> MExp a
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
-varop op es = let hes = map ((,) <$> untrie ?expHash . mexpExp <*> id) es
+varop op es = let hes = map ((,) <$> getMHash <*> id) es
                   ms = map mexpMap es
                   is = map mexpIdx es
                   m' = foldl1 HM.union ms
@@ -76,6 +76,14 @@ sum_ is em@(MExp e1 m1 i1) =
 fun :: (HasTrie a, ?expHash :: Exp a :->: Hash) => String -> [MExp a] -> MExp a
 fun sym = varop (Fun sym)
 
+concat_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Index -> [MExp a] -> MExp a
+concat_ i es = MExp (Concat i hs) m'' (HS.singleton i)
+  where hes = map ((,) <$> getMHash <*> id) es
+        hs = map fst hes
+        ms =map mexpMap es
+        m' = foldl1 HM.union ms
+        m'' = foldr (uncurry HM.insert) m' hes
+
 square :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
 square e = mul [e,e] 
 
@@ -86,7 +94,6 @@ power n e
   | n == 0         = one
   | n `mod` 2 == 0 = square (power (n `div` 2) e)
   | otherwise      = mul [square (power (n `div` 2) e), e]
-
 
 
 suffix' :: String -> String

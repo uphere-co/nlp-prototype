@@ -75,7 +75,7 @@ data Exp a = Zero
            | Mul [Hash]
            | Fun String [Hash]
            | Sum [Index] Hash
-           --  | Concat Index [Hash]
+           | Concat Index [Hash]
          deriving (Show,Eq)
 
 isZero :: Exp a -> Bool
@@ -93,6 +93,12 @@ isDelta _           = False
 isSum :: Exp a -> Bool
 isSum (Sum _ _) = True
 isSum _         = False
+
+isSumOrConcat :: Exp a -> Bool
+isSumOrConcat (Sum _ _)    = True
+isSumOrConcat (Concat _ _) = True
+isSumOrConcat _            = False
+
 
 
 data MExp a = MExp { mexpExp :: Exp a
@@ -113,6 +119,8 @@ data RExp a = RZero
             | RMul [RExp a]              
             | RFun String [RExp a]
             | RSum [Index] (RExp a)
+            | RConcat Index [RExp a]
+
 
 mangle :: Double -> [Int]
 mangle = map fromIntegral . LB.unpack . Bi.encode
@@ -138,6 +146,8 @@ instance HasTrie a => HasTrie (Exp a) where
                                 ([Hash] :->: b)     -- ^ for Mul
                                 ((String,[Hash]) :->: b) -- ^ for Fun
                                 (([Index],Hash) :->: b)
+                                ((Index,[Hash]) :->: b)
+                        
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))
@@ -148,9 +158,10 @@ instance HasTrie a => HasTrie (Exp a) where
                    (trie (f . Mul))
                    (trie (f . uncurry Fun))
                    (trie (f . uncurry Sum))
+                   (trie (f . uncurry Concat))
            
   untrie :: (Exp a :->: b) -> Exp a -> b
-  untrie (ExpTrie z o d l v a m f su) e =
+  untrie (ExpTrie z o d l v a m f su c) e =
     case e of
       Zero         -> untrie z ()
       One          -> untrie o ()
@@ -160,10 +171,11 @@ instance HasTrie a => HasTrie (Exp a) where
       Add hs       -> untrie a hs
       Mul hs       -> untrie m hs
       Fun s hs     -> untrie f (s,hs) 
-      Sum is e1    -> untrie su (is,e1)
+      Sum is h     -> untrie su (is,h)
+      Concat i hs  -> untrie c (i,hs)
                                      
   enumerate :: (Exp a :->: b) -> [(Exp a,b)]
-  enumerate (ExpTrie z o d n v a m f su) =
+  enumerate (ExpTrie z o d n v a m f su c) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
@@ -181,6 +193,9 @@ instance HasTrie a => HasTrie (Exp a) where
     enum' (uncurry Fun) f
     `weave`
     enum' (uncurry Sum) su
+    `weave`
+    enum' (uncurry Concat) c
+    
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
@@ -201,7 +216,7 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt s (Mul hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
   hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` s' `hashWithSalt` hs
   hashWithSalt s (Sum is h1)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` is `hashWithSalt` h1
-
+  hashWithSalt s (Concat i hs)   = s `hashWithSalt` (9 :: Int) `hashWithSalt` i `hashWithSalt` hs
 
 
 exp2RExp :: MExp a -> RExp a
@@ -214,6 +229,7 @@ exp2RExp (MExp (Add hs)    m _) = RAdd $ map (exp2RExp . flip justLookup m) hs
 exp2RExp (MExp (Mul hs)    m _) = RMul $ map (exp2RExp . flip justLookup m) hs
 exp2RExp (MExp (Fun s hs)  m _) = RFun s $ map (exp2RExp . flip justLookup m) hs
 exp2RExp (MExp (Sum is h1) m _) = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
+exp2RExp (MExp (Concat i hs) m _) = RConcat i $ map (exp2RExp . flip justLookup m) hs
 
 
 daughters :: Exp a -> [Hash]
@@ -226,6 +242,7 @@ daughters (Add hs)       = hs
 daughters (Mul hs)       = hs
 daughters (Fun _ hs)     = hs
 daughters (Sum _ h1)     = [h1]
+daughters (Concat _ hs)  = hs
 
 mkDepEdges :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepEdges e = let e1 = mexpExp e
@@ -239,7 +256,7 @@ mkDepEdges e = let e1 = mexpExp e
 mkDepEdgesNoSum :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a -> [(Hash,Hash)]
 mkDepEdgesNoSum e =
   let e1 = mexpExp e
-  in if isSum e1
+  in if isSumOrConcat e1
      then []
      else  
        let h1 = untrie ?expHash e1
@@ -276,7 +293,7 @@ data Pos = Pos1 | Pos2
 type IdxPoint = [(IndexSymbol,Int)]
 
 data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
-                       , flatIndex :: [Int] -> Int
+                       , ivalFlatIndex :: [Int] -> Int
                        , valStore :: Vector a }
 
 data Args a = Args { varSimple :: HashMap String a
