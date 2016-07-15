@@ -268,18 +268,18 @@ test14 = do
       idxset2 = [idxm,idxn]
   putStrLn "idxset = (i,1,2),(j,1,2),(k,1,2), idxset2 = (m,1,2),(n,1,2)"
   putStrLn "------------------------------"
-  putStrLn $ "maxFlatIndex idxset =" ++ show (sizeIndex idxset)
-  putStrLn $ "maxFlatIndex idxset2 = " ++ show (sizeIndex idxset2)
+  putStrLn $ "sizeIndex idxset =" ++ show (sizeIndex idxset)
+  putStrLn $ "sizeIndex idxset2 = " ++ show (sizeIndex idxset2)
   
   putStrLn $ "indexFlatteningFactors idxset = " ++ show (indexFlatteningFactors idxset)
   putStrLn $ "indexFlatteningFactors idxset2 = " ++ show (indexFlatteningFactors idxset2)
   putStrLn "------------------------------"
   putStrLn $ "flatIndex idxset [2,2,1] = " ++ show (flatIndex idxset [2,2,1])
   putStrLn $ "splitIndex idxset 6 = " ++ show (splitIndex idxset 6)
-  putStrLn $ "flatIndex4DisjointSum [idxset,idxset2] (L [2,2,1]) = " ++ show (flatIndex4DisjointSum [idxset,idxset2] (L [2,2,1]))
-  putStrLn $ "flatIndex4DisjointSum [idxset,idxset2] (R (L [2,2]))) = " ++ show (flatIndex4DisjointSum [idxset,idxset2] (R (L [2,2])))
-  putStrLn $ "splitIndex4DisjointSum [idxset,idxset2] 6) = " ++ show (splitIndex4DisjointSum [idxset,idxset2] 6)
-  putStrLn $ "splitIndex4DisjointSum [idxset,idxset2] 11) = " ++ show (splitIndex4DisjointSum [idxset,idxset2] 11)
+  putStrLn $ "flatIndexDisjoint [idxset,idxset2] (L [2,2,1]) = " ++ show (flatIndexDisjoint [idxset,idxset2] (L [2,2,1]))
+  putStrLn $ "flatIndexDisjoint [idxset,idxset2] (R (L [2,2]))) = " ++ show (flatIndexDisjoint [idxset,idxset2] (R (L [2,2])))
+  putStrLn $ "splitIndexDisjoint [idxset,idxset2] 6) = " ++ show (splitIndexDisjoint [idxset,idxset2] 6)
+  putStrLn $ "splitIndexDisjoint [idxset,idxset2] 11) = " ++ show (splitIndexDisjoint [idxset,idxset2] 11)
     
 main = test14
     

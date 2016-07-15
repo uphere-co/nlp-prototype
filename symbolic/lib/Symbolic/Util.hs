@@ -43,15 +43,15 @@ data Disjoint a = L a | R (Disjoint a)
 deriving instance (Show a) => Show (Disjoint a)
 
 -- | flattening index for disjoint sum
-flatIndex4DisjointSum :: [[Index]] -> Disjoint [Int] -> Int
-flatIndex4DisjointSum (is:iss) (L j) = flatIndex is j
-flatIndex4DisjointSum (is:iss) (R d) =
-  sizeIndex is + flatIndex4DisjointSum iss d
+flatIndexDisjoint :: [[Index]] -> Disjoint [Int] -> Int
+flatIndexDisjoint (is:iss) (L j) = flatIndex is j
+flatIndexDisjoint (is:iss) (R d) =
+  sizeIndex is + flatIndexDisjoint iss d
 
 
 -- | splitting index for disjoint sum
-splitIndex4DisjointSum :: [[Index]] -> Int -> Disjoint [Int]
-splitIndex4DisjointSum (is:iss) j
+splitIndexDisjoint :: [[Index]] -> Int -> Disjoint [Int]
+splitIndexDisjoint (is:iss) j
     | j < m     = L (splitIndex is j)
-    | otherwise = R (splitIndex4DisjointSum iss (j-m))
+    | otherwise = R (splitIndexDisjoint iss (j-m))
   where m = sizeIndex is
