@@ -502,7 +502,7 @@ class CTimes(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = u'⊗'
+        self.name = u'⨯'
         self.op = np.multiply
         self.update_format()
     def __repr__(self):
@@ -517,17 +517,20 @@ class CTimes(BinaryOperator):
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
-        if IsZero(self.x) :
+        if IsZero(self.x):
             return self.x
         elif IsZero(self.y) :
             return self.y
-        #TODO: Critical. For cases like a⊗1⊗b where a,b have incorrect dimensions,
-        #      below simplication may results error.
-        elif IsAllOne(self.x) :
+        elif IsAllOne(self.x) and np.prod(self.x.val.shape)<=np.prod(self.y.val.shape):
             return self.y
-        elif IsAllOne(self.y):
+        elif IsAllOne(self.y) and np.prod(self.x.val.shape)>=np.prod(self.y.val.shape):
             return self.x
+        elif isinstance(self.x, CTimes) and IsAllOne(self.x.y):
+            assert self.op(self.x.x.val,self.y.val).shape == self.x.y.val.shape
+            return CTimes(self.x.x, self.y)
+        elif isinstance(self.y, CTimes) and IsAllOne(self.y.x):
+            assert self.op(self.x.val,self.y.y.val).shape == self.y.x.val.shape
+            return CTimes(self.x, self.y.y)
         return self
     def diff_no_simplify(self, var):
         assert(0)
-        return expr

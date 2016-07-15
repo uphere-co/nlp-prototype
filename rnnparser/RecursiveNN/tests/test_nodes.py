@@ -1,5 +1,4 @@
 #-*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -69,15 +68,15 @@ def test_DiffOperations(reset_NodeDict):
     assert(unicode(Mul(gfx,gy)) == 'g(f(x))*g(y)')
     z='0.0'
     i='1.0'
-    assert(unicode(Mul(fx,gx).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(x)+f(x)⊗g`(x)⊗%s"%(i,i))
-    assert(unicode(Mul(fx,gy).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(y)+f(x)⊗g`(y)⊗%s"%(i,z))
-    assert(unicode(fx.diff_no_simplify(x))==u"f`(x)⊗%s"%i)
-    assert(unicode(gfx.diff_no_simplify(x))==u"g`(f(x))⊗f`(x)⊗%s"%i)
-    assert(unicode(gfx.diff_no_simplify(y))==u"g`(f(x))⊗f`(x)⊗%s"%z)
+    assert(unicode(Mul(fx,gx).diff_no_simplify(x)) == u"f`(x)⨯%s⨯g(x)+f(x)⨯g`(x)⨯%s"%(i,i))
+    assert(unicode(Mul(fx,gy).diff_no_simplify(x)) == u"f`(x)⨯%s⨯g(y)+f(x)⨯g`(y)⨯%s"%(i,z))
+    assert(unicode(fx.diff_no_simplify(x))==u"f`(x)⨯%s"%i)
+    assert(unicode(gfx.diff_no_simplify(x))==u"g`(f(x))⨯f`(x)⨯%s"%i)
+    assert(unicode(gfx.diff_no_simplify(y))==u"g`(f(x))⨯f`(x)⨯%s"%z)
     assert(unicode(Mul(gfx,gy).diff_no_simplify(x)) ==\
-           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(i,z))
+           u'g`(f(x))⨯f`(x)⨯%s⨯g(y)+g(f(x))⨯g`(y)⨯%s'%(i,z))
     assert(unicode(Mul(gfx,gy).diff_no_simplify(y)) ==\
-           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
+           u'g`(f(x))⨯f`(x)⨯%s⨯g(y)+g(f(x))⨯g`(y)⨯%s'%(z,i))
 
 def test_SimplifyZeroAndOne(reset_NodeDict):
     assert(IsIdentity(Val(1)))
@@ -104,11 +103,11 @@ def test_SimplifyZeroAndOne(reset_NodeDict):
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
     assert(unicode(fx.diff(x))=='f`(x)')
-    assert(unicode(Mul(gfx,gy).diff(x))==u'g`(f(x))⊗f`(x)⊗g(y)')
-    assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⊗g`(y)')
+    assert(unicode(Mul(gfx,gy).diff(x))==u'g`(f(x))⨯f`(x)⨯g(y)')
+    assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⨯g`(y)')
 
     assert(unicode(Mul(hx,Mul(gx,fx)))==u'h(x)*g(x)*f(x)')
-    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗{g`(x)⊗f(x)+g(x)⊗f`(x)}')
+    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⨯g(x)*f(x)+h(x)⨯{g`(x)⨯f(x)+g(x)⨯f`(x)}')
     assert(unicode(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')
 
 def _SimplePhrase(reset_NodeDict):
@@ -254,7 +253,7 @@ def test_DiffKnownFunctions(reset_NodeDict):
     assert(dfx.expression()=='cos(x)')
     gfx=VSF('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
-    assert(dgfx.expression()==u'exp(3*sin(x))⊗3⊗cos(x)')
+    assert(dgfx.expression()==u'exp(3*sin(x))⨯3⨯cos(x)')
     #Caching top expressions only is enough
     gfx.cache()
     dgfx.cache()
@@ -267,10 +266,10 @@ def test_DiffKnownFunctions(reset_NodeDict):
 
     hfx=VSF('log',fx)
     dhfx=hfx.diff(x)
-    assert(dhfx.expression()==u'1/(sin(x))⊗cos(x)')
+    assert(dhfx.expression()==u'1/(sin(x))⨯cos(x)')
     hx=VSF('log',Add(fx, VSF('exp', x)))
     dhx=hx.diff(x)
-    assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗{cos(x)+exp(x)}')
+    assert(dhx.expression()==u'1/(sin(x)+exp(x))⨯{cos(x)+exp(x)}')
 
 def test_matrix_circle_times_operations(reset_NodeDict):
     va=np.matrix([[1,2,3],[2,3,4]])
