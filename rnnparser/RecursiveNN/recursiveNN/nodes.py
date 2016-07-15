@@ -534,3 +534,28 @@ class CTimes(BinaryOperator):
         return self
     def diff_no_simplify(self, var):
         assert(0)
+
+class Outer(BinaryOperator):
+    __slots__ = []
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = u'⊗'
+        self.op = np.outer
+        self.update_format()
+    def __repr__(self):
+        return "Outer(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self._format=u'{%s}%s%s'
+        elif isinstance(self.y, Add):
+            self._format=u'%s%s{%s}'
+        else:
+            self._format=u'%s%s%s'
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        self.update_format()
+        if IsZero(self.x) or IsZero(self.y):
+            return Val(np.zeros(np.outer(self.x.val,self.y.val).shape))
+        return self
+    def diff_no_simplify(self, var):
+        assert(0)

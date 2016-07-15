@@ -7,7 +7,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Concat,Mul,Dot,CTimes,Transpose, reset_NodeDict
+from recursiveNN.nodes import Val,Var,VSF,Transpose, Add,Concat,Mul,Dot,CTimes,Outer, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 def test_ConvertToArray():
@@ -360,6 +360,15 @@ def test_concatenation(reset_NodeDict):
     zero =Val(np.zeros(3))
     oz = Concat(ones,zero)
     assert oz is dfdx
+
+def test_outer(reset_NodeDict):
+    ran=lambda x : np.random.random(x)
+    vx=ran(4)
+    vy=ran(3)
+    assert np.all(np.outer(vx,vy)==vx.reshape(4,1)*vy.reshape(1,3))
+    x=Var('x',vx)
+    y=Var('y',vy)
+    assert np.all(Outer(x,y).val==np.outer(vx,vy))
 
 def test_FeedForwardNNEvaluation(reset_NodeDict):
     pass
