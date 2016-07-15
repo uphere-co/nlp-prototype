@@ -6,7 +6,7 @@ import numpy as np
 
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
-from recursiveNN.math import dot,To2Darray,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
+from recursiveNN.math import dot,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 '''Differentiation
 `self._val is None` of Node object indicates that there are no cache.
@@ -127,6 +127,9 @@ def {name}({vars}):
     def diff_no_simplify(self, var):
         assert(0)
     def diff(self,var):
+        #TODO: resolve circular dependancy.
+        #from recursiveNN.differentiation import Differentiation
+        #return Differentiation(self, var)
         return self.diff_no_simplify(var).simplify()
     def simplify(self):
         return self
@@ -150,7 +153,7 @@ class Val(Node):
     __slots__ = []
     def __init__(self, val):
         Node.__init__(self, 'Val')
-        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
+        super(self.__class__, self.__class__).val.fset(self, np.array(val))
     def __unicode__(self):
         return unicode(SimplifyIfScalar(self.val))
     def __repr__(self):
@@ -174,7 +177,7 @@ class Var(Node):
     __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self.val=To2Darray(val)
+        self.val=np.array(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def code(self):
@@ -193,7 +196,7 @@ class Var(Node):
         return super(self.__class__, self).val
     @val.setter
     def val(self, val):
-        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
+        super(self.__class__, self.__class__).val.fset(self, np.array(val))
 
 def softmax(x):
     x=x-np.max(x)
@@ -313,6 +316,8 @@ class Transpose(Node):
         self.var=self.var.simplify()
         if IsScalar(self.var):
             return self.var
+        elif isinstance(self.var, Val):
+            return Val(self.var.val.T)
         #self.var.add_parent(self)
         return self
     @property

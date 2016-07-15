@@ -13,9 +13,11 @@ from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMat
 
 def test_ConvertToArray():
     a=Val(1)
-    assert a.val.shape == (1,1)
+    assert a.val.shape == ()
     b=Val([[2]])
     assert b.val.shape == (1,1)
+    c=Val([1,2,1])
+    assert c.val.shape == (3,)
 def test_ElementaryTypes(reset_NodeDict):
     val0 = Val(0)
     val2 = Val(2)
