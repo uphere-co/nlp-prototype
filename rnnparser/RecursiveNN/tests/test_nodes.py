@@ -8,7 +8,7 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0, reset_NodeDict
+from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 def test_ConvertToArray():
@@ -340,20 +340,6 @@ def test_Transpose(reset_NodeDict):
     xyt=Mul(x,Transpose(y))
     assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12)
-
-def test_Sum0(reset_NodeDict):
-    vx=np.array([5,1,2]).reshape(3,1)
-    vy=np.array([[1,3],[2,3],[2,3]])
-    x=Var('x',vx)
-    y=Var('y',vy)
-    assert(unicode(Sum0(y))==u'Σ_0(y)')
-    assert(unicode(Sum0(CTimes(x,y)))==u'Σ_0(x⊗y)')
-    assert(CTimes(x,y).val.shape==(3, 2))
-    assert(Sum0(CTimes(x,y)).val.shape==(1, 2))
-    assert_all(Sum0(CTimes(x,y)).val==[11,24])
-    assert_all(Sum0(CTimes(x,y)).val==Dot(Transpose(x),y).val)
-
-
 
 def test_FeedForwardNNEvaluation(reset_NodeDict):
     pass

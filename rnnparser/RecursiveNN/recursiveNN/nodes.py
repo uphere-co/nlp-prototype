@@ -77,7 +77,11 @@ class Node(object):
         funcion_body, variables = expr.code(), expr.variables
         code='''
 import numpy as np
-{name} = lambda {vars} : {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
+import numba
+
+@numba.jit(nogil=True,nopython=True)
+def {name}({vars}):
+    return {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
         if name_scope is None:
             #exec(code,globals())
             exec(fullcode,locals())
@@ -289,30 +293,6 @@ class VSF(Node):
             super(self.__class__, self.__class__).val.fset(self, v)
         return v
 
-#Sum0 can be replaced by dot with 1s.
-class Sum0(Node):
-    __slots__ = ["var"]
-    def __init__(self, x):
-        Node.__init__(self,name=None)
-        self.var=x
-        #self.var.add_parent(self)
-    def __unicode__(self):
-        return u"Σ_0(%s)"%(self.var)
-    def __repr__(self):
-        return "Sum_0(%r)"%(self.var)
-    def simplify(self):
-        self.var=self.var.simplify()
-        if IsScalar(self.var):
-            return self.var
-        #self.var.add_parent(self)
-        return self
-    #TODO: remove this class or refactoring the val property
-    @property
-    def val(self):
-        if not np.any(self._val):
-            self._val = np.sum(self.var.val, axis=0).reshape(1,-1)
-        return self._val
-
 class Transpose(Node):
     __slots__ = ["op","var", "_format"]
     def __init__(self, x):
@@ -485,6 +465,7 @@ class Dot(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
+        #TODO: cleanup index
         expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)),
                  CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
