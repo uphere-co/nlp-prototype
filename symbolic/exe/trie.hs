@@ -222,7 +222,7 @@ test11 = do
       e4 = mul [e3,x_ [idxm,idxn]]
       e5 = sum_ [idxm,idxn] e4
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
-  let vals = IdxVal [(1,2),(1,2)] (\[i,j] -> (i-1)*2+(j-1)) (VS.fromList [1,2,3,4])
+  let vals = VS.fromList [1,2,3,4]
       args = Args HM.empty (HM.fromList [("x",vals)])
   forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
     let idx = [("i",i),("j",j)] 
@@ -281,7 +281,7 @@ test14 = do
   putStrLn $ "splitIndexDisjoint [idxset,idxset2] 6) = " ++ show (splitIndexDisjoint [idxset,idxset2] 6)
   putStrLn $ "splitIndexDisjoint [idxset,idxset2] 11) = " ++ show (splitIndexDisjoint [idxset,idxset2] 11)
 
-
+test15 :: IO ()
 test15 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -289,8 +289,8 @@ test15 = do
       exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let exp0 :: MExp Int
       exp0 = x_ [idxi]
-  let xvals = IdxVal [(1,2)] (\[i] -> i-1) (VS.fromList [101,102])
-      yvals = IdxVal [(1,2)] (\[i] -> i-1) (VS.fromList [203,204])
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
       args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
       
   let iptI = [("I",2)]

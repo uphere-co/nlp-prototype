@@ -292,12 +292,8 @@ data Pos = Pos1 | Pos2
 
 type IdxPoint = [(IndexSymbol,Int)]
 
-data IdxVal a = IdxVal { indexRange :: [(Int,Int)]   -- range of indices (start,end)
-                       , ivalFlatIndex :: [Int] -> Int
-                       , valStore :: Vector a }
-
 data Args a = Args { varSimple :: HashMap String a
-                   , varIndexed :: HashMap String (IdxVal a) }
+                   , varIndexed :: HashMap String (Vector a) }
 
 
 type FunctionMap a = HashMap String ([a] -> a)
