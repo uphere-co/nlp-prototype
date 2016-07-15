@@ -264,21 +264,22 @@ test13 = do
   cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
 
 test14 = do
-  let ?expHash = trie hash
-      ?functionMap = HM.empty
-
-  let exp :: MExp Double
-      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  digraph exp
   let idxset = [idxi,idxj,idxk]
       idxset2 = [idxm,idxn]
-  print (indexFlatteningFactors idxset)
-  print (flatIndex idxset [2,2,1])
-  print (splitIndex idxset 6)
-  putStrLn $ "maxFlatIndex idxset =" ++ show (maxFlatIndex idxset)
-  putStrLn $ "maxFlatIndex idxset2 = " ++ show (maxFlatIndex idxset2)
-  print (flatIndex4DisjointSum [idxset,idxset2] [[2,2,1],[2,2]])
-  print (splitIndex4DisjointSum [idxset,idxset2] 27)
+  putStrLn "idxset = (i,1,2),(j,1,2),(k,1,2), idxset2 = (m,1,2),(n,1,2)"
+  putStrLn "------------------------------"
+  putStrLn $ "maxFlatIndex idxset =" ++ show (sizeIndex idxset)
+  putStrLn $ "maxFlatIndex idxset2 = " ++ show (sizeIndex idxset2)
+  
+  putStrLn $ "indexFlatteningFactors idxset = " ++ show (indexFlatteningFactors idxset)
+  putStrLn $ "indexFlatteningFactors idxset2 = " ++ show (indexFlatteningFactors idxset2)
+  putStrLn "------------------------------"
+  putStrLn $ "flatIndex idxset [2,2,1] = " ++ show (flatIndex idxset [2,2,1])
+  putStrLn $ "splitIndex idxset 6 = " ++ show (splitIndex idxset 6)
+  putStrLn $ "flatIndex4DisjointSum [idxset,idxset2] (L [2,2,1]) = " ++ show (flatIndex4DisjointSum [idxset,idxset2] (L [2,2,1]))
+  putStrLn $ "flatIndex4DisjointSum [idxset,idxset2] (R (L [2,2]))) = " ++ show (flatIndex4DisjointSum [idxset,idxset2] (R (L [2,2])))
+  putStrLn $ "splitIndex4DisjointSum [idxset,idxset2] 6) = " ++ show (splitIndex4DisjointSum [idxset,idxset2] 6)
+  putStrLn $ "splitIndex4DisjointSum [idxset,idxset2] 11) = " ++ show (splitIndex4DisjointSum [idxset,idxset2] 11)
     
 main = test14
     

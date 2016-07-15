@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Symbolic.Util where
 
 import Symbolic.Type
@@ -28,22 +30,28 @@ flatIndex is pts = (index0base is pts) `flattenBy` (indexFlatteningFactors is)
   -- sum $ zipWith (\j f -> if f == 1 then j else j*f)
                    --         (index0base is pts) (indexFlatteningFactors is)
 
-maxFlatIndex :: [Index] -> Int
-maxFlatIndex is@(i:_) = indexSize i * head (indexFlatteningFactors is)
+sizeIndex :: [Index] -> Int
+sizeIndex is@(i:_) = indexSize i * head (indexFlatteningFactors is)
 
 -- | From flattened index to tuple index with respect to a given index schema.
 splitIndex :: [Index] -> Int -> [Int]
-splitIndex is j = j `splitBy` indexFlatteningFactors is
+splitIndex is j = zipWith renormalizeIndex is (j `splitBy` indexFlatteningFactors is)
 
 
-flatIndex4DisjointSum :: [[Index]] -> [[Int]] -> Int
-flatIndex4DisjointSum iss ptss = eachFI `flattenBy` factors
-  where factors = scanr (*) 1 (tail (map maxFlatIndex iss))
-        eachFI = zipWith flatIndex iss ptss
+data Disjoint a = L a | R (Disjoint a)
+
+deriving instance (Show a) => Show (Disjoint a)
+
+-- | flattening index for disjoint sum
+flatIndex4DisjointSum :: [[Index]] -> Disjoint [Int] -> Int
+flatIndex4DisjointSum (is:iss) (L j) = flatIndex is j
+flatIndex4DisjointSum (is:iss) (R d) =
+  sizeIndex is + flatIndex4DisjointSum iss d
 
 
-splitIndex4DisjointSum :: [[Index]] -> Int -> [[Int]]
-splitIndex4DisjointSum iss j = zipWith splitNRenorm iss i's  
-  where factors = scanr (*) 1 (tail (map maxFlatIndex iss))
-        i's = j `splitBy` factors
-        splitNRenorm is i' = zipWith renormalizeIndex is (splitIndex is i')
+-- | splitting index for disjoint sum
+splitIndex4DisjointSum :: [[Index]] -> Int -> Disjoint [Int]
+splitIndex4DisjointSum (is:iss) j
+    | j < m     = L (splitIndex is j)
+    | otherwise = R (splitIndex4DisjointSum iss (j-m))
+  where m = sizeIndex is

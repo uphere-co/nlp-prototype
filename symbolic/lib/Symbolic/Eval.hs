@@ -54,7 +54,13 @@ eval m (args,ip,Sum is h) = let idx1lst (idx,start,end) = [(idx,v)| v <- [start.
                                 ip' = map (ip ++) sumip
                                 e = justLookup h m
                             in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
-eval _m (_args,_ip,Concat _i _hs) = error "eval for Concat is not defined"
+eval m (args,ip,Concat i hs) = undefined
+{- -- evalConcat args ip i es
+  where es = map (mexpExp . flip justLookup m) hs
+        i' = justLookupL i ip
+        dis = map (HS.toList . mexpIdx) es 
+        ni's = splitIndex4DisjointSum dis i'
+-}        
 
 seval :: ( Storable a, HasTrie a, Num a
          , ?expHash :: Exp a :->: Hash
