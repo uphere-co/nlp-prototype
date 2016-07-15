@@ -280,6 +280,24 @@ test14 = do
   putStrLn $ "flatIndexDisjoint [idxset,idxset2] (R (L [2,2]))) = " ++ show (flatIndexDisjoint [idxset,idxset2] (R (L [2,2])))
   putStrLn $ "splitIndexDisjoint [idxset,idxset2] 6) = " ++ show (splitIndexDisjoint [idxset,idxset2] 6)
   putStrLn $ "splitIndexDisjoint [idxset,idxset2] 11) = " ++ show (splitIndexDisjoint [idxset,idxset2] 11)
+
+
+test15 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp :: MExp Int
+      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
+  let exp0 :: MExp Int
+      exp0 = x_ [idxi]
+  let xvals = IdxVal [(1,2)] (\[i] -> i-1) (VS.fromList [101,102])
+      yvals = IdxVal [(1,2)] (\[i] -> i-1) (VS.fromList [203,204])
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      
+  let iptI = [("I",2)]
+      ipti = [("i",1)]
+  forM_ [1,2,3,4] $ \i -> do
+    let iptI = [("I",i)]
+    printf "val(I=%d) = %d \n" i (seval args iptI exp)
     
-main = test14
+main = test15
     

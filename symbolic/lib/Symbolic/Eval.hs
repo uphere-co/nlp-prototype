@@ -8,14 +8,16 @@
 
 module Symbolic.Eval where
 
-import           Control.Lens              (view, _1)
-import           Data.HashMap.Strict       (HashMap)
-import           Data.List                 (foldl')
+import           Control.Lens               (view, _1)
+import           Data.HashMap.Strict        (HashMap)
+import qualified Data.HashSet         as HS
+import           Data.List                  (foldl')
 import           Data.MemoTrie
 import           Data.Vector.Storable       (Storable,(!))
 import qualified Data.Vector.Storable as VS
 --
 import           Symbolic.Type
+import           Symbolic.Util
 --
 
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
@@ -54,13 +56,17 @@ eval m (args,ip,Sum is h) = let idx1lst (idx,start,end) = [(idx,v)| v <- [start.
                                 ip' = map (ip ++) sumip
                                 e = justLookup h m
                             in (foldl' (+) 0 . map (\i -> eval m (args,i,mexpExp e))) ip'
-eval m (args,ip,Concat i hs) = undefined
-{- -- evalConcat args ip i es
-  where es = map (mexpExp . flip justLookup m) hs
-        i' = justLookupL i ip
+eval m (args,ip,Concat idx hs) = select es di
+  where es = map (flip justLookup m) hs
+        i' = index0base idx (justLookupL (view _1 idx) ip)
         dis = map (HS.toList . mexpIdx) es 
-        ni's = splitIndex4DisjointSum dis i'
--}        
+        di = splitIndexDisjoint dis i'
+        -- di' = fmap (zipWith (\(i,_,_) v -> (i,v)) dis) di
+        select (x:xs) (L i)
+          = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
+            in eval m (args,i',mexpExp x)
+        select (x:xs) (R d) = select xs d
+-- findElement args (e:es) (L i) = eval m (args,i,mexpExp e)  
 
 seval :: ( Storable a, HasTrie a, Num a
          , ?expHash :: Exp a :->: Hash
