@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Symbolic.Util where
@@ -17,18 +18,18 @@ flattenBy is fac = sum $ zipWith (\j f -> if f == 1 then j else j*f) is fac
 splitBy j fac = map fst . tail $ scanl (\(d,m) i -> m `divMod` i) (0,j) fac
 
 -- | Normalize index number as 0 based (minimum = 0)
-index0base :: [Index] -> [Int] -> [Int]
-index0base = zipWith (\(_,s,_) j -> j-s) 
+index0base :: Index -> Int -> Int
+index0base (_,s,_) j = j-s 
+
+index0baseAll :: [Index] -> [Int] -> [Int]
+index0baseAll = zipWith index0base
 
 renormalizeIndex :: Index -> Int -> Int
 renormalizeIndex (_,s,_) j = s+j
 
 -- | From tuple index to flattened index with respect to a given index scheme.
 flatIndex :: [Index] -> [Int] -> Int
-flatIndex is pts = (index0base is pts) `flattenBy` (indexFlatteningFactors is)
-
-  -- sum $ zipWith (\j f -> if f == 1 then j else j*f)
-                   --         (index0base is pts) (indexFlatteningFactors is)
+flatIndex is pts = (index0baseAll is pts) `flattenBy` (indexFlatteningFactors is)
 
 sizeIndex :: [Index] -> Int
 sizeIndex is@(i:_) = indexSize i * head (indexFlatteningFactors is)
@@ -39,8 +40,11 @@ splitIndex is j = zipWith renormalizeIndex is (j `splitBy` indexFlatteningFactor
 
 
 data Disjoint a = L a | R (Disjoint a)
+                deriving Functor
 
 deriving instance (Show a) => Show (Disjoint a)
+
+
 
 -- | flattening index for disjoint sum
 flatIndexDisjoint :: [[Index]] -> Disjoint [Int] -> Int
