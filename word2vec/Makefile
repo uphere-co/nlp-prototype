@@ -5,24 +5,24 @@ BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
 
 #libopenblas.a  #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
 
-all: utils sptree tsne word2vec distance pca
+all: bh_tsne word2vec distance pca
 
-utils: utils.cpp
+utils.o: utils.cpp
 	$(CXX) -c $(CFLAGS) utils.cpp
 
-sptree: sptree.cpp
+sptree.o: sptree.cpp
 	$(CXX) -c sptree.cpp -O2
 
-tsne: tsne.cpp
+bh_tsne: tsne.cpp sptree.o
 	$(CXX) -o bh_tsne tsne.cpp sptree.o -O2
 
-word2vec: word2vec.cpp
+word2vec: word2vec.cpp utils.o
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o word2vec word2vec.cpp utils.o $(CFLAGS) -Ofast -pthread
 
-distance: distance.cpp
+distance: distance.cpp utils.o
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o distance distance.cpp utils.o $(CFLAGS) -Ofast -pthread
 
-pca: pca.cpp
+pca: pca.cpp utils.o
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o pca pca.cpp utils.o $(CFLAGS)  
 
 clean:
