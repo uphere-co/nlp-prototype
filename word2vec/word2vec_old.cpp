@@ -471,6 +471,13 @@ void TrainModelThread(){
     word_count = 0;
     last_word_count = 0;
     sentence_length = 0;
+    if(inFile.eof()) {
+      inFile.clear();
+      inFile.seekg(0, inFile.beg);
+    }
+    else {
+      inFile.seekg(0, inFile.beg);
+    }
     continue;
     }
     word = sen[sentence_position];
