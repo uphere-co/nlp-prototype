@@ -6,9 +6,9 @@ import numpy as np
 
 myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
-from recursiveNN.math import dot,To2Darray,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
+from recursiveNN.math import dot,SimplifyIfScalar, IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
-'''
+'''Differentiation
 `self._val is None` of Node object indicates that there are no cache.
 `np.isnan(self._val)` indicates that some of its variables are set to NaN.
 It is parent's responsibility to set children's parents.
@@ -77,7 +77,11 @@ class Node(object):
         funcion_body, variables = expr.code(), expr.variables
         code='''
 import numpy as np
-{name} = lambda {vars} : {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
+import numba
+
+@numba.jit(nogil=True,nopython=True)
+def {name}({vars}):
+    return {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
         if name_scope is None:
             #exec(code,globals())
             exec(fullcode,locals())
@@ -123,6 +127,9 @@ import numpy as np
     def diff_no_simplify(self, var):
         assert(0)
     def diff(self,var):
+        #TODO: resolve circular dependancy.
+        #from recursiveNN.differentiation import Differentiation
+        #return Differentiation(self, var)
         return self.diff_no_simplify(var).simplify()
     def simplify(self):
         return self
@@ -146,7 +153,7 @@ class Val(Node):
     __slots__ = []
     def __init__(self, val):
         Node.__init__(self, 'Val')
-        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
+        super(self.__class__, self.__class__).val.fset(self, np.array(val))
     def __unicode__(self):
         return unicode(SimplifyIfScalar(self.val))
     def __repr__(self):
@@ -170,7 +177,7 @@ class Var(Node):
     __slots__ = []
     def __init__(self, name, val=np.nan):
         Node.__init__(self, name)
-        self.val=To2Darray(val)
+        self.val=np.array(val)
     def __repr__(self):
         return "Var(%r)"%(self.name)
     def code(self):
@@ -189,7 +196,7 @@ class Var(Node):
         return super(self.__class__, self).val
     @val.setter
     def val(self, val):
-        super(self.__class__, self.__class__).val.fset(self, To2Darray(val))
+        super(self.__class__, self.__class__).val.fset(self, np.array(val))
 
 def softmax(x):
     x=x-np.max(x)
@@ -289,30 +296,6 @@ class VSF(Node):
             super(self.__class__, self.__class__).val.fset(self, v)
         return v
 
-#Sum0 can be replaced by dot with 1s.
-class Sum0(Node):
-    __slots__ = ["var"]
-    def __init__(self, x):
-        Node.__init__(self,name=None)
-        self.var=x
-        #self.var.add_parent(self)
-    def __unicode__(self):
-        return u"Σ_0(%s)"%(self.var)
-    def __repr__(self):
-        return "Sum_0(%r)"%(self.var)
-    def simplify(self):
-        self.var=self.var.simplify()
-        if IsScalar(self.var):
-            return self.var
-        #self.var.add_parent(self)
-        return self
-    #TODO: remove this class or refactoring the val property
-    @property
-    def val(self):
-        if not np.any(self._val):
-            self._val = np.sum(self.var.val, axis=0).reshape(1,-1)
-        return self._val
-
 class Transpose(Node):
     __slots__ = ["op","var", "_format"]
     def __init__(self, x):
@@ -333,6 +316,8 @@ class Transpose(Node):
         self.var=self.var.simplify()
         if IsScalar(self.var):
             return self.var
+        elif isinstance(self.var, Val):
+            return Val(self.var.val.T)
         #self.var.add_parent(self)
         return self
     @property
@@ -423,6 +408,28 @@ class Add(BinaryOperator):
         expr=Add(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
         return expr
 
+class Concat(BinaryOperator):
+    __slots__ = []
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = u'⊕'
+        self.op = np.concatenate
+    def __repr__(self):
+        return "Concat(%r,%r)"%(self.x, self.y)
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        return self
+    def diff_no_simplify(self, var):
+        expr=Concat(self.x.diff_no_simplify(var),self.y.diff_no_simplify(var))
+        return expr
+    @property
+    def val(self):
+        v=super(BinaryOperator, self).val
+        if not np.any(v):
+            v = self.op([self.x.val, self.y.val])
+            super(BinaryOperator, self.__class__).val.fset(self, v)
+        return v
+
 class Mul(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
@@ -466,9 +473,9 @@ class Dot(BinaryOperator):
     def __repr__(self):
         return "Dot(%r,%r)"%(self.x, self.y)
     def update_format(self):
-        if isinstance(self.x, Add):
+        if isinstance(self.x, Add) or isinstance(self.x, Concat):
             self._format=u'{%s}%s%s'
-        elif isinstance(self.y, Add):
+        elif isinstance(self.y, Add) or isinstance(self.y, Concat):
             self._format=u'%s%s{%s}'
         else:
             self._format=u'%s%s%s'
@@ -485,6 +492,7 @@ class Dot(BinaryOperator):
             return self.x
         return self
     def diff_no_simplify(self, var):
+        #TODO: cleanup index
         expr=Add(CTimes(TransposeIfVector(self.x.diff_no_simplify(var)),TransposeIfVector(self.y)),
                  CTimes(TransposeIfVector(self.x),TransposeIfVector(self.y.diff_no_simplify(var))))
         return expr
@@ -494,7 +502,7 @@ class CTimes(BinaryOperator):
     __slots__ = []
     def __init__(self, x, y):
         BinaryOperator.__init__(self,x,y)
-        self.name = u'⊗'
+        self.name = u'⨯'
         self.op = np.multiply
         self.update_format()
     def __repr__(self):
@@ -509,17 +517,45 @@ class CTimes(BinaryOperator):
     def simplify(self):
         BinaryOperator.simplify(self)
         self.update_format()
-        if IsZero(self.x) :
+        if IsZero(self.x):
             return self.x
         elif IsZero(self.y) :
             return self.y
-        #TODO: Critical. For cases like a⊗1⊗b where a,b have incorrect dimensions,
-        #      below simplication may results error.
-        elif IsAllOne(self.x) :
+        elif IsAllOne(self.x) and np.prod(self.x.val.shape)<=np.prod(self.y.val.shape):
             return self.y
-        elif IsAllOne(self.y):
+        elif IsAllOne(self.y) and np.prod(self.x.val.shape)>=np.prod(self.y.val.shape):
             return self.x
+        elif isinstance(self.x, CTimes) and IsAllOne(self.x.y):
+            assert self.op(self.x.x.val,self.y.val).shape == self.x.y.val.shape
+            return CTimes(self.x.x, self.y)
+        elif isinstance(self.y, CTimes) and IsAllOne(self.y.x):
+            assert self.op(self.x.val,self.y.y.val).shape == self.y.x.val.shape
+            return CTimes(self.x, self.y.y)
         return self
     def diff_no_simplify(self, var):
         assert(0)
-        return expr
+
+class Outer(BinaryOperator):
+    __slots__ = []
+    def __init__(self, x, y):
+        BinaryOperator.__init__(self,x,y)
+        self.name = u'⊗'
+        self.op = np.outer
+        self.update_format()
+    def __repr__(self):
+        return "Outer(%r,%r)"%(self.x, self.y)
+    def update_format(self):
+        if isinstance(self.x, Add):
+            self._format=u'{%s}%s%s'
+        elif isinstance(self.y, Add):
+            self._format=u'%s%s{%s}'
+        else:
+            self._format=u'%s%s%s'
+    def simplify(self):
+        BinaryOperator.simplify(self)
+        self.update_format()
+        if IsZero(self.x) or IsZero(self.y):
+            return Val(np.zeros(np.outer(self.x.val,self.y.val).shape))
+        return self
+    def diff_no_simplify(self, var):
+        assert(0)

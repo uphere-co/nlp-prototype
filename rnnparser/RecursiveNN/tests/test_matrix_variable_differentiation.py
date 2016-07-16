@@ -52,22 +52,23 @@ def test_VectorAndMatrixVariables(reset_NodeDict):
 
     xfy = Dot(x,VSF('sin',y))
     assert unicode(xfy)==u'x⋅sin(y)'
-    assert unicode(Differentiation(xfy,y))==u'[x⊗[cos(y)]ᵀ]ᵀ'
+    assert unicode(Differentiation(xfy,y))==u'[x⨯[cos(y)]ᵀ]ᵀ'
 
     f = Dot(Dot(x,C),Dot(B,VSF('sin',Add(Dot(A,y),a))))
     assert unicode(f)==u'x⋅C⋅B⋅sin(A⋅y+a)'
-    assert unicode(Differentiation(f,y))==u'[x⋅C⋅B⊗[cos(A⋅y+a)]ᵀ⋅A]ᵀ'
-    assert unicode(Differentiation(f,a))==u'[x⋅C⋅B⊗[cos(A⋅y+a)]ᵀ]ᵀ'
+    assert unicode(Differentiation(f,y))==u'[x⋅C⋅B⨯[cos(A⋅y+a)]ᵀ⋅A]ᵀ'
+    assert unicode(Differentiation(f,a))==u'[x⋅C⋅B⨯[cos(A⋅y+a)]ᵀ]ᵀ'
 
     g = Dot(Dot(x,C),VSF('sin',Add(Dot(B,VSF('sin',Add(Dot(A,y),a))),b)))
     assert unicode(g) == u'x⋅C⋅sin(B⋅sin(A⋅y+a)+b)'
     assert unicode(Differentiation(g,x))==u'[C⋅sin(B⋅sin(A⋅y+a)+b)]ᵀ'
-    assert unicode(Differentiation(g,b))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ'
-    assert unicode(Differentiation(g,a))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ]ᵀ'
-    assert unicode(Differentiation(g,y))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ⋅A]ᵀ'
-    assert unicode(Differentiation(g,A))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⊗[cos(A⋅y+a)]ᵀ]ᵀ⊗yᵀ'
-    assert unicode(Differentiation(g,B))==u'[x⋅C⊗[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ⊗[sin(A⋅y+a)]ᵀ'
-    assert unicode(Differentiation(g,C))==u'xᵀ⊗[sin(B⋅sin(A⋅y+a)+b)]ᵀ'
+    assert unicode(Differentiation(g,b))==u'[x⋅C⨯[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ'
+    assert unicode(Differentiation(g,a))==u'[x⋅C⨯[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⨯[cos(A⋅y+a)]ᵀ]ᵀ'
+    assert unicode(Differentiation(g,y))==u'[x⋅C⨯[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⨯[cos(A⋅y+a)]ᵀ⋅A]ᵀ'
+    print unicode(Differentiation(g,A))
+    assert unicode(Differentiation(g,A))==u'[x⋅C⨯[cos(B⋅sin(A⋅y+a)+b)]ᵀ⋅B⨯[cos(A⋅y+a)]ᵀ]ᵀ⨯yᵀ'
+    assert unicode(Differentiation(g,B))==u'[x⋅C⨯[cos(B⋅sin(A⋅y+a)+b)]ᵀ]ᵀ⨯[sin(A⋅y+a)]ᵀ'
+    assert unicode(Differentiation(g,C))==u'xᵀ⨯[sin(B⋅sin(A⋅y+a)+b)]ᵀ'
 
     dgdx=Differentiation(g,x)
     dgdb=Differentiation(g,b)
@@ -114,6 +115,7 @@ def test_ReuseExistingExpressions(reset_NodeDict):
     dgdA=Differentiation(g,A)
     dgdA.cache()
     dgdB=Differentiation(g,B)
+    print unicode(dgdB)
     assert dgdB.y.var is f.y.y
     assert dgdA.x.var.x.x is dgdB.x.var
 

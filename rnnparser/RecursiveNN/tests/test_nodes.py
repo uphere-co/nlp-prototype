@@ -1,5 +1,4 @@
 #-*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -8,14 +7,16 @@ sys.path.insert(0, myPath + '/../')
 
 import pytest
 import numpy as np
-from recursiveNN.nodes import Val,Var,VSF, Add,Mul,Dot,CTimes,Transpose,Sum0, reset_NodeDict
+from recursiveNN.nodes import Val,Var,VSF,Transpose, Add,Concat,Mul,Dot,CTimes,Outer, reset_NodeDict
 from recursiveNN.math import IsZero,IsAllOne,IsIdentity, IsScalar,IsVector,IsMatrix
 
 def test_ConvertToArray():
     a=Val(1)
-    assert a.val.shape == (1,1)
+    assert a.val.shape == ()
     b=Val([[2]])
     assert b.val.shape == (1,1)
+    c=Val([1,2,1])
+    assert c.val.shape == (3,)
 def test_ElementaryTypes(reset_NodeDict):
     val0 = Val(0)
     val2 = Val(2)
@@ -67,15 +68,15 @@ def test_DiffOperations(reset_NodeDict):
     assert(unicode(Mul(gfx,gy)) == 'g(f(x))*g(y)')
     z='0.0'
     i='1.0'
-    assert(unicode(Mul(fx,gx).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(x)+f(x)⊗g`(x)⊗%s"%(i,i))
-    assert(unicode(Mul(fx,gy).diff_no_simplify(x)) == u"f`(x)⊗%s⊗g(y)+f(x)⊗g`(y)⊗%s"%(i,z))
-    assert(unicode(fx.diff_no_simplify(x))==u"f`(x)⊗%s"%i)
-    assert(unicode(gfx.diff_no_simplify(x))==u"g`(f(x))⊗f`(x)⊗%s"%i)
-    assert(unicode(gfx.diff_no_simplify(y))==u"g`(f(x))⊗f`(x)⊗%s"%z)
+    assert(unicode(Mul(fx,gx).diff_no_simplify(x)) == u"f`(x)⨯%s⨯g(x)+f(x)⨯g`(x)⨯%s"%(i,i))
+    assert(unicode(Mul(fx,gy).diff_no_simplify(x)) == u"f`(x)⨯%s⨯g(y)+f(x)⨯g`(y)⨯%s"%(i,z))
+    assert(unicode(fx.diff_no_simplify(x))==u"f`(x)⨯%s"%i)
+    assert(unicode(gfx.diff_no_simplify(x))==u"g`(f(x))⨯f`(x)⨯%s"%i)
+    assert(unicode(gfx.diff_no_simplify(y))==u"g`(f(x))⨯f`(x)⨯%s"%z)
     assert(unicode(Mul(gfx,gy).diff_no_simplify(x)) ==\
-           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(i,z))
+           u'g`(f(x))⨯f`(x)⨯%s⨯g(y)+g(f(x))⨯g`(y)⨯%s'%(i,z))
     assert(unicode(Mul(gfx,gy).diff_no_simplify(y)) ==\
-           u'g`(f(x))⊗f`(x)⊗%s⊗g(y)+g(f(x))⊗g`(y)⊗%s'%(z,i))
+           u'g`(f(x))⨯f`(x)⨯%s⨯g(y)+g(f(x))⨯g`(y)⨯%s'%(z,i))
 
 def test_SimplifyZeroAndOne(reset_NodeDict):
     assert(IsIdentity(Val(1)))
@@ -102,11 +103,11 @@ def test_SimplifyZeroAndOne(reset_NodeDict):
     assert(Mul(gx, Mul(fx, zero)).simplify()==zero)
     assert(Mul(gy, Mul(gx, Mul(fx, zero))).simplify()==zero)
     assert(unicode(fx.diff(x))=='f`(x)')
-    assert(unicode(Mul(gfx,gy).diff(x))==u'g`(f(x))⊗f`(x)⊗g(y)')
-    assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⊗g`(y)')
+    assert(unicode(Mul(gfx,gy).diff(x))==u'g`(f(x))⨯f`(x)⨯g(y)')
+    assert(unicode(Mul(gfx,gy).diff(y))==u'g(f(x))⨯g`(y)')
 
     assert(unicode(Mul(hx,Mul(gx,fx)))==u'h(x)*g(x)*f(x)')
-    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⊗g(x)*f(x)+h(x)⊗{g`(x)⊗f(x)+g(x)⊗f`(x)}')
+    assert(unicode(Mul(hx,Mul(gx,fx)).diff(x))==u'h`(x)⨯g(x)*f(x)+h(x)⨯{g`(x)⨯f(x)+g(x)⨯f`(x)}')
     assert(unicode(Mul(hx,Mul(gx,fx)).diff(y))=='0.0')
 
 def _SimplePhrase(reset_NodeDict):
@@ -252,7 +253,7 @@ def test_DiffKnownFunctions(reset_NodeDict):
     assert(dfx.expression()=='cos(x)')
     gfx=VSF('exp',Mul(Val(3), fx))
     dgfx=gfx.diff(x)
-    assert(dgfx.expression()==u'exp(3*sin(x))⊗3⊗cos(x)')
+    assert(dgfx.expression()==u'exp(3*sin(x))⨯3⨯cos(x)')
     #Caching top expressions only is enough
     gfx.cache()
     dgfx.cache()
@@ -265,10 +266,10 @@ def test_DiffKnownFunctions(reset_NodeDict):
 
     hfx=VSF('log',fx)
     dhfx=hfx.diff(x)
-    assert(dhfx.expression()==u'1/(sin(x))⊗cos(x)')
+    assert(dhfx.expression()==u'1/(sin(x))⨯cos(x)')
     hx=VSF('log',Add(fx, VSF('exp', x)))
     dhx=hx.diff(x)
-    assert(dhx.expression()==u'1/(sin(x)+exp(x))⊗{cos(x)+exp(x)}')
+    assert(dhx.expression()==u'1/(sin(x)+exp(x))⨯{cos(x)+exp(x)}')
 
 def test_matrix_circle_times_operations(reset_NodeDict):
     va=np.matrix([[1,2,3],[2,3,4]])
@@ -341,19 +342,33 @@ def test_Transpose(reset_NodeDict):
     assert(unicode(Transpose(xyt))==u'[x*yᵀ]ᵀ')
     assert(xyt.val==12)
 
-def test_Sum0(reset_NodeDict):
-    vx=np.array([5,1,2]).reshape(3,1)
-    vy=np.array([[1,3],[2,3],[2,3]])
+def test_concatenation(reset_NodeDict):
+    vx=np.array([5,1,2])
+    vy=np.array([1,3,2])
     x=Var('x',vx)
     y=Var('y',vy)
-    assert(unicode(Sum0(y))==u'Σ_0(y)')
-    assert(unicode(Sum0(CTimes(x,y)))==u'Σ_0(x⊗y)')
-    assert(CTimes(x,y).val.shape==(3, 2))
-    assert(Sum0(CTimes(x,y)).val.shape==(1, 2))
-    assert_all(Sum0(CTimes(x,y)).val==[11,24])
-    assert_all(Sum0(CTimes(x,y)).val==Dot(Transpose(x),y).val)
+    xpy=Concat(x,y)
+    dfdx = xpy.diff(x)
+    ones =Val(np.ones(3))
+    zero =Val(np.zeros(3))
+    oz = Concat(ones,zero)
+    assert_all(dfdx.val==oz.val)
+    #It is a bit tricky; it is limitation of current implementation.
+    assert oz is not dfdx
+    dfdx.cache()
+    ones =Val(np.ones(3))
+    zero =Val(np.zeros(3))
+    oz = Concat(ones,zero)
+    assert oz is dfdx
 
-
+def test_outer(reset_NodeDict):
+    ran=lambda x : np.random.random(x)
+    vx=ran(4)
+    vy=ran(3)
+    assert np.all(np.outer(vx,vy)==vx.reshape(4,1)*vy.reshape(1,3))
+    x=Var('x',vx)
+    y=Var('y',vy)
+    assert np.all(Outer(x,y).val==np.outer(vx,vy))
 
 def test_FeedForwardNNEvaluation(reset_NodeDict):
     pass
