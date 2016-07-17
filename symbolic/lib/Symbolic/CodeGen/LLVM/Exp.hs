@@ -52,22 +52,23 @@ getElem ty s i =
   let arr = LocalReference (ptr ty) (AST.Name s)
   in load =<< getElementPtr arr [i]
 
-flatIndexM :: [Index] -> {- [Operand] -> -} Codegen Operand
-flatIndexM is {- ivs -} = do
-  let factors = indexFlatteningFactors is
-  -- indices <- zipWithM index0baseM is ivs
-  indices <- mapM index0baseM is
+loadIndices :: [Index] -> Codegen [Operand]
+loadIndices = mapM (load <=< getvar . indexName) 
+
+flattenByM :: [Operand] -> [Int] -> Codegen Operand
+flattenByM is fac = do
   (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
-                  indices factors 
+                  is fac 
   foldrM iadd i1 irest       
 
-index0baseM :: Index -> {- Operand -> -} Codegen Operand
-index0baseM (i,s,_) {- x -} = do
-  xref <- getvar i
-  x <- load xref
-  if s == 0
-    then return x
-    else isub x (ival s)
+flatIndexM :: [Index] -> [Operand] -> Codegen Operand
+flatIndexM is ivs = do
+  let factors = indexFlatteningFactors is
+  indices <- zipWithM index0baseM is ivs
+  flattenByM indices factors
+
+index0baseM :: Index -> Operand -> Codegen Operand
+index0baseM (i,s,_) x = if s == 0 then return x else isub x (ival s)
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
@@ -145,9 +146,7 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
 llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
-  flatIndexM is >>=
-  getElem double s >>=
-  assign name
+  loadIndices is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -189,7 +188,7 @@ llvmAST name syms v =
       else do
         let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
             innerstmt = do
-              theindex <- flatIndexM is
+              theindex <- flatIndexM is =<< loadIndices is
               mkInnerbody v
               val <- getvar (hVar (getMHash v))
               p <- getElementPtr rref [theindex]
