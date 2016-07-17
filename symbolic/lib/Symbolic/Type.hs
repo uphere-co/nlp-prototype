@@ -69,6 +69,9 @@ instance Hashable Symbol where
 data Exp a = Zero
            | One
            | Delta Index Index
+           | CDelta Index [[Index]] Int
+                -- ^ delta for collective index
+                -- (collective index, index scheme, partition number (0-based))
            | Val a
            | Var Symbol
            | Add [Hash]
@@ -113,6 +116,7 @@ getMHash e = untrie ?expHash (mexpExp e)
 data RExp a = RZero
             | ROne
             | RDelta Index Index
+            | RCDelta Index [[Index]] Int
             | RVal a
             | RVar Symbol
             | RAdd [RExp a]
@@ -128,6 +132,9 @@ mangle = map fromIntegral . LB.unpack . Bi.encode
 unmangle :: [Int] -> Double
 unmangle = Bi.decode . LB.pack . map fromIntegral
 
+uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+uncurry3 f (a,b,c) = f a b c 
+
 instance HasTrie Double where
   data Double :->: a = DoubleTrie ([Int] :->: a)
   trie f = DoubleTrie $ trie $ f . unmangle
@@ -140,6 +147,7 @@ instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)
                                 (() :->: b)
                                 ((Index,Index) :->: b)
+                                ((Index,[[Index]],Int) :->: b)
                                 (a :->: b)
                                 (Symbol :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
@@ -152,6 +160,7 @@ instance HasTrie a => HasTrie (Exp a) where
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))
                    (trie (f . uncurry Delta))
+                   (trie (f . uncurry3 CDelta))
                    (trie (f . Val))
                    (trie (f . Var))
                    (trie (f . Add))
@@ -161,11 +170,12 @@ instance HasTrie a => HasTrie (Exp a) where
                    (trie (f . uncurry Concat))
            
   untrie :: (Exp a :->: b) -> Exp a -> b
-  untrie (ExpTrie z o d l v a m f su c) e =
+  untrie (ExpTrie z o d cd l v a m f su c) e =
     case e of
       Zero         -> untrie z ()
       One          -> untrie o ()
       Delta i j    -> untrie d (i,j)
+      CDelta i is p -> untrie cd (i,is,p)      
       Val n        -> untrie l n
       Var s        -> untrie v s
       Add hs       -> untrie a hs
@@ -175,12 +185,14 @@ instance HasTrie a => HasTrie (Exp a) where
       Concat i hs  -> untrie c (i,hs)
                                      
   enumerate :: (Exp a :->: b) -> [(Exp a,b)]
-  enumerate (ExpTrie z o d n v a m f su c) =
+  enumerate (ExpTrie z o d cd n v a m f su c) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
     `weave`
     enum' (uncurry Delta) d 
+    `weave`
+    enum' (uncurry3 CDelta) cd
     `weave`
     enum' Val n
     `weave`
@@ -209,20 +221,22 @@ instance Hashable a => Hashable (Exp a) where
   hashWithSalt :: Hash -> Exp a -> Hash
   hashWithSalt s Zero            = s `hashWithSalt` (0 :: Int)
   hashWithSalt s One             = s `hashWithSalt` (1 :: Int)
-  hashWithSalt s (Delta i j)     = s `hashWithSalt` (2 :: Int) `hashWithSalt` i `hashWithSalt` j  
-  hashWithSalt s (Val n)         = s `hashWithSalt` (3 :: Int) `hashWithSalt` n
-  hashWithSalt s (Var s')        = s `hashWithSalt` (4 :: Int) `hashWithSalt` s'
-  hashWithSalt s (Add hs)        = s `hashWithSalt` (5 :: Int) `hashWithSalt` hs
-  hashWithSalt s (Mul hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
-  hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` s' `hashWithSalt` hs
-  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` is `hashWithSalt` h1
-  hashWithSalt s (Concat i hs)   = s `hashWithSalt` (9 :: Int) `hashWithSalt` i `hashWithSalt` hs
+  hashWithSalt s (Delta i j)     = s `hashWithSalt` (2 :: Int) `hashWithSalt` i `hashWithSalt` j
+  hashWithSalt s (CDelta i iss p)= s `hashWithSalt` (3 :: Int) `hashWithSalt` i `hashWithSalt` iss `hashWithSalt` p
+  hashWithSalt s (Val n)         = s `hashWithSalt` (4 :: Int) `hashWithSalt` n
+  hashWithSalt s (Var s')        = s `hashWithSalt` (5 :: Int) `hashWithSalt` s'
+  hashWithSalt s (Add hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
+  hashWithSalt s (Mul hs)        = s `hashWithSalt` (7 :: Int) `hashWithSalt` hs
+  hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` s' `hashWithSalt` hs
+  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (9 :: Int) `hashWithSalt` is `hashWithSalt` h1
+  hashWithSalt s (Concat i hs)   = s `hashWithSalt` (10 :: Int) `hashWithSalt` i `hashWithSalt` hs
 
 
 exp2RExp :: MExp a -> RExp a
 exp2RExp (MExp Zero        _ _) = RZero
 exp2RExp (MExp One         _ _) = ROne
 exp2RExp (MExp (Delta i j) _ _) = RDelta i j
+exp2RExp (MExp (CDelta i is j) _ _) = RCDelta i is j
 exp2RExp (MExp (Val n)     _ _) = RVal n
 exp2RExp (MExp (Var s)     _ _) = RVar s
 exp2RExp (MExp (Add hs)    m _) = RAdd $ map (exp2RExp . flip justLookup m) hs
@@ -236,6 +250,7 @@ daughters :: Exp a -> [Hash]
 daughters Zero           = []
 daughters One            = []
 daughters (Delta _ _)    = []
+daughters (CDelta _ _ _) = []
 daughters (Val _)        = []
 daughters (Var _)        = []
 daughters (Add hs)       = hs

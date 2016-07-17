@@ -298,6 +298,26 @@ test15 = do
   forM_ [1,2,3,4] $ \i -> do
     let iptI = [("I",i)]
     printf "val(I=%d) = %d \n" i (seval args iptI exp)
-    
-main = test15
+
+test16 :: IO ()
+test16 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp1 :: MExp Int
+      exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
+  let exp :: MExp Int
+      exp = mul [ cdelta idxI [[idxi],[idxj]] 1, exp1 ] 
+  -- let xvals = VS.fromList [101,102]
+  --    yvals = VS.fromList [203,204]
+  --    args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  prettyPrintR exp
+  digraph exp
+      {-
+  let iptI = [("I",2)]
+      ipti = [("i",1)]
+  forM_ [1,2,3,4] $ \i -> do
+    let iptI = [("I",i)]
+    printf "val(I=%d) = %d \n" i (seval args iptI exp)
+    -}
+main = test16
     
