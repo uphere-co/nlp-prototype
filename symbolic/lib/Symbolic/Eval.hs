@@ -69,8 +69,8 @@ eval m (args,ip,Sum is h) = let idx1lst (idx,start,end) = [(idx,v)| v <- [start.
 eval m (args,ip,Concat idx hs) = select es di
   where es = map (flip justLookup m) hs
         i' = index0base idx (justLookupL (view _1 idx) ip)
-        dis = map (HS.toList . mexpIdx) es 
-        di = splitIndexDisjoint dis i'
+        iss = map (HS.toList . mexpIdx) es 
+        di = splitIndexDisjoint iss i'
         select (x:xs) (L i)
           = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
             in eval m (args,i',mexpExp x)

@@ -316,5 +316,41 @@ test16 = do
         iptj = [("j",j)]
     printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
 
-main = test16
+
+test17 :: IO ()
+test17 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp :: MExp Int
+      exp = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+
+      exp' = sdiff (Indexed "x" [idxk]) exp
+  putStr "f = "
+  prettyPrintR exp
+  putStr "df/dx_k = "
+  prettyPrintR exp'
+
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %d \n" iI k (seval args (iptI++iptk) exp')
+  
+  {- 
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  prettyPrintR exp
+  -- digraph exp
+
+  forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
+    let iptI = [("I",i)]
+        iptj = [("j",j)]
+    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
+ -}
+
+main = test17
     
