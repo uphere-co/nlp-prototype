@@ -20,6 +20,7 @@ import           Symbolic.Type
 import           Symbolic.Util
 --
 
+
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
 evalVar args _  (Simple s) = (justLookup s . varSimple) args
 evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip . view _1) is
@@ -33,29 +34,12 @@ evalDelta ip i j = let i' = justLookupL i ip
 
  
 evalCDelta :: (Num a) => [(IndexSymbol,Int)] -> Index -> [[Index]] -> Int -> a
-evalCDelta ip i iss p = undefined
-{-
-  let i' = justLookupL (view _1 i) ip
-      j's = map (\j -> let n = view _1 j in (n,justLookupL n ip)) js
-      flatIndexDisjoint iss 
-      -- di = splitIndexDisjoint dis i'
-      select 
-  in 
--}
-    {-
-                   in if i' == j' then 1 else 0 
-
-m (args,ip,Concat idx hs) = select es di
-  where es = map (flip justLookup m) hs
-        i' = index0base idx (justLookupL (view _1 idx) ip)
-        dis = map (HS.toList . mexpIdx) es 
-        di = splitIndexDisjoint dis i'
-        select (x:xs) (L i)
-          = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
-            in eval m (args,i',mexpExp x)
-        select (x:xs) (R d) = select xs d
-
--}
+evalCDelta ip i iss p =
+  let i' = index0base i (justLookupL (view _1 i) ip)
+      js = iss !! p
+      vs = map (\j -> let n = view _1 j in justLookupL n ip) js
+      j' = flatIndexDisjoint iss (partNth p vs) 
+  in if i' == j' then 1 else 0
 
 eval :: ( Num a, Storable a, HasTrie a
         , ?expHash :: Exp a :->: Hash

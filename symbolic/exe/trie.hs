@@ -307,17 +307,16 @@ test16 = do
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let exp :: MExp Int
       exp = mul [ cdelta idxI [[idxi],[idxj]] 1, exp1 ] 
-  -- let xvals = VS.fromList [101,102]
-  --    yvals = VS.fromList [203,204]
-  --    args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
   prettyPrintR exp
-  digraph exp
-      {-
-  let iptI = [("I",2)]
-      ipti = [("i",1)]
-  forM_ [1,2,3,4] $ \i -> do
+  -- digraph exp
+
+  forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
     let iptI = [("I",i)]
-    printf "val(I=%d) = %d \n" i (seval args iptI exp)
-    -}
+        iptj = [("j",j)]
+    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
+
 main = test16
     
