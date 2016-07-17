@@ -293,8 +293,6 @@ test15 = do
       yvals = VS.fromList [203,204]
       args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
       
-  let iptI = [("I",2)]
-      ipti = [("i",1)]
   forM_ [1,2,3,4] $ \i -> do
     let iptI = [("I",i)]
     printf "val(I=%d) = %d \n" i (seval args iptI exp)
@@ -306,7 +304,7 @@ test16 = do
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let exp :: MExp Int
-      exp = mul [ cdelta idxI [[idxi],[idxj]] 1, exp1 ] 
+      exp = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
       args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])

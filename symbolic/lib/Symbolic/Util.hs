@@ -46,7 +46,7 @@ deriving instance (Show a) => Show (Disjoint a)
 
 
 partNth :: Int -> a -> Disjoint a
-partNth 0 v = L v
+partNth 1 v = L v
 partNth n v = R (partNth (n-1) v)
 
 -- | flattening index for disjoint sum

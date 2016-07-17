@@ -71,7 +71,7 @@ data Exp a = Zero
            | Delta Index Index
            | CDelta Index [[Index]] Int
                 -- ^ delta for collective index
-                -- (collective index, index scheme, partition number (0-based))
+                -- (collective index, index scheme, partition number (1-based))
            | Val a
            | Var Symbol
            | Add [Hash]
@@ -319,7 +319,10 @@ justLookup h m = case (HM.lookup h m) of
                    Nothing -> error ("justLookup: error in retrieving " ++ show h)   -- this is very unsafe, but we do not have good solution yet.
                    Just v -> v
 
-justLookupL :: (Eq k) => k -> [(k,v)] -> v
-justLookupL k = fromJust . lookup k
+justLookupL :: (Eq k,Show k,Show v) => k -> [(k,v)] -> v
+justLookupL k l = case (lookup k l) of
+                    Nothing -> error ("justLookup: error in retrieving " ++ show k ++ " in " ++ show l)
+                    Just v -> v
+-- fromJust . lookup k
 
 
