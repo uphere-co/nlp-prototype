@@ -119,13 +119,13 @@ cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat]
 cPrint' name (MExp Zero        _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
 cPrint' name (MExp One         _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
 cPrint' name (MExp (Delta i j) _ _)  = [ CIf cond  stru (Just sfal) nodeinfo ]
-  where cond = mkBinary (mkVar (view _1 i)) CEqOp (mkVar (view _1 j))
+  where cond = mkBinary (mkVar (indexName i)) CEqOp (mkVar (indexName j))
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
 cPrint' name (MExp (Var v)     _ _)  = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
                 Simple s -> mkVar s
-                Indexed s is -> mkIVar s (map (view _1) is)
+                Indexed s is -> mkIVar s (map indexName is)
 cPrint' name (MExp (Val n)     _ _)  = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (MExp (Add hs)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs

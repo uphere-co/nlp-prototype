@@ -28,6 +28,9 @@ type IndexSymbol = String
 
 type Index = (IndexSymbol,Int,Int)
 
+indexName :: Index -> IndexSymbol
+indexName = view _1
+
 data Symbol = Simple String
             | Indexed String [Index]
             deriving (Show, Eq)
@@ -46,7 +49,7 @@ varName (Indexed v _) = v
 
 showSym :: Symbol -> String
 showSym (Simple str) = str
-showSym (Indexed x k) = x ++ "_" ++ concat (map (view _1) k)
+showSym (Indexed x k) = x ++ "_" ++ concat (map indexName k)
 
 instance HasTrie Symbol where
   data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,[Index]) :->: b)

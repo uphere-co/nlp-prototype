@@ -52,18 +52,22 @@ getElem ty s i =
   let arr = LocalReference (ptr ty) (AST.Name s)
   in load =<< getElementPtr arr [i]
 
-getIndex :: [Index] -> Codegen Operand
-getIndex is = do
+flatIndexM :: [Index] -> {- [Operand] -> -} Codegen Operand
+flatIndexM is {- ivs -} = do
   let factors = indexFlatteningFactors is
-  indices <- forM is $ \(i,s,_) -> do
-    xref <- getvar i
-    x <- load xref
-    if s == 0
-      then return x
-      else isub x (ival s)
+  -- indices <- zipWithM index0baseM is ivs
+  indices <- mapM index0baseM is
   (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
                   indices factors 
   foldrM iadd i1 irest       
+
+index0baseM :: Index -> {- Operand -> -} Codegen Operand
+index0baseM (i,s,_) {- x -} = do
+  xref <- getvar i
+  x <- load xref
+  if s == 0
+    then return x
+    else isub x (ival s)
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
@@ -132,15 +136,18 @@ llvmCodegen :: (?expHash :: Exp Double :->: Hash) =>
 llvmCodegen name (MExp Zero _ _)                 = assign name (fval 0)
 llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
-  let ni = view _1 idxi
-      nj = view _1 idxj
+  let ni = indexName idxi
+      nj = indexName idxj
   i <- getvar ni >>= load
   j <- getvar nj >>= load
   x <- cgencond ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
+llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
-llvmCodegen name (MExp (Var (Indexed s is)) _ _) =
-  getIndex is >>= getElem double s >>= assign name
+llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
+  flatIndexM is >>=
+  getElem double s >>=
+  assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -162,7 +169,9 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   foldr (.) id (map mkFor is) innerstmt
   rval <- load sumref
   assign name rval
-llvmCodegen _name (MExp (Concat _i _hs) _m _)    = error "llvmCodegen: Concat not implemented"
+llvmCodegen name (MExp (Concat i hs) m is)    = do
+
+  error "llvmCodegen: Concat not implemented"
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) =>
@@ -180,7 +189,7 @@ llvmAST name syms v =
       else do
         let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
             innerstmt = do
-              theindex <- getIndex is
+              theindex <- flatIndexM is
               mkInnerbody v
               val <- getvar (hVar (getMHash v))
               p <- getElementPtr rref [theindex]

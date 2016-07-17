@@ -41,10 +41,6 @@ exp3 = delta idxi idxj  --  add [ x , delta idxi idxj, delta idxk idxl ]
 exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
-exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ [idxi, idxj] (y_ [idxi,idxj])
-  where idxi = ("i",0,2)
-        idxj = ("j",0,2)
 
 exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
@@ -60,9 +56,14 @@ exp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
 
 test2 = do
   let ?expHash = trie hash
-  prettyPrintR exp5
+  let exp :: MExp Double
+      exp = sum_ [idxi, idxj] (y_ [idxi,idxj])
+      idxi = ("i",0,2)
+      idxj = ("j",0,2)
+  
+  prettyPrintR exp
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [("i",0,2),("j",0,2)] ] exp5
+              llvmAST "fun1" [ Indexed "y" [idxi, idxj] ] exp
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -189,5 +190,44 @@ test5 = do
                 vr' <- VS.freeze mv
                 putStrLn $ "original : " ++ show vr
                 putStrLn $ "Evaluated to: " ++ show vr'
+
+
+test6 = do
+  let ?expHash = trie hash
+  let exp :: MExp Double
+      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ] 
+      idxI = ("I",1,5)
+      idxi = ("i",1,2)
+      idxj = ("j",1,3)
+  prettyPrintR (exp :: MExp Double)
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [ Indexed "x" [idxi], Indexed "y" [idxj] ] exp
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                yref <- getElem (ptr double) "args" (ival 1)
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        let vx = VS.fromList [1,2] :: VS.Vector Double
+            vy = VS.fromList [11,12,13]  :: VS.Vector Double
+            vr = VS.replicate 5 0    :: VS.Vector Double
+        VS.unsafeWith vx $ \px ->
+          VS.unsafeWith vy $ \py -> do
+            let varg = VS.fromList [px,py]
+            mvarg@(VS.MVector _ fparg) <- VS.thaw varg
+            mv@(VS.MVector _ fpr) <- VS.thaw vr
+            withForeignPtr fparg $ \pargs -> 
+              withForeignPtr fpr $ \pres -> do
+                run fn pres pargs
+                vr' <- VS.freeze mv
+                putStrLn $ "original : " ++ show vr
+                putStrLn $ "Evaluated to: " ++ show vr'
+
+
 
 main = test5
