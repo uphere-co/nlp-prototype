@@ -32,11 +32,11 @@ import           Symbolic.Util                            (indexFlatteningFactor
 hVar :: Int -> String
 hVar h = printf "x%x" h
 
-mkAssign :: String -> Operand -> Codegen ()
-mkAssign name val = assign name val >> return ()
+-- mkAssign :: String -> Operand -> Codegen ()
+-- mkAssign name val = assign name val >> return ()
 
-cgen4Const :: String -> Double -> Codegen ()
-cgen4Const name = mkAssign name . fval
+-- cgen4Const :: String -> Double -> Codegen ()
+-- cgen4Const name = mkAssign name . fval
 
 mkOp :: (Operand -> Operand -> Codegen Operand) -> Int -> Operand -> Codegen Operand
 mkOp op h val = getvar (hVar h) >>= op val
@@ -54,7 +54,6 @@ getElem ty s i =
 
 getIndex :: [Index] -> Codegen Operand
 getIndex is = do
-  -- let factors = scanr (*) 1 (tail (map (\(_,s,e) -> e-s+1)  is ) ++ [1])
   let factors = indexFlatteningFactors is
   indices <- forM is $ \(i,s,_) -> do
     xref <- getvar i
@@ -66,13 +65,12 @@ getIndex is = do
                   indices factors 
   foldrM iadd i1 irest       
 
-cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen ()
-cgen4fold name _  ini []     = cgen4Const name ini
+cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
+cgen4fold name _  ini []     = assign name (fval ini)
 cgen4fold name op _   (h:hs) = do
   val1 <- getvar (hVar h)
   v' <- foldrM op val1 hs
   assign name v'
-  return ()
 
 cgencond :: String -> Codegen Operand -> Codegen Operand -> Codegen Operand -> Codegen Operand
 cgencond label cond tr fl = do
@@ -118,7 +116,7 @@ cgenfor label (ivar,start,end) body = do
   setBlock forexit
   return ()  
 
-mkInnerbody :: (?expHash :: Exp Double :->: Hash) => MExp Double -> Codegen ()
+mkInnerbody :: (?expHash :: Exp Double :->: Hash) => MExp Double -> Codegen Operand
 mkInnerbody v = do
   mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered
   llvmCodegen (hVar h_result) v
@@ -129,9 +127,10 @@ mkInnerbody v = do
   hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
   es_ordered = map (flip justLookup bmap) hs_ordered
   
-llvmCodegen :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> Codegen ()
-llvmCodegen name (MExp Zero _ _)                 = cgen4Const name 0
-llvmCodegen name (MExp One _ _)                  = cgen4Const name 1
+llvmCodegen :: (?expHash :: Exp Double :->: Hash) =>
+               String -> MExp Double -> Codegen Operand
+llvmCodegen name (MExp Zero _ _)                 = assign name (fval 0)
+llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
   let ni = view _1 idxi
       nj = view _1 idxj
@@ -139,18 +138,16 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
   j <- getvar nj >>= load
   x <- cgencond ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
-  return () 
-llvmCodegen name (MExp (Var (Simple s)) _ _)     = mkAssign name (local (AST.Name s))
+llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) =
-  getIndex is >>= getElem double s >>= mkAssign name
-llvmCodegen name (MExp (Val n) _ _)              = cgen4Const name n
+  getIndex is >>= getElem double s >>= assign name
+llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
 llvmCodegen name (MExp (Fun sym hs) _ _)         = do
   lst <- mapM (getvar . hVar) hs
   val <- call (externf (AST.Name sym)) lst
   assign name val
-  return ()
 llvmCodegen name (MExp (Sum is h1) m _)          = do
   sumref <- alloca double
   store sumref (fval 0)
@@ -168,27 +165,30 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
 llvmCodegen _name (MExp (Concat _i _hs) _m _)    = error "llvmCodegen: Concat not implemented"
 
         
-llvmAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> LLVM ()
-llvmAST name syms v = define T.void name symsllvm $ do
-                        let rref = LocalReference (ptr double) (AST.Name "result")
-                            is = HS.toList (mexpIdx v)
-                        if null is
-                          then do
-                            mkInnerbody v
-                            val <- getvar (hVar (getMHash v))
-                            store rref val
-                            ret_
-                          else do
-                            let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
-                                innerstmt = do
-                                  theindex <- getIndex is
-                                  mkInnerbody v
-                                  val <- getvar (hVar (getMHash v))
-                                  p <- getElementPtr rref [theindex]
-                                  store p val
-                                  return ()
-                            foldr (.) id (map mkFor is) innerstmt
-                            ret_
-  where mkarg (Simple n) = (double,AST.Name n)
-        mkarg (Indexed n _) = (ptr double,AST.Name n)
-        symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)
+llvmAST :: (?expHash :: Exp Double :->: Hash) =>
+           String -> [Symbol] -> MExp Double -> LLVM ()
+llvmAST name syms v =
+  define T.void name symsllvm $ do
+    let rref = LocalReference (ptr double) (AST.Name "result")
+        is = HS.toList (mexpIdx v)
+    if null is
+      then do
+        mkInnerbody v
+        val <- getvar (hVar (getMHash v))
+        store rref val
+        ret_
+      else do
+        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
+            innerstmt = do
+              theindex <- getIndex is
+              mkInnerbody v
+              val <- getvar (hVar (getMHash v))
+              p <- getElementPtr rref [theindex]
+              store p val
+              return ()
+        foldr (.) id (map mkFor is) innerstmt
+        ret_
+  where
+    mkarg (Simple n) = (double,AST.Name n)
+    mkarg (Indexed n _) = (ptr double,AST.Name n)
+    symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)

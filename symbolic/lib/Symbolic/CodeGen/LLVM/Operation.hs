@@ -215,10 +215,11 @@ current = do
 -- Symbol Table
 -------------------------------------------------------------------------------
 
-assign :: String -> Operand -> Codegen ()
+assign :: String -> Operand -> Codegen Operand
 assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = [(var, x)] ++ lcls }
+  return x
 
 getvar :: String -> Codegen Operand
 getvar var = do
