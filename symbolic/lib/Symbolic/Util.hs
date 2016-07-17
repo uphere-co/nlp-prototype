@@ -45,12 +45,14 @@ data Disjoint a = L a | R (Disjoint a)
 deriving instance (Show a) => Show (Disjoint a)
 
 
+partNth :: Int -> a -> Disjoint a
+partNth 1 v = L v
+partNth n v = R (partNth (n-1) v)
 
 -- | flattening index for disjoint sum
 flatIndexDisjoint :: [[Index]] -> Disjoint [Int] -> Int
 flatIndexDisjoint (is:iss) (L j) = flatIndex is j
-flatIndexDisjoint (is:iss) (R d) =
-  sizeIndex is + flatIndexDisjoint iss d
+flatIndexDisjoint (is:iss) (R d) = sizeIndex is + flatIndexDisjoint iss d
 
 
 -- | splitting index for disjoint sum

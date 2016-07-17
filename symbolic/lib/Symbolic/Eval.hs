@@ -20,6 +20,7 @@ import           Symbolic.Type
 import           Symbolic.Util
 --
 
+
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Symbol -> a
 evalVar args _  (Simple s) = (justLookup s . varSimple) args
 evalVar args ip (Indexed s is) = let i's = map (flip justLookupL ip . view _1) is
@@ -31,6 +32,14 @@ evalDelta ip i j = let i' = justLookupL i ip
                        j' = justLookupL j ip
                    in if i' == j' then 1 else 0 
 
+ 
+evalCDelta :: (Num a) => [(IndexSymbol,Int)] -> Index -> [[Index]] -> Int -> a
+evalCDelta ip i iss p =
+  let i' = index0base i (justLookupL (view _1 i) ip)
+      js = iss !! (p-1)
+      vs = map (\j -> let n = view _1 j in justLookupL n ip) js
+      j' = flatIndexDisjoint iss (partNth p vs) 
+  in if i' == j' then 1 else 0
 
 eval :: ( Num a, Storable a, HasTrie a
         , ?expHash :: Exp a :->: Hash
@@ -42,7 +51,8 @@ eval :: ( Num a, Storable a, HasTrie a
 eval _ (_,_,Zero)         = 0
 eval _ (_,_,One)          = 1
 eval _ (_,_,Val n)        = n
-eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j 
+eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j
+eval _ (_,ip,CDelta i iss p) = evalCDelta ip i iss p 
 eval _ (args,ip,Var v)    = evalVar args ip v
 eval m (args,ip,Mul hs)   = let es = map (mexpExp . flip justLookup m) hs
                             in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
@@ -61,13 +71,12 @@ eval m (args,ip,Concat idx hs) = select es di
         i' = index0base idx (justLookupL (view _1 idx) ip)
         dis = map (HS.toList . mexpIdx) es 
         di = splitIndexDisjoint dis i'
-        -- di' = fmap (zipWith (\(i,_,_) v -> (i,v)) dis) di
         select (x:xs) (L i)
           = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
             in eval m (args,i',mexpExp x)
         select (x:xs) (R d) = select xs d
--- findElement args (e:es) (L i) = eval m (args,i,mexpExp e)  
 
+-- | simple evaluation without complex memoization
 seval :: ( Storable a, HasTrie a, Num a
          , ?expHash :: Exp a :->: Hash
          , ?functionMap :: FunctionMap a

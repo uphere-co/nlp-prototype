@@ -50,6 +50,9 @@ val n = MExp (Val n) HM.empty HS.empty
 delta :: Index -> Index -> MExp a
 delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
 
+cdelta :: Index -> [[Index]] -> Int -> MExp a
+cdelta i iss p = MExp (CDelta i iss p)  HM.empty (HS.fromList (i:(iss !! (p-1))))
+
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
 varop op es = let hes = map ((,) <$> getMHash <*> id) es
                   ms = map mexpMap es
