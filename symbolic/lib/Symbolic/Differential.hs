@@ -9,6 +9,7 @@ module Symbolic.Differential where
 
 import           Data.Function             (fix)
 import           Data.HashMap.Strict       (HashMap)
+import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
 import           Symbolic.Predefined
@@ -33,34 +34,29 @@ diff' m t (s,e) =
                     in add' (map (\e' -> untrie t (s,mexpExp e')) es)
     Mul hs       -> let es = map (flip justLookup m) hs
                     in add' (diffmul es)
-    Fun sym hs   -> let ies = zip [1..] $ map (flip justLookup m) hs
-                    in add' (difff sym ies)
+    Fun sym hs   -> let es = map (flip justLookup m) hs
+                        ies = zip [1..] es 
+                    in add' (map (difff sym es) ies)
     Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
                     in sum_ is (untrie t (s,e1))
-    Concat i hs  -> undefined
-    {- let es = map (flip justLookup m) hs
-                        i' = index0base idx (justLookupL (view _1 idx) ip)
-                        dis = map (HS.toList . mexpIdx) es 
-                        di = splitIndexDisjoint dis i'
-                        select (x:xs) (L i)
-                          = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
-                            in eval m (args,i',mexpExp x)
-                        select (x:xs) (R d) = select xs d
-                    in error "diff': Concat not implemented" -}
+    Concat i hs  -> let es = map (flip justLookup m) hs
+                        ies = zip [1..] es
+                        iss = map (HS.toList . mexpIdx) es
+                    in add' (map (diffc i iss) ies)
  where
-  diffmul :: [MExp a] -> [MExp a] 
   diffmul [] = []
   diffmul (x1:xs) = let x' = untrie t (s,mexpExp x1)
                         xs'all = diffmul xs
                     in (mul' (x':xs) : map (\y1 -> mul' [x1,y1]) xs'all)    
+  -- 
+  difff sym args (i,e1) = let e' = untrie t (s,mexpExp e1)
+                          in mul' [fun (suffix_n i sym) args , e'] 
 
-  difff :: String -> [(Int,MExp a)] -> [MExp a]
-  difff sym args = map (difff' sym (map snd args)) args
-
-  difff' :: String -> [MExp a] -> (Int,MExp a) -> MExp a
-  difff' sym args (i,e1) = let e' = untrie t (s,mexpExp e1)
-                           in mul' [fun (suffix_n i sym) args , e'] 
-                      
+  -- 
+  diffc i iss (n,e) = let e' = untrie t (s,mexpExp e)
+                          si = iss !! (n-1)
+                      in sum_ si (mul' [cdelta i iss n,e']) 
+                             
 
 -- | differentiation of variables
 dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
