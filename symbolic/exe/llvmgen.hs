@@ -213,7 +213,7 @@ test6 = do
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
-        let vx = VS.fromList [1,2] :: VS.Vector Double
+        let vx = VS.fromList [1,2]
             vy = VS.fromList [11,12,13]  :: VS.Vector Double
             vr = VS.replicate 5 0    :: VS.Vector Double
         VS.unsafeWith vx $ \px ->
@@ -221,13 +221,10 @@ test6 = do
             let varg = VS.fromList [px,py]
             mvarg@(VS.MVector _ fparg) <- VS.thaw varg
             mv@(VS.MVector _ fpr) <- VS.thaw vr
-            withForeignPtr fparg $ \pargs -> 
+            withForeignPtr fparg $ \pargs ->
               withForeignPtr fpr $ \pres -> do
                 run fn pres pargs
                 vr' <- VS.freeze mv
-                putStrLn $ "original : " ++ show vr
                 putStrLn $ "Evaluated to: " ++ show vr'
 
-
-
-main = test5
+main = test6

@@ -52,8 +52,17 @@ getElem ty s i =
   let arr = LocalReference (ptr ty) (AST.Name s)
   in load =<< getElementPtr arr [i]
 
+loadIndex :: Index -> Codegen Operand
+loadIndex = load <=< getvar . indexName 
+
+{- 
 loadIndices :: [Index] -> Codegen [Operand]
-loadIndices = mapM (load <=< getvar . indexName) 
+loadIndices = mapM loadIndex 
+-}
+
+
+index0baseM :: Index -> Operand -> Codegen Operand
+index0baseM (i,s,_) x = if s == 0 then return x else isub x (ival s)
 
 flattenByM :: [Operand] -> [Int] -> Codegen Operand
 flattenByM is fac = do
@@ -67,8 +76,11 @@ flatIndexM is ivs = do
   indices <- zipWithM index0baseM is ivs
   flattenByM indices factors
 
-index0baseM :: Index -> Operand -> Codegen Operand
-index0baseM (i,s,_) x = if s == 0 then return x else isub x (ival s)
+-- splitIndex
+
+
+
+
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
@@ -146,7 +158,7 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
 llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
-  loadIndices is >>= flatIndexM is >>= getElem double s >>= assign name
+  mapM loadIndex is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -169,8 +181,13 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   rval <- load sumref
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
+  iI <- loadIndex i
+  v <- uitofp double iI 
+  -- let i = LocalReference i64 (AST.Name "i")
+  assign name v -- (fval 30320)
+  -- return (fval 300)
 
-  error "llvmCodegen: Concat not implemented"
+  -- error "llvmCodegen: Concat not implemented"
 
         
 llvmAST :: (?expHash :: Exp Double :->: Hash) =>
@@ -188,7 +205,7 @@ llvmAST name syms v =
       else do
         let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
             innerstmt = do
-              theindex <- flatIndexM is =<< loadIndices is
+              theindex <- flatIndexM is =<< mapM loadIndex is
               mkInnerbody v
               val <- getvar (hVar (getMHash v))
               p <- getElementPtr rref [theindex]
