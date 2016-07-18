@@ -30,14 +30,15 @@ import           Symbolic.Util                            (indexFlatteningFactor
 --
 import           Debug.Trace
 
+scanM :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m [a]
+scanM f q [] = return [q]
+scanM f q (x:xs) = do
+  q2 <- f q x
+  qs <- scanM f q2 xs
+  return (q:qs)
+
 hVar :: Int -> String
 hVar h = printf "x%x" h
-
--- mkAssign :: String -> Operand -> Codegen ()
--- mkAssign name val = assign name val >> return ()
-
--- cgen4Const :: String -> Double -> Codegen ()
--- cgen4Const name = mkAssign name . fval
 
 mkOp :: (Operand -> Operand -> Codegen Operand) -> Int -> Operand -> Codegen Operand
 mkOp op h val = getvar (hVar h) >>= op val
@@ -56,39 +57,51 @@ getElem ty s i =
 loadIndex :: Index -> Codegen Operand
 loadIndex = load <=< getvar . indexName 
 
-{- 
-loadIndices :: [Index] -> Codegen [Operand]
-loadIndices = mapM loadIndex 
--}
-
-
 index0baseM :: Index -> Operand -> Codegen Operand
-index0baseM (i,s,_) x = if s == 0 then return x else isub x (ival s)
+index0baseM (_,s,_) x = if s == 0 then return x else isub x (ival s)
+
+renormalizeIndexM :: Index -> Operand -> Codegen Operand
+renormalizeIndexM (_,s,_) x = if s == 0 then return x else iadd x (ival s)
 
 flattenByM :: [Operand] -> [Int] -> Codegen Operand
 flattenByM is fac = do
-  (i1:irest) <- zipWithM (\x y -> if y == 1 then return x else imul x (ival y))
-                  is fac 
+  (i1:irest) <-
+    zipWithM (\x y -> if y == 1 then return x else imul x (ival y)) is fac 
   foldrM iadd i1 irest       
 
+splitByM :: Operand -> [Int] -> Codegen [Operand]
+splitByM j fac = (map fst . tail) <$> (scanM f (ival 0,j) fac)
+  where f (d,m) i = (,) <$> udiv m (ival i) <*> urem m (ival i)
+ 
 flatIndexM :: [Index] -> [Operand] -> Codegen Operand
 flatIndexM is ivs = do
   let factors = indexFlatteningFactors is
   indices <- zipWithM index0baseM is ivs
   flattenByM indices factors
 
+splitIndexM :: [Index] -> Operand -> Codegen [Operand]
+splitIndexM is j = do
+  splitted <- splitByM j (indexFlatteningFactors is) 
+  zipWithM renormalizeIndexM is splitted
+
 splitIndexDisjointFM :: [[Index]] -> Operand -> Codegen Operand
 splitIndexDisjointFM (is:iss) j = do
     let label = concatMap indexName is
-        mval = ival m 
-    cgencond label (icmp IP.ULT j mval)
-      (return j) (splitIndexDisjointFM iss =<< isub j mval)
-  where m = sizeIndex is
+        size = ival (sizeIndex is) 
+    cgencond label (icmp IP.ULT j size)
+      (return j) (splitIndexDisjointFM iss =<< isub j size)
 splitIndexDisjointFM [] j = return j -- ^ source of error.
 
-
-
-
+{-
+splitIndexDisjointM :: [[Index]] -> Operand -> Codegen [Operand]
+splitIndexDisjointM (is:iss) j = do
+    let label = concatMap indexName is
+        size = ival (sizeIndex is)
+    cgencond label (icmp IP.ULT j size)
+      (splitIndexM is j)
+      (splitIndexDisjointM iss =<< isub j size)
+splitIndexDisjointM [] j = return [j] -- ^ source of error.
+-}
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
@@ -97,7 +110,9 @@ cgen4fold name op _   (h:hs) = do
   v' <- foldrM op val1 hs
   assign name v'
 
-cgencond :: String -> Codegen Operand -> Codegen Operand -> Codegen Operand -> Codegen Operand
+cgencond :: String -> Codegen Operand
+         -> Codegen Operand -> Codegen Operand
+         -> Codegen Operand
 cgencond label cond tr fl = do
   ifthen <- addBlock (label ++ ".then")
   ifelse <- addBlock (label ++ ".else")
@@ -190,12 +205,15 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
   iI <- flatIndexM [i] =<< mapM loadIndex [i]
-  let es = expsFromHashes m hs -- map (flip justLookup m) hs
+  let es = map (flip justLookup m) hs
       iss = map (HS.toList . mexpIdx) es 
-  r <- trace (show iss) $ splitIndexDisjointFM iss iI
+  r <- splitIndexDisjointFM iss iI
   -- let r = iI
+  
   r' <- trunc i32 r
-  v <- sitofp double r'
+  v <- (sitofp double) r'
+  -- v <- foldrM iadd izero vs
+  
   -- let v = r
   -- let i = LocalReference i64 (AST.Name "i")
   assign name v -- (fval 30320)

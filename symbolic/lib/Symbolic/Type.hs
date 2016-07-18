@@ -115,10 +115,6 @@ data MExp a = MExp { mexpExp :: Exp a
 getMHash :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> Hash
 getMHash e = untrie ?expHash (mexpExp e)
 
-expsFromHashes :: HashMap Hash (MExp a) -> [Hash] -> [MExp a]
-expsFromHashes m hs = map (flip justLookup m) hs
-
-
 data RExp a = RZero
             | ROne
             | RDelta Index Index
