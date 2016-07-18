@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from npRNN.plain import *
+from npRNN.testing_helper import *
 
 ran=lambda x : np.random.random(x).astype(np.float64)-0.5
 vecs=ran((5,200))

@@ -15,3 +15,8 @@ def test_merge_results():
     assert tree.phrase.name =='((((a name) of) the) ((cat on) (a hat)))'
     assert tree.phrase.depth==4
     assert tree.history == [0, 5, 0, 0, 1, 1, 0]
+
+    tree=VecTree(words, [2,0,3,2,2,0,0])
+    assert tree.phrase.name =='(((a name) (of the)) ((cat (on a)) hat))'
+    assert tree.phrase.depth==4
+    assert tree.history == [2,0,3,2,2,0,0]
