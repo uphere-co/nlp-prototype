@@ -275,8 +275,15 @@ icmp cond a b = instr $ ICmp cond a b []
 cons :: C.Constant -> Operand
 cons = ConstantOperand
 
+trunc :: Type -> Operand -> Codegen Operand
+trunc ty a = instr $ Trunc a ty []
+
 uitofp :: Type -> Operand -> Codegen Operand
 uitofp ty a = instr $ UIToFP a ty []
+
+sitofp :: Type -> Operand -> Codegen Operand
+sitofp ty a = instr $ SIToFP a ty []
+
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))

@@ -195,13 +195,14 @@ test5 = do
 test6 = do
   let ?expHash = trie hash
   let exp :: MExp Double
-      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ] 
-      idxI = ("I",1,5)
+      exp = concat_ idxI [ x_ [idxi,idxj], y_ [idxk] ] 
+      idxI = ("I",1,10)
       idxi = ("i",1,2)
       idxj = ("j",1,3)
+      idxk = ("k",1,4)
   prettyPrintR (exp :: MExp Double)
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "x" [idxi], Indexed "y" [idxj] ] exp
+              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ] exp
               define void "main" [ (ptr double, AST.Name "res")
                                  , (ptr (ptr double), AST.Name "args")
                                  ] $ do
@@ -213,9 +214,9 @@ test6 = do
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
-        let vx = VS.fromList [1,2]
-            vy = VS.fromList [11,12,13]  :: VS.Vector Double
-            vr = VS.replicate 5 0    :: VS.Vector Double
+        let vx = VS.fromList [1,2,3,4,5,6]
+            vy = VS.fromList [11,12,13,14]  :: VS.Vector Double
+            vr = VS.replicate 10 0    :: VS.Vector Double
         VS.unsafeWith vx $ \px ->
           VS.unsafeWith vy $ \py -> do
             let varg = VS.fromList [px,py]

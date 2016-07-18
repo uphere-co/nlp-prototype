@@ -19,15 +19,16 @@ import           Data.MemoTrie
 import           LLVM.General.AST ( Operand(..) )
 import qualified LLVM.General.AST                  as AST
 import qualified LLVM.General.AST.IntegerPredicate as IP
-import           LLVM.General.AST.Type                    (double, i64, ptr)
+import           LLVM.General.AST.Type                    (double, i64, i32, ptr)
 import qualified LLVM.General.AST.Type             as T   (void) 
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Operation
 import           Symbolic.Type
 import qualified Symbolic.Type                     as S   (Exp(..))
-import           Symbolic.Util                            (indexFlatteningFactors)
+import           Symbolic.Util                            (indexFlatteningFactors, sizeIndex)
 --
+import           Debug.Trace
 
 hVar :: Int -> String
 hVar h = printf "x%x" h
@@ -76,7 +77,14 @@ flatIndexM is ivs = do
   indices <- zipWithM index0baseM is ivs
   flattenByM indices factors
 
--- splitIndex
+splitIndexDisjointFM :: [[Index]] -> Operand -> Codegen Operand
+splitIndexDisjointFM (is:iss) j = do
+    let label = concatMap indexName is
+        mval = ival m 
+    cgencond label (icmp IP.ULT j mval)
+      (return j) (splitIndexDisjointFM iss =<< isub j mval)
+  where m = sizeIndex is
+splitIndexDisjointFM [] j = return j -- ^ source of error.
 
 
 
@@ -181,8 +189,14 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   rval <- load sumref
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
-  iI <- loadIndex i
-  v <- uitofp double iI 
+  iI <- flatIndexM [i] =<< mapM loadIndex [i]
+  let es = expsFromHashes m hs -- map (flip justLookup m) hs
+      iss = map (HS.toList . mexpIdx) es 
+  r <- trace (show iss) $ splitIndexDisjointFM iss iI
+  -- let r = iI
+  r' <- trunc i32 r
+  v <- sitofp double r'
+  -- let v = r
   -- let i = LocalReference i64 (AST.Name "i")
   assign name v -- (fval 30320)
   -- return (fval 300)
