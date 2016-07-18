@@ -4,9 +4,10 @@
 #include <ctime>
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <string>
 
 #include <stdlib.h>
-#include <string.h>
 #include <inttypes.h>
 
 #include "utils.h"
@@ -142,7 +143,7 @@ class Word2Vec : public WordEmbed {
 
         void InitUnigramTable();
         void InitNet();
-        void TrainModelThread();
+        void TrainModelThread(int tid);
         void TrainModel();
 };
 
@@ -494,7 +495,7 @@ void Word2Vec::InitNet() {
 
 }
 
-void Word2Vec::TrainModelThread(){
+void Word2Vec::TrainModelThread(int tid){
     int64_t a, b, d, word, last_word, sentence_length = 0, sentence_position = 0;
     int64_t word_count = 0, last_word_count = 0, sen[MAX_SENTENCE_LENGTH + 1];
     int64_t l1, l2, c, target, label, local_iter = iter;
@@ -509,6 +510,7 @@ void Word2Vec::TrainModelThread(){
     neu1e.reserve(layer1_size);
 
     std::ifstream inFile(train_file, std::ifstream::in | std::ifstream::binary);
+    inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
     while(1) {
         if(word_count - last_word_count > 10000) {
             word_count_actual += word_count - last_word_count;
@@ -549,6 +551,13 @@ void Word2Vec::TrainModelThread(){
             word_count = 0;
             last_word_count = 0;
             sentence_length = 0;
+	    if(inFile.eof()) {
+	      inFile.clear();
+	      inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
+	    }
+	    else {
+	      inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
+	    }
             continue;
         }
         word = sen[sentence_position];
@@ -619,14 +628,14 @@ void Word2Vec::TrainModelThread(){
 
 void Word2Vec::TrainModel() {
     std::ofstream outFile;
+    std::vector<std::thread> th;
     starting_alpha = alpha;
-
+    
     std::cout << "Starting training using file " << train_file << std::endl;
     if(read_vocab_file != "") ReadVocab();
     else LearnVocabFromTrainFile();
     if(save_vocab_file != "") SaveVocab();
     if(output_file[0] == 0) return;
-
     // Initialization
     InitNet();
     if(negative > 0)
@@ -634,7 +643,15 @@ void Word2Vec::TrainModel() {
 
     start = clock(); // start to measure time
 
-    TrainModelThread(); // Main routine ??
+    for(int i = 0; i < num_threads; i++) {
+      th.push_back(std::thread(&Word2Vec::TrainModelThread, this, i));
+    }
+
+    for(auto &t : th) {
+      t.join();
+    }
+
+    //TrainModelThread(); // Main routine ??
 
     outFile.open(output_file, std::ofstream::out | std::ofstream::binary);
     if(classes == 0) {
