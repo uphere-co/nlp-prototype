@@ -16,23 +16,20 @@ word1,word2,word3,word4=vecs[0],vecs[1],vecs[2],vecs[3]
 
 print 'RNN2'
 rnn2_merge_left=[False]
-diff_rnn2= lambda x : x - rnn2(u,W,W,b, word1,word2,word3, rnn2_merge_left)
-f=relativeError(diff_rnn2(rnn2(u,W,W+dW,b, word1,word2,word3, rnn2_merge_left)))
-grad=drnn2dW0(u,W,W,b, word1,word2,word3, rnn2_merge_left)
-print show_summary(f,grad,dW)
-f=relativeError(diff_rnn2(rnn2(u,W+dW,W,b, word1,word2,word3, rnn2_merge_left)))
-grad=drnn2dW1(u,W,W,b, word1,word2,word3, rnn2_merge_left)
-print show_summary(f,grad,dW)
+score,gradW1,gradW0=rnn2(u,W,W,b, vecs[:3], rnn2_merge_left)
+diff_rnn2= lambda x : x - score
+f=relativeError(diff_rnn2(rnn2_score(u,W,W+dW,b, vecs[:3], rnn2_merge_left)))
+print show_summary(f,gradW0,dW)
+f=relativeError(diff_rnn2(rnn2_score(u,W+dW,W,b, vecs[:3], rnn2_merge_left)))
+print show_summary(f,gradW1,dW)
 
 print 'RNN3:'
 rnn3_merge_left=[False,False]
-diff_rnn3= lambda x : x - rnn3(u,W,W,W,b, word1,word2,word3,word4, rnn3_merge_left)
-f=relativeError(diff_rnn3(rnn3(u,W,W,W+dW,b, word1,word2,word3,word4, rnn3_merge_left)))
-grad=drnn3dW0(u,W,W,W,b, word1,word2,word3,word4, rnn3_merge_left)
-print show_summary(f,grad,dW)
-f=relativeError(diff_rnn3(rnn3(u,W,W+dW,W,b, word1,word2,word3,word4, rnn3_merge_left)))
-grad=drnn3dW1(u,W,W,W,b, word1,word2,word3,word4, rnn3_merge_left)
-print show_summary(f,grad,dW)
-f=relativeError(diff_rnn3(rnn3(u,W+dW,W,W,b, word1,word2,word3,word4, rnn3_merge_left)))
-grad=drnn3dW2(u,W,W,W,b, word1,word2,word3,word4, rnn3_merge_left)
-print show_summary(f,grad,dW)
+score,gradW2,gradW1,gradW0 = rnn3(u,W,W,W,b, vecs[:4], rnn3_merge_left)
+diff_rnn3= lambda x : x - score
+f=relativeError(diff_rnn3(rnn3_score(u,W,W,W+dW,b, vecs[:4], rnn3_merge_left)))
+print show_summary(f,gradW0,dW)
+f=relativeError(diff_rnn3(rnn3_score(u,W,W+dW,W,b, vecs[:4], rnn3_merge_left)))
+print show_summary(f,gradW1,dW)
+f=relativeError(diff_rnn3(rnn3_score(u,W+dW,W,W,b, vecs[:4], rnn3_merge_left)))
+print show_summary(f,gradW2,dW)

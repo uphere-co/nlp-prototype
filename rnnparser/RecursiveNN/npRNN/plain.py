@@ -29,75 +29,72 @@ def show_summary(error, grad,dW):
     v_wrong=np.sum(grad_wrong*dW)
     return np.array([v, error(v), error(v_wrong)])
 
-def rnn1(u,W0,b, word1,word2):
-    x0=np.add(np.dot(W0, np.concatenate([word1,word2])),b)
+def rnn1_score(u,W0,b, word1,word2):
+    word12=merge_word([word1,word2], True)
+    x0=np.add(np.dot(W0, word12),b)
     h0=np.tanh(x0)
-    return np.dot(u,h0)
+    score= np.dot(u,h0)
+    return score
 
-def rnn2(u,W1,W0,b, word1,word2,word3, merge_left):
+def rnn1(u,W0,b, word1,word2):
     word12=merge_word([word1,word2], True)
-    x0,h0=activation(W0,b,word12)
-    wordLR=merge_word([h0,word3], merge_left[0])
-    x1,h1=activation(W1,b,wordLR)
-    return np.dot(u,h1)
-def drnn2dW1(u,W1,W0,b, word1,word2,word3, merge_left):
-    word12=merge_word([word1,word2], True)
-    x0,h0=activation(W0,b,word12)
-    wordLR=merge_word([h0,word3], merge_left[0])
-    x1,h1=activation(W1,b,wordLR)
+    x0=np.add(np.dot(W0, word12),b)
+    h0=np.tanh(x0)
+    score = np.dot(u,h0)
     left=u
-    return np.outer(left*dActi(x1), wordLR)
+    gradW0 = np.outer(left*dActi(x0), wordLR)
+    return score,gradW0
 
-
-def drnn2dW0(u,W1,W0,b, word1,word2,word3, merge_left):
-    word12=merge_word([word1,word2], True)
+def rnn2_score(u,W1,W0,b, words, merge_left):
+    word12=merge_word(words[:2], True)
     x0,h0=activation(W0,b,word12)
-    wordLR=merge_word([h0,word3], merge_left[0])
+    wordLR=merge_word([h0,words[2]], merge_left[0])
     x1,h1=activation(W1,b,wordLR)
+    score = np.dot(u,h1)
+    return score
+
+def rnn2(u,W1,W0,b, words, merge_left):
+    word12=merge_word(words[:2], True)
+    x0,h0=activation(W0,b,word12)
+    wordLR=merge_word([h0,words[2]], merge_left[0])
+    x1,h1=activation(W1,b,wordLR)
+    score = np.dot(u,h1)
     left=u
+    gradW1 = np.outer(left*dActi(x1), wordLR)
     left=productLeftFactors(left, x1, W1)
     left=half(left,merge_left[0])
-    return np.outer(left*dActi(x0), word12)
+    gradW0 = np.outer(left*dActi(x0), word12)
+    return score,gradW1,gradW0
 
-def rnn3(u,W2,W1,W0,b, word1,word2,word3,word4, merge_left):
-    word12=merge_word([word1,word2], True)
+def rnn3_score(u,W2,W1,W0,b, words, merge_left):
+    word12=merge_word(words[:2], True)
     x0,h0=activation(W0,b,word12)
-    wordLR1=merge_word([h0,word3], merge_left[0])
+    wordLR1=merge_word([h0,words[2]], merge_left[0])
     x1,h1=activation(W1,b,wordLR1)
-    wordLR2=merge_word([h1,word4], merge_left[0])
+    wordLR2=merge_word([h1,words[3]], merge_left[0])
     x2,h2=activation(W2,b,wordLR2)
     h2=np.tanh(x2)
     return np.dot(u,h2)
-def drnn3dW0(u,W2,W1,W0,b, word1,word2,word3,word4, merge_left):
-    word12=merge_word([word1,word2], True)
+
+def rnn3(u,W2,W1,W0,b, words, merge_left):
+    word12=merge_word(words[:2], True)
     x0,h0=activation(W0,b,word12)
-    wordLR1=merge_word([h0,word3], merge_left[0])
+    wordLR1=merge_word([h0,words[2]], merge_left[0])
     x1,h1=activation(W1,b,wordLR1)
-    wordLR2=merge_word([h1,word4], merge_left[0])
+    wordLR2=merge_word([h1,words[3]], merge_left[0])
     x2,h2=activation(W2,b,wordLR2)
+    h2=np.tanh(x2)
+
+    score=np.dot(u,h2)
+
     left=u
-    left=productLeftFactors(left, x2, W2)
-    left=half(left,merge_left[1])
+    gradW2 =  np.outer(left*dActi(x2), wordLR2)
+    left = productLeftFactors(left, x2, W2)
+    left = half(left,merge_left[1])
+    gradW1 = np.outer(left*dActi(x1), wordLR1)
+
     left=productLeftFactors(left, x1, W1)
     left=half(left,merge_left[0])
-    return np.outer(left*dActi(x0), word12)
-def drnn3dW1(u,W2,W1,W0,b, word1,word2,word3,word4, merge_left):
-    word12=merge_word([word1,word2], True)
-    x0,h0=activation(W0,b,word12)
-    wordLR1=merge_word([h0,word3], merge_left[0])
-    x1,h1=activation(W1,b,wordLR1)
-    wordLR2=merge_word([h1,word4], merge_left[0])
-    x2,h2=activation(W2,b,wordLR2)
-    left=u
-    left=productLeftFactors(left, x2, W2)
-    left=half(left,merge_left[1])
-    return np.outer(left*dActi(x1), wordLR1)
-def drnn3dW2(u,W2,W1,W0,b, word1,word2,word3,word4, merge_left):
-    word12=merge_word([word1,word2], True)
-    x0,h0=activation(W0,b,word12)
-    wordLR1=merge_word([h0,word3], merge_left[0])
-    x1,h1=activation(W1,b,wordLR1)
-    wordLR2=merge_word([h1,word4], merge_left[0])
-    x2,h2=activation(W2,b,wordLR2)
-    left=u
-    return np.outer(left*dActi(x2), wordLR2)
+    gradW0 = np.outer(left*dActi(x0), word12)
+
+    return score,gradW2,gradW1,gradW0
