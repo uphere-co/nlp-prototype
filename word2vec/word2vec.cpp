@@ -73,24 +73,24 @@ class Word2Vec : public WordEmbed {
         std::array<int, table_size> table;
     public:
         Word2Vec (             
-                int layer1_size = 100,
-                std::string train_file = "",
-                std::string save_vocab_file = "",
-                std::string read_vocab_file = "",
-                int debug_mode = 2,
-                int binary = 0, 
-                int cbow = 0, 
-                real alpha = 0.025,
-                std::string output_file = "",
-                int window = 5,
-                real sample = 1e-3,
-                int hs = 0, 
-                int negative = 5,
-                int num_threads = 12,
-                int64_t iter = 5,
-                int min_count = 5,
-                int64_t classes = 0,
-                std::string wordvector_file = ""):
+                int layer1_size,
+                std::string train_file,
+                std::string save_vocab_file,
+                std::string read_vocab_file,
+                int debug_mode,
+                int binary, 
+                int cbow, 
+                real alpha,
+                std::string output_file,
+                int window,
+                real sample,
+                int hs, 
+                int negative,
+                int num_threads,
+                int64_t iter,
+                int min_count,
+                int64_t classes,
+                std::string wordvector_file):
             layer1_size(layer1_size),
             train_file(train_file),
             save_vocab_file(save_vocab_file),
@@ -781,18 +781,24 @@ int argpos(const char *str, int argc, char **argv) {
 Word2Vec *arg_to_w2v(int argc, char **argv) {
     int i;
 
-    int layer1_size;
-    std::string train_file, save_vocab_file, read_vocab_file;
-    int debug_mode, binary, cbow; 
-    real alpha;
-    std::string output_file;
-    int window;
-    real sample;
-    int hs, negative, num_threads;
-    int64_t iter;
-    int min_count;
-    int64_t classes;
-    std::string wordvector_file;
+    int layer1_size = 100;
+    std::string train_file = "";
+    std::string output_file = "";
+    std::string save_vocab_file = "";
+    std::string read_vocab_file = "";
+    int debug_mode = 2;
+    int binary = 0;
+    int cbow = 0; 
+    real alpha = 0.025;
+    int window = 5;
+    real sample = 1e-3;
+    int hs = 0;
+    int negative = 5;
+    int num_threads = 12;
+    int64_t iter = 5;
+    int min_count = 5;
+    int64_t classes = 0;
+    std::string wordvector_file = "";
 
     if ((i = argpos("-size", argc, argv)) > 0) layer1_size = atoi(argv[i + 1]);
     if ((i = argpos("-train", argc, argv)) > 0) train_file = argv[i + 1];
