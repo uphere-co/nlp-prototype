@@ -234,9 +234,10 @@ getvar var = do
 local :: AST.Name -> Operand
 local = LocalReference double
 
+{-
 idxval :: IndexSymbol -> Operand
 idxval = LocalReference i64 . AST.Name
-
+-}
 
 global :: AST.Name -> C.Constant
 global = C.GlobalReference double

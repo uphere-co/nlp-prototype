@@ -195,12 +195,13 @@ test5 = do
 test6 = do
   let ?expHash = trie hash
   let exp :: MExp Double
-      exp = concat_ idxI [ x_ [idxi,idxj], y_ [idxk] ] 
-      idxI = ("I",1,10)
+      exp = concat_ idxA [ x_ [idxi,idxj], y_ [idxk] ] 
+      idxA = ("A",1,10)
       idxi = ("i",1,2)
       idxj = ("j",1,3)
       idxk = ("k",1,4)
   prettyPrintR (exp :: MExp Double)
+  digraph exp
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ] exp
               define void "main" [ (ptr double, AST.Name "res")

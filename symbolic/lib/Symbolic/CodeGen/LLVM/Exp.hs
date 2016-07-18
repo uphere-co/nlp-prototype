@@ -84,24 +84,42 @@ splitIndexM is j = do
   splitted <- splitByM j (indexFlatteningFactors is) 
   zipWithM renormalizeIndexM is splitted
 
-splitIndexDisjointFM :: [[Index]] -> Operand -> Codegen Operand
-splitIndexDisjointFM (is:iss) j = do
-    let label = concatMap indexName is
-        size = ival (sizeIndex is) 
-    cgencond label (icmp IP.ULT j size)
-      (return j) (splitIndexDisjointFM iss =<< isub j size)
-splitIndexDisjointFM [] j = return j -- ^ source of error.
+splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
+                     -> [MExp Double] -- [[Index]]
+                     -> Operand
+                     -> Codegen Operand
+-- splitIndexDisjointFM action []       j = return j -- ^ source of error.
+splitIndexDisjointFM action (e:[]) j = eachaction
+  where
+    is = (HS.toList . mexpIdx) e 
+    label = concatMap indexName is
+    size = ival (sizeIndex is) 
+    eachaction = do
+      js <- splitIndexM is j
+      let f i j = do
+            iref <- alloca i64
+            store iref j
+            assign (indexName i) iref
+      zipWithM f is js
+      -- return (ival 100)
+      action e
+splitIndexDisjointFM action (e:es) j = do
+    cgencond double label (icmp IP.ULT j size)
+      eachaction (splitIndexDisjointFM action es =<< isub j size)
+  where
+    (is:iss) = map (HS.toList . mexpIdx) (e:es) 
+    label = concatMap indexName is
+    size = ival (sizeIndex is) 
+    eachaction = do
+      js <- splitIndexM is j
+      let f i j = do
+            iref <- alloca i64
+            store iref j
+            assign (indexName i) iref
+      zipWithM f is js
+      -- return (ival 100)
+      action e
 
-{-
-splitIndexDisjointM :: [[Index]] -> Operand -> Codegen [Operand]
-splitIndexDisjointM (is:iss) j = do
-    let label = concatMap indexName is
-        size = ival (sizeIndex is)
-    cgencond label (icmp IP.ULT j size)
-      (splitIndexM is j)
-      (splitIndexDisjointM iss =<< isub j size)
-splitIndexDisjointM [] j = return [j] -- ^ source of error.
--}
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
@@ -110,10 +128,12 @@ cgen4fold name op _   (h:hs) = do
   v' <- foldrM op val1 hs
   assign name v'
 
-cgencond :: String -> Codegen Operand
+cgencond :: AST.Type
+         -> String
+         -> Codegen Operand
          -> Codegen Operand -> Codegen Operand
          -> Codegen Operand
-cgencond label cond tr fl = do
+cgencond typ label cond tr fl = do
   ifthen <- addBlock (label ++ ".then")
   ifelse <- addBlock (label ++ ".else")
   ifexit <- addBlock (label ++ ".exit")
@@ -132,7 +152,7 @@ cgencond label cond tr fl = do
   ifelse' <- getBlock
   --
   setBlock ifexit
-  phi double [(trval,ifthen'), (flval,ifelse')]
+  phi typ [(trval,ifthen'), (flval,ifelse')]
 
 cgenfor :: String -> Index -> Codegen () -> Codegen ()
 cgenfor label (ivar,start,end) body = do
@@ -176,12 +196,16 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
       nj = indexName idxj
   i <- getvar ni >>= load
   j <- getvar nj >>= load
-  x <- cgencond ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
+  x <- cgencond double ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
 llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
-  mapM loadIndex is >>= flatIndexM is >>= getElem double s >>= assign name
+   mapM loadIndex is >>= flatIndexM is >>= getElem double s >>= assign name
+  -- t' <- trunc i32 t
+  -- v <- (sitofp double) t' 
+  -- trace ("is = " ++ show is) $ assign name v -- (fval 388)
+
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -205,9 +229,26 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
   iI <- flatIndexM [i] =<< mapM loadIndex [i]
+  -- assign (indexName i) iI
   let es = map (flip justLookup m) hs
-      iss = map (HS.toList . mexpIdx) es 
-  r <- splitIndexDisjointFM iss iI
+  r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
+    let is = (HS.toList . mexpIdx) e
+    -- vs <- mapM (getvar . indexName) is
+    -- let r = last vs
+    -- return r
+    -- - getvar "A"
+    mkInnerbody e
+    let innername = hVar (getMHash e)
+    v <- getvar innername
+    return v
+  -- r' <- trunc i32 r
+  -- v <- (sitofp double) r'
+    
+  assign name r --  v -- (fval 12345) -- v
+    
+    -- return (head vs) --  (fval 10)
+
+    {-
   -- let r = iI
   
   r' <- trunc i32 r
@@ -215,8 +256,8 @@ llvmCodegen name (MExp (Concat i hs) m is)    = do
   -- v <- foldrM iadd izero vs
   
   -- let v = r
-  -- let i = LocalReference i64 (AST.Name "i")
-  assign name v -- (fval 30320)
+  -- let i = LocalReference i64 (AST.Name "i") -}
+  -- assign name (fval 30320)
   -- return (fval 300)
 
   -- error "llvmCodegen: Concat not implemented"
