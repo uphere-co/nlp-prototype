@@ -78,8 +78,9 @@ class Node(object):
         code='''
 import numpy as np
 import numba
-
-@numba.jit(nogil=True,nopython=True)
+#Temporally disable numba.
+#Numba 0.26.0 does not support np.concatenate which Concat does.
+#@numba.jit(nogil=True,nopython=True)
 def {name}({vars}):
     return {code}'''.format(name=name, vars=','.join(variables), code=funcion_body)
         if name_scope is None:
@@ -348,6 +349,7 @@ class BinaryOperator(Node):
      [(np.dot ,'np.dot({x},{y})'),
       (np.multiply ,'np.multiply({x},{y})'),
       (np.add ,'np.add({x},{y})'),
+      (np.concatenate ,'np.concatenate([{x},{y}])'),
       ])
     def __init__(self, x, y):
         Node.__init__(self,name=None)

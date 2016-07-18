@@ -49,6 +49,7 @@ class RecursiveNN(object):
         #TODO: there can be too many vec... replace Var to Val?
         vec = Var(u'(%s⊕%s)'%(left,right))
         vec.val=np.concatenate([left.vec.val,right.vec.val],0)
+        #TODO: replace raw concat to Concat.
         #vec = Concat(left.vec,right.vec)
         Wxh=Dot(self.W, vec)
         x=Add(Wxh, self.bias)
