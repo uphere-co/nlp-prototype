@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-import os
-sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/')
-
 import numpy as np
 import pytest
 
@@ -35,7 +31,7 @@ def test_expressions_code_generation():
     assert g.code()=='np.dot(np.dot(x,C),np.sin(np.add(np.dot(B,np.sin(np.add(np.dot(A,y),a))),b)))'
     ns=Node.Compile('g',g, ns)
     assert ns['g'](A=A.val,B=B.val,C=C.val, a=a.val,b=b.val,x=x.val,y=y.val)==g.val
-    
+
     h,w,b,u,w12     =Var('h'),Var('W'),Var('b'),Var('u'), Var('word12')
     phrase=VSF('tanh', Add(Dot(w, h), b))
     score=Dot(u,phrase)

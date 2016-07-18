@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-import os
-sys.path.insert(0, os.environ.get('HOME')+'/nlp-prototype/rnnparser/RecursiveNN/')
-
 import numpy as np
 import pytest
 

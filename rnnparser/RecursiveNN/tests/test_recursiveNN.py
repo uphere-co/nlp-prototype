@@ -1,9 +1,4 @@
 #-*- coding: utf-8 -*-
-import os
-import sys
-myPath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, myPath + '/../')
-
 import pytest
 import numpy as np
 from recursiveNN.models import Word,Phrase, RecursiveNN,Word2VecFactory
