@@ -16,7 +16,8 @@ word1,word2,word3,word4=vecs[0],vecs[1],vecs[2],vecs[3]
 
 print 'RNN2'
 rnn2_merge_left=[False]
-score,gradW1,gradW0=rnn2(u,W,W,b, vecs[:3], rnn2_merge_left)
+score,grad_Ws = rnn(2, u,[W,W],b, vecs[:3], rnn2_merge_left)
+gradW0,gradW1=grad_Ws
 diff_rnn2= lambda x : x - score
 f=relativeError(diff_rnn2(rnn2_score(u,W,W+dW,b, vecs[:3], rnn2_merge_left)))
 print show_summary(f,gradW0,dW)
@@ -25,7 +26,8 @@ print show_summary(f,gradW1,dW)
 
 print 'RNN3:'
 rnn3_merge_left=[False,False]
-score,gradW2,gradW1,gradW0 = rnn3(u,W,W,W,b, vecs[:4], rnn3_merge_left)
+score,grad_Ws = rnn(3, u,[W,W,W],b, vecs[:4], rnn3_merge_left)
+gradW0,gradW1,gradW2 = grad_Ws
 diff_rnn3= lambda x : x - score
 f=relativeError(diff_rnn3(rnn3_score(u,W,W,W+dW,b, vecs[:4], rnn3_merge_left)))
 print show_summary(f,gradW0,dW)
@@ -33,3 +35,5 @@ f=relativeError(diff_rnn3(rnn3_score(u,W,W+dW,W,b, vecs[:4], rnn3_merge_left)))
 print show_summary(f,gradW1,dW)
 f=relativeError(diff_rnn3(rnn3_score(u,W+dW,W,W,b, vecs[:4], rnn3_merge_left)))
 print show_summary(f,gradW2,dW)
+
+print score/rnn3_score(u,W,W,W,b, vecs[:4], rnn3_merge_left)
