@@ -46,3 +46,28 @@ def rnn(depth, u,Ws,b, words, merge_left):
     grad_Ws[-depth] = np.outer(left*dActi(xs[-depth]), wordLRs[-depth])
 
     return score,grad_Ws
+
+
+def update_current_words(words, idxs, loc, new_word, it_word):
+    words[it_word]=new_word
+    idxs[loc:loc+2]=[it_word]
+    return it_word+1
+
+def update_current_word_pairs(words,idxs_word, wpairs,idxs_wpair, loc,new_word, it_wpair ):
+    assert np.all(words[idxs_word[loc]]==new_word)
+    if loc == 0:
+        idxs_wpair[loc:loc+2] = [it_wpair]
+        new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
+        wpairs[it_wpair] = new_wpairR
+        return it_wpair+1
+    elif loc == len(idxs_wpair)-1:
+        idxs_wpair[loc-1:loc+1] = [it_wpair]
+        new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
+        wpairs[it_wpair] = new_wpairL
+        return it_wpair+1
+    else:
+        idxs_wpair[loc-1:loc+2] = [it_wpair,it_wpair+1]
+        new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
+        new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
+        wpairs[it_wpair:it_wpair+2] = [new_wpairL,new_wpairR]
+        return it_wpair+2
