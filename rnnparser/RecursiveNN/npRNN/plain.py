@@ -4,10 +4,11 @@ activation_func=np.tanh
 dActi = lambda x : np.cosh(x)**-2
 
 def merge_word(words, merge_left):
-    wordL,wordR=words
     if merge_left:
-        return np.concatenate(words)
-    return np.concatenate(words[::-1])
+        wordL,wordR=words
+    else:
+        wordR,wordL=words
+    return np.concatenate([wordL,wordR])
 def half(arr, left_half):
     assert(len(arr.shape)==1)
     halt_len=arr.shape[0]/2
@@ -27,8 +28,9 @@ def scoring(u,hs_pair):
 def productLeftFactors(left_factor, x, W):
     return left_factor.reshape(1,-1).dot(dActi(x).reshape(-1,1)*W).reshape(-1)
 
-def rnn_single_path(depth, u,Ws,b, words, merge_left):
-    merge_left=[True]+merge_left
+def rnn_single_path(u,Ws,b, words, merge_left):
+    depth = len(merge_left)
+    #merge_left=[True]+merge_left
     xs=np.empty((depth, b.shape[0]))
     hs=np.empty((depth, b.shape[0]))
     wordLRs=np.empty((depth,b.shape[0]*2))
