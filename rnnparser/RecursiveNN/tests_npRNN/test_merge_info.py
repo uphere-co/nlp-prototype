@@ -37,7 +37,7 @@ def test_toymodel():
         words_current =words[idxs_word]
         wpairs_current=wpairs[idxs_wpair]
         h=phrase(wpairs_current[loc])
-        it_word=update_current_words(words, idxs_word, loc, h, it_word)
+        it_word =update_current_words(words, idxs_word, loc, h, it_word)
         it_wpair=update_current_word_pairs(words,idxs_word, wpairs,idxs_wpair, loc,h, it_wpair)
         assert it_word == expected_it_word[epoch]
         assert it_wpair== expected_it_wpair[epoch]

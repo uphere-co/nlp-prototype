@@ -1,6 +1,6 @@
 import numpy as np
 
-activation=np.tanh
+activation_func=np.tanh
 dActi = lambda x : np.cosh(x)**-2
 
 def merge_word(words, merge_left):
@@ -16,12 +16,18 @@ def half(arr, left_half):
     return arr[halt_len:]
 def activation(W,b,wordLR):
     x=np.add(np.dot(W,wordLR),b)
-    h=np.tanh(x)
+    h=activation_func(x)
     return x,h
+def hidden_vectorized(W,b,wordLRs):
+    xs=np.add(np.dot(W,wordLRs.T),b.reshape(-1,1)).T
+    return xs
+def scoring(u,hs_pair):
+    return hs_pair.dot(u)
+
 def productLeftFactors(left_factor, x, W):
     return left_factor.reshape(1,-1).dot(dActi(x).reshape(-1,1)*W).reshape(-1)
 
-def rnn(depth, u,Ws,b, words, merge_left):
+def rnn_single_path(depth, u,Ws,b, words, merge_left):
     merge_left=[True]+merge_left
     xs=np.empty((depth, b.shape[0]))
     hs=np.empty((depth, b.shape[0]))
@@ -57,20 +63,21 @@ def update_current_word_pairs(words,idxs_word, wpairs,idxs_wpair, loc,new_word, 
     assert np.all(words[idxs_word[loc]]==new_word)
     if len(idxs_wpair)==1:
         idxs_wpair[loc:loc+1] = []
-        return it_wpair+1
+        it_wpair+=1
     elif loc == 0:
         idxs_wpair[loc:loc+2] = [it_wpair]
         new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
         wpairs[it_wpair] = new_wpairR
-        return it_wpair+1
+        it_wpair+=1
     elif loc == len(idxs_wpair)-1:
         idxs_wpair[loc-1:loc+1] = [it_wpair]
         new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
         wpairs[it_wpair] = new_wpairL
-        return it_wpair+1
+        it_wpair+=1
     else:
         idxs_wpair[loc-1:loc+2] = [it_wpair,it_wpair+1]
         new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
         new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
         wpairs[it_wpair:it_wpair+2] = [new_wpairL,new_wpairR]
-        return it_wpair+2
+        it_wpair+=2
+    return it_wpair
