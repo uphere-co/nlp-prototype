@@ -23,16 +23,16 @@ def test_toymodel():
     it_word=n_words
     it_wpair=n_words-1
 
-    merge_history=[3,1,1,0,2,1]
+    merge_history=[3,1,1,0,2,1,0]
 
-    expected_it_word  = [9,10,11,12,13,14]
-    expected_it_wpair = [9,11,13,14,15,16]
+    expected_it_word  = [9,10,11,12,13,14,15]
+    expected_it_wpair = [9,11,13,14,15,16,17]
     expected_idxs_word = [[0,1,2,8,5,6,7], [0,9,8,5,6,7], [0,10,5,6,7],\
-                          [11,5,6,7], [11,5,12],[11,13]]
+                          [11,5,6,7], [11,5,12],[11,13],[14]]
     expected_idxs_wpair = [[0,1,7,8,5,6], [9,10,8,5,6],\
-                           [11,12,5,6], [13,5,6], [13,14], [15]]
+                           [11,12,5,6], [13,5,6], [13,14], [15],[]]
 
-    for epoch in range(6):
+    for epoch in range(7):
         loc=merge_history[epoch]
         words_current =words[idxs_word]
         wpairs_current=wpairs[idxs_wpair]
@@ -45,6 +45,8 @@ def test_toymodel():
         assert idxs_wpair == expected_idxs_wpair[epoch]
         words_current =words[idxs_word]
         wpairs_current=wpairs[idxs_wpair]
+        #check consistency between words and word pairs
         assert np.all(np.concatenate([words_current[:-1],words_current[1:]], axis=1)== wpairs_current)
 
+    assert np.all(words[it_word-1] == np.array([[255]*5]))
     assert np.all(wpairs_current == np.array([[31]*5+[224]*5]))

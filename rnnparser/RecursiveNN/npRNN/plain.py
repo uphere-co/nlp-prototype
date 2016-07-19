@@ -55,7 +55,10 @@ def update_current_words(words, idxs, loc, new_word, it_word):
 
 def update_current_word_pairs(words,idxs_word, wpairs,idxs_wpair, loc,new_word, it_wpair ):
     assert np.all(words[idxs_word[loc]]==new_word)
-    if loc == 0:
+    if len(idxs_wpair)==1:
+        idxs_wpair[loc:loc+1] = []
+        return it_wpair+1
+    elif loc == 0:
         idxs_wpair[loc:loc+2] = [it_wpair]
         new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
         wpairs[it_wpair] = new_wpairR
