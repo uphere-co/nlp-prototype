@@ -22,6 +22,10 @@ class Node(object):
         return self.__unicode__()
     def isPhrase(self):
         return self.epoch is not None
+    def other_leaf(self, leaf):
+        if leaf is self.left:
+            return self.right
+        return self.left
     def iter(self):
         if self.depth==0:
             return []
@@ -75,6 +79,13 @@ class NodeTree(object):
                     left_merged[i].append(False)
                 parent,node=parent.parent,parent
         return left_merged
+    @classmethod
+    def words_merged(cls, node):
+        words = [node.left, node.right]
+        while node.parent is not None:
+            words.append(node.parent.other_leaf(node))
+            node=node.parent
+        return words
     def __init__(self, words, history=None):
         if history is None:
             new_words, merge_history = NodeTree.random_merge(words)
