@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+#include <boost/tr1/random.hpp>
+
 #include "utils.h"
 
 #define EXP_TABLE_SIZE 1000
@@ -30,6 +32,7 @@ struct vocab_word {
 // compile time constants
 const uint64_t table_size = 1e8;
 const uint64_t vocab_hash_size = 30000000;
+const uint64_t vocab_max_size = 3000000;
 
 // TODO : define the base word embeding model 
 // TODO : Use c++ stream
@@ -37,7 +40,7 @@ class WordEmbed {
 };
 
 class Word2Vec : public WordEmbed {
-    private:
+    private:  
         bool ready_to_train;
 
         int layer1_size;
@@ -62,9 +65,9 @@ class Word2Vec : public WordEmbed {
         std::array<real,(EXP_TABLE_SIZE + 1)> expTable;
 
         clock_t start;
-
+   
         std::vector<real> syn0, syn1, syn1neg;
-
+  
         // Struct
         std::vector<vocab_word> vocab;
 
@@ -474,19 +477,20 @@ void Word2Vec::InitNet() {
     }
 
     syn0.reserve((int64_t)vocab_size * layer1_size);
+    
     if(hs) {
-        syn1.reserve((int64_t)vocab_size * layer1_size);
-        for(a = 0; a < vocab_size; a++)
-            for(b = 0; b < layer1_size; b++)
-                syn1[a * layer1_size + b] = 0;
+      syn1.reserve((int64_t)vocab_size * layer1_size);
+      for(a = 0; a < vocab_size; a++)
+	for(b = 0; b < layer1_size; b++)
+	  syn1[a * layer1_size + b] = 0;
     }
     if(negative > 0) {
-        syn1neg.reserve((int64_t)vocab_size * layer1_size);
-        for(a = 0; a < vocab_size; a++)
-            for(b = 0; b < layer1_size; b++)
-                syn1neg[a * layer1_size + b] = 0;
+      syn1neg.reserve((int64_t)vocab_size * layer1_size);
+      for(a = 0; a < vocab_size; a++)
+	for(b = 0; b < layer1_size; b++)
+	  syn1neg[a * layer1_size + b] = 0;
     }
-
+    
     for(a = 0; a < vocab_size; a++)
         for(b = 0; b < layer1_size; b++)
             syn0[a * layer1_size + b] = (rand()/(double)RAND_MAX - 0.5) / layer1_size;
@@ -499,16 +503,24 @@ void Word2Vec::TrainModelThread(int tid){
     int64_t a, b, d, word, last_word, sentence_length = 0, sentence_position = 0;
     int64_t word_count = 0, last_word_count = 0, sen[MAX_SENTENCE_LENGTH + 1];
     int64_t l1, l2, c, target, label, local_iter = iter;
-    uint64_t next_random;
+    uint64_t next_random = 1;
     real f, g;
     clock_t now;
 
+    boost::mt19937 rand_engine_int;    // rand engine
+    boost::uniform_int<> rand_int(0, table_size);    // set range.
+    boost::variate_generator<boost::mt19937, boost::uniform_int<>> rand_gen_int(rand_engine_int, rand_int);
+
+    boost::mt19937 rand_engine_double;  // rand engine
+    boost::uniform_real<> rand_double(0.0, 1.0);
+    boost::variate_generator<boost::mt19937, boost::uniform_real<>> rand_gen_double(rand_engine_double, rand_double);
+    
     std::vector<real> neu1;
     std::vector<real> neu1e;
 
     neu1.reserve(layer1_size);
     neu1e.reserve(layer1_size);
-
+    
     std::ifstream inFile(train_file, std::ifstream::in | std::ifstream::binary);
     inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
     while(1) {
@@ -535,8 +547,7 @@ void Word2Vec::TrainModelThread(int tid){
                 // The subsampling randomly discards frequent words while keeping the ranking same
                 if(sample > 0) {
                     real ran = (sqrt(vocab[word].cn / (sample * train_words)) + 1) * (sample * train_words) / vocab[word].cn;
-                    next_random = rand();
-                    if(ran < (next_random / (real)RAND_MAX)) continue;
+                    if(ran < rand_gen_double()) continue;
                 }
                 sen[sentence_length] = word;
                 sentence_length++;
@@ -544,7 +555,7 @@ void Word2Vec::TrainModelThread(int tid){
             }
             sentence_position = 0;
         }
-        if(inFile.eof() || (word_count > train_words )) {
+        if(inFile.eof() || (word_count > train_words / num_threads )) {
             word_count_actual += word_count - last_word_count;
             local_iter--;
             if(local_iter == 0) break;
@@ -565,8 +576,8 @@ void Word2Vec::TrainModelThread(int tid){
         // Network Initialization
         for(c = 0; c < layer1_size; c++) neu1[c] = 0;
         for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
-        next_random = rand();
-        b = next_random % window;
+        
+        b = rand_gen_int() % window;
         // Skip-gram
         {
             for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
@@ -592,17 +603,18 @@ void Word2Vec::TrainModelThread(int tid){
                     // Learn weights hidden -> output
                     for(c = 0; c < layer1_size; c++) syn1[c + l2] += g * syn0[c +l1];
                 }
+		
                 // Negative Sampling
                 if(negative > 0) for (d = 0; d < negative + 1 ; d++) {
                     if(d == 0) {
-                        target = word;
-                        label = 1;
+		      target = word;
+		      label = 1;
                     } else {
-                        next_random = rand();
-                        target = table[next_random % table_size];
-                        if(target == 0) target = next_random % (vocab_size - 1) + 1;
-                        if(target == word) continue;
-                        label = 0;
+		      next_random = rand_gen_int();
+		      target = table[next_random % table_size];
+		      if(target == 0) target = next_random % (vocab_size - 1) + 1;
+		      if(target == word) continue;
+		      label = 0;
                     }
                     l2 = target * layer1_size;
                     f = 0;
