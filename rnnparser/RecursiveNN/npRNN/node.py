@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class RNNnode(object):
     @classmethod
     def propagateParent(cls, node, parent):
