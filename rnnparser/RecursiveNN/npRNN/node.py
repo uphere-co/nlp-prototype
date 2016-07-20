@@ -21,6 +21,7 @@ class RNNnode(object):
     def __init__(self, name, vec=None):
         self.name = name
         self._vec = None
+        self.iteration = None
         self.parents = []
         self.left = None
         self.right = None

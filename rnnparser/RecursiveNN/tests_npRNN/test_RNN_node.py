@@ -16,6 +16,11 @@ def test_value_views():
     nodes, _=NodeTree.directed_merge(leaf_nodes,merge_history)
     assert str(nodes)==expected_merged_nodes
 
+    n_words = (len(nodes)+1)/2
+    assert nodes[7].iteration is None
+    assert nodes[n_words].iteration ==0
+    assert nodes[-1].iteration==n_words-2
+
     wordvecs = np.zeros((len(leaf_words)*2-1, 100))
     RNNnode.set_value_views(nodes, wordvecs)
     for node,val in zip(nodes,wordvecs):

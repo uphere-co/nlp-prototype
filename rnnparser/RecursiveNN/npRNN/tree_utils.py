@@ -56,9 +56,10 @@ class NodeTree(object):
         merge_history=list(merge_history)
         words=list(word_nodes)
         words_in_tree=list(word_nodes)
-        for idx_beg in merge_history:
+        for iteration, idx_beg in enumerate(merge_history):
             wordL,wordR=words[idx_beg],words[idx_beg+1]
             new_word = node_type.merge(wordL,wordR)
+            new_word.iteration = iteration
             words[idx_beg:idx_beg+2]= [new_word]
             words_in_tree.append(new_word)
         return words_in_tree, merge_history
