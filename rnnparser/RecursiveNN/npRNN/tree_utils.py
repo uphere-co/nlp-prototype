@@ -1,13 +1,14 @@
+import numpy as np
+
 class Node(object):
     @classmethod
-    def merge(cls,wordL, wordR, epoch):
+    def merge(cls,wordL, wordR):
         node = cls('(%s %s)'%(wordL.name,wordR.name))
         node.left = wordL
         node.left.parent=node
         node.right = wordR
         node.right.parent=node
         node.depth = max(wordL.depth, wordR.depth)+1
-        node.epoch = epoch
         return node
     def __init__(self, word):
         self.depth=0
@@ -15,13 +16,10 @@ class Node(object):
         self.left=None
         self.right=None
         self.parent=None
-        self.epoch=None
     def __unicode__(self):
         return self.name
     def __repr__(self):
         return self.__unicode__()
-    def isPhrase(self):
-        return self.epoch is not None
     def other_leaf(self, leaf):
         if leaf is self.left:
             return self.right
@@ -40,32 +38,30 @@ class Node(object):
 class NodeTree(object):
     @classmethod
     def random_merge(cls,word_nodes):
-        words=list(words)
+        node_type = type(word_nodes[0])
+        words=list(word_nodes)
+        words_in_tree=list(word_nodes)
         merge_history=[]
-        epoch=0
-        new_words=[]
         while len(words)>1:
             idx_beg=np.random.choice(range(len(words)-1))
             merge_history.append(idx_beg)
             wordL,wordR=words[idx_beg],words[idx_beg+1]
-            new_word = Node.merge(wordL,wordR, epoch)
+            new_word = node_type.merge(wordL,wordR)
             words[idx_beg:idx_beg+2]= [new_word]
-            new_words.append(new_word)
-            epoch+=1
-        return new_words, merge_history
+            words_in_tree.append(new_word)
+        return words_in_tree, merge_history
     @classmethod
-    def directed_merge(cls,words, merge_history):
+    def directed_merge(cls,word_nodes, merge_history):
+        node_type = type(word_nodes[0])
         merge_history=list(merge_history)
-        words=list(words)
-        epoch=0
-        new_words=[]
+        words=list(word_nodes)
+        words_in_tree=list(word_nodes)
         for idx_beg in merge_history:
             wordL,wordR=words[idx_beg],words[idx_beg+1]
-            new_word = Node.merge(wordL,wordR, epoch)
+            new_word = node_type.merge(wordL,wordR)
             words[idx_beg:idx_beg+2]= [new_word]
-            new_words.append(new_word)
-            epoch+=1
-        return new_words, merge_history
+            words_in_tree.append(new_word)
+        return words_in_tree, merge_history
     @classmethod
     def get_merge_direction(cls,composites):
         left_merged=[[] for _ in composites]
