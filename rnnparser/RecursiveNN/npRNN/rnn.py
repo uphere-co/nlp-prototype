@@ -31,4 +31,6 @@ class Parser(object):
             phrases[i]=hs[loc]
             hs_scores = scoring(self.u_score, hs)
             scores[i]=hs_scores[loc]
-        return merge_history, scores, phrases
+
+        whole_words = np.concatenate([words_vec, phrases],axis=0)
+        return merge_history, scores, whole_words
