@@ -22,7 +22,14 @@ stdenv.mkDerivation {
                    pytest toolz.pytest-mock
                    toolz.guppy
                    toolz.nltk toolz.bllipparser
-                 ]) ++ [wget jdk zip unzip];
+                 ]) 
+                   ++ 
+                 [
+                   wget jdk zip unzip
+                   cmake clang_38 clang-analyzer
+                   hdf5-cpp zeromq
+                   tbb openblas  
+                 ];
   shellHook = ''
      EDITOR=vim
   '';
