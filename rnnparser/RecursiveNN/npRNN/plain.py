@@ -1,7 +1,7 @@
 import numpy as np
 
-activation_func=np.tanh
-dActi = lambda x : np.cosh(x)**-2
+activation_f=np.tanh
+activation_df = lambda x : np.cosh(x)**-2
 
 def merge_word(words, merge_left):
     if merge_left:
@@ -17,7 +17,7 @@ def half(arr, left_half):
     return arr[halt_len:]
 def activation(W,b,wordLR):
     x=np.add(np.dot(W,wordLR),b)
-    h=activation_func(x)
+    h=activation_f(x)
     return x,h
 def hidden_vectorized(W,b,wordLRs):
     xs=np.add(np.dot(W,wordLRs.T),b.reshape(-1,1)).T
@@ -26,7 +26,7 @@ def scoring(u,hs_pair):
     return hs_pair.dot(u)
 
 def productLeftFactors(left_factor, x, W):
-    return left_factor.reshape(1,-1).dot(dActi(x).reshape(-1,1)*W).reshape(-1)
+    return left_factor.reshape(1,-1).dot(activation_df(x).reshape(-1,1)*W).reshape(-1)
 
 def rnn_single_path(u,Ws,b, words, merge_left):
     depth = len(merge_left)
@@ -48,10 +48,10 @@ def rnn_single_path(u,Ws,b, words, merge_left):
     grad_Ws2 = [np.empty(Ws[0].shape)]*depth
     left=u
     for i in range(1, depth, 1):
-        grad_Ws[-i] =  np.outer(left*dActi(xs[-i]), wordLRs[-i])
+        grad_Ws[-i] =  np.outer(left*activation_df(xs[-i]), wordLRs[-i])
         left = productLeftFactors(left, xs[-i], Ws[-i])
         left = half(left,merge_left[-i])
-    grad_Ws[-depth] = np.outer(left*dActi(xs[-depth]), wordLRs[-depth])
+    grad_Ws[-depth] = np.outer(left*activation_df(xs[-depth]), wordLRs[-depth])
 
     return score,grad_Ws
 
