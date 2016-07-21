@@ -213,7 +213,7 @@ llvmCodegen name (MExp (Fun sym hs) _ _)         = do
 llvmCodegen name (MExp (Sum is h1) m _)          = do
   sumref <- alloca double
   store sumref (fval 0)
-  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
+  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
       innerstmt = do
         mkInnerbody (justLookup h1 m)
         s <- load sumref

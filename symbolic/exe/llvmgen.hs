@@ -160,8 +160,8 @@ test5 = do
   let ?expHash = trie hash
   let exp = exp8
   prettyPrintR (exp :: MExp Double)
-  let idxi = ("i",0,9)
-      idxj = ("j",0,9)
+  let idxi = ("i",1,10)
+      idxj = ("j",1,10)
   let ast = runLLVM initModule $ do
               
               llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ] exp
@@ -201,7 +201,7 @@ test6 = do
       idxj = ("j",1,3)
       idxk = ("k",1,4)
   prettyPrintR (exp :: MExp Double)
-  digraph exp
+  -- digraph exp
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ] exp
               define void "main" [ (ptr double, AST.Name "res")
@@ -229,4 +229,4 @@ test6 = do
                 vr' <- VS.freeze mv
                 putStrLn $ "Evaluated to: " ++ show vr'
 
-main = test6
+main = test5
