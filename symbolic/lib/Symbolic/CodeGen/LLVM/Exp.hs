@@ -72,36 +72,39 @@ flattenByM is fac = do
 splitByM :: Operand -> [Int] -> Codegen [Operand]
 splitByM j fac = (map fst . tail) <$> (scanM f (ival 0,j) fac)
   where f (d,m) i = (,) <$> udiv m (ival i) <*> urem m (ival i)
- 
+
+-- | Get a flat index from multi-dimensional indices. We assume that input indices
+--   are always 0-base normalized.
 flatIndexM :: [Index] -> [Operand] -> Codegen Operand
 flatIndexM is ivs = do
   let factors = indexFlatteningFactors is
-  indices <- zipWithM index0baseM is ivs
-  flattenByM indices factors
+  -- indices <- zipWithM index0baseM is ivs
+  flattenByM ivs {- indices -} factors
 
+-- | Split a flat index to original multi-dimensional indices (but 0-base normalized).
 splitIndexM :: [Index] -> Operand -> Codegen [Operand]
 splitIndexM is j = do
   splitted <- splitByM j (indexFlatteningFactors is) 
-  zipWithM renormalizeIndexM is splitted
+  -- zipWithM renormalizeIndexM is splitted
+  return splitted 
 
 splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
                      -> [MExp Double] -- [[Index]]
                      -> Operand
                      -> Codegen Operand
-splitIndexDisjointFM action []       j = error "splitIndexDisjointFM: empty list"
-splitIndexDisjointFM action (e:[]) j = eachaction
+splitIndexDisjointFM action []     j = error "splitIndexDisjointFM: empty list"
+splitIndexDisjointFM action (e:[]) j = do
+    js <- splitIndexM is j
+    let f i j = do
+          iref <- alloca i64
+          store iref j
+          assign (indexName i) iref
+    zipWithM f is js
+    action e
   where
     is = (HS.toList . mexpIdx) e 
     label = concatMap indexName is
     size = ival (sizeIndex is) 
-    eachaction = do
-      js <- splitIndexM is j
-      let f i j = do
-            iref <- alloca i64
-            store iref j
-            assign (indexName i) iref
-      zipWithM f is js
-      action e
 splitIndexDisjointFM action (e:es) j = do
     cgencond double label (icmp IP.ULT j size)
       eachaction (splitIndexDisjointFM action es =<< isub j size)
@@ -246,7 +249,7 @@ llvmAST name syms v =
         store rref val
         ret_
       else do
-        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,s,e)
+        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
             innerstmt = do
               theindex <- flatIndexM is =<< mapM loadIndex is
               mkInnerbody v
