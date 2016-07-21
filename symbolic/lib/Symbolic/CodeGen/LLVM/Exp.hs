@@ -80,49 +80,30 @@ splitByM j fac = (map fst . tail) <$> (scanM f (ival 0,j) fac)
 -- | Get a flat index from multi-dimensional indices. We assume that input indices
 --   are always 0-base normalized.
 flatIndexM :: [Index] -> [Operand] -> Codegen Operand
-flatIndexM is ivs = do
-  let factors = indexFlatteningFactors is
-  -- indices <- zipWithM index0baseM is ivs
-  flattenByM ivs {- indices -} factors
+flatIndexM is ivs =   flattenByM ivs (indexFlatteningFactors is)
 
 -- | Split a flat index to original multi-dimensional indices (but 0-base normalized).
 splitIndexM :: [Index] -> Operand -> Codegen [Operand]
-splitIndexM is j = do
-  splitted <- splitByM j (indexFlatteningFactors is) 
-  -- zipWithM renormalizeIndexM is splitted
-  return splitted 
+splitIndexM is j = splitByM j (indexFlatteningFactors is) 
 
 splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
-                     -> [MExp Double] -- [[Index]]
+                     -> [MExp Double]
                      -> Operand
                      -> Codegen Operand
-splitIndexDisjointFM action []     j = error "splitIndexDisjointFM: empty list"
-splitIndexDisjointFM action (e:[]) j = do
-    js <- splitIndexM is j
-    let f i j = do
-          -- iref <- alloca i64
-          -- store iref j
-          assign (indexName i) j -- iref
-    zipWithM f is js
-    action e
+splitIndexDisjointFM action lst j = do
+    case lst of
+      []     -> error "splitIndexDisjointFM: empty list"
+      [e]    -> eachaction e ((HS.toList . mexpIdx) e)
+      (e:es) ->
+        let (is:iss) = map (HS.toList . mexpIdx) (e:es)
+            label = concatMap indexName is
+            size = ival (sizeIndex is)
+        in cgencond double label (icmp IP.ULT j size)
+             (eachaction e is) (splitIndexDisjointFM action es =<< isub j size)
   where
-    is = (HS.toList . mexpIdx) e 
-    label = concatMap indexName is
-    size = ival (sizeIndex is) 
-splitIndexDisjointFM action (e:es) j = do
-    cgencond double label (icmp IP.ULT j size)
-      eachaction (splitIndexDisjointFM action es =<< isub j size)
-  where
-    (is:iss) = map (HS.toList . mexpIdx) (e:es) 
-    label = concatMap indexName is
-    size = ival (sizeIndex is) 
-    eachaction = do
+    eachaction e is = do
       js <- splitIndexM is j
-      let f i j = do
-            -- iref <- alloca i64
-            -- store iref j
-            assign (indexName i) j -- iref
-      zipWithM f is js
+      zipWithM (\i j -> assign (indexName i) j) is js
       action e
 
 
@@ -165,9 +146,7 @@ cgenfor label (ivar,start,end) body = do
   forexit <- addBlock (label ++ ".exit")
   --
   iref <- alloca i64
-  let iv = ival start
-  store iref iv -- (ival start)
-  -- assign ivar iv -- iref
+  store iref (ival start) 
   br forloop
   --
   setBlock forloop
@@ -201,8 +180,8 @@ llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
   let ni = indexName idxi
       nj = indexName idxj
-  i <- getIndex idxi -- getvar ni >>= load
-  j <- getIndex idxj -- getvar nj >>= load
+  i <- getIndex idxi
+  j <- getIndex idxj
   x <- cgencond double ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
 llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
@@ -231,7 +210,7 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   rval <- load sumref
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
-  iI <- flatIndexM [i] =<< mapM getIndex [i] -- mapM loadIndex [i]
+  iI <- flatIndexM [i] =<< mapM getIndex [i]
   let es = map (flip justLookup m) hs
   r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
     let is = (HS.toList . mexpIdx) e
@@ -257,7 +236,7 @@ llvmAST name syms v =
       else do
         let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
             innerstmt = do
-              theindex <- flatIndexM is =<< mapM getIndex is -- mapM loadIndex is
+              theindex <- flatIndexM is =<< mapM getIndex is
               mkInnerbody v
               val <- getvar (hVar (getMHash v))
               p <- getElementPtr rref [theindex]
