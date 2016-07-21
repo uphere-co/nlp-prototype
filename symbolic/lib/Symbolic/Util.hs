@@ -56,8 +56,13 @@ flatIndexDisjoint (is:iss) (R d) = sizeIndex is + flatIndexDisjoint iss d
 
 
 -- | splitting index for disjoint sum
-splitIndexDisjoint :: [[Index]] -> Int -> Disjoint [Int]
-splitIndexDisjoint (is:iss) j
-    | j < m     = L (splitIndex is j)
-    | otherwise = R (splitIndexDisjoint iss (j-m))
+splitIndexDisjointF :: [[Index]] -> Int -> Disjoint ([Index],Int)
+splitIndexDisjointF (is:iss) j
+    | j < m     = L (is,j)
+    | otherwise = R (splitIndexDisjointF iss (j-m))
   where m = sizeIndex is
+
+
+-- | splitting index for disjoint sum
+splitIndexDisjoint :: [[Index]] -> Int -> Disjoint [Int]
+splitIndexDisjoint iss j = fmap (uncurry splitIndex) (splitIndexDisjointF iss j)

@@ -215,10 +215,11 @@ current = do
 -- Symbol Table
 -------------------------------------------------------------------------------
 
-assign :: String -> Operand -> Codegen ()
+assign :: String -> Operand -> Codegen Operand
 assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = [(var, x)] ++ lcls }
+  return x
 
 getvar :: String -> Codegen Operand
 getvar var = do
@@ -233,9 +234,10 @@ getvar var = do
 local :: AST.Name -> Operand
 local = LocalReference double
 
+{-
 idxval :: IndexSymbol -> Operand
 idxval = LocalReference i64 . AST.Name
-
+-}
 
 global :: AST.Name -> C.Constant
 global = C.GlobalReference double
@@ -271,11 +273,27 @@ fcmp cond a b = instr $ FCmp cond a b []
 icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 icmp cond a b = instr $ ICmp cond a b [] 
 
+udiv :: Operand -> Operand -> Codegen Operand
+udiv a b = instr $ UDiv False a b []
+
+urem :: Operand -> Operand -> Codegen Operand
+urem a b = instr $ URem a b []
+
+
+-----------------
+
 cons :: C.Constant -> Operand
 cons = ConstantOperand
 
+trunc :: Type -> Operand -> Codegen Operand
+trunc ty a = instr $ Trunc a ty []
+
 uitofp :: Type -> Operand -> Codegen Operand
 uitofp ty a = instr $ UIToFP a ty []
+
+sitofp :: Type -> Operand -> Codegen Operand
+sitofp ty a = instr $ SIToFP a ty []
+
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
