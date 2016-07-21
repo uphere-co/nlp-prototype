@@ -88,7 +88,7 @@ splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
                      -> [MExp Double] -- [[Index]]
                      -> Operand
                      -> Codegen Operand
--- splitIndexDisjointFM action []       j = return j -- ^ source of error.
+splitIndexDisjointFM action []       j = error "splitIndexDisjointFM: empty list"
 splitIndexDisjointFM action (e:[]) j = eachaction
   where
     is = (HS.toList . mexpIdx) e 
@@ -101,7 +101,6 @@ splitIndexDisjointFM action (e:[]) j = eachaction
             store iref j
             assign (indexName i) iref
       zipWithM f is js
-      -- return (ival 100)
       action e
 splitIndexDisjointFM action (e:es) j = do
     cgencond double label (icmp IP.ULT j size)
@@ -117,7 +116,6 @@ splitIndexDisjointFM action (e:es) j = do
             store iref j
             assign (indexName i) iref
       zipWithM f is js
-      -- return (ival 100)
       action e
 
 
@@ -202,10 +200,6 @@ llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
    mapM loadIndex is >>= flatIndexM is >>= getElem double s >>= assign name
-  -- t' <- trunc i32 t
-  -- v <- (sitofp double) t' 
-  -- trace ("is = " ++ show is) $ assign name v -- (fval 388)
-
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -229,40 +223,16 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
   iI <- flatIndexM [i] =<< mapM loadIndex [i]
-  -- assign (indexName i) iI
   let es = map (flip justLookup m) hs
   r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
     let is = (HS.toList . mexpIdx) e
-    -- vs <- mapM (getvar . indexName) is
-    -- let r = last vs
-    -- return r
-    -- - getvar "A"
     mkInnerbody e
     let innername = hVar (getMHash e)
     v <- getvar innername
     return v
-  -- r' <- trunc i32 r
-  -- v <- (sitofp double) r'
-    
-  assign name r --  v -- (fval 12345) -- v
-    
-    -- return (head vs) --  (fval 10)
+  assign name r
 
-    {-
-  -- let r = iI
-  
-  r' <- trunc i32 r
-  v <- (sitofp double) r'
-  -- v <- foldrM iadd izero vs
-  
-  -- let v = r
-  -- let i = LocalReference i64 (AST.Name "i") -}
-  -- assign name (fval 30320)
-  -- return (fval 300)
-
-  -- error "llvmCodegen: Concat not implemented"
-
-        
+-- | generate LLVM AST from a symbolic expression
 llvmAST :: (?expHash :: Exp Double :->: Hash) =>
            String -> [Symbol] -> MExp Double -> LLVM ()
 llvmAST name syms v =
