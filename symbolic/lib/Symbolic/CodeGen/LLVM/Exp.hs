@@ -57,6 +57,9 @@ getElem ty s i =
 loadIndex :: Index -> Codegen Operand
 loadIndex = load <=< getvar . indexName 
 
+getIndex :: Index -> Codegen Operand
+getIndex = getvar . indexName 
+
 index0baseM :: Index -> Operand -> Codegen Operand
 index0baseM (_,s,_) x = if s == 0 then return x else isub x (ival s)
 
@@ -97,9 +100,9 @@ splitIndexDisjointFM action []     j = error "splitIndexDisjointFM: empty list"
 splitIndexDisjointFM action (e:[]) j = do
     js <- splitIndexM is j
     let f i j = do
-          iref <- alloca i64
-          store iref j
-          assign (indexName i) iref
+          -- iref <- alloca i64
+          -- store iref j
+          assign (indexName i) j -- iref
     zipWithM f is js
     action e
   where
@@ -116,9 +119,9 @@ splitIndexDisjointFM action (e:es) j = do
     eachaction = do
       js <- splitIndexM is j
       let f i j = do
-            iref <- alloca i64
-            store iref j
-            assign (indexName i) iref
+            -- iref <- alloca i64
+            -- store iref j
+            assign (indexName i) j -- iref
       zipWithM f is js
       action e
 
@@ -162,13 +165,15 @@ cgenfor label (ivar,start,end) body = do
   forexit <- addBlock (label ++ ".exit")
   --
   iref <- alloca i64
-  store iref (ival start)
-  assign ivar iref
+  let iv = ival start
+  store iref iv -- (ival start)
+  -- assign ivar iv -- iref
   br forloop
   --
   setBlock forloop
-  body
   i <- load iref
+  assign ivar i  
+  body
   i' <- iadd i (ival 1)
   store iref i'
   --
@@ -196,14 +201,14 @@ llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
   let ni = indexName idxi
       nj = indexName idxj
-  i <- getvar ni >>= load
-  j <- getvar nj >>= load
+  i <- getIndex idxi -- getvar ni >>= load
+  j <- getIndex idxj -- getvar nj >>= load
   x <- cgencond double ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
 llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
-   mapM loadIndex is >>= flatIndexM is >>= getElem double s >>= assign name
+   mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -226,7 +231,7 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   rval <- load sumref
   assign name rval
 llvmCodegen name (MExp (Concat i hs) m is)    = do
-  iI <- flatIndexM [i] =<< mapM loadIndex [i]
+  iI <- flatIndexM [i] =<< mapM getIndex [i] -- mapM loadIndex [i]
   let es = map (flip justLookup m) hs
   r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
     let is = (HS.toList . mexpIdx) e
@@ -252,7 +257,7 @@ llvmAST name syms v =
       else do
         let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
             innerstmt = do
-              theindex <- flatIndexM is =<< mapM loadIndex is
+              theindex <- flatIndexM is =<< mapM getIndex is -- mapM loadIndex is
               mkInnerbody v
               val <- getvar (hVar (getMHash v))
               p <- getElementPtr rref [theindex]
