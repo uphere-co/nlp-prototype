@@ -229,4 +229,4 @@ test6 = do
                 vr' <- VS.freeze mv
                 putStrLn $ "Evaluated to: " ++ show vr'
 
-main = test5
+main = test6

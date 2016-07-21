@@ -71,7 +71,8 @@ flattenByM is fac = do
 
 splitByM :: Operand -> [Int] -> Codegen [Operand]
 splitByM j fac = (map fst . tail) <$> (scanM f (ival 0,j) fac)
-  where f (d,m) i = (,) <$> udiv m (ival i) <*> urem m (ival i)
+  where f (d,m) i | i == 1    = return (m,ival 0)
+                  | otherwise = (,) <$> udiv m (ival i) <*> urem m (ival i)
 
 -- | Get a flat index from multi-dimensional indices. We assume that input indices
 --   are always 0-base normalized.
