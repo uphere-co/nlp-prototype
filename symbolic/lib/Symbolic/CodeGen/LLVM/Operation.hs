@@ -274,7 +274,7 @@ icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 icmp cond a b = instr $ ICmp cond a b [] 
 
 udiv :: Operand -> Operand -> Codegen Operand
-udiv a b = instr $ UDiv True a b []
+udiv a b = instr $ UDiv False a b []
 
 urem :: Operand -> Operand -> Codegen Operand
 urem a b = instr $ URem a b []
