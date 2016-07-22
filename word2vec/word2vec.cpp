@@ -1,18 +1,14 @@
-#include <array>
-#include <cmath>
-#include <cstdlib>
-#include <ctime>
+#include <stdlib.h>
 #include <iostream>
-#include <fstream>
 #include <thread>
 #include <string>
 
-#include <stdlib.h>
 #include <inttypes.h>
 
 #include <boost/tr1/random.hpp>
-
 #include "utils.h"
+
+#include "WordEmbed.h"
 
 #define EXP_TABLE_SIZE 1000
 #define MAX_EXP 6
@@ -20,264 +16,83 @@
 #define MAX_CODE_LENGTH 40
 #define MAX_SENTENCE_LENGTH 1000
 
-typedef float real;
-
-struct vocab_word {
-    int64_t cn;
-    std::vector<int> point;
-    std::string word, code;
-    char codelen;
-};
-
-// compile time constants
-const uint64_t table_size = 1e8;
-const uint64_t vocab_hash_size = 30000000;
-const uint64_t vocab_max_size = 3000000;
-
-// TODO : define the base word embeding model 
-// TODO : Use c++ stream
-class WordEmbed {
-};
-
 class Word2Vec : public WordEmbed {
-    private:  
-        bool ready_to_train;
-
-        int layer1_size;
-        std::string train_file;
-        std::string save_vocab_file, read_vocab_file;
-        int  debug_mode, binary, cbow;
-        real alpha;
-        std::string output_file;
+    private:
+        unsigned int layer1_size;
         int window;
         real sample;
-        int hs, negative, num_threads;
-        int64_t iter;
-        int min_count;
-        int64_t classes;
+        int hs, negative;
+        unsigned int num_threads;
+        unsigned int iter;
+        real alpha;
+        unsigned int classes;
+        int  cbow;
         std::string wordvector_file;
 
-        int   min_reduce;
-        int64_t vocab_size, train_words, word_count_actual, file_size;
+        int64_t word_count_actual;
 
         real starting_alpha;
 
         std::array<real,(EXP_TABLE_SIZE + 1)> expTable;
 
         clock_t start;
-   
+
         std::vector<real> syn0, syn1, syn1neg;
-  
-        // Struct
-        std::vector<vocab_word> vocab;
 
         // Tables
-        std::array<int, vocab_hash_size> vocab_hash; // HashMap for words. vocab_hash[WORD_HASH] = WORD_POSITION
         std::array<int, table_size> table;
     public:
         Word2Vec (             
-                int layer1_size,
-                std::string train_file,
-                std::string save_vocab_file,
-                std::string read_vocab_file,
-                int debug_mode,
-                int binary, 
-                int cbow, 
-                real alpha,
-                std::string output_file,
-                int window,
-                real sample,
-                int hs, 
-                int negative,
-                int num_threads,
-                int64_t iter,
-                int min_count,
-                int64_t classes,
-                std::string wordvector_file):
-            layer1_size(layer1_size),
-            train_file(train_file),
-            save_vocab_file(save_vocab_file),
-            read_vocab_file(read_vocab_file),
-            debug_mode(debug_mode),
-            binary(binary),
-            cbow(cbow),
-            alpha(alpha),
-            output_file(output_file),
-            window(window),
-            sample(sample),
-            hs(hs),
-            negative(negative),
-            num_threads(num_threads),
-            iter(iter),
-            min_count(min_count),
-            classes(classes),
-            wordvector_file(wordvector_file)
-            {
-                min_reduce = 1, 
-                vocab_size = 0;
-                train_words = 0;
-                word_count_actual=0;
-                file_size = 0;
+                std::string train_file, //Use text data from <file> to train the model
+                std::string output_file = "", //Use <file> to save the resulting word vectors / word clusters
+                unsigned int min_count = 5, //This will discard words that appear less than <int> times; default is 5
+                int debug_mode = 2, //Set the debug mode (default = 2 = more info during training)
+                int binary = 0, //Save the resulting vectors in binary moded; default is 0 (off)
+                std::string save_vocab_file = "", //The vocabulary will be saved to <file>
+                std::string read_vocab_file = "", //The vocabulary will be read from <file>, not constructed from the training data
+                unsigned int layer1_size = 100, //Set size of word vectors; default is 100
+                unsigned int window = 5, //Set max skip length between words; default is 5
+                real sample = 1e-3, //Set threshold for occurrence of words. Those that appear with higher frequency in the training data will be randomly down-sampled; default is 1e-3, useful range is (0, 1e-5) 
+                int hs = 0, //Use Hierarchical Softmax; default is 0 (not used)
+                int negative = 5, //Number of negative examples; default is 5, common values are 3 - 10 (0 = not used)
+                unsigned int num_threads = 12, //Use <int> threads (default 12)
+                int iter = 5, //Run more training iterations (default 5)
+                real alpha = 0.05, //Set the starting learning rate; default is 0.025 for skip-gram and 0.05 for CBOW
+                unsigned int classes = 0,//Output word classes rather than word vectors; default number of classes is 0 (vectors are written)
+                int cbow = 0, //Use the continuous bag of words model; default is 1 (use 0 for skip-gram model)
+                std::string wordvector_file = "" //Read the trained word vector file
+                ):
+            WordEmbed (train_file, output_file, min_count, debug_mode, binary,save_vocab_file,read_vocab_file),
+            layer1_size (layer1_size),
+            window (window),
+            sample (sample),
+            hs (hs),
+            negative (negative),
+            num_threads (num_threads),
+            iter (iter),
+            alpha (alpha),
+            classes (classes),
+            cbow (cbow),
+            wordvector_file (wordvector_file)
+        {
+            min_reduce = 1, 
+            vocab_size = 0;
+            train_words = 0;
+            word_count_actual=0;
+            file_size = 0;
 
-                ready_to_train = false;
-                if( CheckReady() ) ready_to_train = true;
-            };
-
-        static bool VocabFreqCompare(const vocab_word &a, const vocab_word &b) {
-            return (a.cn > b.cn);
+            ready_to_train = false;
+            if( CheckReady() ) ready_to_train = true;
         };
+        
+        void TrainModel ();
 
-        bool CheckReady() { return true; }; //implement
+        void CreateBinaryTree ();
 
-        void ReadWord(std::string& word, std::ifstream& inFile);
-//        void initVocabHash();
-        int GetWordHash(std::string& word);
-        int SearchVocab(std::string& word);
-        void SaveVocab();
-        void ReadVocab();
-        int ReadWordIndex  (std::ifstream& inFile);
-        int AddWordToVocab (std::string word);
-        void SortVocab();
-        void ReduceVocab();
-
-        void CreateBinaryTree();
-
-        void LearnVocabFromTrainFile();
-
-        void InitUnigramTable();
-        void InitNet();
-        void TrainModelThread(int tid);
-        void TrainModel();
+        void InitUnigramTable ();
+        void InitNet ();
+        void TrainModelThread (int tid);
 };
-
-// Begin of HashMap for dictionary
-
-// Reads a single word from a file, assuming space + tab + EOL to be word boundaries
-void Word2Vec::ReadWord(std::string& word, std::ifstream& inFile) {
-    int a = 0, ch;
-    word.clear();
-    while (!inFile.eof()) {
-        ch = inFile.get();
-        if (ch == 13) continue;
-        if ((ch == ' ') || (ch == '\t') || (ch == '\n')) {
-            if (a > 0) {
-                if (ch == '\n') inFile.unget();
-                break;
-            }
-            if (ch == '\n') {
-                word = "</s>";
-                return;
-            } else continue;
-        }
-        word += ch;
-        a++;
-    }
-}
-
-// Initiate vocab_hash array to -1, vocab_hash[hash] = position of a word
-// void Word2Vec::initVocabHash () {
-//    vocab_hash.fill(-1);
-//}
-
-// Returns hash value of a word
-int Word2Vec::GetWordHash (std::string& word) {
-    uint64_t hash = 0;
-    for(uint64_t a = 0; a < word.length(); a++)
-        hash = hash * 257 + word.at(a);
-    hash = hash % vocab_hash_size;
-    return hash;
-}
-
-// Returns position of a word in the vocabulary; if the word is not found, returns -1
-int Word2Vec::SearchVocab (std::string& word) {
-    uint64_t hash = GetWordHash(word);
-    while(1) {
-        if(vocab_hash[hash] == -1) return -1;
-        if(word == vocab[vocab_hash[hash]].word) return vocab_hash[hash];
-        hash = (hash + 1) % vocab_hash_size;
-    }
-    return -1;
-}
-
-// Reads a word and returns its index in the vocabulary
-int Word2Vec::ReadWordIndex (std::ifstream& inFile) {
-    std::string word;
-    ReadWord(word, inFile);
-    if(inFile.eof()) return -1;
-    return SearchVocab(word);
-}
-
-// Adds a word to the vocabulary, and returns an index of a word in the vocabulary
-// Q: Given the look-up facility instd::vector, do we really need hash here?
-int Word2Vec::AddWordToVocab (std::string word) {
-    uint64_t hash;
-    vocab_word s_word;
-
-    s_word.word = word;
-    s_word.cn = 0;
-
-    vocab.push_back(s_word);
-    vocab_size++; // JH : vocab.size(), instead ?
-
-    hash = GetWordHash(word);
-    while( vocab_hash[hash] != -1)
-        hash = (hash + 1) % vocab_hash_size;
-    vocab_hash[hash] = vocab_size - 1;
-    return vocab_size - 1;
-}
-
-// Sorts the vocabulary by frequency using word counts
-// Assumed that SortVocab() is always excuted right after learning vocab from training file
-void Word2Vec::SortVocab() {
-    int64_t size;
-    uint64_t hash;
-    // Sort the vocabulary and keep </s> at the first position
-    std::sort(vocab.begin()+1, vocab.end(), VocabFreqCompare);
-
-//    initVocabHash(); 
-    vocab_hash.fill(-1); //initVocabHash();
-
-    size = vocab_size;
-    train_words = 0;
-    for (int a = 0; a < size; a++) {
-        // Words occuring less than min_count times will be discarded from the vocabulary
-        if((vocab[a].cn < min_count) && ( a != 0)) {
-            vocab_size--;
-        } else {
-            // Hash will be re-computed, as after the sorting it is not actual
-            hash = GetWordHash(vocab[a].word);
-            while(vocab_hash[hash] != -1) hash = (hash + 1) % vocab_hash_size;
-            vocab_hash[hash] = a;
-            train_words += vocab[a].cn; // Total number of words. Same words are counted many times.
-        }
-    }
-    // Allocate memory for the binary tree construction
-    for(int a = 0; a < vocab_size; a++)
-        vocab[a].point.reserve(MAX_CODE_LENGTH);
-}
-
-// Reduces the vocabulary by removing infrequent tokens. Neutralized by min_reduce = 0
-void Word2Vec::ReduceVocab() {
-    int64_t a, b = 0;
-    uint64_t hash;
-    for(a = 0; a < vocab_size; a++) if (vocab[a].cn > min_reduce) {
-        vocab[b].cn = vocab[a].cn;
-        vocab[b].word = vocab[a].word;
-        b++;
-    }
-    vocab_size = b;
-    // Hash will be re-computed, as it is not actual
-//    initVocabHash(); // Re-initialization
-
-    vocab_hash.fill(-1); //initVocabHash();
-    for(a = 0; a < vocab_size; a++) {
-        hash = GetWordHash(vocab[a].word);
-        while(vocab_hash[hash] != -1) hash = (hash + 1) % vocab_hash_size;
-        vocab_hash[hash] = a; // The value is the index(position) of the word
-    }
-    fflush(stdout); // print first
-    min_reduce++; // As ReduceVocab() is called, more words will be removed in the vocabulary
-}
 
 // Create binary Huffman tree using the word counts
 // Frequent words will have short unique binary codes
@@ -352,109 +167,13 @@ void Word2Vec::CreateBinaryTree() {
     }
 }
 
-void Word2Vec::LearnVocabFromTrainFile() {
-    std::string word;
-    std::ifstream inFile;
-    int64_t a, i;
-
-//    initVocabHash(); // Initialization
-    vocab_hash.fill(-1); //initVocabHash();
-
-    inFile.open(train_file, std::ifstream::in | std::ifstream::binary );
-
-    if(inFile.fail()) {
-        std::cout << "ERROR: training data file not found!\n";
-        exit(1);
-    }
-    vocab_size = 0;
-    AddWordToVocab("</s>");
-
-    while(1) {
-        ReadWord(word, inFile);
-        if(inFile.eof()) break;
-        train_words++;
-        if((debug_mode > 1) && (train_words % 100000 == 0)) {
-            printf("%" PRIu64"K%c", train_words / 1000, 13);
-            fflush(stdout);
-        }
-        i = SearchVocab(word);
-        if(i == -1) {
-            a = AddWordToVocab(word);
-            vocab[a].cn = 1;
-        } else vocab[i].cn++;
-        if(vocab_size > vocab_hash_size * 0.7) ReduceVocab(); // Limiting vocabulary size
-    }
-    SortVocab(); // Necessary before making Huffman tree
-    if(debug_mode > 0) {
-        printf("Vocab size: %" PRIu64"\n", vocab_size);
-        printf("Words in the train file: %" PRIu64"\n", train_words);
-    }
-    file_size = inFile.tellg();
-    inFile.close();
-}
-
-void Word2Vec::SaveVocab() {
-    int64_t i;
-    std::ofstream outFile;
-    outFile.open(save_vocab_file, std::ofstream::out | std::ofstream::binary);
-    for(i = 0; i < vocab_size; i++) {
-        outFile << vocab[i].word << " ";
-        outFile << vocab[i].cn << "\n";
-    }
-    outFile.close();
-}
-
-void Word2Vec::ReadVocab() {
-    std::string line;
-    std::vector<std::string> word;
-    std::ifstream inFile;
-    inFile.open(read_vocab_file, std::ifstream::in | std::ifstream::binary);
-    if(inFile.fail()) {
-        std::cout << "Vocabulary file not found!\n";
-        exit(1);
-    }
-    
-    vocab_hash.fill(-1); //initVocabHash();
-
-    vocab_size = 0;
-
-    int a;
-    while(1) {
-        word.clear();
-        std::getline(inFile,line);
-        if(inFile.eof()) break;
-        split(line, word); // todo : re-implement this with getline
-        a = AddWordToVocab(word[0]);
-        std::cout << word[0] << " ";
-        std::cout << word[1] << "\n";
-        vocab[a].cn = atof(word[1].c_str()); // Q: why atof, not atoi?
-    }
-
-    SortVocab();
-    if(debug_mode > 0) {
-        std::cout << "Vocab size : " << vocab_size << std::endl;
-        std::cout << "Words in train file : " << train_words << std::endl;
-    }
-    inFile.close();
-    inFile.open(train_file, std::ifstream::in | std::ifstream::binary);
-    if(inFile.fail()) {
-        std::cout << "Training data file not found!\n";
-        exit(1);
-    }
-
-    file_size = inFile.tellg(); // Q: Shouldn't we set std::ifstream::ate instead of ...::in ?
-    inFile.close(); // todo : Let us find a way to handle file in an error-safe manner.
-}
-
-// End of HashMap for dictionary
-
 // Begin of Learning Net
 
 void Word2Vec::InitUnigramTable() {
-    int i;
+    unsigned int i;
     double train_words_pow = 0;
     double d1, power = 0.75;
-    for (int a = 0; a < vocab_size; a++) train_words_pow += pow(vocab[a].cn, power);
+    for (unsigned int a = 0; a < vocab_size; a++) train_words_pow += pow(vocab[a].cn, power);
     i = 0;
     d1 = pow(vocab[i].cn, power) / train_words_pow;
     for (unsigned int a = 0; a < table_size; a++) {
@@ -468,8 +187,6 @@ void Word2Vec::InitUnigramTable() {
 }
 
 void Word2Vec::InitNet() {
-    int64_t a, b;
-
     // The name EXP_TABLE is totally mis-guiding.
     for (int i = 0; i < EXP_TABLE_SIZE; i++) {
         expTable[i] = exp((i / (real)EXP_TABLE_SIZE * 2 - 1) * MAX_EXP);
@@ -477,33 +194,31 @@ void Word2Vec::InitNet() {
     }
 
     syn0.reserve((int64_t)vocab_size * layer1_size);
-    
     if(hs) {
-      syn1.reserve((int64_t)vocab_size * layer1_size);
-      for(a = 0; a < vocab_size; a++)
-	for(b = 0; b < layer1_size; b++)
-	  syn1[a * layer1_size + b] = 0;
+        syn1.reserve((int64_t)vocab_size * layer1_size);
+        for(unsigned int a = 0; a < vocab_size; a++)
+            for(unsigned int b = 0; b < layer1_size; b++)
+                syn1[a * layer1_size + b] = 0;
     }
     if(negative > 0) {
-      syn1neg.reserve((int64_t)vocab_size * layer1_size);
-      for(a = 0; a < vocab_size; a++)
-	for(b = 0; b < layer1_size; b++)
-	  syn1neg[a * layer1_size + b] = 0;
+        syn1neg.reserve((int64_t)vocab_size * layer1_size);
+        for(unsigned int a = 0; a < vocab_size; a++)
+            for(unsigned int b = 0; b < layer1_size; b++)
+                syn1neg[a * layer1_size + b] = 0;
     }
-    
-    for(a = 0; a < vocab_size; a++)
-        for(b = 0; b < layer1_size; b++)
+
+    for(unsigned int a = 0; a < vocab_size; a++)
+        for(unsigned int b = 0; b < layer1_size; b++)
             syn0[a * layer1_size + b] = (rand()/(double)RAND_MAX - 0.5) / layer1_size;
 
     CreateBinaryTree();
-
 }
 
 void Word2Vec::TrainModelThread(int tid){
     int64_t a, b, d, word, last_word, sentence_length = 0, sentence_position = 0;
     int64_t word_count = 0, last_word_count = 0, sen[MAX_SENTENCE_LENGTH + 1];
     int64_t l1, l2, c, target, label, local_iter = iter;
-    uint64_t next_random = 1;
+    uint64_t next_random;
     real f, g;
     clock_t now;
 
@@ -520,7 +235,7 @@ void Word2Vec::TrainModelThread(int tid){
 
     neu1.reserve(layer1_size);
     neu1e.reserve(layer1_size);
-    
+
     std::ifstream inFile(train_file, std::ifstream::in | std::ifstream::binary);
     inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
     while(1) {
@@ -603,7 +318,6 @@ void Word2Vec::TrainModelThread(int tid){
                     // Learn weights hidden -> output
                     for(c = 0; c < layer1_size; c++) syn1[c + l2] += g * syn0[c +l1];
                 }
-		
                 // Negative Sampling
                 if(negative > 0) for (d = 0; d < negative + 1 ; d++) {
                     if(d == 0) {
@@ -640,14 +354,16 @@ void Word2Vec::TrainModelThread(int tid){
 
 void Word2Vec::TrainModel() {
     std::ofstream outFile;
+
     std::vector<std::thread> th;
     starting_alpha = alpha;
-    
+
     std::cout << "Starting training using file " << train_file << std::endl;
     if(read_vocab_file != "") ReadVocab();
-    else LearnVocabFromTrainFile();
+    else ExtractVocabFromTrainFile();
     if(save_vocab_file != "") SaveVocab();
     if(output_file[0] == 0) return;
+
     // Initialization
     InitNet();
     if(negative > 0)
@@ -668,15 +384,15 @@ void Word2Vec::TrainModel() {
     outFile.open(output_file, std::ofstream::out | std::ofstream::binary);
     if(classes == 0) {
         outFile << vocab_size << " " << layer1_size << std::endl;
-        for(int a = 0; a < vocab_size; a++) {
+        for(unsigned int a = 0; a < vocab_size; a++) {
             outFile << vocab[a].word << " ";
-            if(binary) for(int b = 0; b < layer1_size; b++) outFile << syn0[a * layer1_size + b] << " ";
-            else for(int b = 0; b < layer1_size; b++) outFile << syn0[a * layer1_size + b] << " ";
+            if(binary) for(unsigned int b = 0; b < layer1_size; b++) outFile << syn0[a * layer1_size + b] << " ";
+            else for(unsigned int b = 0; b < layer1_size; b++) outFile << syn0[a * layer1_size + b] << " ";
             outFile << std::endl;
         }
     } else {
         // Run K-means on the word vectors
-        int clcn = classes, iter = 10, closeid;
+        unsigned int clcn = classes, iter = 10, closeid;
         real closev, x;
 
         std::vector<int> centcn, cl;
@@ -686,29 +402,29 @@ void Word2Vec::TrainModel() {
         cl.reserve(vocab_size);
         cent.reserve(classes * layer1_size);
 
-        for (int a = 0; a < vocab_size; a++) cl[a] = a % clcn;
-        for (int a = 0; a < iter; a++) {
-            for (int b = 0; b < clcn * layer1_size; b++) cent[b] = 0;
-            for (int b = 0; b < clcn; b++) centcn[b] = 1;
-            for (int c = 0; c < vocab_size; c++) {
-                for (int d = 0; d < layer1_size; d++) cent[layer1_size * cl[c] + d] += syn0[c * layer1_size + d];
+        for (unsigned int a = 0; a < vocab_size; a++) cl[a] = a % clcn;
+        for (unsigned int a = 0; a < iter; a++) {
+            for (unsigned int b = 0; b < clcn * layer1_size; b++) cent[b] = 0;
+            for (unsigned int b = 0; b < clcn; b++) centcn[b] = 1;
+            for (unsigned int c = 0; c < vocab_size; c++) {
+                for (unsigned int d = 0; d < layer1_size; d++) cent[layer1_size * cl[c] + d] += syn0[c * layer1_size + d];
                 centcn[cl[c]]++;
             }
-            for (int b = 0; b < clcn; b++) {
+            for (unsigned int b = 0; b < clcn; b++) {
                 closev = 0;
-                for (int c = 0; c < layer1_size; c++) {
+                for (unsigned int c = 0; c < layer1_size; c++) {
                     cent[layer1_size * b + c] /= centcn[b];
                     closev += cent[layer1_size * b + c] * cent[layer1_size * b + c];
                 }
                 closev = sqrt(closev);
-                for (int c = 0; c < layer1_size; c++) cent[layer1_size * b + c] /= closev;
+                for (unsigned int c = 0; c < layer1_size; c++) cent[layer1_size * b + c] /= closev;
             }
-            for (int c = 0; c < vocab_size; c++) {
+            for (unsigned int c = 0; c < vocab_size; c++) {
                 closev = -10;
                 closeid = 0;
-                for (int d = 0; d < clcn; d++) {
+                for (unsigned int d = 0; d < clcn; d++) {
                     x = 0;
-                    for (int b = 0; b < layer1_size; b++) x += cent[layer1_size * d + b] * syn0[c * layer1_size + b];
+                    for (unsigned int b = 0; b < layer1_size; b++) x += cent[layer1_size * d + b] * syn0[c * layer1_size + b];
                     if (x > closev) {
                         closev = x;
                         closeid = d;
@@ -718,7 +434,7 @@ void Word2Vec::TrainModel() {
             }
         }
         // Save the K-means classes
-        for (int a = 0; a < vocab_size; a++) outFile << vocab[a].word << "    " << cl[a] << std::endl;
+        for (unsigned int a = 0; a < vocab_size; a++) outFile << vocab[a].word << "    " << cl[a] << std::endl;
 
     }
     outFile.close();
@@ -794,19 +510,13 @@ Word2Vec *arg_to_w2v(int argc, char **argv) {
     int i;
 
     int layer1_size = 100;
-    std::string train_file = "";
+    std::string train_file ="", save_vocab_file = "", read_vocab_file = "";
+    int debug_mode =2, binary = 0, cbow = 0; 
+    real alpha = 0.05;
     std::string output_file = "";
-    std::string save_vocab_file = "";
-    std::string read_vocab_file = "";
-    int debug_mode = 2;
-    int binary = 0;
-    int cbow = 0; 
-    real alpha = 0.025;
     int window = 5;
     real sample = 1e-3;
-    int hs = 0;
-    int negative = 5;
-    int num_threads = 12;
+    int hs = 0, negative = 5, num_threads = 12;
     int64_t iter = 5;
     int min_count = 5;
     int64_t classes = 0;
@@ -819,7 +529,7 @@ Word2Vec *arg_to_w2v(int argc, char **argv) {
     if ((i = argpos("-debug", argc, argv)) > 0) debug_mode = atoi(argv[i + 1]);
     if ((i = argpos("-binary", argc, argv)) > 0) binary = atoi(argv[i + 1]);
     if ((i = argpos("-cbow", argc, argv)) > 0) cbow = atoi(argv[i + 1]);
-    if (cbow) alpha = 0.05;
+    if (cbow) alpha = 0.05; else alpha = 0.025;
     if ((i = argpos("-alpha", argc, argv)) > 0) alpha = atof(argv[i + 1]);
     if ((i = argpos("-output", argc, argv)) > 0) output_file = argv[i + 1];
     if ((i = argpos("-window", argc, argv)) > 0) window = atoi(argv[i + 1]);
@@ -832,19 +542,25 @@ Word2Vec *arg_to_w2v(int argc, char **argv) {
     if ((i = argpos("-classes", argc, argv)) > 0) classes = atoi(argv[i + 1]);
     if ((i = argpos("-wordvector", argc, argv)) > 0) wordvector_file = argv[i + 1];
 
-    Word2Vec *w2v = new Word2Vec(
-            layer1_size,
-            train_file, save_vocab_file, read_vocab_file,
-            debug_mode, binary, cbow, 
-            alpha,
-            output_file,
-            window,
-            sample,
-            hs, negative, num_threads,
-            iter,
-            min_count,
-            classes,
-            wordvector_file);
+    Word2Vec *w2v = new Word2Vec (             
+                train_file, 
+                output_file, 
+                min_count, 
+                debug_mode, 
+                binary, 
+                save_vocab_file, 
+                read_vocab_file, 
+                layer1_size, 
+                window, 
+                sample, 
+                hs, 
+                negative, 
+                num_threads, 
+                iter, 
+                alpha, 
+                classes,
+                cbow, 
+                wordvector_file );
 
     return w2v;
 }
