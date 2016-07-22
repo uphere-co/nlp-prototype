@@ -35,10 +35,26 @@ class Parser(object):
     def backward_W_partial(self, node, param):
         left_factor,W,b, =param.u_score, param.W, param.bias
         grads=np.zeros(param.W_vec.shape)
-        back_propagation_W(node, left_factor,W,b, grads)
+        back_propagation(node, left_factor,W,b, grads, is_W=True)
         return np.sum(grads,0)
     def backward_W(self, phrases, param):
         grad = np.zeros(param.W.shape)
         for node in phrases:
             grad +=self.backward_W_partial(node, param)
+        return grad
+
+    def backward_b_partial(self, node, param):
+        left_factor,W,b, =param.u_score, param.W, param.bias
+        grads=np.zeros(param.bias_vec.shape)
+        back_propagation(node, left_factor,W,b, grads, is_W=False)
+        return np.sum(grads,0)
+    def backward_b(self, phrases, param):
+        grad = np.zeros(param.bias.shape)
+        for node in phrases:
+            grad +=self.backward_b_partial(node, param)
+        return grad
+    def backward_u(self, phrases, param):
+        grad = np.zeros(param.u_score.shape)
+        for node in phrases:
+            grad += node.vec
         return grad

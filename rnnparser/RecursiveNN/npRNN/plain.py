@@ -28,31 +28,24 @@ def scoring(u,hs_pair):
 def productLeftFactors(left_factor, x, W):
     return left_factor.reshape(1,-1).dot(activation_df(x).reshape(-1,1)*W).reshape(-1)
 
-def back_propagation_W(node, left_factor,W,b, grads):
+#back propagation rules for W and b only differs in one term.
+#is_W is for W's back-prop, is_b is for b's back-prop
+def back_propagation(node, left_factor,W,b, grads, is_W):
     if node.iteration is None:
         return
     wordLR = np.concatenate([node.left.vec, node.right.vec])
-    #var is hidden variable to be applied to activation function.
     var = np.add(np.dot(W,wordLR),b)
-    np.outer(left_factor*activation_df(var), wordLR, grads[node.iteration])
+    grad = left_factor*activation_df(var)
+    if is_W:
+        np.outer(grad, wordLR, grads[node.iteration])
+    else:
+        grads[node.iteration]=grad
     #TODO: len(var) is ugly
     half_dim = len(var)
     if (node.left is not None) or (node.right is not None):
-        left_factor = productLeftFactors(left_factor, var, W)
-        back_propagation_W(node.left, left_factor[:half_dim], W,b, grads)
-        back_propagation_W(node.right,left_factor[half_dim:], W,b, grads)
-def back_propagation_b(node, left_factor,W,b, grads):
-    if node.iteration is None:
-        return
-    wordLR = np.concatenate([node.left.vec, node.right.vec])
-    #var is hidden variable to be applied to activation function.
-    var = np.add(np.dot(W,wordLR),b)
-    left_factor *= activation_df(var)
-    grads[node.iteration] = left_factor
-    back_propagation(node.left, left_factor, W,b, grads)
-    back_propagation(node.right,left_factor, W,b, grads)
-def back_propagation_u(node, left_factor,W,b, grads):
-    activation_f(node.vec, grads[0])
+        left_factor= (left_factor*activation_df(var)).reshape(1,-1).dot(W).reshape(-1)
+        back_propagation(node.left, left_factor[:half_dim], W,b, grads, is_W)
+        back_propagation(node.right,left_factor[half_dim:], W,b, grads, is_W)
 
 def rnn_single_path(u,Ws,b, words, merge_left):
     depth = len(merge_left)
