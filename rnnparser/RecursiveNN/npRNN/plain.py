@@ -1,60 +1,36 @@
 import numpy as np
 
-activation=np.tanh
-dActi = lambda x : np.cosh(x)**-2
+activation_f=np.tanh
+activation_df = lambda x : np.cosh(x)**-2
 
 def merge_word(words, merge_left):
-    wordL,wordR=words
     if merge_left:
-        return np.concatenate(words)
-    return np.concatenate(words[::-1])
+        wordL,wordR=words
+    else:
+        wordR,wordL=words
+    return np.concatenate([wordL,wordR])
 def half(arr, left_half):
     assert(len(arr.shape)==1)
     halt_len=arr.shape[0]/2
     if left_half:
         return arr[:halt_len]
     return arr[halt_len:]
-def relativeError(base):
-    return lambda x : x/base - 1
 def activation(W,b,wordLR):
     x=np.add(np.dot(W,wordLR),b)
-    h=np.tanh(x)
+    h=activation_f(x)
     return x,h
+def hidden_vectorized(W,b,wordLRs):
+    xs=np.add(np.dot(W,wordLRs.T),b.reshape(-1,1)).T
+    return xs
+def scoring(u,hs_pair):
+    return hs_pair.dot(u)
+
 def productLeftFactors(left_factor, x, W):
-    return left_factor.reshape(1,-1).dot(dActi(x).reshape(-1,1)*W).reshape(-1)
-def show_summary(error, grad,dW):
-    v=np.sum(grad*dW)
-    grad_wrong=grad.copy()
-    np.random.shuffle(grad_wrong)
-    v_wrong=np.sum(grad_wrong*dW)
-    return np.array([v, error(v), error(v_wrong)])
+    return left_factor.reshape(1,-1).dot(activation_df(x).reshape(-1,1)*W).reshape(-1)
 
-def rnn1_score(u,Ws,b, word1,word2):
-    word12=merge_word([word1,word2], True)
-    x0=np.add(np.dot(Ws[0], word12),b)
-    h0=np.tanh(x0)
-    score= np.dot(u,h0)
-    return score
-
-def rnn2_score(u,Ws,b, words, merge_left):
-    word12=merge_word(words[:2], True)
-    x0,h0=activation(Ws[0],b,word12)
-    wordLR=merge_word([h0,words[2]], merge_left[0])
-    x1,h1=activation(Ws[1],b,wordLR)
-    score = np.dot(u,h1)
-    return score
-
-def rnn3_score(u,Ws,b, words, merge_left):
-    word12=merge_word(words[:2], True)
-    x0,h0=activation(Ws[0],b,word12)
-    wordLR1=merge_word([h0,words[2]], merge_left[0])
-    x1,h1=activation(Ws[1],b,wordLR1)
-    wordLR2=merge_word([h1,words[3]], merge_left[1])
-    x2,h2=activation(Ws[2],b,wordLR2)
-    return np.dot(u,h2)
-
-def rnn(depth, u,Ws,b, words, merge_left):
-    merge_left=[True]+merge_left
+def rnn_single_path(u,Ws,b, words, merge_left):
+    depth = len(merge_left)
+    #merge_left=[True]+merge_left
     xs=np.empty((depth, b.shape[0]))
     hs=np.empty((depth, b.shape[0]))
     wordLRs=np.empty((depth,b.shape[0]*2))
@@ -72,9 +48,38 @@ def rnn(depth, u,Ws,b, words, merge_left):
     grad_Ws2 = [np.empty(Ws[0].shape)]*depth
     left=u
     for i in range(1, depth, 1):
-        grad_Ws[-i] =  np.outer(left*dActi(xs[-i]), wordLRs[-i])
+        grad_Ws[-i] =  np.outer(left*activation_df(xs[-i]), wordLRs[-i])
         left = productLeftFactors(left, xs[-i], Ws[-i])
         left = half(left,merge_left[-i])
-    grad_Ws[-depth] = np.outer(left*dActi(xs[-depth]), wordLRs[-depth])
+    grad_Ws[-depth] = np.outer(left*activation_df(xs[-depth]), wordLRs[-depth])
 
     return score,grad_Ws
+
+
+def update_current_words(words, idxs, loc, new_word, it_word):
+    words[it_word]=new_word
+    idxs[loc:loc+2]=[it_word]
+    return it_word+1
+
+def update_current_word_pairs(words,idxs_word, wpairs,idxs_wpair, loc,new_word, it_wpair ):
+    assert np.all(words[idxs_word[loc]]==new_word)
+    if len(idxs_wpair)==1:
+        idxs_wpair[loc:loc+1] = []
+        it_wpair+=1
+    elif loc == 0:
+        idxs_wpair[loc:loc+2] = [it_wpair]
+        new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
+        wpairs[it_wpair] = new_wpairR
+        it_wpair+=1
+    elif loc == len(idxs_wpair)-1:
+        idxs_wpair[loc-1:loc+1] = [it_wpair]
+        new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
+        wpairs[it_wpair] = new_wpairL
+        it_wpair+=1
+    else:
+        idxs_wpair[loc-1:loc+2] = [it_wpair,it_wpair+1]
+        new_wpairL = merge_word([words[idxs_word[loc-1]],new_word], True)
+        new_wpairR = merge_word([new_word, words[idxs_word[loc+1]]], True)
+        wpairs[it_wpair:it_wpair+2] = [new_wpairL,new_wpairR]
+        it_wpair+=2
+    return it_wpair
