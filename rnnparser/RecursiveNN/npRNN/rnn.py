@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
 import numpy as np
+
 from plain import *
 from param import Param
+from node import RNNnode
+from tree_utils import Node, NodeTree
 
 float_type = np.float32
 int_type = np.int64
@@ -58,3 +62,10 @@ class Parser(object):
         for node in phrases:
             grad += node.vec
         return grad
+    def merge_words(self, words,wordvec, param):
+        merge_history,_, wordvecs=self.forward(wordvec, param)
+        leaf_nodes=[RNNnode(word) for word in words]
+        nodes, _=NodeTree.directed_merge(leaf_nodes,merge_history)
+        RNNnode.set_value_views(nodes, wordvecs)
+        phrases=nodes[len(words):]
+        return phrases

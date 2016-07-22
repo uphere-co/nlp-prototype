@@ -46,3 +46,13 @@ def test_modification():
     param.bias *= 2
     param2.bias = param2.bias*2
     assert np.all(param.bias == param2.bias)
+
+
+def test_repeat():
+    n_words = 15
+    dim=200
+    param=Param.random(n_words, dim)
+    param2=param.repeat(10)
+    assert np.all(param.W==param2.W)
+    assert param.W_vec.shape[0]==14
+    assert param2.W_vec.shape[0]==9
