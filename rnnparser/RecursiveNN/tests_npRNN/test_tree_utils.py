@@ -25,7 +25,10 @@ def test_merge_dicrection():
     sentence='a name of the cat on a hat'
     words=[Node(word) for word in sentence.split()]
     merge_history=[3,1,1,0,2,1,0]
-    composites, _ =NodeTree.directed_merge(words,merge_history)
+    all_nodes, _ =NodeTree.directed_merge(words,merge_history)
+    print all_nodes
+    composites=all_nodes[len(words):]
+    print composites
     left_merged=NodeTree.get_merge_direction(composites)
 
     expected_left_merged = [[True, False, False, True],[True, True, False, True],\
