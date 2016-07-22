@@ -5,8 +5,8 @@ import pandas as pd
 
 from npRNN.tree_utils import Node, NodeTree
 from npRNN.node import RNNnode
-from npRNN.rnn import Params, Parser
-from npRNN.plain import back_propagation
+from npRNN.rnn import Parser
+from npRNN.param import Param
 
 def test_value_views():
     sentence='a name of the cat on a hat'
@@ -37,44 +37,33 @@ def test_value_views():
 
 def test_numercally_back_propagation():
     word2vec=pd.read_pickle('tests_npRNN/voca.pickle')
-    ran=lambda x : np.random.random(x).astype(float_type)-0.5
-    delta= lambda x ,scale: scale*ran(x.shape)
-    float_type=np.float32
     sentence='a name of the cat on a hat'
     input_words=sentence.split()
-    words_vec=word2vec.ix[input_words].values.astype(float_type)
+    words_vec=word2vec.ix[input_words].values.astype(np.float32)
 
+    n_words = len(input_words)
     dim=words_vec.shape[1]
-
-    W=ran((dim,dim*2))
-    bias=ran(dim)
-    u_score=ran(dim)
-    params = Params(W,bias,u_score)
+    param0 = Param.random(n_words, dim)
 
     scale=0.0001
     max_relative_error=0.02
-    dW=delta(W,scale)
-    db=delta(bias,scale)
-    du=delta(u_score,scale)
+    delta = lambda shape, scale : (np.random.random(shape)-0.5)*scale
+    dW=delta((dim,dim*2),scale)
+    db=delta(dim,scale)
+    du=delta(dim,scale)
 
-    n_words = len(input_words)
-    rnn=Parser(params, np.tanh, lambda x : np.cosh(x)**-2)
-    merge_history,scores0, wordvecs=rnn.forward(words_vec)
-    Ws = np.array([W.copy() for _ in range(n_words-1)])
-    Ws += dW
-    _,scores1, _ =rnn.forward(words_vec, Ws)
+    rnn=Parser(np.tanh, lambda x : np.cosh(x)**-2)
+    merge_history,scores0, wordvecs=rnn.forward(words_vec, param0)
+    param1 = param0.copy()
+    param1.W += dW
+    _,scores1, _ =rnn.forward(words_vec, param1)
     ds_exact = np.sum(scores1-scores0)
 
     leaf_nodes=[RNNnode(word) for word in input_words]
     nodes, _=NodeTree.directed_merge(leaf_nodes,merge_history)
     RNNnode.set_value_views(nodes, wordvecs)
     phrases=nodes[n_words-1:]
-    grad = np.zeros(W.shape)
-    for node in phrases:
-        gradWs = np.zeros((n_words-1,)+W.shape)
-        back_propagation(node, params.u_score,params.W,params.bias, gradWs)
-        grad += np.sum(gradWs,0)
-
-    ds= np.sum(grad*dW)
+    gradW =rnn.backward_W(phrases, param0)
+    ds= np.sum(gradW*dW)
 
     np.testing.assert_allclose(ds,ds_exact, rtol=scale*100)

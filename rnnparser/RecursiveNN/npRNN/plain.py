@@ -28,7 +28,7 @@ def scoring(u,hs_pair):
 def productLeftFactors(left_factor, x, W):
     return left_factor.reshape(1,-1).dot(activation_df(x).reshape(-1,1)*W).reshape(-1)
 
-def back_propagation(node, left_factor,W,b, grads):
+def back_propagation_W(node, left_factor,W,b, grads):
     if node.iteration is None:
         return
     wordLR = np.concatenate([node.left.vec, node.right.vec])
@@ -39,8 +39,20 @@ def back_propagation(node, left_factor,W,b, grads):
     half_dim = len(var)
     if (node.left is not None) or (node.right is not None):
         left_factor = productLeftFactors(left_factor, var, W)
-        back_propagation(node.left, left_factor[:half_dim], W,b, grads)
-        back_propagation(node.right,left_factor[half_dim:], W,b, grads)
+        back_propagation_W(node.left, left_factor[:half_dim], W,b, grads)
+        back_propagation_W(node.right,left_factor[half_dim:], W,b, grads)
+def back_propagation_b(node, left_factor,W,b, grads):
+    if node.iteration is None:
+        return
+    wordLR = np.concatenate([node.left.vec, node.right.vec])
+    #var is hidden variable to be applied to activation function.
+    var = np.add(np.dot(W,wordLR),b)
+    left_factor *= activation_df(var)
+    grads[node.iteration] = left_factor
+    back_propagation(node.left, left_factor, W,b, grads)
+    back_propagation(node.right,left_factor, W,b, grads)
+def back_propagation_u(node, left_factor,W,b, grads):
+    activation_f(node.vec, grads[0])
 
 def rnn_single_path(u,Ws,b, words, merge_left):
     depth = len(merge_left)

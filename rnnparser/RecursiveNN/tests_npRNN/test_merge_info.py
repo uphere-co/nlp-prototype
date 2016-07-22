@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from npRNN.plain import *
-from npRNN.testing_helper import update_current_words, update_current_word_pairs
 
 def test_toymodel():
     def phrase(word_pair):
