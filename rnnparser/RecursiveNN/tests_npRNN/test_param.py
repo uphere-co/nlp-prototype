@@ -6,7 +6,7 @@ def test_random_parameter():
     n_words = 15
     n_phrases = n_words-1
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim, n_words)
     assert (param.W.shape ==(dim, dim*2))
     assert (param.W_vec.shape ==(n_phrases, dim, dim*2))
 
@@ -38,7 +38,7 @@ def test_vectorized_parameter():
 def test_modification():
     n_words = 15
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim, n_words)
     param2=param.copy()
     param2.W += 1
     param.W_vec += 1
@@ -51,8 +51,30 @@ def test_modification():
 def test_repeat():
     n_words = 15
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim, n_words)
     param2=param.repeat(10)
     assert np.all(param.W==param2.W)
     assert param.W_vec.shape[0]==14
     assert param2.W_vec.shape[0]==9
+
+def test_normalized_ran_param():
+    n_words = 15
+    dim=200
+    param=Param.random(dim, n_words)
+    assert np.abs(param.u_score).sum()==1
+
+def test_math_ops():
+    n_words = 15
+    dim=200
+    param =Param.random(dim, n_words)
+    param2=Param.random(dim, n_words)
+    param3=param.copy()
+    param3+= param2
+    assert np.all(param3.W==(param.W+param2.W))
+    assert np.all(param3.bias==(param.bias+param2.bias))
+    assert np.all(param3.u_score==(param.u_score+param2.u_score))
+
+    param =Param.random(dim, n_words)
+    param4=param.copy()
+    param4 *= 0.1
+    assert np.all(param.W*0.1==param4.W)
