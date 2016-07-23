@@ -20,7 +20,10 @@ class Param(object):
         W=ran((dim,dim*2))
         bias=ran(dim)
         u_score=norm(ran(dim))
-        return Param(W,bias,u_score, n_words)
+        return cls(W,bias,u_score, n_words)
+    @classmethod
+    def from_arr(cls, arr):
+        return cls(arr[:-2].T, arr[-2], arr[-1])
 
     def __init__(self, W,bias,u_score, n_words=None):
         self.bias = bias
@@ -39,8 +42,11 @@ class Param(object):
     def copy(self):
         return Param(self.W.copy(), self.bias.copy(), self.u_score.copy())
     def zero(self):
-        return Param(np.zeros(self._W.shape),np.zeros(self._bias.shape), np.zeros(self._u_score.shape))
+        return Param(np.zeros(self.W.shape),np.zeros(self.bias.shape), np.zeros(self.u_score.shape))
     def iter_params(self):
         return [self.W, self.bias, self.u_score]
     def repeat(self,n_words):
         return Param(self.W,self.bias,self.u_score, n_words)
+    def to_arr(self):
+        arr = np.vstack([self.W.T, self.bias, self.u_score])
+        return arr

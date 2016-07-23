@@ -75,3 +75,11 @@ def test_math_ops():
     param4=param.copy()
     param4 *= 0.1
     assert np.all(param.W*0.1==param4.W)
+
+def test_serialize_to_numpy_array():
+    param=Param.random(10)
+    arr = param.to_arr()
+    param2 = Param.from_arr(arr)
+    for x,y in zip(param.iter_params(), param2.iter_params()):
+        print x.shape, y.shape
+        assert np.all(x==y)
