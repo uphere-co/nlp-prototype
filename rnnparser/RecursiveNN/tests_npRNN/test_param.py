@@ -6,11 +6,10 @@ def test_random_parameter():
     n_words = 15
     n_phrases = n_words-1
     dim=200
-    param=Param.random(dim, n_words)
+    param=Param.random(dim)
     assert (param.W.shape ==(dim, dim*2))
-    assert (param.W_vec.shape ==(n_phrases, dim, dim*2))
 
-def test_vectorized_parameter():
+def _vectorized_parameter():
     ran=lambda x : np.random.random(x).astype(np.float32)-0.5
     n_words = 5
     n_phrases = n_words-1
@@ -32,7 +31,6 @@ def test_vectorized_parameter():
     param.W=10
     assert np.all(param2.W!=param.W)
 
-    assert param.bias_vec.shape == (n_phrases,dim)
     assert param.bias.shape == (dim,)
 
 def test_modification():
@@ -41,14 +39,13 @@ def test_modification():
     param=Param.random(dim, n_words)
     param2=param.copy()
     param2.W += 1
-    param.W_vec += 1
-    assert np.all(param.W == param2.W)
+    assert np.all(param.W +1 == param2.W)
     param.bias *= 2
     param2.bias = param2.bias*2
     assert np.all(param.bias == param2.bias)
 
 
-def test_repeat():
+def _repeat():
     n_words = 15
     dim=200
     param=Param.random(dim, n_words)
