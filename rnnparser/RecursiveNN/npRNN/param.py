@@ -45,8 +45,6 @@ class Param(object):
         return Param(np.zeros(self.W.shape),np.zeros(self.bias.shape), np.zeros(self.u_score.shape))
     def iter_params(self):
         return [self.W, self.bias, self.u_score]
-    def repeat(self,n_words):
-        return Param(self.W,self.bias,self.u_score, n_words)
     def to_arr(self):
         arr = np.vstack([self.W.T, self.bias, self.u_score])
         return arr
