@@ -15,12 +15,12 @@ class Param(object):
         it should be in first elements of vectors.
     '''
     @classmethod
-    def random(cls, dim,n_words=2, ran=lambda x : (np.random.random(x).astype(np.float32)-0.5),
+    def random(cls, dim, ran=lambda x : (np.random.random(x).astype(np.float32)-0.5),
                norm = normalize_L1):
         W=ran((dim,dim*2))
         bias=ran(dim)
         u_score=norm(ran(dim))
-        return cls(W,bias,u_score, n_words)
+        return cls(W,bias,u_score)
     @classmethod
     def from_arr(cls, arr):
         return cls(arr[:-2].T, arr[-2], arr[-1])

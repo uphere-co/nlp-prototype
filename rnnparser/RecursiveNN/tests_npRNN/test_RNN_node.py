@@ -46,13 +46,13 @@ def test_numercally_back_propagation():
 
     scale=0.0001
     max_relative_error=0.03
-    delta = Param.random(dim, n_words)
+    delta = Param.random(dim)
     delta.W*=scale
     delta.bias*= scale*dim
     delta.u_score*= scale*dim
 
     rnn=Parser(np.tanh, lambda x : np.cosh(x)**-2)
-    param0 = Param.random(dim, n_words)
+    param0 = Param.random(dim)
     merge_history,scores0, wordvecs=rnn.forward(words_vec, param0)
     leaf_nodes=[RNNnode(word) for word in input_words]
     nodes, _=NodeTree.directed_merge(leaf_nodes,merge_history)
