@@ -6,11 +6,10 @@ def test_random_parameter():
     n_words = 15
     n_phrases = n_words-1
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim)
     assert (param.W.shape ==(dim, dim*2))
-    assert (param.W_vec.shape ==(n_phrases, dim, dim*2))
 
-def test_vectorized_parameter():
+def _vectorized_parameter():
     ran=lambda x : np.random.random(x).astype(np.float32)-0.5
     n_words = 5
     n_phrases = n_words-1
@@ -32,27 +31,56 @@ def test_vectorized_parameter():
     param.W=10
     assert np.all(param2.W!=param.W)
 
-    assert param.bias_vec.shape == (n_phrases,dim)
     assert param.bias.shape == (dim,)
 
 def test_modification():
     n_words = 15
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim)
     param2=param.copy()
     param2.W += 1
-    param.W_vec += 1
-    assert np.all(param.W == param2.W)
+    assert np.all(param.W +1 == param2.W)
     param.bias *= 2
     param2.bias = param2.bias*2
     assert np.all(param.bias == param2.bias)
 
 
-def test_repeat():
+def _repeat():
     n_words = 15
     dim=200
-    param=Param.random(n_words, dim)
+    param=Param.random(dim)
     param2=param.repeat(10)
     assert np.all(param.W==param2.W)
     assert param.W_vec.shape[0]==14
     assert param2.W_vec.shape[0]==9
+
+def test_normalized_ran_param():
+    n_words = 15
+    dim=200
+    param=Param.random(dim)
+    assert np.abs(param.u_score).sum()==1
+
+def test_math_ops():
+    n_words = 15
+    dim=200
+    param =Param.random(dim)
+    param2=Param.random(dim)
+    param3=param.copy()
+    param3+= param2
+    assert np.all(param3.W==(param.W+param2.W))
+    assert np.all(param3.bias==(param.bias+param2.bias))
+    assert np.all(param3.u_score==(param.u_score+param2.u_score))
+
+    param =Param.random(dim)
+    param4=param.copy()
+    param4 *= 0.1
+    assert np.all(param.W*0.1==param4.W)
+
+def test_serialize_to_numpy_array():
+    param=Param.random(10)
+    arr = param.to_arr()
+    param2 = Param.from_arr(arr)
+    for x,y in zip(param.iter_params(), param2.iter_params()):
+        np.testing.assert_allclose(x,y)
+        #TODO: manage type info properly and let it is equal exactly.Z
+        #assert np.all(x==y)
