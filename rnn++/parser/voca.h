@@ -12,6 +12,7 @@ namespace wordrep{
 using float_type = float;
 
 struct Word{
+   //calling c_str() is necessary to truncate zero-filled end regions of fixed length string.
    Word(std::string word) : val{word.c_str()}{}
    bool operator<(const Word &word)  const { return this->val < word.val;}
    std::string val;
@@ -50,9 +51,11 @@ private:
 
 class WordVec{
 public:
-   //using value_type = std::vector<float_type>;
-   WordVec(std::vector<float_type> vec) : val{vec}{}
-   std::vector<float_type> val;
+   using value_type = std::vector<float_type>;
+   WordVec(value_type vec) : val{vec}{}
+   value_type getEmptyWordVec(int dim) const {return WordVec{value_type(dim)}}
+
+   value_type val;
 };
 
 class VocaRep{
@@ -60,7 +63,7 @@ public:
    VocaRep(std::vector<float_type> raw_data, int voca_size, int word_dim)
     : val{raw_data}, voca_size{voca_size}, word_dim{word_dim} {}
    WordVec getWordVec(int idx) const{
-      std::vector<float_type> vec(100);
+      WordVec::value_type vec(100);
       auto beg = std::cbegin(val) + idx*word_dim;
       std::copy(beg, beg+word_dim, std::begin(vec));
       return WordVec{vec};
