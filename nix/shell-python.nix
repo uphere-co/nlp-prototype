@@ -26,11 +26,13 @@ stdenv.mkDerivation {
                    ++ 
                  [
                    wget jdk zip unzip
-                   cmake clang_38 clang-analyzer
-                   hdf5-cpp zeromq
+                   cmake pkgconfig clang_38 clang-analyzer
+                   hdf5 hdf5-cpp zeromq
                    tbb openblas  
                  ];
   shellHook = ''
      EDITOR=vim
+     CC=clang
+     CXX=clang++
   '';
 }
