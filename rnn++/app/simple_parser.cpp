@@ -17,12 +17,12 @@ int main(){
 
    H5file file{file_name};
    Voca voca{file.getRawData<char>(voca_name), voca_max_word_len};
-   auto word2idx = voca.indexing();
+   VocaIndex word2idx = voca.indexing();
    for(size_t i=0; i<voca.size(); ++i){
       assert(word2idx.getIndex(voca.getWord(i)) == i);
    }
    for(size_t i=0; i<voca.size(); ++i){
-      std::cout << voca.getWord(i) <<std::endl;
+      std::cout << voca.getWord(i).val <<std::endl;
    }
 
    return 0;

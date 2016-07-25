@@ -9,23 +9,28 @@ namespace rnn{
 namespace parser{
 namespace wordrep{
 
-using word2idx_type = std::map<std::string, size_t>;
+struct Word{
+   Word(std::string word) : val{word.c_str()}{}
+   bool operator<(const Word &word)  const { return this->val < word.val;}
+   std::string val;
+};
 
+using word2idx_type = std::map<Word, size_t>;
 class VocaIndex{
 public:
    VocaIndex(word2idx_type const &word2idxs) : val{word2idxs}{}
-   size_t getIndex(std::string word) const {return val.find(word)->second;}
+   size_t getIndex(Word word) const {return val.find(word)->second;}
 private:
-   std::map<std::string, size_t> val;
+   std::map<Word, size_t> val;
 };
 
 class Voca{
 public:
    Voca(std::vector<char> raw_data, int max_word_len)
    : val{raw_data}, max_word_len{max_word_len}, voca_size{raw_data.size()/max_word_len}{}
-   std::string getWord(int idx) const {
+   Word getWord(int idx) const {
       std::string word{val.data()+idx*max_word_len, 74};
-      return std::string{word.c_str()};
+      return Word{word};
    }
    VocaIndex indexing() const{
       word2idx_type word_to_idx;
