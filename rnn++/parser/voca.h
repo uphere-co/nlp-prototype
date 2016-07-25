@@ -9,6 +9,8 @@ namespace rnn{
 namespace parser{
 namespace wordrep{
 
+using float_type = float;
+
 struct Word{
    Word(std::string word) : val{word.c_str()}{}
    bool operator<(const Word &word)  const { return this->val < word.val;}
@@ -16,9 +18,9 @@ struct Word{
 };
 
 using word2idx_type = std::map<Word, size_t>;
-class VocaIndex{
+class VocaIndexMap{
 public:
-   VocaIndex(word2idx_type const &word2idxs) : val{word2idxs}{}
+   VocaIndexMap(word2idx_type const &word2idxs) : val{word2idxs}{}
    size_t getIndex(Word word) const {return val.find(word)->second;}
 private:
    std::map<Word, size_t> val;
@@ -32,12 +34,12 @@ public:
       std::string word{val.data()+idx*max_word_len, 74};
       return Word{word};
    }
-   VocaIndex indexing() const{
+   VocaIndexMap indexing() const{
       word2idx_type word_to_idx;
       for(size_t i=0; i<this->size(); ++i){
          word_to_idx[this->getWord(i)]=i;
       }
-      return VocaIndex{word_to_idx};
+      return VocaIndexMap{word_to_idx};
    }
    size_t size() const {return voca_size;}
 private:
@@ -45,6 +47,30 @@ private:
    int max_word_len;
    size_t voca_size;
 };
+
+class WordVec{
+public:
+   //using value_type = std::vector<float_type>;
+   WordVec(std::vector<float_type> vec) : val{vec}{}
+   std::vector<float_type> val;
+};
+
+class VocaRep{
+public:
+   VocaRep(std::vector<float_type> raw_data, int voca_size, int word_dim)
+    : val{raw_data}, voca_size{voca_size}, word_dim{word_dim} {}
+   WordVec getWordVec(int idx) const{
+      std::vector<float_type> vec(100);
+      auto beg = std::cbegin(val) + idx*word_dim;
+      std::copy(beg, beg+word_dim, std::begin(vec));
+      return WordVec{vec};
+   }
+//private:
+   std::vector<float_type> val;
+   int voca_size;
+   int word_dim;
+};
+
 
 }//namespace rnn::wordrep
 }//namespace rnn::parser

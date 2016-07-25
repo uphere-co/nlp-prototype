@@ -34,7 +34,7 @@ struct H5file {
    std::vector<T_RAW_ELM> getRawData(H5name dataset){
       H5dataset data{val, dataset};
       //TODO: should use getStorageSize instead of getInMemDataSize?
-      std::vector<T_RAW_ELM> data_raw(data.val.getInMemDataSize());
+      std::vector<T_RAW_ELM> data_raw(data.val.getInMemDataSize()/sizeof(T_RAW_ELM));
       std::cerr << "Read "<< dataset.val << ". Memory size:  " << data_raw.size() << std::endl;
       data.val.read(data_raw.data(), data.val.getDataType());
       return data_raw;
