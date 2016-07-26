@@ -1,19 +1,26 @@
 #ifndef RNN_PARSER_VOCA
 #define RNN_PARSER_VOCA
 
+#include<ostream>
 #include<string>
 #include<vector>
 #include<map>
+
+#include<gsl.h>
 
 namespace rnn{
 namespace parser{
 namespace wordrep{
 
 struct Word{
-   Word(std::string word) : val{word.c_str()}{}
-   bool operator<(const Word &word)  const { return this->val < word.val;}
-   std::string val;
+   Word(gsl::cstring_span<> word) : span{word}{}
+   bool operator<(const Word &word)  const { return this->span < word.span;}
+   gsl::cstring_span<> span;
 };
+std::ostream& operator<<(std::ostream& os, const Word& obj) {
+   os<<gsl::to_string(obj.span).c_str();
+   return os;
+}
 
 using word2idx_type = std::map<Word, size_t>;
 class VocaIndex{
@@ -27,9 +34,11 @@ private:
 class Voca{
 public:
    Voca(std::vector<char> raw_data, int max_word_len)
-   : val{raw_data}, max_word_len{max_word_len}, voca_size{raw_data.size()/max_word_len}{}
+   : _val{raw_data}, span{_val}, max_word_len{max_word_len},
+     voca_size{raw_data.size()/max_word_len}{}
    Word getWord(int idx) const {
-      std::string word{val.data()+idx*max_word_len, 74};
+      // std::string word{_val.data()+idx*max_word_len, 74};
+      gsl::cstring_span<> word = span.subspan(idx*max_word_len, max_word_len);
       return Word{word};
    }
    VocaIndex indexing() const{
@@ -41,7 +50,8 @@ public:
    }
    size_t size() const {return voca_size;}
 private:
-   std::vector<char> val;
+   std::vector<char> _val;
+   gsl::cstring_span<> span;
    int max_word_len;
    size_t voca_size;
 };

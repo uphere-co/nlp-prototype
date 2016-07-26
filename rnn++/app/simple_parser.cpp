@@ -22,7 +22,7 @@ int main(){
       assert(word2idx.getIndex(voca.getWord(i)) == i);
    }
    for(size_t i=0; i<voca.size(); ++i){
-      std::cout << voca.getWord(i).val <<std::endl;
+      std::cout << voca.getWord(i) <<std::endl;
    }
 
    return 0;
