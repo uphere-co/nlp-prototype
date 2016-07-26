@@ -27,12 +27,13 @@ main_seq = do
   return ()
 
 fileprocess f = do
-  let mkhead f = shell ("sleep 1 && head " ++ f ++ " | wc -l ")
+  let classpath = "/data/groups/uphere/corenlp/stanford-corenlp-full-2015-12-09/stanford-corenlp-3.6.0.jar:/data/groups/uphere/corenlp/stanford-corenlp-full-2015-12-09/slf4j-simple.jar:/data/groups/uphere/corenlp/stanford-corenlp-full-2015-12-09/slf4j-api.jar"
+  let mkhead f = shell ("cat " ++ f ++ " | java -cp " ++ classpath ++ " edu.stanford.nlp.process.PTBTokenizer -preserveLines > " ++ f ++ ".ptb" )
   str <- readCreateProcess (mkhead f) ""
   print str
   
 main = do
-  let proc = shell "ls *.hs"
+  let proc = shell "ls ~/wiki/enwiki-20160501-pages-articles.xml.text.*"
   result <- readCreateProcess proc ""
   let files = words result
 
