@@ -1,3 +1,6 @@
+import Control.Monad.IO.Class (liftIO)
+
+import Orc
 import System.IO
 import System.Process
 
@@ -17,12 +20,38 @@ main1 = do
   print (words result)
   return ()
 
-main :: IO ()
+main_seq :: IO ()
+main_seq = do
+  let proc = shell "ls *.hs"
+  result <- readCreateProcess proc ""
+  let files = words result
+  let mkhead f = shell ("sleep 1 && head " ++ f)
+  strs <- mapM (\f -> readCreateProcess (mkhead f) "") files
+  mapM_ print strs
+  return ()
+
+
+
+{- 
+printOrc :: Show a => Orc a -> IO ()
+printOrc p = runOrc $ do
+  x <- p
+  liftIO $ putStrLn ("Ans = " ++ show x)
+-}
+
+-- f $ x = f x  
+ 
 main = do
   let proc = shell "ls *.hs"
   result <- readCreateProcess proc ""
   let files = words result
-  let mkhead f = shell ("head " ++ f)
-  strs <- mapM (\f -> readCreateProcess (mkhead f) "") files
-  mapM_ print strs
-  return ()
+  let mkhead f = shell ("sleep 1 && head " ++ f)
+
+  printOrc $ do
+    x1 <- liftIO (readCreateProcess (mkhead (files !! 0)) "")
+          <|> liftIO (readCreateProcess (mkhead (files !! 1)) "")
+          <|> liftIO (readCreateProcess (mkhead (files !! 2)) "")
+
+    y <- return "b"
+    return (x1,y)
+  
