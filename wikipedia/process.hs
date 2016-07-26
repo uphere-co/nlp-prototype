@@ -9,14 +9,10 @@ main1 = do
   -- callCommand "ls" {- block comment -}
 
   let proc = shell "ls"
-
   -- output : (mb_stdin_hdl, mb_stdout_hdl, mb_stderr_hdl, ph)
   (_, Just hout, _ ,_ ) <- createProcess proc { std_out = CreatePipe } 
 
-  -- putStrLn "hello" = hPutStrLn stdout "hello"
-
   result <- hGetContents hout
-
   print (words result)
   return ()
 
@@ -30,20 +26,8 @@ main_seq = do
   mapM_ print strs
   return ()
 
-
-
-{- 
-printOrc :: Show a => Orc a -> IO ()
-printOrc p = runOrc $ do
-  x <- p
-  liftIO $ putStrLn ("Ans = " ++ show x)
--}
-
--- f $ x = f x  
-
-
 fileprocess f = do
-  let mkhead f = shell ("sleep 1 && head " ++ f)
+  let mkhead f = shell ("sleep 1 && head " ++ f ++ " | wc -l ")
   str <- readCreateProcess (mkhead f) ""
   print str
   
