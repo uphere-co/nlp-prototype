@@ -40,18 +40,27 @@ printOrc p = runOrc $ do
 -}
 
 -- f $ x = f x  
- 
+
+
+fileprocess f = do
+  let mkhead f = shell ("sleep 1 && head " ++ f)
+  str <- readCreateProcess (mkhead f) ""
+  print str
+  
 main = do
   let proc = shell "ls *.hs"
   result <- readCreateProcess proc ""
   let files = words result
-  let mkhead f = shell ("sleep 1 && head " ++ f)
 
   printOrc $ do
-    x1 <- liftIO (readCreateProcess (mkhead (files !! 0)) "")
-          <|> liftIO (readCreateProcess (mkhead (files !! 1)) "")
-          <|> liftIO (readCreateProcess (mkhead (files !! 2)) "")
-
-    y <- return "b"
-    return (x1,y)
+    let actions = map (liftIO . fileprocess) files
+    -- foldr (+) 0 [1,2,3,4]
+    --   = (1+(2+(3+(4+0)))) 
+    -- foldr1 (+) [1,2,3,4]
+    --   = (1+(2+(3+4)))
+    -- foldr1 (<|>) [a1,a2,a3,a4]
+    --   = (a1 <|> (a2 <|> (a3 <|> a4)))    
+    foldr1 (<|>) actions 
+    return ()
   
+
