@@ -7,3 +7,10 @@ python/.ipynb_checkpoints/
 python/parse_arxiv_meta.py
 .cache
 .vscode
+
+build
+boilerplate
+#Data files
+*.h5
+*.json
+
