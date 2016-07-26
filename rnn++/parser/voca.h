@@ -5,6 +5,7 @@
 #include<string>
 #include<vector>
 #include<map>
+#include<algorithm>
 
 #include<gsl.h>
 
@@ -18,7 +19,7 @@ struct Word{
     gsl::cstring_span<> span;
 };
 std::ostream& operator<<(std::ostream& os, const Word& obj) {
-    os<<gsl::to_string(obj.span).c_str();
+    os<<gsl::to_string(obj.span);
     return os;
 }
 
@@ -37,8 +38,9 @@ public:
     : _val{raw_data}, span{_val}, max_word_len{max_word_len},
     voca_size{raw_data.size()/max_word_len}{}
     Word getWord(int idx) const {
-        // std::string word{_val.data()+idx*max_word_len, 74};
-        gsl::cstring_span<> word = span.subspan(idx*max_word_len, max_word_len);
+        auto beg=std::cbegin(_val)+idx*max_word_len;
+        auto end=std::find(beg, beg+max_word_len, '\0');
+        gsl::cstring_span<> word = span.subspan(idx*max_word_len, end-beg);
         return Word{word};
     }
     VocaIndex indexing() const{
