@@ -17,8 +17,12 @@ struct H5dataset{
     H5dataset(H5::H5File const & file, H5name dataset)
     : val{file.openDataSet(dataset.val)}, name{dataset.val} {}
     ~H5dataset(){
-        std::cerr << "Close dataset " << name.val << "\n";
-        val.close();
+        try {
+            val.close();
+            std::cerr << "Close dataset " << name.val << "\n";
+        } catch (H5::Exception ex) {
+            std::cerr << ex.getCDetailMsg() << std::endl;
+        }
     }
     H5::DataSet val;
     H5name name;
@@ -27,8 +31,12 @@ struct H5dataset{
 struct H5file {
     H5file(H5name path): val{path.val, H5F_ACC_RDONLY}, name{path.val} {}
     ~H5file(){
-        std::cerr << "Close H5File " << name.val << "\n";
-        val.close();
+        try {
+            val.close();
+            std::cerr << "Close H5File " << name.val << "\n";
+        } catch (H5::Exception ex) {
+            std::cerr << ex.getCDetailMsg() << std::endl;
+        }
     };
     template<typename T_RAW_ELM>
     std::vector<T_RAW_ELM> getRawData(H5name dataset){
