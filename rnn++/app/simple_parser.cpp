@@ -36,10 +36,10 @@ int main(){
             std::cout << voca.getWord(i) <<std::endl;
         }
 
-        VocaRep voca_vecs{file.getRawData<float_type>(w2vmodel_name), voca_size,word_dim};
+        WordBlock voca_vecs{file.getRawData<rnn_t::float_t>(w2vmodel_name), voca_size,word_dim};
         int j=0;
-        for(auto it=std::cbegin(voca_vecs.val); it!=std::cend(voca_vecs.val); ++it){
-           std::cerr << *it << "\t"<< voca_vecs.val[j] << " " << *(it+100)<< " " << voca_vecs.val[j+100] << " "<<std::endl;
+        for(auto it=std::cbegin(voca_vecs.span); it!=std::cend(voca_vecs.span); ++it){
+           std::cerr << *it << "\t"<< voca_vecs.span[j] << " " << *(it+100)<< " " << voca_vecs.span[j+100] << " "<<std::endl;
            ++j;
            if(j>10) break;
         }

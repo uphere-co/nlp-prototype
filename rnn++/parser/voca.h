@@ -20,8 +20,6 @@ namespace wordrep{
 using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
 
-using float_type = float;
-
 struct Word{
     Word(gsl::cstring_span<> word) : span{word}{}
     bool operator<(const Word &word)  const { return this->span < word.span;}
@@ -71,26 +69,25 @@ private:
 
 class WordVec{
 public:
-   using value_type = std::vector<float_type>;
-   WordVec(value_type vec) : val{vec}{}
-
-   value_type val;
+    WordVec(gsl::span<const float_t> vec) : val{vec}{}
+    gsl::span<const float_t> val;
 };
 
-class VocaRep{
+class WordBlock{
 public:
-   VocaRep(std::vector<float_type> raw_data, int voca_size, int word_dim)
-    : val{raw_data}, voca_size{voca_size}, word_dim{word_dim} {}
-   WordVec getWordVec(int idx) const{
-      WordVec::value_type vec(100);
-      auto beg = std::cbegin(val) + idx*word_dim;
-      std::copy(beg, beg+word_dim, std::begin(vec));
-      return WordVec{vec};
+    typedef std::vector<float_t>     data_t;
+    typedef gsl::span<const float_t> span_t;
+    WordBlock(data_t raw_data, int voca_size, int word_dim)
+    : _val{raw_data},span{_val}, voca_size{voca_size}, word_dim{word_dim} {}
+    WordVec getWordVec(int idx) const{
+        span_t vec = span.subspan(idx*word_dim, word_dim);
+        return WordVec{vec};
    }
 //private:
-   std::vector<float_type> val;
-   int voca_size;
-   int word_dim;
+    data_t _val;
+    span_t span;
+    int voca_size;
+    int word_dim;
 };
 
 
