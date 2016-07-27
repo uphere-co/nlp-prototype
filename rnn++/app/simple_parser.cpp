@@ -45,7 +45,8 @@ int main(){
     try {
         H5file file{file_name};
         Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
-        WordBlock voca_vecs{file.getRawData<rnn_t::float_t>(w2vmodel_name), voca_size,word_dim};
+        WordBlock voca_vecs{file.getRawData<rnn_t::float_t>(w2vmodel_name), word_dim};
+        std::cerr << voca_vecs.size() << " " << voca_size <<std::endl;
         VocaIndexMap word2idx = voca.indexing();
 
         test_voca_index(voca, word2idx);
@@ -64,4 +65,3 @@ int main(){
 
     return 0;
 }
-//
