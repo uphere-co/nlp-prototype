@@ -16,6 +16,9 @@ message(${CMAKE_CXX_FLAGS})
 find_package (Threads)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
+include_directories(${HOME}/repo/srcc/GSL/include)
 add_executable(app app/simple_parser)
-target_link_libraries(app hdf5_cpp)
+#https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
+target_link_libraries(app hdf5_cpp hdf5_hl_cpp)
+
+add_executable(gsl boilerplate/gsl)
