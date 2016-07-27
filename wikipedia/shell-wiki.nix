@@ -10,7 +10,7 @@ in
 
 let 
     hsenv = haskellPackages.ghcWithPackages (p: with p; [
-              attoparsec orc
+              attoparsec orc split
             ]);
 
 in stdenv.mkDerivation {
