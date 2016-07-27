@@ -8,6 +8,10 @@ python/parse_arxiv_meta.py
 .cache
 .vscode
 
+#Haskell:
+*.hi
+*.o
+
 build
 boilerplate
 #Data files
