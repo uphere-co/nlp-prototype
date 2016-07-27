@@ -4,6 +4,7 @@
 #include"utils/hdf5.h"
 #include"utils/math.h"
 #include"parser/voca.h"
+#include"parser/wordvec.h"
 
 namespace rnn{
 namespace config{
