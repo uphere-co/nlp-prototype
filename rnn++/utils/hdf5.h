@@ -5,7 +5,7 @@
 
 #include<H5Cpp.h>
 
-namespace rnn{
+namespace util{
 namespace io{
 
 struct H5name{
@@ -51,7 +51,7 @@ struct H5file {
     H5name name;
 };
 
-}//namespace rnn::io
-}//namespace rnn
+}//namespace util::io
+}//namespace util
 
 #endif //RNN_IO_HDF5
