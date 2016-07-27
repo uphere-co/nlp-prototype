@@ -1,6 +1,4 @@
-#ifndef RNN_PARSER_VOCA
-#define RNN_PARSER_VOCA
-
+#pragma once
 #include<ostream>
 #include<string>
 #include<vector>
@@ -77,6 +75,3 @@ private:
 }//namespace rnn::wordrep
 }//namespace rnn::parser
 }//namespace rnn
-
-
-#endif //RNN_PARSER_VOCA

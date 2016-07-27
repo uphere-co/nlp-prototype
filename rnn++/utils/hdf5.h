@@ -1,6 +1,4 @@
-#ifndef RNN_IO_HDF5
-#define RNN_IO_HDF5
-
+#pragma once
 #include<vector>
 
 #include<H5Cpp.h>
@@ -53,5 +51,3 @@ struct H5file {
 
 }//namespace util::io
 }//namespace util
-
-#endif //RNN_IO_HDF5
