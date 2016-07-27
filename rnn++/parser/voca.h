@@ -5,9 +5,11 @@
 #include<string>
 #include<vector>
 #include<map>
-#include<algorithm>
 
 #include<gsl.h>
+
+#include"utils/string.h"
+#include"utils/math.h"
 
 namespace rnn{
 namespace type{
@@ -32,9 +34,18 @@ std::ostream& operator<<(std::ostream& os, const Word& obj) {
 
 class VocaIndexMap{
 public:
-    typedef std::map<Word, size_t> data_t;
+    typedef size_t idx_t;
+    typedef std::map<Word, idx_t> data_t;
     VocaIndexMap(data_t const &word2idxs) : val{word2idxs}{}
     auto getIndex(Word word) const {return val.find(word)->second;}
+    auto getIndex(std::string sentence) const {
+        auto tokens = util::string::split(sentence);
+        std::vector<idx_t> idxs;
+        for(auto const &word : tokens){
+            idxs.push_back(this->getIndex(Word{word}));
+        }
+        return idxs;
+    }
 private:
     const data_t val;
 };
@@ -77,17 +88,30 @@ class WordBlock{
 public:
     typedef std::vector<float_t>     data_t;
     typedef gsl::span<const float_t> span_t;
-    WordBlock(data_t raw_data, int voca_size, int word_dim)
+    typedef data_t::size_type idx_t;
+    WordBlock(data_t raw_data, idx_t voca_size, int word_dim)
     : _val{raw_data},span{_val}, voca_size{voca_size}, word_dim{word_dim} {}
-    WordVec getWordVec(int idx) const{
+    WordVec getWordVec(idx_t idx) const{
         span_t vec = span.subspan(idx*word_dim, word_dim);
         return WordVec{vec};
+    }
+    WordBlock getWordVec(gsl::span<idx_t> idxs) const{
+        WordBlock new_block{data_t{}, voca_size, word_dim};
+        for(auto idx : idxs){
+            span_t vec = span.subspan(idx*word_dim, word_dim);
+            new_block.push_back(vec);
+        }
+        return WordBlock{new_block._val, voca_size, word_dim};
    }
+   void push_back(span_t word_vec){
+       std::copy_n(std::cbegin(word_vec), word_dim, std::back_inserter(this->_val));
+   }
+
 //private:
     data_t _val;
     span_t span;
-    int voca_size;
-    int word_dim;
+    idx_t voca_size;
+    const int word_dim;
 };
 
 

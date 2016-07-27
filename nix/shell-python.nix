@@ -27,6 +27,7 @@ stdenv.mkDerivation {
                  [
                    wget jdk zip unzip
                    cmake pkgconfig clang_38 clang-analyzer
+                   boost
                    hdf5 hdf5-cpp zeromq
                    tbb openblas  
                  ];
