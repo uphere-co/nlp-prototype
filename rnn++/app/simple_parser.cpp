@@ -6,9 +6,10 @@
 
 using namespace rnn::io;
 using namespace rnn::parser::wordrep;
-class VocaRep{
-
-};
+namespace rnn_t = rnn::type;
+// class VocaRep{
+//     VocaRep(std::vector<)
+// };
 
 int main(){
     try {
@@ -20,14 +21,15 @@ int main(){
         int voca_max_word_len = 74;
 
         H5file file{file_name};
-        Voca voca{file.getRawData<char>(voca_name), voca_max_word_len};
+        Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
 
         VocaIndex word2idx = voca.indexing();
         for(size_t i=0; i<voca.size(); ++i){
-          assert(word2idx.getIndex(voca.getWord(i)) == i);
+            if(i>100) break;
+            assert(word2idx.getIndex(voca.getWord(i)) == i);
         }
         for(size_t i=0; i<voca.size(); ++i){
-          std::cout << voca.getWord(i) <<std::endl;
+            std::cout << voca.getWord(i) <<std::endl;
         }
     } catch (H5::Exception ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;

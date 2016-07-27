@@ -8,6 +8,10 @@ python/parse_arxiv_meta.py
 .cache
 .vscode
 
+#Haskell
+.cabal-sandbox/
+cabal.sandbox.config
+
 build
 boilerplate
 #Data files
