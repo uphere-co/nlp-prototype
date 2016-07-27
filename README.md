@@ -9,8 +9,23 @@ See `README.md` inside it for details.
 ##paraphrase
 ### Run RNN parser result visualizer
 ```bash
+#It is recommended to use `haskellcudafix-on-15.09` branch of `nixpkgs`:
+cd $HOME/repo/srcc/nixpkgs
+git fetch origin
+git checkout -b haskellcudafix-on-15.09 origin/haskellcudafix-on-15.09
+cd $NLP_PROTOTYPE
 nix-shell paraphrase/nix/shell.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
-cabal sandbox init
+#Remove cabal cache if required:
+rm -rf ~/.cabal/
+cd paraphrase/autoencode
+cabal sandbox add-source ../../symbolic
+cabal install --dependencies-only
 cabal build
 dist/build/rnnresult/rnnresult /data/groups/uphere/tmp/nlp-data/rnnparser-result/rnn.sample
 ```
+##wikipedia
+This contains scripts for data preprocessing, especially for large data files such as WikiPedia.
+- `xml_splitter.py` : XML stream processing to split large XML files.
+- `process.hs` : Processes bash commands in parallel
+- `parser.py` : Uses NLTK for using various parsers and to get output for binary tree viewer `rnnresult` in `paraphrase` module.
+
