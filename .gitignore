@@ -11,6 +11,7 @@ python/parse_arxiv_meta.py
 #Haskell:
 *.hi
 *.o
+dist/
 
 build
 boilerplate

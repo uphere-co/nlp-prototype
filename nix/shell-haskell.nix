@@ -185,6 +185,7 @@ let
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
     
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
+              cabal-install
               xml-conduit split unordered-containers vector-algorithms storable-tuple
               tagged either
               #accelerate
