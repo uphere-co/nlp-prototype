@@ -22,6 +22,7 @@ stdenv.mkDerivation {
                    pytest toolz.pytest-mock
                    toolz.guppy
                    toolz.nltk toolz.bllipparser
+                   psycopg2
                  ]) 
                    ++ 
                  [

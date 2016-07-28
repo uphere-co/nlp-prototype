@@ -29,3 +29,6 @@ This contains scripts for data preprocessing, especially for large data files su
 - `process.hs` : Processes bash commands in parallel
 - `parser.py` : Uses NLTK for using various parsers and to get output for binary tree viewer `rnnresult` in `paraphrase` module.
 
+##ygp_data_script
+### export_to_csv.py : Python PostgreSQL driver. To run it, use `nix/shell-python.nix` configuration. Using it in `ipython` shell by `%run export_to_csv.py`; it will be useful for data exploration."
+
