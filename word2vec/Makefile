@@ -5,7 +5,7 @@ BOOSTFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
 
 #libopenblas.a  #-lblas -llapack -lpca #-larmadillo #`pkg-config opencv --libs`
 
-all: bh_tsne word2vec distance pca
+all: bh_tsne word2vec distance pca grassmannian
 
 utils.o: utils.cpp utils.h
 	$(CXX) -c $(CFLAGS) utils.cpp
@@ -31,5 +31,8 @@ distance: distance.cpp utils.h utils.o
 pca: pca.cpp utils.h utils.o
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o pca pca.cpp utils.o $(CFLAGS)  
 
+grassmannian : grassmannian.cpp
+	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o grassmannian grassmannian.cpp $(CFLAGS) -Ofast -pthread
+
 clean:
-	rm -rf *.o bh_tsne word2vec distance pca 
+	rm -rf utils.o sptree.o bh_tsne word2vec distance pca grassmannian
