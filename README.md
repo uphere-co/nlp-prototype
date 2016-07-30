@@ -30,5 +30,4 @@ This contains scripts for data preprocessing, especially for large data files su
 - `parser.py` : Uses NLTK for using various parsers and to get output for binary tree viewer `rnnresult` in `paraphrase` module.
 
 ##ygp_data_script
-### export_to_csv.py : Python PostgreSQL driver. To run it, use `nix/shell-python.nix` configuration. Using it in `ipython` shell by `%run export_to_csv.py`; it will be useful for data exploration."
-
+- load_ygp_db.py : Python PostgreSQL driver to load YGP db tables. To run it, use `nix/shell-python.nix` configuration. Using it in `ipython` shell by `%run load_ygp_db.py.py`; it will be useful for data exploration.
