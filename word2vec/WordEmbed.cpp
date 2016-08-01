@@ -17,7 +17,7 @@ void WordEmbed::ExtractVocabFromTrainFile() {
 
     vocab_hash.fill(-1); //initVocabHash();
 
-    inFile.open(train_file, std::ifstream::in | std::ifstream::binary );
+    inFile.open(train_file, std::ifstream::in | std::ifstream::binary);
 
     if(inFile.fail()) {
         std::cout << "ERROR: training data file not found!\n";
@@ -28,6 +28,7 @@ void WordEmbed::ExtractVocabFromTrainFile() {
 
     while(1) {
         ReadWord(word, inFile);
+	std::cout << word << std::endl;
         if(inFile.eof()) break;
         train_words++;
         if((debug_mode > 1) && (train_words % 100000 == 0)) {
@@ -54,7 +55,7 @@ void WordEmbed::ExtractVocabFromTrainFile() {
 void WordEmbed::SaveVocab() {
     int64_t i;
     std::ofstream outFile;
-    outFile.open(save_vocab_file, std::ofstream::out | std::ofstream::binary);
+    outFile.open(save_vocab_file, std::ofstream::out | std::ifstream::binary );
     for(i = 0; i < vocab_size; i++) {
         outFile << vocab[i].word << " ";
         outFile << vocab[i].cn << "\n";
