@@ -14,6 +14,11 @@ stdenv.mkDerivation {
 		  pkgconfig
 		  gfortran #stdenv.cc.libc
 		  gnuplot
+
+                  cmake clang_38 clang-analyzer
+                  hdf5 hdf5-cpp zeromq
+                  tbb 
+                  #openblas
                 ];
   shellHook = ''
   '';
