@@ -1,5 +1,4 @@
-#ifndef UTIL_STRING_STRING
-#define UTIL_STRING_STRING
+#pragma once
 #include <vector>
 #include <string>
 #include <boost/algorithm/string.hpp>
@@ -15,5 +14,3 @@ auto split(std::string words, const char *delim=" \t"){
 
 }//namespace util::string
 }//namespace util
-
-#endif //UTIL_STRING_STRING

@@ -1,5 +1,4 @@
-#ifndef UTIL_MATH_MATH
-#define UTIL_MATH_MATH
+#pragma once
 #include <vector>
 #include<algorithm>
 
@@ -15,5 +14,3 @@ auto sum(gsl::span<const double> vec){
 }
 }//namespace util::math
 }//namespace util
-
-#endif //UTIL_MATH_MATH

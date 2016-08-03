@@ -4,6 +4,7 @@
 #include"utils/hdf5.h"
 #include"utils/math.h"
 #include"parser/voca.h"
+#include"parser/wordvec.h"
 
 namespace rnn{
 namespace config{
@@ -11,14 +12,17 @@ util::io::H5name file_name{"data.h5"};
 util::io::H5name voca_name{"1b.model.voca"};
 util::io::H5name w2vmodel_name{"1b.model"};
 
+util::io::H5name rnn_param_store_name{"/data/groups/uphere/log/rnnparser.h5"};
+util::io::H5name rnn_param_name{"rnn.Parser#447cc3c8.22900"};
+
 //voca_max_word_len can be read using `h5dump -H` command.
 //It can be directly read from a H5File,
 //but it needs knowledge of low level details of HDF5.
-int voca_max_word_len = 74;
+constexpr int voca_max_word_len = 74;
 //voca_size, word_dim are easy to get programmatically.
 //For consistencies, however, they are set by runtime configuration.
-size_t voca_size=552402;
-int word_dim=100;
+constexpr size_t voca_size=552402;
+constexpr int word_dim=100;
 }//namescpae config
 }//namespace rnn
 

@@ -23,3 +23,4 @@ target_link_libraries(app hdf5_cpp hdf5_hl_cpp)
 
 add_executable(gsl boilerplate/gsl)
 add_executable(string boilerplate/string)
+add_executable(math boilerplate/math)

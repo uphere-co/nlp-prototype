@@ -1,7 +1,6 @@
-#ifndef RNN_IO_HDF5
-#define RNN_IO_HDF5
-
+#pragma once
 #include<vector>
+#include<iostream>
 
 #include<H5Cpp.h>
 
@@ -47,11 +46,18 @@ struct H5file {
         data.val.read(data_raw.data(), data.val.getDataType());
         return data_raw;
     }
+    void writeRawData(H5name dataset, std::vector<int> const &data_raw){
+        H5dataset data{val, dataset};
+        //float fillvalue{0};
+        //H5::DSetCreatPropList plist;
+        //plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
+        hsize_t fdim[] = {data_raw.size()} // dim sizes of ds (on disk)
+        DataSpace mspace1(1, fdim);
+        data.val.write(data_raw.data(), H5::PredType::NATIVE_INT, mspace);
+    }
     H5::H5File val;
     H5name name;
 };
 
 }//namespace util::io
 }//namespace util
-
-#endif //RNN_IO_HDF5
