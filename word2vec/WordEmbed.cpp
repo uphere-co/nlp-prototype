@@ -107,6 +107,7 @@ void WordEmbed::ReadVocab() {
     
     inFile.clear();
     inFile.seekg(0, std::ios::end);
+
     file_size = inFile.tellg();
     inFile.close();
 }

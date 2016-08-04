@@ -35,4 +35,4 @@ grassmannian : grassmannian.cpp
 	$(CXX) $(LDFLAGS) $(BOOSTFLAGS) -o grassmannian grassmannian.cpp $(CFLAGS) -Ofast
 
 clean:
-	rm -rf utils.o sptree.o bh_tsne word2vec distance pca grassmannian
+	rm -rf utils.o sptree.o WordEmbed.o bh_tsne word2vec distance pca grassmannian
