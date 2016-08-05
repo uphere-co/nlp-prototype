@@ -29,28 +29,17 @@ struct H5dataset{
 namespace hdf5{
 
 template<typename T>
-struct ToH5PredType;
+H5::PredType ToH5PredType();
 template<>
-struct ToH5PredType<int>{
-    const H5::PredType val = H5::PredType::NATIVE_INT;
-};
+H5::PredType ToH5PredType<int>()     {return H5::PredType::NATIVE_INT;}
 template<>
-struct ToH5PredType<int64_t>{
-    const H5::PredType val = H5::PredType::NATIVE_INT64;
-};
+H5::PredType ToH5PredType<int64_t>() {return H5::PredType::NATIVE_INT64;}
 template<>
-struct ToH5PredType<uint64_t>{
-    const H5::PredType val = H5::PredType::NATIVE_UINT64;
-};
+H5::PredType ToH5PredType<uint64_t>(){return H5::PredType::NATIVE_UINT64;}
 template<>
-struct ToH5PredType<float>{
-    const H5::PredType val = H5::PredType::NATIVE_FLOAT;
-};
+H5::PredType ToH5PredType<float>()   {return H5::PredType::NATIVE_FLOAT;}
 template<>
-struct ToH5PredType<char>{
-    const H5::PredType val = H5::PredType::NATIVE_CHAR;
-};
-
+H5::PredType ToH5PredType<char>()    {return H5::PredType::NATIVE_CHAR;}
 
 /*
 Excerpted from HDF5 document:
@@ -108,11 +97,11 @@ struct H5file {
         hsize_t fdim[] = {data_raw.size()};
         H5::DataSpace space(1, fdim);
         H5::DSetCreatPropList plist;
-        //plist.setFillValue(H5::PredType::NATIVE_INT, &fillvalue);
-    	plist.setFillValue(hdf5::ToH5PredType<T>{}.val, &fillvalue);
-    	val.createDataSet(dataset_name.val, hdf5::ToH5PredType<T>{}.val, space, plist);
+        auto h5PredType = hdf5::ToH5PredType<T>();
+    	plist.setFillValue(h5PredType, &fillvalue);
+    	val.createDataSet(dataset_name.val, h5PredType, space, plist);
     	H5dataset data{val, dataset_name};
-        data.val.write(data_raw.data(), hdf5::ToH5PredType<T>{}.val, space);
+        data.val.write(data_raw.data(), h5PredType, space);
     }
     H5::H5File val;
     H5name name;
