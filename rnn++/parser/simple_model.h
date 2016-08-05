@@ -22,7 +22,7 @@ struct Param{
           gsl::span<value_type, dim> bias_span,
           gsl::span<value_type, dim> u_score_span)
           : w_left{w_left_span}, w_right{w_right_span},
-            bias{bias_span}, u_score{u_score_span} {}        
+            bias{bias_span}, u_score{u_score_span} {}
     Param(mat_type &&w_left, mat_type &&w_right,
           vec_type &&bias, vec_type &&u_score)
           : w_left{std::move(w_left)}, w_right{std::move(w_right)},
@@ -35,7 +35,7 @@ struct Param{
 
 template<int dim>
 auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
-    auto span2d = gsl::as_span(param_raw.data(), gsl::dim<dim*2+2>(),gsl::dim<dim>());
+    auto span2d   = gsl::as_span(param_raw.data(), gsl::dim<dim*2+2>(),gsl::dim<dim>());
     // auto w_span = gsl::as_span(span2d.data(), gsl::dim<dim*2>(),gsl::dim<dim>());
     auto wLT_span = gsl::as_span(span2d.data(),      gsl::dim<dim>(),gsl::dim<dim>());
     auto wRT_span = gsl::as_span(span2d[dim].data(), gsl::dim<dim>(),gsl::dim<dim>());
@@ -46,10 +46,10 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     return Param<dim>{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
 }//namespace rnn::simple_model
+
 namespace compute{
 using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
-
 // struct Tanh{
 //     float_t operator()(float_t x) const {
 //         return std::tanh(x);
@@ -73,7 +73,5 @@ using float_t = rnn::type::float_t;
 // };
 //
 // };
-
-
 }//namespace rnn::compute
 }//namespace rnn

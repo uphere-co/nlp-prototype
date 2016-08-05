@@ -9,7 +9,6 @@
 namespace util{
 namespace math{
 
-//TODO: should support move from existing container?
 template<typename T, int64_t M>
 struct Vector{
     Vector(gsl::span<T, M> const vals) : _val(M) {
@@ -20,6 +19,12 @@ struct Vector{
     std::vector<T> _val;
     gsl::span<T, M> span=_val;
 };
+template<typename T, int64_t M>
+struct VectorView{
+    VectorView(gsl::span<T, M> const vals) :span{vals} {}
+    gsl::span<T, M> span;
+};
+
 template<typename T, int64_t M, int64_t N>
 struct Matrix{
     Matrix(gsl::span<T, M,N> const vals) : _val(M*N) {
@@ -29,6 +34,11 @@ struct Matrix{
     Matrix() :_val(M*N) {}
     std::vector<T> _val;
     gsl::span<T, M, N> span=_val;
+};
+template<typename T, int64_t M, int64_t N>
+struct MatrixView{
+    MatrixView(gsl::span<T, M,N> const vals) : span{vals} {}
+    gsl::span<T, M, N> span;
 };
 
 
@@ -51,7 +61,7 @@ template<typename T, std::size_t M>
 auto Vector(std::array<T,M> &val){
     const auto span = gsl::as_span(val);
     return util::math::Vector<T,M>{span};
-}//util::math::factory
+}
 
 // template<typename T>
 // auto Vector(std::vector<T> const &val){
