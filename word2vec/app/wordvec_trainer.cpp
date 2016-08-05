@@ -214,11 +214,11 @@ public:
     };
     void LearnVocab();
     //void CreateBinaryTree();
-    void InitUnigramTable(auto const &word_cn);
+    void InitUnigramTable();
     void testFunction();
     void InitNet();
     void TrainModelThread(int tid);
-    //void TrainModel();
+    void TrainModel();
 };
 
 void Word2Vec::LearnVocab(){  
@@ -235,20 +235,20 @@ void Word2Vec::LearnVocab(){
     }
 }
 
-void Word2Vec::InitUnigramTable(auto const &word_cn) {
+void Word2Vec::InitUnigramTable() {
     unsigned int i;
     double train_words_pow = 0;
     double d1;
     double power = 0.75;
     
-    for(auto w : word_cn) train_words_pow += pow(w, power);
+    for(auto w : vocabcn) train_words_pow += pow(w, power);
     i = 0;
-    d1 = pow(word_cn[0], power)/train_words_pow;
+    d1 = pow(vocabcn[0], power)/train_words_pow;
     for(unsigned int a = 0; a < table_size; a++){
         table[a] = i;
         if(a / (double)table_size > d1){
             i++;
-            d1 += pow(word_cn[i],power)/train_words_pow;
+            d1 += pow(vocabcn[i],power)/train_words_pow;
         }
         if(i >= vocab_size) i = vocab_size -1;
     }
@@ -442,6 +442,46 @@ void Word2Vec::TrainModelThread(int tid){
         }
 
 }
+
+
+
+void Word2Vec::TrainModel() {
+    std::ofstream outFile;
+
+    std::vector<std::thread> th;
+    starting_alpha = alpha;
+
+    std::cout << "Starting training using file " << train_file << std::endl;
+    if(output_file[0] == 0) return;
+
+    // Initialization
+    InitNet();
+    if(negative > 0)
+        InitUnigramTable();
+
+    start = clock(); // start to measure time
+
+    for(int i = 0; i < num_threads; i++) {
+      th.push_back(std::thread(&Word2Vec::TrainModelThread, this, i));
+    }
+
+    for(auto &t : th) {
+      t.join();
+    }
+
+    //TrainModelThread(); // For the single thread
+
+    outFile.open(output_file, std::ofstream::out);
+    outFile << vocab_size << " " << layer1_size << std::endl;
+    for(auto x : word_idx) {
+        outFile << x.first << " ";
+        for(unsigned int b = 0; b < layer1_size; b++) outFile << syn0[x.second * layer1_size + b] << " ";
+        outFile << std::endl;
+    }
+}
+
+// End of Learning Net
+
 
 
 
