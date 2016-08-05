@@ -20,15 +20,14 @@ struct Vector{
     std::vector<T> _val;
     gsl::span<T, M> span=_val;
 };
-template<int64_t M, int64_t N>
+template<typename T, int64_t M, int64_t N>
 struct Matrix{
-    Matrix(std::array<const float_t, M*N> vals) : _val(M*N) {
+    Matrix(gsl::span<T, M,N> const vals) : _val(M*N) {
         std::cerr<<M<<" "<<N<<" Matrix{gsl::span<M,N>}\n";
         std::copy_n(vals.begin(), M*N, _val.begin());
     }
-    Matrix() : _val(M*N) {}
-    std::vector<float_t> _val;
-    gsl::span<const float_t, M, N> span=_val;
+    std::vector<T> _val;
+    gsl::span<T, M, N> span=_val;
 };
 
 namespace factory{

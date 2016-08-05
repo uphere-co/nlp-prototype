@@ -76,7 +76,6 @@ struct H5file {
     ~H5file(){
         try {
             val.close();
-            std::cerr << "Read with  " << H5F_ACC_EXCL << " option.\n";
             std::cerr << "Close H5File " << name.val << "\n";
         } catch (H5::Exception ex) {
             std::cerr << ex.getCDetailMsg() << std::endl;
