@@ -1,3 +1,4 @@
+#pragma once
 #include<vector>
 #include<array>
 #include <stdexcept>
@@ -41,19 +42,6 @@ struct MatrixView{
     gsl::span<T, M, N> span;
 };
 
-
-template<typename T, int64_t M, int64_t N>
-auto transpose(gsl::span<T,M,N> mat){
-    std::vector<T> tr_mat(M*N);
-    auto tr = gsl::span<T,N,M>{tr_mat};
-    for (int64_t i=0; i<mat.extent(0); ++i) {
-       for (int64_t j=0; j<mat.extent(1); ++j){
-          tr[j][i] = mat[i][j];
-      }
-    }
-    return Matrix<T,N,M>{tr};
-}
-
 namespace factory{
 
 //TODO: val can be const &
@@ -82,6 +70,40 @@ auto Vector(std::array<T,M> &val){
 //
 
 }//namespace util::math::factory
+
+
+template<typename T, int64_t M, int64_t N>
+auto transpose(gsl::span<T,M,N> mat){
+    std::vector<T> tr_mat(M*N);
+    auto tr = gsl::span<T,N,M>{tr_mat};
+    for (int64_t i=0; i<mat.extent(0); ++i) {
+       for (int64_t j=0; j<mat.extent(1); ++j){
+          tr[j][i] = mat[i][j];
+      }
+    }
+    return Matrix<T,N,M>{tr};
+}
+
+template<typename T, int64_t M>
+T dot(gsl::span<T,M> const x, gsl::span<T,M> const y){
+    return std::inner_product(x.cbegin(), x.cend(), y.cbegin(), T{});
+}
+//Following also works, without template, but less safe:
+// auto dot = [](auto const &x, auto const &y){
+//     typedef typename std::remove_reference<decltype(x[0])>::type A;
+//     return std::inner_product(x.cbegin(), x.cend(), y.cbegin(), A{0});
+// };
+
+template<typename T, int64_t M, int64_t N>
+auto dotdot(Vector<T,M> &x, Matrix<T,M,N> &m, Vector<T,N> &y){
+    T sum{};
+    for(decltype(M) i=0; i!=M; ++i){
+        for(decltype(N) j=0; j!=N; ++j){
+            sum += x.span[i]*m.span[i][j]*y.span[j];
+        }
+    }
+    return sum;
+}
 
 }//namespace util::math
 }//namespace util

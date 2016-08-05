@@ -1,6 +1,4 @@
-#ifndef RNN_PARSER_WORDVEC
-#define RNN_PARSER_WORDVEC
-
+#pragma once
 #include<vector>
 
 #include<gsl.h>
@@ -60,6 +58,3 @@ public:
 }//namespace rnn::wordrep
 }//namespace rnn::parser
 }//namespace rnn
-
-
-#endif //RNN_PARSER_WORDVEC

@@ -8,6 +8,7 @@
 #include"parser/basic_type.h"
 #include"utils/string.h"
 #include"utils/math.h"
+#include"utils/linear_algebra.h"
 
 namespace rnn{
 
@@ -45,33 +46,26 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     auto u_score  = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim+1]};
     return Param<dim>{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
-}//namespace rnn::simple_model
-
 namespace compute{
-using char_t = rnn::type::char_t;
-using float_t = rnn::type::float_t;
-// struct Tanh{
-//     float_t operator()(float_t x) const {
-//         return std::tanh(x);
-//     }
-//     float_t inverse(float_t x) const {
-//         return std::pow(std::cosh(x), float_t{-2.0});
-//     }
-// };
-// struct Add{
-//     float_t& operator()(float_t x, float_t y, float_t &z=float_t{0}) const {
-//         z=x+y;
-//         return z;
-//     }
-// };
-// struct Dot{
-//     float_t& operator()(gsl::span<const float_t> x, gsl::span<const float_t> y,
-//                         float_t &z=float_t{0}) const {
-//         std::inner_product(x.cbegin(), x.cend(), y.cbegin(), z);
-//         return z;
-//     }
-// };
-//
-// };
-}//namespace rnn::compute
+auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
+                          auto const &word_left, auto const &word_right){
+    return tanh(util::math::dot(w_left_i, word_left)+util::math::dot(w_right_i, word_right) + b_i);
+};
+
+template<typename T, int64_t M>
+auto merge_to_phrase(util::math::Matrix<T,M,M> w_left,
+                     util::math::Matrix<T,M,M> w_right,
+                     util::math::Vector<T,M> bias,
+                     util::math::VectorView<T,M> word_left,
+                     util::math::VectorView<T,M> word_right){
+    util::math::Vector<T,M> phrase{};
+    for(int64_t i=0; i<M; ++i){
+        phrase.span[i] = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
+                                           word_left.span, word_right.span);
+    }
+    return std::move(phrase);
+}
+
+}//namespace rnn::simple_model::compute
+}//namespace rnn::simple_model
 }//namespace rnn
