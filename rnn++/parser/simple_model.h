@@ -47,9 +47,14 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     return Param<dim>{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
 namespace compute{
+auto activation_f = [](auto x){return tanh(x);};
+auto activation_df = [](auto x){
+    auto fx = cosh(x);
+    return decltype(x){1}/(fx*fx);
+};
 auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
                           auto const &word_left, auto const &word_right){
-    return tanh(util::math::dot(w_left_i, word_left)+util::math::dot(w_right_i, word_right) + b_i);
+    return activation_f(util::math::dot(w_left_i, word_left)+util::math::dot(w_right_i, word_right) + b_i);
 };
 
 template<typename T, int64_t M>

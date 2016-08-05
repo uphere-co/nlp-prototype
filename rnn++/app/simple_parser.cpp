@@ -92,8 +92,7 @@ int main(){
         using rnn_model::compute::merge_to_phrase;
         auto phrase = merge_to_phrase(param.w_left, param.w_right, param.bias,
                                       word_block.getWordVec(2),word_block.getWordVec(3));
-        std::cerr <<"58.3763 =="<<dot(word_block.getWordVec(2).span,
-                                      word_block.getWordVec(3).span)<<std::endl;
+        std::cerr <<"58.3763 =="<<dot(word_block[2], word_block[3])<<std::endl;
         std::cerr <<"0.98579389 == "<< dot(param.u_score.span, phrase.span) << std::endl;
     } catch (H5::Exception ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
