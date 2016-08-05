@@ -114,7 +114,7 @@ int main(){
     
     //PrintWordCount(word_count);
 
-    H5file file{H5name{"data.h5"}};
+    H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
     file.writeRawData(H5name{"bar.word_count"},word_count_values);
     file.writeRawData(H5name{"bar.word_key"},concat_words);
     
