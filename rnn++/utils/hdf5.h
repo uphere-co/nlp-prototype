@@ -26,8 +26,8 @@ struct H5dataset{
     H5::DataSet val;
     H5name name;
 };
-namespace {
-  
+namespace hdf5{
+
 template<typename T>
 struct ToH5PredType;
 template<>
@@ -50,14 +50,44 @@ template<>
 struct ToH5PredType<char>{
     const H5::PredType val = H5::PredType::NATIVE_CHAR;
 };
+
+
+/*
+Excerpted from HDF5 document:
+H5F_ACC_EXCL
+If file already exists, H5Fcreate fails. If file does not exist, it is created and opened with read-write access.
+H5F_ACC_TRUNC
+If file already exists, file is opened with read-write access and new data overwrites existing data, destroying all prior content,
+i.e., file content is truncated upon opening. If file does not exist, it is created and opened with read-write access.
+H5F_ACC_RDONLY
+Existing file is opened with read-only access. If file does not exist, H5Fopen fails.
+H5F_ACC_RDWR
+Existing file is opened with read-write access. If file does not exist, H5Fopen fails.
+*/
+enum class FileMode {
+    create,
+    replace,
+    read_exist,
+    rw_exist,
+};
+
+auto OpenWith(FileMode mode){
+    switch(mode) {
+        case FileMode::create : return H5F_ACC_EXCL;
+        case FileMode::replace : return H5F_ACC_TRUNC;
+        case FileMode::read_exist : return H5F_ACC_RDONLY;
+        case FileMode::rw_exist : return H5F_ACC_RDWR;
+    }
 }
 
- 
+}// namespace util::io::hdf5
+
 struct H5file {
-H5file(H5name path): val{path.val, H5F_ACC_TRUNC}, name{path.val} {}
+    H5file(H5name path, hdf5::FileMode mode): val{path.val, OpenWith(mode)}, name{path.val} {}
     ~H5file(){
         try {
             val.close();
+            std::cerr << "Read with  " << H5F_ACC_EXCL << " option.\n";
             std::cerr << "Close H5File " << name.val << "\n";
         } catch (H5::Exception ex) {
             std::cerr << ex.getCDetailMsg() << std::endl;
@@ -79,14 +109,14 @@ H5file(H5name path): val{path.val, H5F_ACC_TRUNC}, name{path.val} {}
         H5::DataSpace space(1, fdim);
         H5::DSetCreatPropList plist;
         //plist.setFillValue(H5::PredType::NATIVE_INT, &fillvalue);
-        plist.setFillValue(ToH5PredType<T>{}.val, &fillvalue);
-        val.createDataSet(dataset_name.val, ToH5PredType<T>{}.val, space, plist);
-        H5dataset data{val, dataset_name};
-        data.val.write(data_raw.data(), ToH5PredType<T>{}.val, space);
+    	plist.setFillValue(hdf5::ToH5PredType<T>{}.val, &fillvalue);
+    	val.createDataSet(dataset_name.val, hdf5::ToH5PredType<T>{}.val, space, plist);
+    	H5dataset data{val, dataset_name};
+        data.val.write(data_raw.data(), hdf5::ToH5PredType<T>{}.val, space);
     }
     H5::H5File val;
     H5name name;
 };
- 
+
 }//namespace util::io
 }//namespace util
