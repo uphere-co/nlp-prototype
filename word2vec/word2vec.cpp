@@ -94,6 +94,8 @@ class Word2Vec : public WordEmbed {
         void TrainModelThread (int tid);
 };
 
+//vocab cn word codelen point code
+
 // Create binary Huffman tree using the word counts
 // Frequent words will have short unique binary codes
 void Word2Vec::CreateBinaryTree() {
@@ -173,7 +175,10 @@ void Word2Vec::InitUnigramTable() {
     unsigned int i;
     double train_words_pow = 0;
     double d1, power = 0.75;
+    int64_t sum = 0;
     for (unsigned int a = 0; a < vocab_size; a++) train_words_pow += pow(vocab[a].cn, power);
+    for (unsigned int a = 0; a < vocab_size; a++) sum += vocab[a].cn;
+    std::cout << sum << std::endl;
     i = 0;
     d1 = pow(vocab[i].cn, power) / train_words_pow;
     for (unsigned int a = 0; a < table_size; a++) {

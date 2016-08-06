@@ -28,7 +28,7 @@ void WordEmbed::ExtractVocabFromTrainFile() {
 
     while(1) {
         ReadWord(word, inFile);
-	std::cout << word << std::endl;
+        //std::cout << word << std::endl;
         if(inFile.eof()) break;
         train_words++;
         if((debug_mode > 1) && (train_words % 100000 == 0)) {

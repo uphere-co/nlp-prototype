@@ -25,15 +25,15 @@ const int64_t table_size = 100000000;
 
 using namespace util::io;
 
-
-
 ///// Data Structure
 namespace word2vec{
 namespace type{
   
-using int_t = int;
+using int_t = int64_t;
 using float_t = float;
 using char_t = char;
+
+using hashmap_t = std::map<std::string, int_t>;
 }//namespace word2vec::type
 }//namespace word2vec
 
@@ -53,8 +53,6 @@ struct TokenizedFile{
 
 //CAUTION!! Do not include a following line in a header.
 using namespace word2vec::type;
-
-using hashmap_t = std::map<std::string, int_t>;
     
 void VocabLearn(TokenizedFile & file, hashmap_t &word_count, std::vector<std::pair<int64_t,std::string>> &word_position, int64_t &pos){
     std::string line;
@@ -163,7 +161,7 @@ private:
 
     hashmap_t word_cn;
     std::vector<std::pair<int64_t,std::string>> word_pos;
-    std::map<std::string,int64_t> word_idx;
+    hashmap_t word_idx;
     
     std::vector<double> syn0, syn1, syn1neg;
 
@@ -275,7 +273,7 @@ void Word2Vec::InitNet() {
         expTable[i] = expTable[i] / (expTable[i] + 1);
     }
 
-    syn0.reserve((int64_t)vocab_size * layer1_size);
+    syn0.resize((int64_t)vocab_size * layer1_size);
     if(hs) {
         syn1.reserve((int64_t)vocab_size * layer1_size);
         for(a = 0; a < vocab_size; a++)
@@ -351,8 +349,9 @@ void Word2Vec::TrainModelThread(int tid){
                 //if(word == -1) continue;
                 word_count++;
                 //if(word == 0) break;
-                cnt = word_cn.find(word_pos[pos].second) -> second;
-                // The subsampling randomly discards frequent words while keeping the ranking same
+                cnt = word_cn.find(word_pos[pos].second) -> second; // log(n)
+                //w o r d --> ### O(1)
+                 // The subsampling randomly discards frequent words while keeping the ranking same
                 if(sample > 0) {
                     double ran = (sqrt(cnt / (sample * pos_max)) + 1) * (sample * pos_max) / cnt;
                     if(ran < rand_gen_double()) continue;
@@ -480,6 +479,12 @@ void Word2Vec::TrainModel() {
         for(unsigned int b = 0; b < layer1_size; b++) outFile << syn0[x.second * layer1_size + b] << " ";
         outFile << std::endl;
     }
+    
+    auto word_concat = Concat(MapKeys(word_idx));
+    //syn0: beg=syn0[idx*dim], end=syn0[(idx+1)*dim];
+    H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
+    file.writeRawData(H5name{std::string{"foo.vec" }}, syn0);
+    file.writeRawData(H5name{std::string{"foo.word"}}, word_concat);
 }
 
 // End of Learning Net
