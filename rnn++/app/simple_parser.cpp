@@ -47,7 +47,7 @@ void test_init_rnn(){
     H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
     auto param_raw = param_storage.getRawData<rnn_t::float_t>(rnn_param_name);
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    rnn_model::Param<word_dim> param = rnn_model::deserializeParam<word_dim>(param_raw);
+    rnn_model::Param param = rnn_model::deserializeParam(param_raw);
     std::cerr << sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << sum(param.bias.span) << std::endl;
     std::cerr << sum(param.u_score.span) << std::endl;
@@ -77,7 +77,7 @@ int main(){
 
         H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
         auto param_raw = param_storage.getRawData<rnn_t::float_t>(rnn_param_name);
-        auto param = rnn_model::deserializeParam<word_dim>(param_raw);
+        auto param = rnn_model::deserializeParam(param_raw);
 
         H5file file{file_name, hdf5::FileMode::read_exist};
         Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
