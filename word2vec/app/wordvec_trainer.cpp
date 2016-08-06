@@ -224,15 +224,17 @@ public:
 void Word2Vec::LearnVocab(){  
     TokenizedFile infile{train_file};
     VocabLearn(infile, word_cn, word_pos, pos_max);
+    std::cout << "Vocab Learning is complete.\n";
     vocab = MapKeys(word_cn);
     vocabcn = MapValues(word_cn);
-
+    std::cout << "Mapping is complete.\n";
     vocab_size = vocab.size();
     int64_t idx = 0;
     for(auto x : word_cn){
         word_idx[x.first] = idx;
         idx++;
     }
+    std::cout << "Indexing words is complete.\n";
 }
 
 void Word2Vec::InitUnigramTable() {
@@ -335,11 +337,11 @@ void Word2Vec::TrainModelThread(int tid){
             
             now = clock();
             printf("%cAlpha: %f  Progress: %.2f%%  Words/thread/sec: %.2fk   ", 13, alpha,
-                    word_count_actual / (double)(iter * train_words + 1) * 100,
+                    word_count_actual / (double)(iter * pos_max + 1) * 100,
                     word_count_actual / ((double)(now - start + 1) / (double)CLOCKS_PER_SEC * 1000));
             fflush(stdout);
             
-            alpha = starting_alpha * (1 - word_count_actual / (double)(iter * train_words + 1));
+            alpha = starting_alpha * (1 - word_count_actual / (double)(iter * pos_max + 1));
             if(alpha < starting_alpha * 0.0001) alpha = starting_alpha * 0.0001;
         }
         
@@ -411,36 +413,36 @@ void Word2Vec::TrainModelThread(int tid){
                     }*/
                 // Negative Sampling
                 if(negative > 0) for (d = 0; d < negative + 1 ; d++) {
-                    if(d == 0) {
-		      target = word;
-		      label = 1;
-                    } else {
-		      next_random = rand_gen_int2();
-		      target = table[next_random % table_size];
-		      if(target == 0) target = next_random % (vocab_size - 1) + 1;
-		      if(target == word) continue;
-		      label = 0;
+                        if(d == 0) {
+                            target = word;
+                            label = 1;
+                        } else {
+                            next_random = rand_gen_int2();
+                            target = table[next_random % table_size];
+                            if(target == 0) target = next_random % (vocab_size - 1) + 1;
+                            if(target == word) continue;
+                            label = 0;
+                        }
+                        l2 = target * layer1_size;
+                        f = 0;
+                        for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1neg[c + l2];
+                        if(f > max_exp) g = (label - 1) * alpha;
+                        else if(f < - max_exp) g = (label - 0) * alpha;
+                        else g = (label - expTable[(int)((f + max_exp) * (exp_table_size / max_exp / 2))]) * alpha;
+                        for (c = 0; c < layer1_size; c++) neu1e[c] += g * syn1neg[c + l2];
+                        for (c = 0; c < layer1_size; c++) syn1neg[c + l2] += g * syn0[c + l1];
                     }
-                    l2 = target * layer1_size;
-                    f = 0;
-                    for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1neg[c + l2];
-                    if(f > max_exp) g = (label - 1) * alpha;
-                    else if(f < - max_exp) g = (label - 0) * alpha;
-                    else g = (label - expTable[(int)((f + max_exp) * (exp_table_size / max_exp / 2))]) * alpha;
-                    for (c = 0; c < layer1_size; c++) neu1e[c] += g * syn1neg[c + l2];
-                    for (c = 0; c < layer1_size; c++) syn1neg[c + l2] += g * syn0[c + l1];
-                }
                 // Learn weights input -> hidden
                 for(c = 0; c < layer1_size; c++) syn0[c + l1] += neu1e[c];
-            }
+                }
         }
         sentence_position++;
         if(sentence_position >= sentence_length) {
             sentence_length = 0;
             continue;
         }
-        }
-
+    }
+    
 }
 
 
@@ -614,7 +616,7 @@ int main(int argc, char **argv) {
     }
     w2v -> LearnVocab();
     //w2v -> testFunction();
-    //w2v->TrainModel();
+    w2v->TrainModel();
 
     return 0;
 }
