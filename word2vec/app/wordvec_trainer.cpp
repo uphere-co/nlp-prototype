@@ -275,13 +275,13 @@ void Word2Vec::InitNet() {
 
     syn0.resize((int64_t)vocab_size * layer1_size);
     if(hs) {
-        syn1.reserve((int64_t)vocab_size * layer1_size);
+        syn1.resize((int64_t)vocab_size * layer1_size);
         for(a = 0; a < vocab_size; a++)
             for(b = 0; b < layer1_size; b++)
                 syn1[a * layer1_size + b] = 0;
     }
     if(negative > 0) {
-        syn1neg.reserve((int64_t)vocab_size * layer1_size);
+        syn1neg.resize((int64_t)vocab_size * layer1_size);
         for(a = 0; a < vocab_size; a++)
             for(b = 0; b < layer1_size; b++)
                 syn1neg[a * layer1_size + b] = 0;
@@ -322,8 +322,8 @@ void Word2Vec::TrainModelThread(int tid){
     std::vector<double> neu1;
     std::vector<double> neu1e;
 
-    neu1.reserve(layer1_size);
-    neu1e.reserve(layer1_size);
+    neu1.resize(layer1_size);
+    neu1e.resize(layer1_size);
 
     //inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
     starting_pos = pos_max / (int64_t)num_threads * (int64_t)tid;
