@@ -2,6 +2,7 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <cmath>
 
 #include <inttypes.h>
 
@@ -12,7 +13,6 @@
 
 #define EXP_TABLE_SIZE 1000
 #define MAX_EXP 6
-#define MAX_STRING 1000
 #define MAX_CODE_LENGTH 40
 #define MAX_SENTENCE_LENGTH 1000
 
@@ -211,7 +211,8 @@ void Word2Vec::InitNet() {
         for(unsigned int b = 0; b < layer1_size; b++)
             syn0[a * layer1_size + b] = (rand()/(double)RAND_MAX - 0.5) / layer1_size;
 
-    CreateBinaryTree();
+    
+    //CreateBinaryTree();
 }
 
 void Word2Vec::TrainModelThread(int tid){
@@ -379,7 +380,7 @@ void Word2Vec::TrainModel() {
       t.join();
     }
 
-    //TrainModelThread(); // Main routine ??
+    //TrainModelThread(); // For the single thread
 
     outFile.open(output_file, std::ofstream::out | std::ofstream::binary);
     if(classes == 0) {
@@ -505,7 +506,6 @@ int argpos(const char *str, int argc, char **argv) {
     return i;
 }
 
-// TODO : A proper exception handling is needed.
 Word2Vec *arg_to_w2v(int argc, char **argv) {
     int i;
 
@@ -567,9 +567,7 @@ Word2Vec *arg_to_w2v(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 
-    // Modori's birthday is the source of randomness.
-    std::srand(19870518);
-
+    std::srand(11596521);
     Word2Vec *w2v;
 
     if(argc < 2) { printHelp(); return 1; }

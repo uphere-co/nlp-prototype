@@ -17,7 +17,7 @@ void WordEmbed::ExtractVocabFromTrainFile() {
 
     vocab_hash.fill(-1); //initVocabHash();
 
-    inFile.open(train_file, std::ifstream::in | std::ifstream::binary);
+    inFile.open(train_file, std::ifstream::in);
 
     if(inFile.fail()) {
         std::cout << "ERROR: training data file not found!\n";
@@ -47,6 +47,9 @@ void WordEmbed::ExtractVocabFromTrainFile() {
         printf("Vocab size: %d\n", vocab_size);
         printf("Words in the train file: %" PRIu64"\n", train_words);
     }
+
+    inFile.clear();    
+    inFile.seekg(0, std::ios::end);
     file_size = inFile.tellg();
     inFile.close();
 }
@@ -87,7 +90,7 @@ void WordEmbed::ReadVocab() {
         a = AddWordToVocab(word[0]);
         std::cout << word[0] << " ";
         std::cout << word[1] << "\n";
-        vocab[a].cn = atof(word[1].c_str()); // Q: why atof, not atoi?
+        vocab[a].cn = atoi(word[1].c_str());
     }
 
     SortVocab();
@@ -101,33 +104,37 @@ void WordEmbed::ReadVocab() {
         std::cout << "Training data file not found!\n";
         exit(1);
     }
+    
+    inFile.clear();
+    inFile.seekg(0, std::ios::end);
 
-    file_size = inFile.tellg(); // Q: Shouldn't we set std::ifstream::ate instead of ...::in ?
-    inFile.close(); // todo : Let us find a way to handle file in an error-safe manner.
+    file_size = inFile.tellg();
+    inFile.close();
 }
 
 // End of HashMap for dictionary
 
 // Reads a single word from a file, assuming space + tab + EOL to be word boundaries
+
 void WordEmbed::ReadWord(std::string& word, std::ifstream& inFile) {
-    word.clear();
-    if ( !inFile.eof() && (inFile.get() == '\n') ) {
-        word = "</s>";
-        return;
+  int a = 0, ch;
+  word.clear();
+  while (!inFile.eof()) {
+    ch = inFile.get();
+    if (ch == 13) continue;
+    if ((ch == ' ') || (ch == '\t') || (ch == '\n')) {
+      if (a > 0) {
+	if (ch == '\n') inFile.unget();
+	break;
+      }
+      if (ch == '\n') {
+	word = "</s>";
+	return;
+      } else continue;
     }
-    int a = 0, ch;
-    while (!inFile.eof()) {
-        ch = inFile.get();
-        if ((ch == 13) || (ch == ' ') || (ch == '\t')) // ASCII 13 => CR
-            continue;
-        else if  (ch == '\n') {
-            inFile.unget();
-            break;
-        }
-        word += ch;
-        a++;
-    }
-    return;
+    word += ch;
+    a++;
+  }
 }
 
 // Returns hash value of a word
@@ -142,12 +149,10 @@ int WordEmbed::GetWordHash (std::string& word) {
 // Returns position of a word in the vocabulary; if the word is not found, returns -1
 int WordEmbed::SearchVocab (std::string& word) {
     uint64_t hash = GetWordHash(word);
-    int pos;
     while(1) {
-        pos = vocab_hash[hash]; 
-        if( (pos == -1) || (word == vocab[pos].word) )
-            return pos;
-        hash = (hash + 1) % vocab_hash_size;
+      if(vocab_hash[hash] == -1) return -1;
+      if(word == vocab[vocab_hash[hash]].word) return vocab_hash[hash];
+      hash = (hash + 1) % vocab_hash_size;
     }
     return -1;
 }
@@ -212,7 +217,7 @@ void WordEmbed::ReduceVocab() {
     for(unsigned int a = 0; a < vocab_size; a++) {
         if (vocab[a].cn > min_reduce) {
             vocab[b].cn = vocab[a].cn;
-            vocab[b].word = vocab[a].word; // JH: what happen to other elements, like point?
+            vocab[b].word = vocab[a].word;
             b++;
         }
     }
