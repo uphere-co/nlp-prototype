@@ -118,8 +118,9 @@ int main(){
             nodes[i].vec=rnn_model::Param::vec_type{word_block[i]};
         assert(words.size()==nodes.size());
         auto top_leaves = parser.merge_leaf_nodes(nodes);
-        std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
-        parser.directed_merge(top_leaves, merge_history);
+        // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
+        // parser.directed_merge(top_leaves, merge_history);
+        parser.foward_path(top_leaves);
         timer.here_then_reset("Forward path");
 
         print_all_descents(nodes[13]);

@@ -53,6 +53,29 @@ public:
         return phrase_pool;
     }
 
+    void foward_path(std::vector<node_type*> &top_leaves){
+        while(top_leaves.size()!=1){
+            auto it_max=std::max_element(top_leaves.cbegin(), top_leaves.cend(),
+                 [](auto const x, auto const y){
+                     return x->score < y->score;
+                 });
+            auto i_max = it_max - top_leaves.cbegin();
+            if(it_max!=top_leaves.cbegin()){
+                auto it_left = *(it_max-1);
+                it_left->right=*it_max;
+                set_node_property(*it_left);
+            }
+            if(it_max!=top_leaves.cend()-1){
+                auto it_right= *(it_max+1);
+                it_right->left=*it_max;
+                set_node_property(*it_right);
+            }
+            std::copy(it_max+1,top_leaves.cend(),
+                      top_leaves.begin()+i_max);
+            top_leaves.pop_back();
+        }
+    }
+
     void directed_merge(std::vector<node_type*> &top_leaves,
                         std::vector<size_t> const &merge_history){
         for(auto idx_max : merge_history){
