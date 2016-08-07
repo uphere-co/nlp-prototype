@@ -120,9 +120,12 @@ int main(){
         auto top_leaves = parser.merge_leaf_nodes(nodes);
         // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
         // parser.directed_merge(top_leaves, merge_history);
-        parser.foward_path(top_leaves);
+        auto merge_history = parser.foward_path(top_leaves);
         timer.here_then_reset("Forward path");
 
+        for(auto x : merge_history)
+            std::cerr<<x<< " ";
+        std::cerr<<"\n";
         print_all_descents(nodes[13]);
     } catch (H5::Exception ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
