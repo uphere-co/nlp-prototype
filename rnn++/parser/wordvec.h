@@ -48,11 +48,8 @@ public:
         auto t_alloc = std::chrono::high_resolution_clock::now();
         for(auto idx : idxs){
             span_t vec = (*this)[idx];
-            auto t_start = std::chrono::high_resolution_clock::now();
             std::copy_n(std::cbegin(vec), word_dim, std::back_inserter(new_block));
             // std::copy_n(std::cbegin(vec), word_dim, new_block.begin());
-            auto t_end = std::chrono::high_resolution_clock::now();
-            std::cerr << "WordBlock::getWordVec loop #"<<idx<<" : "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
         }
         auto t_end = std::chrono::high_resolution_clock::now();
         std::cerr << "WordBlock::getWordVec alloc #"<<idxs.size()*word_dim<<" : "<< std::chrono::duration<double, std::milli>(t_alloc-t_start).count() << std::endl;

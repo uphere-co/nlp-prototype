@@ -1,4 +1,7 @@
 #pragma once
+
+#include "utils/hdf5.h"
+
 namespace rnn{
 namespace config{
 

@@ -20,6 +20,7 @@ using float_t = rnn::type::float_t;
 
 struct Word{
     Word(gsl::cstring_span<> word) : span{word}, val{span.data()}{}
+    Word(std::string word) : span{word}, val{word}{}
     bool operator<(const Word &word)  const { return this->span < word.span;}
     gsl::cstring_span<> span;
     std::string val;
@@ -49,14 +50,11 @@ public:
     //auto getIndex(Word word) const {return val.find(word.span.data())->second;}//return val[word];}
     auto getIndex(Word word) const {return val.find(word.val)->second;}
     auto getIndex(std::string sentence) const {
-        auto t_start = std::chrono::high_resolution_clock::now();
         auto tokens = util::string::split(sentence);
         std::vector<idx_t> idxs;
         for(auto const &word : tokens){
             idxs.push_back(getIndex(Word{word}));
         }
-        auto t_end = std::chrono::high_resolution_clock::now();
-        std::cerr << "VocaIndexMap::getIndex : "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
         return idxs;
     }
 private:
