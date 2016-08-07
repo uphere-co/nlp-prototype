@@ -72,6 +72,7 @@ auto Vector(std::array<T,M> &val){
 }//namespace util::math::factory
 
 
+//TODO: use bi-dimensional index, gsl::index<2>?? 
 template<typename T, int64_t M, int64_t N>
 auto transpose(gsl::span<T,M,N> mat){
     std::vector<T> tr_mat(M*N);

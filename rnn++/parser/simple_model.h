@@ -62,12 +62,12 @@ template<typename T, int64_t M>
 auto merge_to_phrase(util::math::Matrix<T,M,M> w_left,
                      util::math::Matrix<T,M,M> w_right,
                      util::math::Vector<T,M> bias,
-                     util::math::VectorView<T,M> word_left,
-                     util::math::VectorView<T,M> word_right){
+                     gsl::span<T,Param::dim> word_left,
+                     gsl::span<T,Param::dim> word_right){
     util::math::Vector<T,M> phrase{};
-    for(int64_t i=0; i<M; ++i){
+    for(decltype(M) i=0; i<M; ++i){
         phrase.span[i] = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
-                                           word_left.span, word_right.span);
+                                           word_left, word_right);
     }
     return std::move(phrase);
 }
