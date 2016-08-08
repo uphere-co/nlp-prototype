@@ -1,4 +1,4 @@
-project(rnnparser)
+project(word2vec)
 cmake_minimum_required(VERSION 3.4)
 
 SET(HOME $ENV{HOME})
@@ -36,3 +36,6 @@ target_link_libraries(app_pca m pca armadillo ${GFORTRAN_LIBRARY} openblas boost
 
 add_executable(voca_builder app/voca_builder)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
+
+add_executable(wordvec_trainer app/wordvec_trainer)
+target_link_libraries(wordvec_trainer ${CMAKE_THREAD_LIBS_INIT} hdf5_cpp hdf5_hl_cpp)
