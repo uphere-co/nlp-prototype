@@ -18,7 +18,7 @@ public:
 
     //TODO:Move the following two to nameless namespace in .cpp file.
     vec_type merge_to_phrase(vec_type const &word_left,
-                             vec_type const &word_right){
+                             vec_type const &word_right) const {
         return rnn::simple_model::compute::merge_to_phrase(
                     param.w_left, param.w_right, param.bias,
                     //TODO: remove .span?
@@ -27,13 +27,13 @@ public:
     value_type scoring_node(node_type const &node) const {
         return util::math::dot(param.u_score.span, node.vec.span);
     }
-    void set_node_property(node_type &node){
+    void set_node_property(node_type &node) const {
         node.vec  = merge_to_phrase(node.left->vec, node.right->vec);
         node.score= scoring_node(node);
         node.set_name();
         // std::cerr<< "Merge!! : "<< new_node.score << std::endl;
     }
-    node_type merge_node(node_type const &left, node_type const &right){
+    node_type merge_node(node_type const &left, node_type const &right) const {
         auto new_node = node_type{node_type::word_type{std::string{}}};
         new_node.left = &left;
         new_node.right= &right;
@@ -43,7 +43,7 @@ public:
 
     //top_node  : a node which has no parent
     //leaf_node : a node which has no children
-    std::vector<node_type*> merge_leaf_nodes(std::vector<node_type> &leaves){
+    std::vector<node_type*> merge_leaf_nodes(std::vector<node_type> &leaves) const {
         auto n_leaf = leaves.size();
         auto last_leaf = leaves.cend()-1;
         for(auto it=leaves.cbegin(); it!=last_leaf;)
@@ -54,7 +54,7 @@ public:
             top_node.push_back(it);
         return top_node;
     }
-    auto foward_path(std::vector<node_type*> &top_nodes){
+    auto foward_path(std::vector<node_type*> &top_nodes) const {
         std::vector<decltype(top_nodes.size())> merge_history;
         while(top_nodes.size()){
             auto it_max=std::max_element(top_nodes.cbegin(), top_nodes.cend(),
@@ -81,7 +81,7 @@ public:
     }
 
     void directed_merge(std::vector<node_type*> &top_nodes,
-                        std::vector<size_t> const &merge_history){
+                        std::vector<size_t> const &merge_history) const {
         for(auto idx_max : merge_history){
             auto it_new  = top_nodes[idx_max];
             if(idx_max!=0){

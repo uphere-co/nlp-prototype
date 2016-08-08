@@ -49,11 +49,23 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
 }
 
 namespace compute{
-auto activation_f = [](auto x){return tanh(x);};
+
+
+
+//Cannot do string comparison at compile time.
+// constexpr auto activation_factory(const char name[]){
+//     if(name=="tanh") return Activation::tanh;
+//     else if(name=="sig") return Activation::sig;
+// }
+
+
+
+auto activation_f = util::math::Fun<rnn::config::activation>;//[](auto x){return tanh(x);};
 auto activation_df = [](auto x){
     auto fx = cosh(x);
     return decltype(x){1}/(fx*fx);
 };
+
 auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
                           auto const &word_left, auto const &word_right){
     return activation_f(util::math::dot(w_left_i, word_left)+util::math::dot(w_right_i, word_right) + b_i);
@@ -73,6 +85,14 @@ auto merge_to_phrase(util::math::Matrix<T,M,M> w_left,
     return std::move(phrase);
 }
 
+
+// auto backward_mesg_w(grad, node, mesg, x, word){
+//     mesg *= activation_df(x);
+//     grad+=outer(mesg, word);
+//     backward_mesg_w(grad, *node.left,  dot(mesg, w_left) , x, word_left);
+//     backward_mesg_w(grad, *node.right, dot(mesg, w_right), x, word_right);
+//     return;
+// }
 }//namespace rnn::simple_model::compute
 }//namespace rnn::simple_model
 }//namespace rnn

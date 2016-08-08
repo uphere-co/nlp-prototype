@@ -117,10 +117,10 @@ int main(){
         for(decltype(nodes.size())i=0; i<nodes.size(); ++i)
             nodes[i].vec=rnn_model::Param::vec_type{word_block[i]};
         assert(words.size()==nodes.size());
-        auto top_leaves = parser.merge_leaf_nodes(nodes);
+        auto top_nodes = parser.merge_leaf_nodes(nodes);
         // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
-        // parser.directed_merge(top_leaves, merge_history);
-        auto merge_history = parser.foward_path(top_leaves);
+        // parser.directed_merge(top_nodes, merge_history);
+        auto merge_history = parser.foward_path(top_nodes);
         timer.here_then_reset("Forward path");
 
         for(auto x : merge_history)
