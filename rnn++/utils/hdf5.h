@@ -39,6 +39,8 @@ H5::PredType ToH5PredType<uint64_t>(){return H5::PredType::NATIVE_UINT64;}
 template<>
 H5::PredType ToH5PredType<float>()   {return H5::PredType::NATIVE_FLOAT;}
 template<>
+H5::PredType ToH5PredType<double>()   {return H5::PredType::NATIVE_DOUBLE;}
+template<>
 H5::PredType ToH5PredType<char>()    {return H5::PredType::NATIVE_CHAR;}
 
 /*

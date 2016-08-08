@@ -1,4 +1,8 @@
 #pragma once
+
+//TODO: remove the include and replace util::io::H5name with std::string??
+#include "utils/hdf5.h"
+
 namespace rnn{
 namespace config{
 

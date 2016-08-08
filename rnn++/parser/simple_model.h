@@ -6,6 +6,7 @@
 #include<gsl.h>
 
 #include"parser/basic_type.h"
+#include"parser/config.h"
 #include"utils/string.h"
 #include"utils/math.h"
 #include"utils/linear_algebra.h"
@@ -13,8 +14,8 @@
 namespace rnn{
 
 namespace simple_model{
-template<int dim>
 struct Param{
+    static constexpr auto dim = rnn::config::word_dim;
     using value_type = rnn::type::float_t;
     using mat_type   = util::math::Matrix<value_type, dim, dim>;
     using vec_type   = util::math::Vector<value_type, dim>;
@@ -34,8 +35,8 @@ struct Param{
     vec_type u_score;
 };
 
-template<int dim>
 auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
+    constexpr auto dim = rnn::config::word_dim;
     auto span2d   = gsl::as_span(param_raw.data(), gsl::dim<dim*2+2>(),gsl::dim<dim>());
     // auto w_span = gsl::as_span(span2d.data(), gsl::dim<dim*2>(),gsl::dim<dim>());
     auto wLT_span = gsl::as_span(span2d.data(),      gsl::dim<dim>(),gsl::dim<dim>());
@@ -44,8 +45,9 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     auto wR       = util::math::transpose(wRT_span);
     auto bias     = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim]};
     auto u_score  = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim+1]};
-    return Param<dim>{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
+    return Param{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
+
 namespace compute{
 auto activation_f = [](auto x){return tanh(x);};
 auto activation_df = [](auto x){
@@ -61,12 +63,12 @@ template<typename T, int64_t M>
 auto merge_to_phrase(util::math::Matrix<T,M,M> w_left,
                      util::math::Matrix<T,M,M> w_right,
                      util::math::Vector<T,M> bias,
-                     util::math::VectorView<T,M> word_left,
-                     util::math::VectorView<T,M> word_right){
+                     gsl::span<T,Param::dim> word_left,
+                     gsl::span<T,Param::dim> word_right){
     util::math::Vector<T,M> phrase{};
-    for(int64_t i=0; i<M; ++i){
+    for(decltype(M) i=0; i<M; ++i){
         phrase.span[i] = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
-                                           word_left.span, word_right.span);
+                                           word_left, word_right);
     }
     return std::move(phrase);
 }

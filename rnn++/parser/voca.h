@@ -1,14 +1,16 @@
 #pragma once
-#include<ostream>
-#include<string>
-#include<vector>
-#include<map>
+#include <ostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <chrono>
 
-#include<gsl.h>
+#include <gsl.h>
 
-#include"parser/basic_type.h"
-#include"utils/string.h"
-#include"utils/math.h"
+#include "parser/basic_type.h"
+#include "utils/string.h"
+#include "utils/math.h"
 
 namespace rnn{
 namespace parser{
@@ -17,26 +19,41 @@ using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
 
 struct Word{
-    Word(gsl::cstring_span<> word) : span{word}{}
+    Word(gsl::cstring_span<> word) : span{word}, val{span.data()}{}
+    Word(std::string word) : span{word}, val{word}{}
     bool operator<(const Word &word)  const { return this->span < word.span;}
     gsl::cstring_span<> span;
+    std::string val;
 };
 std::ostream& operator<<(std::ostream& os, const Word& obj) {
     os<<gsl::to_string(obj.span);
     return os;
 }
 
+struct cmp_str {
+   bool operator()(char const *a, char const *b) const {
+      return std::strcmp(a, b) < 0;
+   }
+};
+//std::map<char const *, size_t, [](auto a, auto b){return std::strcmp(a, b) < 0;}> aaa_t;
+std::map<char const *, size_t, cmp_str> aaa_t;
 class VocaIndexMap{
 public:
     typedef size_t idx_t;
-    typedef std::map<Word, idx_t> data_t;
+    // typedef std::unordered_map<Word, idx_t> data_t;
+    // typedef std::map<Word, idx_t> data_t;
+    //typedef std::map<std::string, size_t> data_t;
+    typedef std::unordered_map<std::string, size_t> data_t;
+    // typedef std::map<char const *, size_t, cmp_str> data_t;
+    // typedef std::unordered_map<char const *, size_t, cmp_str> data_t;
     VocaIndexMap(data_t const &word2idxs) : val{word2idxs}{}
-    auto getIndex(Word word) const {return val.find(word)->second;}
+    //auto getIndex(Word word) const {return val.find(word.span.data())->second;}//return val[word];}
+    auto getIndex(Word word) const {return val.find(word.val)->second;}
     auto getIndex(std::string sentence) const {
         auto tokens = util::string::split(sentence);
         std::vector<idx_t> idxs;
         for(auto const &word : tokens){
-            idxs.push_back(this->getIndex(Word{word}));
+            idxs.push_back(getIndex(Word{word}));
         }
         return idxs;
     }
@@ -60,8 +77,8 @@ public:
     auto size() const {return voca_size;}
     VocaIndexMap indexing() const{
         auto word_to_idx = VocaIndexMap::data_t{};
-        for(auto i=data_t::size_type{0}; i<this->size(); ++i){
-            word_to_idx[this->getWord(i)]=i;
+        for(auto i=data_t::size_type{0}; i<size(); ++i){
+            word_to_idx[getWord(i).val]=i;
         }
         return VocaIndexMap{word_to_idx};
     }

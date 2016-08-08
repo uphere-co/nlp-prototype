@@ -22,12 +22,12 @@ auto sum(gsl::span<T> const vec){
 }
 template<typename T, int64_t M>
 auto sum(gsl::span<T,M> const vec){
-    std::cerr << "sum<T,M> "<< M << std::endl;
+    //std::cerr << "sum<T,M> "<< M << std::endl;
     return std::accumulate(vec.cbegin(), vec.cend(), T{});
 }
 template<typename T, int64_t M,int64_t N>
 auto sum(gsl::span<T,M,N> const mat){
-    std::cerr << "sum<T,M,N> "<< M << " " << N << std::endl;
+    //std::cerr << "sum<T,M,N> "<< M << " " << N << std::endl;
     auto flat = mat.subspan(0,M*N);
     return sum(flat);
 }
