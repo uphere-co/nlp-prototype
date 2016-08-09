@@ -35,8 +35,7 @@ struct cmp_str {
       return std::strcmp(a, b) < 0;
    }
 };
-//std::map<char const *, size_t, [](auto a, auto b){return std::strcmp(a, b) < 0;}> aaa_t;
-std::map<char const *, size_t, cmp_str> aaa_t;
+
 class VocaIndexMap{
 public:
     typedef size_t idx_t;

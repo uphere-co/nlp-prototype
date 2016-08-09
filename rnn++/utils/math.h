@@ -31,5 +31,18 @@ auto sum(gsl::span<T,M,N> const mat){
     auto flat = mat.subspan(0,M*N);
     return sum(flat);
 }
+
+enum class FunName {
+    tanh,
+    sig,
+};
+
+template<FunName>
+float_t Fun(float_t x);
+template<>
+float_t Fun<FunName::tanh>(float_t x){return tanh(x);}
+template<>
+float_t Fun<FunName::sig>(float_t x){return float_t{1}/(float_t{1}+exp(-x));}
+
 }//namespace util::math
 }//namespace util

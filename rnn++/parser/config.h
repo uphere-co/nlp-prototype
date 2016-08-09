@@ -2,6 +2,7 @@
 
 //TODO: remove the include and replace util::io::H5name with std::string??
 #include "utils/hdf5.h"
+#include "utils/math.h" //TODO: it is for util::math::FunName only. Separate it from other part.
 
 namespace rnn{
 namespace config{
@@ -22,5 +23,6 @@ constexpr int voca_max_word_len = 74;
 constexpr size_t voca_size=552402;
 constexpr int word_dim=100;
 
+constexpr auto activation = util::math::FunName::tanh;
 }//namescpae config
 }//namespace rnn
