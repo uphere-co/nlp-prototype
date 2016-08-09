@@ -3,7 +3,6 @@
 #include "parser/simple_model.h"
 #include "parser/node.h"
 #include "utils/linear_algebra.h"
-#include "utils/print.h"
 
 namespace rnn{
 namespace simple_model{
@@ -29,12 +28,12 @@ public:
         return util::math::dot(param.u_score.span, node.vec.span);
     }
     void set_node_property(node_type &node) const {
-        using rnn::simple_model::compute::apply_activation;
+        using rnn::simple_model::compute::ActivationFun;
         node.vec_wsum  = weighted_sum(node.left->vec, node.right->vec);
-        node.vec  = apply_activation(node.vec_wsum.span);
+        node.vec  = vectorize(ActivationFun<Param::value_type,Param::dim>{},
+                              node.vec_wsum.span);
         node.score= scoring_node(node);
         node.set_name();
-        std::cerr<< "Merged!! : "<< node.score << std::endl;
     }
     node_type merge_node(node_type const &left, node_type const &right) const {
         auto new_node = node_type{node_type::word_type{std::string{}}};

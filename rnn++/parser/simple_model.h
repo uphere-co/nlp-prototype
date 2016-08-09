@@ -61,12 +61,6 @@ namespace compute{
 //     else if(name=="sig") return Activation::sig;
 // }
 
-auto activation_f = util::math::Fun<rnn::config::activation>;//[](auto x){return tanh(x);};
-auto activation_df = [](auto x){
-    auto fx = cosh(x);
-    return decltype(x){1}/(fx*fx);
-};
-
 template<typename T,int64_t dim>
 struct WeightedSum{
 private:
@@ -83,21 +77,25 @@ public:
 };
 
 template<typename T,int64_t dim>
-struct Tanh{
+struct ActivationFun{
 private:
     using vec_type = gsl::span<T,dim>;
 public:
-    // template<typename VEC>
-    // auto operator()(int64_t i, VEC const &x) const {
-    //     return tanh(x[i]);
-    // }
     auto operator()(int64_t i, vec_type const &x) const {
-        return tanh(x[i]);
+        return util::math::Fun<rnn::config::activation>(x[i]);
     }
 };
-// auto Tanh=[](auto i, auto const &x) {  return tanh(x[i]);
+template<typename T,int64_t dim>
+struct ActivationDFun{
+private:
+    using vec_type = gsl::span<T,dim>;
+public:
+    auto operator()(int64_t i, vec_type const &x) const {
+        return util::math::Fun<rnn::config::activation_df>(x[i]);
+    }
+};
 
-template<template<typename ,int64_t > class OP, typename T, int64_t dim, typename... Args>
+template<template<typename,int64_t> class OP, typename T, int64_t dim, typename... Args>
 auto vectorize(OP<T,dim> const &fun, Args&&... args)
 {
     util::math::Vector<T,dim> result{};
@@ -106,59 +104,6 @@ auto vectorize(OP<T,dim> const &fun, Args&&... args)
     }
     return std::move(result);
 }
-
-//TODO:change name to more approciate one and move to util::math.
-template<typename T, int64_t M>
-auto apply_activation(gsl::span<T,M> const &wsum){
-    util::math::Vector<T,M> phrase{};
-    for(decltype(M) i=0; i<M; ++i){
-        phrase.span[i] = activation_f(wsum[i]);
-    }
-    return std::move(phrase);
-}
-
-auto weighted_sum_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
-                          auto const &word_left, auto const &word_right){
-    using util::math::dot;
-    return dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i;
-};
-template<typename T, int64_t M>
-auto weighted_sum(util::math::Matrix<T,M,M> const &w_left,
-                     util::math::Matrix<T,M,M> const &w_right,
-                     util::math::Vector<T,M> const &bias,
-                     gsl::span<T,Param::dim> const &word_left,
-                     gsl::span<T,Param::dim> const &word_right){
-    util::math::Vector<T,M> wsum{};
-    for(decltype(M) i=0; i<M; ++i){
-        // auto weighted_sum_i = WeightedSum<Param::value_type,Param::dim>{};
-        auto weighted_sum_i = WeightedSum<float,Param::dim>{};
-        wsum.span[i] = weighted_sum_i(i, w_left.span, w_right.span, bias.span,
-                                      word_left, word_right);
-    }
-    return std::move(wsum);
-}
-
-
-auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
-                          auto const &word_left, auto const &word_right){
-    using util::math::dot;
-    return activation_f(dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i);
-};
-template<typename T, int64_t M>
-auto merge_to_phrase(util::math::Matrix<T,M,M> const &w_left,
-                     util::math::Matrix<T,M,M> const &w_right,
-                     util::math::Vector<T,M> const &bias,
-                     gsl::span<T,Param::dim> const &word_left,
-                     gsl::span<T,Param::dim> const &word_right){
-    util::math::Vector<T,M> phrase{};
-    for(decltype(M) i=0; i<M; ++i){
-        auto x_i = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
-                                     word_left, word_right);
-        phrase.span[i] = activation_f(x_i);
-    }
-    return std::move(phrase);
-}
-
 
 // auto backward_mesg_w(grad, node, mesg, x, word){
 //     mesg *= activation_df(x);
