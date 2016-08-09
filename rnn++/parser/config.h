@@ -24,5 +24,6 @@ constexpr size_t voca_size=552402;
 constexpr int word_dim=100;
 
 constexpr auto activation = util::math::FunName::tanh;
+constexpr auto activation_df = util::math::FunName::d_tanh;
 }//namescpae config
 }//namespace rnn

@@ -25,7 +25,8 @@ struct Node{
     void set_name() { name = word_type{merged_name(*left,*right)}; }
 
     word_type name;
-    vec_type  vec;
+    vec_type  vec_wsum{};
+    vec_type  vec{};
     value_type score{};
     Node const *left=nullptr;
     Node const *right=nullptr;

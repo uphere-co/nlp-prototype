@@ -35,12 +35,16 @@ auto sum(gsl::span<T,M,N> const mat){
 enum class FunName {
     tanh,
     sig,
+    d_tanh,
+    d_sig
 };
 
 template<FunName>
 float_t Fun(float_t x);
 template<>
 float_t Fun<FunName::tanh>(float_t x){return tanh(x);}
+template<>
+float_t Fun<FunName::d_tanh>(float_t x){auto fx=cosh(x);return decltype(x){1}/(fx*fx);}
 template<>
 float_t Fun<FunName::sig>(float_t x){return float_t{1}/(float_t{1}+exp(-x));}
 
