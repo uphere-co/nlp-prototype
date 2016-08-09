@@ -12,11 +12,15 @@ namespace math{
 
 template<typename T, int64_t M>
 struct Vector{
-    Vector(gsl::span<T, M> const vals) : _val(M) {
+    Vector(gsl::span<T, M> const vals) : _val(M, T{}) {
         std::cerr<<M<<" Vector{gsl::span<M>}\n";
         std::copy_n(vals.cbegin(), M, _val.begin());
     }
-    Vector() : _val(M) {}
+    Vector() : _val(M, T{}) {}
+    //CAUTION: careful to correctly implement non-default constructor if necessary.
+    // Vector(Vector const & vec) : _val{vec._val}, span{_val} {};
+    // Vector& operator=(const Vector& vec) = default;
+    // Vector(Vector&& vec) =default;
     std::vector<T> _val;
     gsl::span<T, M> span=_val;
 };
@@ -28,11 +32,14 @@ struct VectorView{
 
 template<typename T, int64_t M, int64_t N>
 struct Matrix{
-    Matrix(gsl::span<T, M,N> const vals) : _val(M*N) {
+    Matrix(gsl::span<T, M,N> const vals) : _val(M*N, T{}) {
         std::cerr<<M<<" "<<N<<" Matrix{gsl::span<M,N>}\n";
         std::copy_n(vals.begin(), M*N, _val.begin());
     }
-    Matrix() :_val(M*N) {}
+    Matrix() :_val(M*N, T{}) {}
+    // Matrix(Matrix const & vec) : _val{vec._val}, span{_val} {};
+    // Matrix& operator=(const Matrix& vec) = default;
+    // Matrix(Matrix&& vec) =default;
     std::vector<T> _val;
     gsl::span<T, M, N> span=_val;
 };
@@ -48,7 +55,7 @@ namespace factory{
 template<typename T, std::size_t M>
 auto Vector(std::array<T,M> &val){
     const auto span = gsl::as_span(val);
-    return util::math::Vector<T,M>{span};
+    return util::math::Vector<T,int64_t{M}>{span};
 }
 
 // template<typename T>
@@ -72,7 +79,7 @@ auto Vector(std::array<T,M> &val){
 }//namespace util::math::factory
 
 
-//TODO: use bi-dimensional index, gsl::index<2>?? 
+//TODO: use bi-dimensional index, gsl::index<2>??
 template<typename T, int64_t M, int64_t N>
 auto transpose(gsl::span<T,M,N> mat){
     std::vector<T> tr_mat(M*N);
