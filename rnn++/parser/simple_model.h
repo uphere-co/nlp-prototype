@@ -11,6 +11,9 @@
 #include"utils/math.h"
 #include"utils/linear_algebra.h"
 
+#include "utils/print.h"
+using util::print;
+
 namespace rnn{
 
 namespace simple_model{
@@ -66,21 +69,53 @@ auto activation_df = [](auto x){
     return decltype(x){1}/(fx*fx);
 };
 
-auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
+auto weighted_sum_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
                           auto const &word_left, auto const &word_right){
-    return activation_f(util::math::dot(w_left_i, word_left)+util::math::dot(w_right_i, word_right) + b_i);
+    using util::math::dot;
+    return dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i;
 };
-
 template<typename T, int64_t M>
-auto merge_to_phrase(util::math::Matrix<T,M,M> w_left,
-                     util::math::Matrix<T,M,M> w_right,
-                     util::math::Vector<T,M> bias,
-                     gsl::span<T,Param::dim> word_left,
-                     gsl::span<T,Param::dim> word_right){
+auto weighted_sum(util::math::Matrix<T,M,M> const &w_left,
+                     util::math::Matrix<T,M,M> const &w_right,
+                     util::math::Vector<T,M> const &bias,
+                     gsl::span<T,Param::dim> const &word_left,
+                     gsl::span<T,Param::dim> const &word_right){
+    util::math::Vector<T,M> wsum{};
+    util::print(util::math::sum(wsum.span));
+
+    for(decltype(M) i=0; i<M; ++i){
+        wsum.span[i] = weighted_sum_i(w_left.span[i], w_right.span[i], bias.span[i],
+                                      word_left, word_right);
+    }
+    util::print(util::math::sum(wsum.span));
+    return std::move(wsum);
+}
+//TODO:change name to more approciate one and move to util::math.
+template<typename T, int64_t M>
+auto apply_activation(gsl::span<T,M> const &wsum){
     util::math::Vector<T,M> phrase{};
     for(decltype(M) i=0; i<M; ++i){
-        phrase.span[i] = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
-                                           word_left, word_right);
+        phrase.span[i] = activation_f(wsum[i]);
+    }
+    return std::move(phrase);
+}
+
+auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
+                          auto const &word_left, auto const &word_right){
+    using util::math::dot;
+    return activation_f(dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i);
+};
+template<typename T, int64_t M>
+auto merge_to_phrase(util::math::Matrix<T,M,M> const &w_left,
+                     util::math::Matrix<T,M,M> const &w_right,
+                     util::math::Vector<T,M> const &bias,
+                     gsl::span<T,Param::dim> const &word_left,
+                     gsl::span<T,Param::dim> const &word_right){
+    util::math::Vector<T,M> phrase{};
+    for(decltype(M) i=0; i<M; ++i){
+        auto x_i = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
+                                     word_left, word_right);
+        phrase.span[i] = activation_f(x_i);
     }
     return std::move(phrase);
 }

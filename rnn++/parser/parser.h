@@ -3,6 +3,7 @@
 #include "parser/simple_model.h"
 #include "parser/node.h"
 #include "utils/linear_algebra.h"
+#include "utils/print.h"
 
 namespace rnn{
 namespace simple_model{
@@ -15,11 +16,10 @@ public:
 
     Parser(Param const &param) : param{param}{}
 
-
     //TODO:Move the following two to nameless namespace in .cpp file.
-    vec_type merge_to_phrase(vec_type const &word_left,
-                             vec_type const &word_right) const {
-        return rnn::simple_model::compute::merge_to_phrase(
+    vec_type weighted_sum(vec_type const &word_left,
+                          vec_type const &word_right) const {
+        return rnn::simple_model::compute::weighted_sum(
                     param.w_left, param.w_right, param.bias,
                     //TODO: remove .span?
                     word_left.span,word_right.span);
@@ -28,10 +28,11 @@ public:
         return util::math::dot(param.u_score.span, node.vec.span);
     }
     void set_node_property(node_type &node) const {
-        node.vec  = merge_to_phrase(node.left->vec, node.right->vec);
+        node.vec_wsum  = weighted_sum(node.left->vec, node.right->vec);
+        node.vec  = rnn::simple_model::compute::apply_activation(node.vec_wsum.span);
         node.score= scoring_node(node);
         node.set_name();
-        // std::cerr<< "Merge!! : "<< new_node.score << std::endl;
+        std::cerr<< "Merged!! : "<< node.score << std::endl;
     }
     node_type merge_node(node_type const &left, node_type const &right) const {
         auto new_node = node_type{node_type::word_type{std::string{}}};
@@ -78,6 +79,17 @@ public:
             top_nodes.pop_back();
         }
         return merge_history;
+    }
+    auto backward_path_W_left(node_type const &phrase) const {
+        mat_type grad;
+        auto dim = Param::dim;
+        auto mesg{param.u_score};
+        for(decltype(dim) i=0; i<dim; ++i){
+            for(decltype(dim) j=0; j<dim; ++j){
+                grad.span[i][j] += mesg.span[i]*phrase.vec_wsum.span[j];
+            }
+        }
+        return grad;
     }
 
     void directed_merge(std::vector<node_type*> &top_nodes,
