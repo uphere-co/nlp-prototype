@@ -19,17 +19,19 @@ public:
     //TODO:Move the following two to nameless namespace in .cpp file.
     vec_type weighted_sum(vec_type const &word_left,
                           vec_type const &word_right) const {
-        return rnn::simple_model::compute::weighted_sum(
-                    param.w_left, param.w_right, param.bias,
-                    //TODO: remove .span?
-                    word_left.span,word_right.span);
+        using rnn::simple_model::compute::WeightedSum;
+        //TODO: change interface to remove .span?
+        return vectorize(WeightedSum<Param::value_type,Param::dim>{},//WeightedSum<Param::value_type,Param::dim>{},
+                         param.w_left.span, param.w_right.span, param.bias.span,
+                         word_left.span,word_right.span);
     };
     value_type scoring_node(node_type const &node) const {
         return util::math::dot(param.u_score.span, node.vec.span);
     }
     void set_node_property(node_type &node) const {
+        using rnn::simple_model::compute::apply_activation;
         node.vec_wsum  = weighted_sum(node.left->vec, node.right->vec);
-        node.vec  = rnn::simple_model::compute::apply_activation(node.vec_wsum.span);
+        node.vec  = apply_activation(node.vec_wsum.span);
         node.score= scoring_node(node);
         node.set_name();
         std::cerr<< "Merged!! : "<< node.score << std::endl;
