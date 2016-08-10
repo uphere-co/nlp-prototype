@@ -158,17 +158,17 @@ int main(){
         using namespace rnn::simple_model::compute;
         
         rnn_t::float_t dsdW{};
-        auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};
-        
+        auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};        
         matloop_void(mul_sum, dsdW, grad_W_left.span, dParam.w_left.span);
-        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);
+        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);        
         timer.here_then_reset("Backward path");
+        
         auto param1{param};
         auto param2{param};
-        matloop_void(add_assign, param1.w_left.span, dParam.w_left.span);
-        matloop_void(add_assign, param1.w_right.span, dParam.w_right.span);
-        matloop_void(sub_assign, param2.w_left.span, dParam.w_left.span);
-        matloop_void(sub_assign, param2.w_right.span, dParam.w_right.span);
+        param1.w_left.span +=dParam.w_left.span;
+        param1.w_right.span+=dParam.w_right.span;
+        param2.w_left.span -=dParam.w_left.span;
+        param2.w_right.span-=dParam.w_right.span;
 
         auto score0 = node.score;
         {
