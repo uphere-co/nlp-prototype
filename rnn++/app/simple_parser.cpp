@@ -96,7 +96,6 @@ int main(){
         std::vector<rnn_t::float_t> param_raw;
         for(auto x: param_raw0) param_raw.push_back(x);
         auto param = rnn_model::deserializeParam(param_raw);
-        rnn_model::Parser parser{param};
 
         H5file file{file_name, hdf5::FileMode::read_exist};
         Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
@@ -117,6 +116,7 @@ int main(){
         timer.here_then_reset("Setup");
 
         using namespace rnn::simple_model::tree;
+        using namespace rnn::simple_model::parser;
         auto words = util::string::split(sentence);
         auto nodes = construct_nodes_with_reserve(words);
 
@@ -130,10 +130,10 @@ int main(){
             std::cerr<<i<<"-th word2vecs\n";
         }
         assert(words.size()==nodes.size());
-        auto top_nodes = parser.merge_leaf_nodes(nodes);
+        auto top_nodes = merge_leaf_nodes(param, nodes);
         // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
-        // parser.directed_merge(top_nodes, merge_history);
-        auto merge_history = parser.foward_path(top_nodes);
+        // directed_merge(param, top_nodes, merge_history);
+        auto merge_history = foward_path(param, top_nodes);
         timer.here_then_reset("Forward path");
         
         for(auto x : merge_history)
@@ -147,7 +147,7 @@ int main(){
         // print_all_descents(node);
         rnn_model::Param::mat_type grad_W_left, grad_W_right;
         rnn_model::Param::vec_type grad_bias, grad_u_score;
-        parser.backward_path(grad_W_left, grad_W_right, grad_bias,grad_u_score, node);
+        backward_path(param, grad_W_left, grad_W_right, grad_bias,grad_u_score, node);
         
         auto dParam = rnn::simple_model::randomParam(0.001);
         // auto dParam = rnn::simple_model::Param{};
@@ -173,26 +173,24 @@ int main(){
         param1.w_right.span+=dParam.w_right.span;
         param2.w_left.span -=dParam.w_left.span;
         param2.w_right.span-=dParam.w_right.span;
-        param1.bias.span +=dParam.bias.span;
-        param2.bias.span -=dParam.bias.span;
+        param1.bias.span   +=dParam.bias.span;
+        param2.bias.span   -=dParam.bias.span;
         param1.u_score.span+=dParam.u_score.span;
         param2.u_score.span-=dParam.u_score.span;
 
 
         auto score0 = node.score;
         {
-            rnn_model::Parser parser1{param1};
-            rnn_model::Parser parser2{param2};
             auto nodes1 = construct_nodes_with_reserve(words);
             auto nodes2 = construct_nodes_with_reserve(words);
             for(decltype(nodes2.size())i=0; i<nodes2.size(); ++i){
                 nodes1[i].vec=rnn_model::Param::vec_type{word_block[i]};
                 nodes2[i].vec=rnn_model::Param::vec_type{word_block[i]};
             }
-            auto top_nodes1 = parser1.merge_leaf_nodes(nodes1);
-            auto top_nodes2 = parser2.merge_leaf_nodes(nodes2);
-            parser1.foward_path(top_nodes1);
-            parser2.foward_path(top_nodes2);
+            auto top_nodes1 = merge_leaf_nodes(param1, nodes1);
+            auto top_nodes2 = merge_leaf_nodes(param2, nodes2);
+            foward_path(param1, top_nodes1);
+            foward_path(param2, top_nodes2);
             print('\n');
             print((nodes1[idx].score-nodes2[idx].score)*0.5);
             print(nodes1[idx].score-score0);
