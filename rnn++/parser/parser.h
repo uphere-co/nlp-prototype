@@ -101,15 +101,16 @@ public:
         }
     }
 
-    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
-                         node_type const &phrase,
-                         vec_type mesg) const {
+    void backward_path(mat_type &gradsum_left, mat_type &gradsum_right,
+                       vec_type &gradsum_bias,  
+                       node_type const &phrase, vec_type mesg) const {
         constexpr auto dim = Param::dim;
         using val_t =Param::value_type;
         using namespace rnn::simple_model::compute; 
         auto vecloop_void = VecLoop_void<val_t,dim>{};
         auto matloop_void = MatLoop_void<val_t,dim,dim>{};
         vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
+        gradsum_bias.span    += mesg.span;        
         matloop_void(back_prop_grad_W, 
                      gradsum_left.span, mesg.span, phrase.left->vec.span);                             
         matloop_void(back_prop_grad_W, 
@@ -117,18 +118,23 @@ public:
         if(phrase.left->is_combined()){
             Param::vec_type left_mesg;
             matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
-            backward_path_W(gradsum_left, gradsum_right, *phrase.left, left_mesg);
+            backward_path(gradsum_left, gradsum_right, gradsum_bias, 
+                          *phrase.left, left_mesg);
         }
         if(phrase.right->is_combined()){
             Param::vec_type right_mesg;
             matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
-            backward_path_W(gradsum_left, gradsum_right, *phrase.right, right_mesg);
+            backward_path(gradsum_left, gradsum_right, gradsum_bias, 
+                          *phrase.right, right_mesg);
         }
     }
-    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
-                         node_type const &phrase) const {
+    void backward_path(mat_type &gradsum_left, mat_type &gradsum_right,
+                       vec_type &gradsum_bias, vec_type &gradsum_u_score,
+                       node_type const &phrase) const {
+        using namespace rnn::simple_model::compute;
+        gradsum_u_score.span += phrase.vec.span;
         auto mesg{param.u_score};
-        backward_path_W(gradsum_left, gradsum_right, phrase, mesg);
+        backward_path(gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
     }
 
     Param param;

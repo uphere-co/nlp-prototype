@@ -146,7 +146,8 @@ int main(){
         assert(node.is_combined());
         // print_all_descents(node);
         rnn_model::Param::mat_type grad_W_left, grad_W_right;
-        parser.backward_path_W(grad_W_left, grad_W_right, node);
+        rnn_model::Param::vec_type grad_bias, grad_u_score;
+        parser.backward_path(grad_W_left, grad_W_right, grad_bias,grad_u_score, node);
         
         auto dParam = rnn::simple_model::randomParam(0.001);
         // auto dParam = rnn::simple_model::Param{};
@@ -157,18 +158,26 @@ int main(){
         // dParam.w_left.span[1][1]=param.w_left.span[1][1]*0.01;
         using namespace rnn::simple_model::compute;
         
-        rnn_t::float_t dsdW{};
+        rnn_t::float_t ds_grad{};
         auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};        
-        matloop_void(mul_sum, dsdW, grad_W_left.span, dParam.w_left.span);
-        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);        
+        matloop_void(mul_sum, ds_grad, grad_W_left.span, dParam.w_left.span);
+        matloop_void(mul_sum, ds_grad, grad_W_right.span, dParam.w_right.span);
+        ds_grad += dot(grad_bias.span, dParam.bias.span);
+        ds_grad += dot(grad_u_score.span, dParam.u_score.span);
+
         timer.here_then_reset("Backward path");
-        
+
         auto param1{param};
         auto param2{param};
         param1.w_left.span +=dParam.w_left.span;
         param1.w_right.span+=dParam.w_right.span;
         param2.w_left.span -=dParam.w_left.span;
         param2.w_right.span-=dParam.w_right.span;
+        param1.bias.span +=dParam.bias.span;
+        param2.bias.span -=dParam.bias.span;
+        param1.u_score.span+=dParam.u_score.span;
+        param2.u_score.span-=dParam.u_score.span;
+
 
         auto score0 = node.score;
         {
@@ -188,7 +197,7 @@ int main(){
             print((nodes1[idx].score-nodes2[idx].score)*0.5);
             print(nodes1[idx].score-score0);
             print('\n');
-            print(dsdW);
+            print(ds_grad);
             print('\n');
             print(node.score);
             print('\n');
