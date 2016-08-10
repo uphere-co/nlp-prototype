@@ -116,15 +116,16 @@ public:
     }
 };
 
-template<typename T,int64_t dim>
+template<typename T,int64_t dim1,int64_t dim2>
 struct AccumMesg{
 private:
-    using vec_type = gsl::span<T,dim>;
-    using mat_type = gsl::span<T,dim,dim>;
+    using vec_type1 = gsl::span<T,dim1>;
+    using vec_type2 = gsl::span<T,dim2>;
+    using mat_type = gsl::span<T,dim1,dim2>;
 public:
-    auto operator()(int64_t i,int64_t j,
-                    vec_type &out,
-                    vec_type const &mesg,
+    void operator()(int64_t i,int64_t j,
+                    vec_type2 &out,
+                    vec_type1 const &mesg,
                     mat_type const &w) const {
         out[j]+=mesg[i]*w[i][j];
     }
@@ -154,6 +155,15 @@ public:
     }
 };
 template<typename T,int64_t dim1,int64_t dim2>
+struct SubAssign{
+private:
+    using vec_type = gsl::span<T,dim1,dim2>;
+public:
+    void operator()(int64_t i,int64_t j, vec_type const & out, vec_type const & x) const {
+        out[i][j]-=x[i][j];
+    }
+};
+template<typename T,int64_t dim1,int64_t dim2>
 struct MulSum{
 private:
     using mat_type = gsl::span<T,dim1,dim2>;
@@ -165,7 +175,6 @@ public:
         out+=a[i][j]*b[i][j];
     }
 };
-
 
 
 template<template<typename,int64_t> class OP, typename T, int64_t dim, typename... Args>
@@ -232,6 +241,8 @@ void matloop_void(OP<T,dim_1,dim_2> const &fun, Args&&... args)
         }
     }
 }
+
+
 
 // auto backward_mesg_w(grad, node, mesg, x, word){
 //     mesg *= activation_df(x);

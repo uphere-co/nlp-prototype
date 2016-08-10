@@ -81,27 +81,33 @@ public:
         }
         return merge_history;
     }
-    auto backward_path_W_left(node_type const &phrase) const {
-        mat_type gradsum;
+    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
+                         node_type const &phrase,
+                         vec_type mesg) const {
         //TODO:Fix bug. copy construct is incorrect.
         //mat_type grad{gradsum};
         constexpr auto dim = Param::dim;
         using val_t =Param::value_type; 
-        auto mesg{param.u_score};
         vecloop_void(compute::UpdateMesg<val_t, dim>{}, mesg.span, phrase.vec_wsum.span);
         matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
-                     gradsum.span, mesg.span, phrase.left->vec.span);
-        return gradsum;
+                     gradsum_left.span, mesg.span, phrase.left->vec.span);                             
+        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
+                     gradsum_right.span, mesg.span, phrase.right->vec.span);
+        if(phrase.left->is_combined()){
+            Param::vec_type left_mesg;
+            matloop_void(compute::AccumMesg<val_t,dim,dim>{}, left_mesg.span, mesg.span, param.w_left.span);
+            backward_path_W(gradsum_left, gradsum_right, *phrase.left, left_mesg);
+        }
+        if(phrase.right->is_combined()){
+            Param::vec_type right_mesg;
+            matloop_void(compute::AccumMesg<val_t,dim,dim>{}, right_mesg.span, mesg.span, param.w_right.span);
+            backward_path_W(gradsum_left, gradsum_right, *phrase.right, right_mesg);
+        }
     }
-    auto backward_path_W_right(node_type const &phrase) const {
-        mat_type gradsum;
-        constexpr auto dim = Param::dim;
-        using val_t =Param::value_type; 
+    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
+                         node_type const &phrase) const {
         auto mesg{param.u_score};
-        vecloop_void(compute::UpdateMesg<val_t, dim>{}, mesg.span, phrase.vec_wsum.span);
-        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
-                     gradsum.span, mesg.span, phrase.right->vec.span);
-        return gradsum;
+        backward_path_W(gradsum_left, gradsum_right, phrase, mesg);
     }
 
     void directed_merge(std::vector<node_type*> &top_nodes,
