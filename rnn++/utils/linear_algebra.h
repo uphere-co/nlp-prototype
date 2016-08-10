@@ -39,6 +39,8 @@ struct Vector{
         return *this;
     };
     Vector(Vector&& vec) : _val{std::move(vec._val)} {
+        span=gsl::span<T, M>{_val};
+        //Fail if nan
         assert(span[0]==_val[0]);
         // std::cerr<<"Move Vector{gsl::span<M>}\n";
     };
@@ -63,7 +65,11 @@ struct Matrix{
         std::copy_n(mat.span.cbegin(), M*N, _val.begin());
         return *this;
     }
-    Matrix(Matrix&& vec) : _val{std::move(vec._val)} {};
+    Matrix(Matrix&& vec) : _val{std::move(vec._val)} {
+        span=gsl::span<T, M,N>{_val};
+        //Fail if nan
+        assert(span[0]==_val[0]);
+    };
     std::vector<T> _val;
     gsl::span<T, M, N> span=_val; //this default is critical!
 };
