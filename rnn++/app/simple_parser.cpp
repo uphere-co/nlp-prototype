@@ -103,7 +103,8 @@ int main(){
 
         auto timer=Timer{};
 
-        auto sentence = u8"A symbol of\tBritish pound is £ .";
+        // auto raw_text = "A symbol\nof British pound is £."
+        auto sentence = u8"A symbol of British pound is £ .";
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
         std::cerr << sum(word_block.span) << std::endl;
@@ -113,9 +114,15 @@ int main(){
         using namespace rnn::simple_model::tree;
         auto words = util::string::split(sentence);
         auto nodes = construct_nodes_with_reserve(words);
+
+        std::cerr<<"Assign word2vecs\n";
         //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block
-        for(decltype(nodes.size())i=0; i<nodes.size(); ++i)
+        print(nodes.size());
+        print('\n');
+        for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
+            //TODO: Use VectorView instead.
             nodes[i].vec=rnn_model::Param::vec_type{word_block[i]};
+        }
         assert(words.size()==nodes.size());
         auto top_nodes = parser.merge_leaf_nodes(nodes);
         // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
@@ -127,8 +134,43 @@ int main(){
             std::cerr<<x<< " ";
         std::cerr<<"\n";
         print_all_descents(nodes[13]);
-    } catch (H5::Exception ex) {
+        auto const &node=nodes[10];
+        print_all_descents(node);
+        auto grad_w_left=parser.backward_path_W_left(node);
+        auto grad_w_right=parser.backward_path_W_right(node);
+        
+        auto dParam = rnn::simple_model::randomParam(0.0002);
+        // auto dParam = rnn::simple_model::Param{};
+        // for(auto &x : dParam.w_left.span) x=0.0002;
+        // for(auto &x : dParam.w_right.span) x=0.0002;
+        float_t dsdW{};
+        using namespace rnn::simple_model::compute;
+        matloop_void(MulSum<rnn_t::float_t,word_dim,word_dim>{}, dsdW, grad_w_left.span, dParam.w_left.span);
+        matloop_void(MulSum<rnn_t::float_t,word_dim,word_dim>{}, dsdW, grad_w_right.span, dParam.w_right.span);
+        auto param1{param};
+        matloop_void(AddAssign<rnn_t::float_t,word_dim,word_dim>{}, param1.w_left.span, dParam.w_left.span);
+        matloop_void(AddAssign<rnn_t::float_t,word_dim,word_dim>{}, param1.w_right.span, dParam.w_right.span);
+        auto score0 = node.score;
+        {
+            rnn_model::Parser parser{param1};
+            auto nodes2 = construct_nodes_with_reserve(words);
+            for(decltype(nodes2.size())i=0; i<nodes2.size(); ++i)
+                nodes2[i].vec=rnn_model::Param::vec_type{word_block[i]};
+            auto top_nodes2 = parser.merge_leaf_nodes(nodes2);
+            parser.foward_path(top_nodes2);
+            print(nodes2[10].score-score0);
+            print(nodes2[10].score);
+            print('\n');
+            print(dsdW);
+            print('\n');
+        }
+
+
+        // ds_exact= ;
+    } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
+    }catch (std::exception &e) {
+        std::cerr<<"Got "<<e.what()<<std::endl;
     } catch (...) {
         std::cerr << "Unknown exception" << std::endl;
     }

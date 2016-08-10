@@ -86,9 +86,21 @@ public:
         //TODO:Fix bug. copy construct is incorrect.
         //mat_type grad{gradsum};
         constexpr auto dim = Param::dim;
+        using val_t =Param::value_type; 
         auto mesg{param.u_score};
-        matloop_void(compute::BackPropGrad<Param::value_type, dim, dim>{}, 
-                     gradsum.span, mesg.span, phrase.vec_wsum.span);
+        vecloop_void(compute::UpdateMesg<val_t, dim>{}, mesg.span, phrase.vec_wsum.span);
+        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
+                     gradsum.span, mesg.span, phrase.left->vec.span);
+        return gradsum;
+    }
+    auto backward_path_W_right(node_type const &phrase) const {
+        mat_type gradsum;
+        constexpr auto dim = Param::dim;
+        using val_t =Param::value_type; 
+        auto mesg{param.u_score};
+        vecloop_void(compute::UpdateMesg<val_t, dim>{}, mesg.span, phrase.vec_wsum.span);
+        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
+                     gradsum.span, mesg.span, phrase.right->vec.span);
         return gradsum;
     }
 

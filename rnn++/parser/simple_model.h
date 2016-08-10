@@ -33,6 +33,7 @@ struct Param{
           vec_type &&bias, vec_type &&u_score)
           : w_left{std::move(w_left)}, w_right{std::move(w_right)},
             bias{std::move(bias)}, u_score{std::move(u_score)} {}
+    Param() {}
     mat_type w_left;
     mat_type w_right;
     vec_type bias;
@@ -51,7 +52,17 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     auto u_score  = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim+1]};
     return Param{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
-
+auto randomParam(Param::value_type scale){
+    std::random_device rd;
+    //std::mt19937 e{rd()};
+    std::mt19937 e{}; //fixed seed for testing.
+    std::uniform_real_distribution<Param::value_type>  uniform_dist{-scale, scale};
+    auto dim = Param::dim;
+    std::vector<Param::value_type> param_raw(dim*(dim*2+2));
+    for(auto &x : param_raw)
+        x=uniform_dist(e);
+    return deserializeParam(param_raw);
+}
 namespace compute{
 
 
@@ -77,54 +88,6 @@ public:
     }
 };
 template<typename T,int64_t dim>
-struct MulAssign{
-private:
-    using vec_type = gsl::span<T,dim>;
-public:
-    void operator()(int64_t i, vec_type const & out, vec_type const & factor) const {
-        out[i]*=factor[i];
-    }
-};
-template<typename T,int64_t dim>
-struct AccumMesg{
-private:
-    using vec_type = gsl::span<T,dim>;
-    using mat_type = gsl::span<T,dim,dim>;
-public:
-    auto operator()(int64_t i,int64_t j,
-                    vec_type &out,
-                    vec_type const &mesg,
-                    mat_type const &w) const {
-        out[j]+=mesg[i]*w[i][j];
-    }
-};
-template<typename T,int64_t dim1,int64_t dim2>
-struct BackPropGrad{
-private:
-    using vec_type = gsl::span<T,dim1>;
-    using mat_type = gsl::span<T,dim1,dim2>;
-public:
-    auto operator()(int64_t i,int64_t j,
-                    mat_type &grad,
-                    vec_type const &mesg,
-                    vec_type const &weighted_sum) const {
-        grad[i][j]+=mesg[i]*weighted_sum[j];
-    }
-};
-template<typename T,int64_t dim1,int64_t dim2>
-struct MulSum{
-private:
-    using mat_type = gsl::span<T,dim1,dim2>;
-public:
-    auto operator()(int64_t i,int64_t j,
-                    T & out,
-                    mat_type const &a,
-                    mat_type const &b) const {
-        out+=a[i][j]*b[i][j];
-    }
-};
-
-template<typename T,int64_t dim>
 struct ActivationFun{
 private:
     using vec_type = gsl::span<T,dim>;
@@ -142,6 +105,68 @@ public:
         return util::math::Fun<rnn::config::activation_df>(x[i]);
     }
 };
+
+template<typename T,int64_t dim>
+struct UpdateMesg{
+private:
+    using vec_type = gsl::span<T,dim>;
+public:
+    void operator()(int64_t i, vec_type & mesg, vec_type const & weighted_sum) const {
+        mesg[i]*=ActivationDFun<T,dim>{}(i, weighted_sum);
+    }
+};
+
+template<typename T,int64_t dim>
+struct AccumMesg{
+private:
+    using vec_type = gsl::span<T,dim>;
+    using mat_type = gsl::span<T,dim,dim>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    vec_type &out,
+                    vec_type const &mesg,
+                    mat_type const &w) const {
+        out[j]+=mesg[i]*w[i][j];
+    }
+};
+
+template<typename T,int64_t dim1,int64_t dim2>
+struct BackPropGrad{
+private:
+    using vec_type = gsl::span<T,dim1>;
+    using mat_type = gsl::span<T,dim1,dim2>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    mat_type &grad,
+                    vec_type const &mesg,
+                    vec_type const &weighted_sum) const {
+        grad[i][j]+=mesg[i]*weighted_sum[j];
+    }
+};
+
+template<typename T,int64_t dim1,int64_t dim2>
+struct AddAssign{
+private:
+    using vec_type = gsl::span<T,dim1,dim2>;
+public:
+    void operator()(int64_t i,int64_t j, vec_type const & out, vec_type const & x) const {
+        out[i][j]+=x[i][j];
+    }
+};
+template<typename T,int64_t dim1,int64_t dim2>
+struct MulSum{
+private:
+    using mat_type = gsl::span<T,dim1,dim2>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    T & out,
+                    mat_type const &a,
+                    mat_type const &b) const {
+        out+=a[i][j]*b[i][j];
+    }
+};
+
+
 
 template<template<typename,int64_t> class OP, typename T, int64_t dim, typename... Args>
 auto vecloop_vec(OP<T,dim> const &fun, Args&&... args)
@@ -172,6 +197,7 @@ auto matloop__mat(OP<T,dim_1,dim_2> const &fun, Args&&... args)
     }
     return std::move(result);
 }
+
 template<template<typename,int64_t,int64_t> class OP,
          typename T,int64_t dim_1,int64_t dim_2, typename... Args>
 auto matloop_vec1(OP<T,dim_1,dim_2> const &fun, Args&&... args)
