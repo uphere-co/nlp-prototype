@@ -141,8 +141,7 @@ int main(){
         std::cerr<<"\n";
         for(auto x : nodes)
             std::cerr<<x.score<<" "<<x.name.val<< '\n';
-        auto idx=10;
-        // auto idx=14;
+        auto idx=8;
         auto const &node=nodes[idx];
         assert(node.is_combined());
         // print_all_descents(node);
@@ -156,16 +155,21 @@ int main(){
         // print(param.w_left.span[1][1]);
         // print('\n');
         // dParam.w_left.span[1][1]=param.w_left.span[1][1]*0.01;
-        rnn_t::float_t dsdW{};
         using namespace rnn::simple_model::compute;
-        matloop_void(MulSum<rnn_t::float_t,word_dim,word_dim>{}, dsdW, grad_W_left.span, dParam.w_left.span);
-        matloop_void(MulSum<rnn_t::float_t,word_dim,word_dim>{}, dsdW, grad_W_right.span, dParam.w_right.span);
+        
+        rnn_t::float_t dsdW{};
+        auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};
+        
+        matloop_void(mul_sum, dsdW, grad_W_left.span, dParam.w_left.span);
+        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);
+        timer.here_then_reset("Backward path");
         auto param1{param};
-        matloop_void(AddAssign<rnn_t::float_t,word_dim,word_dim>{}, param1.w_left.span, dParam.w_left.span);
-        matloop_void(AddAssign<rnn_t::float_t,word_dim,word_dim>{}, param1.w_right.span, dParam.w_right.span);
         auto param2{param};
-        matloop_void(SubAssign<rnn_t::float_t,word_dim,word_dim>{}, param2.w_left.span, dParam.w_left.span);
-        matloop_void(SubAssign<rnn_t::float_t,word_dim,word_dim>{}, param2.w_right.span, dParam.w_right.span);
+        matloop_void(add_assign, param1.w_left.span, dParam.w_left.span);
+        matloop_void(add_assign, param1.w_right.span, dParam.w_right.span);
+        matloop_void(sub_assign, param2.w_left.span, dParam.w_left.span);
+        matloop_void(sub_assign, param2.w_right.span, dParam.w_right.span);
+
         auto score0 = node.score;
         {
             rnn_model::Parser parser1{param1};

@@ -68,7 +68,7 @@ struct Matrix{
     Matrix(Matrix&& vec) : _val{std::move(vec._val)} {
         span=gsl::span<T, M,N>{_val};
         //Fail if nan
-        assert(span[0]==_val[0]);
+        assert(span[0][0]==_val[0]);
     };
     std::vector<T> _val;
     gsl::span<T, M, N> span=_val; //this default is critical!

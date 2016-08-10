@@ -16,22 +16,22 @@ public:
     Parser(Param const &param) : param{param}{}
 
     //TODO:Move the following two to nameless namespace in .cpp file.
-    vec_type weighted_sum(vec_type const &word_left,
+    vec_type weighted_sum_word_pair(vec_type const &word_left,
                           vec_type const &word_right) const {
-        using rnn::simple_model::compute::WeightedSum;
+        using namespace rnn::simple_model::compute;
         //TODO: change interface to remove .span?
-        return vecloop_vec(WeightedSum<Param::value_type,Param::dim>{},//WeightedSum<Param::value_type,Param::dim>{},
-                         param.w_left.span, param.w_right.span, param.bias.span,
-                         word_left.span,word_right.span);
+        auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
+        return vecloop_vec(weighted_sum, param.w_left.span, param.w_right.span, 
+                           param.bias.span, word_left.span,word_right.span);
     };
     value_type scoring_node(node_type const &node) const {
         return util::math::dot(param.u_score.span, node.vec.span);
     }
     void set_node_property(node_type &node) const {
-        using rnn::simple_model::compute::ActivationFun;
-        node.vec_wsum  = weighted_sum(node.left->vec, node.right->vec);
-        node.vec  = vecloop_vec(ActivationFun<Param::value_type,Param::dim>{},
-                              node.vec_wsum.span);
+        using namespace rnn::simple_model::compute;
+        auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
+        node.vec_wsum  = weighted_sum_word_pair(node.left->vec, node.right->vec);
+        node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
         node.score= scoring_node(node);
         node.set_name();
     }
@@ -81,35 +81,6 @@ public:
         }
         return merge_history;
     }
-    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
-                         node_type const &phrase,
-                         vec_type mesg) const {
-        //TODO:Fix bug. copy construct is incorrect.
-        //mat_type grad{gradsum};
-        constexpr auto dim = Param::dim;
-        using val_t =Param::value_type; 
-        vecloop_void(compute::UpdateMesg<val_t, dim>{}, mesg.span, phrase.vec_wsum.span);
-        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
-                     gradsum_left.span, mesg.span, phrase.left->vec.span);                             
-        matloop_void(compute::BackPropGrad<val_t, dim, dim>{}, 
-                     gradsum_right.span, mesg.span, phrase.right->vec.span);
-        if(phrase.left->is_combined()){
-            Param::vec_type left_mesg;
-            matloop_void(compute::AccumMesg<val_t,dim,dim>{}, left_mesg.span, mesg.span, param.w_left.span);
-            backward_path_W(gradsum_left, gradsum_right, *phrase.left, left_mesg);
-        }
-        if(phrase.right->is_combined()){
-            Param::vec_type right_mesg;
-            matloop_void(compute::AccumMesg<val_t,dim,dim>{}, right_mesg.span, mesg.span, param.w_right.span);
-            backward_path_W(gradsum_left, gradsum_right, *phrase.right, right_mesg);
-        }
-    }
-    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
-                         node_type const &phrase) const {
-        auto mesg{param.u_score};
-        backward_path_W(gradsum_left, gradsum_right, phrase, mesg);
-    }
-
     void directed_merge(std::vector<node_type*> &top_nodes,
                         std::vector<size_t> const &merge_history) const {
         for(auto idx_max : merge_history){
@@ -129,6 +100,37 @@ public:
             top_nodes.pop_back();
         }
     }
+
+    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
+                         node_type const &phrase,
+                         vec_type mesg) const {
+        constexpr auto dim = Param::dim;
+        using val_t =Param::value_type;
+        using namespace rnn::simple_model::compute; 
+        auto vecloop_void = VecLoop_void<val_t,dim>{};
+        auto matloop_void = MatLoop_void<val_t,dim,dim>{};
+        vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
+        matloop_void(back_prop_grad_W, 
+                     gradsum_left.span, mesg.span, phrase.left->vec.span);                             
+        matloop_void(back_prop_grad_W, 
+                     gradsum_right.span, mesg.span, phrase.right->vec.span);
+        if(phrase.left->is_combined()){
+            Param::vec_type left_mesg;
+            matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
+            backward_path_W(gradsum_left, gradsum_right, *phrase.left, left_mesg);
+        }
+        if(phrase.right->is_combined()){
+            Param::vec_type right_mesg;
+            matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
+            backward_path_W(gradsum_left, gradsum_right, *phrase.right, right_mesg);
+        }
+    }
+    void backward_path_W(mat_type &gradsum_left, mat_type &gradsum_right,
+                         node_type const &phrase) const {
+        auto mesg{param.u_score};
+        backward_path_W(gradsum_left, gradsum_right, phrase, mesg);
+    }
+
     Param param;
 };
 
