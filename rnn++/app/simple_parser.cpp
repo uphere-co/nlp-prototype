@@ -190,6 +190,8 @@ int main(){
             print('\n');
             print(dsdW);
             print('\n');
+            print(node.score);
+            print('\n');
         }
 
 
