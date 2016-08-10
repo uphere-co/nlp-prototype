@@ -20,7 +20,7 @@ public:
                           vec_type const &word_right) const {
         using rnn::simple_model::compute::WeightedSum;
         //TODO: change interface to remove .span?
-        return vectorize(WeightedSum<Param::value_type,Param::dim>{},//WeightedSum<Param::value_type,Param::dim>{},
+        return vecloop_vec(WeightedSum<Param::value_type,Param::dim>{},//WeightedSum<Param::value_type,Param::dim>{},
                          param.w_left.span, param.w_right.span, param.bias.span,
                          word_left.span,word_right.span);
     };
@@ -30,7 +30,7 @@ public:
     void set_node_property(node_type &node) const {
         using rnn::simple_model::compute::ActivationFun;
         node.vec_wsum  = weighted_sum(node.left->vec, node.right->vec);
-        node.vec  = vectorize(ActivationFun<Param::value_type,Param::dim>{},
+        node.vec  = vecloop_vec(ActivationFun<Param::value_type,Param::dim>{},
                               node.vec_wsum.span);
         node.score= scoring_node(node);
         node.set_name();
@@ -82,15 +82,14 @@ public:
         return merge_history;
     }
     auto backward_path_W_left(node_type const &phrase) const {
-        mat_type grad;
-        auto dim = Param::dim;
+        mat_type gradsum;
+        //TODO:Fix bug. copy construct is incorrect.
+        //mat_type grad{gradsum};
+        constexpr auto dim = Param::dim;
         auto mesg{param.u_score};
-        for(decltype(dim) i=0; i<dim; ++i){
-            for(decltype(dim) j=0; j<dim; ++j){
-                grad.span[i][j] += mesg.span[i]*phrase.vec_wsum.span[j];
-            }
-        }
-        return grad;
+        matloop_void(compute::BackPropGrad<Param::value_type, dim, dim>{}, 
+                     gradsum.span, mesg.span, phrase.vec_wsum.span);
+        return gradsum;
     }
 
     void directed_merge(std::vector<node_type*> &top_nodes,

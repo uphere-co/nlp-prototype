@@ -2,6 +2,7 @@
 #include<vector>
 #include<cmath>
 #include<utility>
+#include<random>
 
 #include<gsl.h>
 
@@ -75,6 +76,53 @@ public:
         return dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
     }
 };
+template<typename T,int64_t dim>
+struct MulAssign{
+private:
+    using vec_type = gsl::span<T,dim>;
+public:
+    void operator()(int64_t i, vec_type const & out, vec_type const & factor) const {
+        out[i]*=factor[i];
+    }
+};
+template<typename T,int64_t dim>
+struct AccumMesg{
+private:
+    using vec_type = gsl::span<T,dim>;
+    using mat_type = gsl::span<T,dim,dim>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    vec_type &out,
+                    vec_type const &mesg,
+                    mat_type const &w) const {
+        out[j]+=mesg[i]*w[i][j];
+    }
+};
+template<typename T,int64_t dim1,int64_t dim2>
+struct BackPropGrad{
+private:
+    using vec_type = gsl::span<T,dim1>;
+    using mat_type = gsl::span<T,dim1,dim2>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    mat_type &grad,
+                    vec_type const &mesg,
+                    vec_type const &weighted_sum) const {
+        grad[i][j]+=mesg[i]*weighted_sum[j];
+    }
+};
+template<typename T,int64_t dim1,int64_t dim2>
+struct MulSum{
+private:
+    using mat_type = gsl::span<T,dim1,dim2>;
+public:
+    auto operator()(int64_t i,int64_t j,
+                    T & out,
+                    mat_type const &a,
+                    mat_type const &b) const {
+        out+=a[i][j]*b[i][j];
+    }
+};
 
 template<typename T,int64_t dim>
 struct ActivationFun{
@@ -96,13 +144,67 @@ public:
 };
 
 template<template<typename,int64_t> class OP, typename T, int64_t dim, typename... Args>
-auto vectorize(OP<T,dim> const &fun, Args&&... args)
+auto vecloop_vec(OP<T,dim> const &fun, Args&&... args)
 {
     util::math::Vector<T,dim> result{};
     for(int64_t i=0; i<dim; ++i){
-        result.span[i] =fun(i, std::forward<Args>(args)...);
+        result.span[i] +=fun(i, std::forward<Args>(args)...);
     }
     return std::move(result);
+}
+template<template<typename,int64_t> class OP, typename T, int64_t dim, typename... Args>
+void vecloop_void(OP<T,dim> const &fun, Args&&... args)
+{
+    for(int64_t i=0; i<dim; ++i){
+        fun(i, std::forward<Args>(args)...);
+    }
+}
+
+template<template<typename,int64_t,int64_t> class OP,
+         typename T,int64_t dim_1,int64_t dim_2, typename... Args>
+auto matloop__mat(OP<T,dim_1,dim_2> const &fun, Args&&... args)
+{
+    util::math::Matrix<T,dim_1,dim_2> result{};
+    for(int64_t i=0; i<dim_1; ++i){
+        for(int64_t j=0; j<dim_2; ++j){
+            result.span[i][j] =fun(i,j, std::forward<Args>(args)...);
+        }
+    }
+    return std::move(result);
+}
+template<template<typename,int64_t,int64_t> class OP,
+         typename T,int64_t dim_1,int64_t dim_2, typename... Args>
+auto matloop_vec1(OP<T,dim_1,dim_2> const &fun, Args&&... args)
+{
+    util::math::Vector<T,dim_1> result{};
+    for(int64_t i=0; i<dim_1; ++i){
+        for(int64_t j=0; j<dim_2; ++j){
+            result.span[i]+=fun(i,j, std::forward<Args>(args)...);
+        }
+    }
+    return std::move(result);
+}
+template<template<typename,int64_t,int64_t> class OP,
+         typename T,int64_t dim_1,int64_t dim_2, typename... Args>
+auto matloop_vec2(OP<T,dim_1,dim_2> const &fun, Args&&... args)
+{
+    util::math::Vector<T,dim_2> result{};
+    for(int64_t i=0; i<dim_1; ++i){
+        for(int64_t j=0; j<dim_2; ++j){
+            result.span[j]+=fun(i,j, std::forward<Args>(args)...);
+        }
+    }
+    return std::move(result);
+}
+template<template<typename,int64_t,int64_t> class OP,
+         typename T,int64_t dim_1,int64_t dim_2, typename... Args>
+void matloop_void(OP<T,dim_1,dim_2> const &fun, Args&&... args)
+{
+    for(int64_t i=0; i<dim_1; ++i){
+        for(int64_t j=0; j<dim_2; ++j){
+            fun(i,j, std::forward<Args>(args)...);
+        }
+    }
 }
 
 // auto backward_mesg_w(grad, node, mesg, x, word){
