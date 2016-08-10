@@ -2,6 +2,7 @@
 #include<vector>
 #include<array>
 #include <stdexcept>
+#include <cassert>
 
 #include<gsl.h>
 
@@ -13,16 +14,36 @@ namespace math{
 template<typename T, int64_t M>
 struct Vector{
     Vector(gsl::span<T, M> const vals) : _val(M, T{}) {
-        std::cerr<<M<<" Vector{gsl::span<M>}\n";
+        // std::cerr<<M<<" Vector{gsl::span<M>}\n";
         std::copy_n(vals.cbegin(), M, _val.begin());
+        assert(span[0]==_val[0]);
     }
-    Vector() : _val(M, T{}) {}
+    Vector() : _val(M, T{}) {
+        // std::cerr<<"Default construct Vector{gsl::span<M>}\n";
+        assert(span[0]==_val[0]);
+    }
     //CAUTION: careful to correctly implement non-default constructor if necessary.
-    // Vector(Vector const & vec) : _val{vec._val}, span{_val} {};
-    // Vector& operator=(const Vector& vec) = default;
-    // Vector(Vector&& vec) =default;
+    Vector(Vector const & vec) : _val{vec._val} {
+        assert(span[0]==_val[0]);
+        // std::cerr<<_val.size()<<" Copy construct Vector{gsl::span<M>}\n";
+    };
+    Vector& operator=(const Vector& vec) {
+        // std::cerr<<"Copy assignment Vector{gsl::span<M>}\n";
+        //  std::cerr<<"size: " << vec._val.size() << " vs " <<_val.size() <<std::endl;
+        // assert(_val.size()==vec._val.size());
+        // assert(span[0]==_val[0]);
+        std::copy_n(vec.span.cbegin(), M, _val.begin());
+        // span=gsl::span<T, M>{_val};
+        assert(span[0]==_val[0]);
+        // std::cerr<<"size: " << _val.size() <<std::endl;
+        return *this;
+    };
+    Vector(Vector&& vec) : _val{std::move(vec._val)} {
+        assert(span[0]==_val[0]);
+        // std::cerr<<"Move Vector{gsl::span<M>}\n";
+    };
     std::vector<T> _val;
-    gsl::span<T, M> span=_val;
+    gsl::span<T, M> span=_val; //this default is critical!
 };
 template<typename T, int64_t M>
 struct VectorView{
@@ -37,11 +58,14 @@ struct Matrix{
         std::copy_n(vals.begin(), M*N, _val.begin());
     }
     Matrix() :_val(M*N, T{}) {}
-    // Matrix(Matrix const & vec) : _val{vec._val}, span{_val} {};
-    // Matrix& operator=(const Matrix& vec) = default;
-    // Matrix(Matrix&& vec) =default;
+    Matrix(Matrix const & mat) : _val{mat._val}{};
+    Matrix& operator=(const Matrix& mat) {
+        std::copy_n(mat.span.cbegin(), M*N, _val.begin());
+        return *this;
+    }
+    Matrix(Matrix&& vec) : _val{std::move(vec._val)} {};
     std::vector<T> _val;
-    gsl::span<T, M, N> span=_val;
+    gsl::span<T, M, N> span=_val; //this default is critical!
 };
 template<typename T, int64_t M, int64_t N>
 struct MatrixView{
