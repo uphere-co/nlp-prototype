@@ -215,8 +215,33 @@ test6 = do
       vr  = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-
 test7 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxI = ("I",1,4)
+      exp1 :: MExp Double
+      exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
+  let exp :: MExp Double
+      exp = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
+  prettyPrintR exp
+  -- digraph exp
+  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Double
+      vr = VS.replicate 8 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+
+  {- 
+  forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
+    let iptI = [("I",i)]
+        iptj = [("j",j)]
+    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
+  -}
+
+
+test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
 
