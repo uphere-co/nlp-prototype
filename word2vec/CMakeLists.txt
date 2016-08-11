@@ -17,7 +17,7 @@ find_package (Threads)
 #find_library(GFORTRAN_LIBRARY NAMES gfortran)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${HOME}/repo/src/nlp-prototype/rnn++/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 
 #include_directories(${HOME}/repo/srcc/GSL/include)
 

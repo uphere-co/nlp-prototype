@@ -10,6 +10,9 @@ namespace config{
 util::io::H5name file_name{"data.h5"};
 util::io::H5name voca_name{"1b.model.voca"};
 util::io::H5name w2vmodel_name{"1b.model"};
+// util::io::H5name file_name{"word2vec.h5"};
+// util::io::H5name voca_name{"foo.word"};
+// util::io::H5name w2vmodel_name{"foo.vec"};
 
 util::io::H5name rnn_param_store_name{"rnnparser.h5"};
 //HDF5 dataset name to use as inital RNN parameter.
@@ -30,5 +33,7 @@ constexpr int word_dim=100;
 // constexpr auto activation_df = util::math::FunName::d_ax;
 constexpr auto activation = util::math::FunName::tanh;
 constexpr auto activation_df = util::math::FunName::d_tanh;
+
+constexpr int n_minibatch = 100;
 }//namescpae config
 }//namespace rnn
