@@ -14,6 +14,8 @@ util::io::H5name w2vmodel_name{"1b.model"};
 util::io::H5name rnn_param_store_name{"rnnparser.h5"};
 util::io::H5name rnn_param_name{"rnn.Parser#447cc3c8.18800"};
 
+std::string trainset_name{"1b.training.sample"};
+
 //voca_max_word_len can be read using `h5dump -H` command.
 //It can be directly read from a H5File,
 //but it needs knowledge of low level details of HDF5.

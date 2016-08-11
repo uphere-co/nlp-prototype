@@ -175,7 +175,6 @@ void test_forwad_backward(){
     matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
-    print(ds_grad);
 
     {
         auto param1{param};
@@ -212,6 +211,29 @@ using value_type = rnn::simple_model::Param::value_type;
 using vec_type = rnn::simple_model::Param::vec_type;
 using mat_type = rnn::simple_model::Param::mat_type;
 
+
+rnn::simple_model::Param get_gradient(std::string sentence, 
+                                  RNN const &rnn, 
+                                  rnn::simple_model::Param const &param){
+    // auto timer=Timer{};
+    auto nodes = rnn.initialize_tree(sentence);
+    auto n_words=nodes.size();
+    // timer.here_then_reset("setup");
+    auto top_nodes = merge_leaf_nodes(param, nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    // timer.here_then_reset("forward path");
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }
+    // timer.here_then_reset("backward path");
+    return grad;
+
+}
+
 int main(){
     try {
         // test_init_rnn();
@@ -219,44 +241,19 @@ int main(){
         // test_forwad_backward();
         // return 0;
 
+        auto timer=Timer{};
+        auto lines=util::string::readlines(rnn::config::trainset_name);
+        timer.here_then_reset("Read trainset");
+
         RNN rnn{};
         auto param = load_param();
-
-        auto timer=Timer{};
-
-        auto sentence = u8"A symbol of British pound is £ .";
-        auto nodes = rnn.initialize_tree(sentence);
-        auto n_words=nodes.size();
-        assert(n_words==8);
-        
-        timer.here_then_reset("Setup word2vecs & nodes");
-
-        auto top_nodes = merge_leaf_nodes(param, nodes);
-        auto merge_history = foward_path(param, top_nodes);
-        timer.here_then_reset("Forward path");
-
-        rnn::simple_model::Param grad{};
-        for(auto i=n_words; i<nodes.size(); ++i){
-            auto const &node=nodes[i];
-            assert(node.is_combined());
-            // print_all_descents(node);
-            backward_path(grad, param, node);
-        }       
-
-        timer.here_then_reset("Backward path");
-
-        for(auto x : nodes)
-            std::cerr<<x.score<<" "<<x.name.val<< '\n';
-
-        rnn_t::float_t ds_grad{};
-        using namespace rnn::simple_model::compute;
-        auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
-        auto dParam = rnn::simple_model::randomParam(0.001);        
-        matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-        matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
-        ds_grad += dot(grad.bias.span, dParam.bias.span);
-        ds_grad += dot(grad.u_score.span, dParam.u_score.span);
-        print(ds_grad);
+        auto get_grad = [&](auto sentence){return get_gradient(sentence, rnn, param);};
+        for(auto sentence : lines){
+            // auto timer=Timer{};
+            auto grad=get_grad(sentence);
+            // timer.here_then_reset("One loop");
+        }
+        timer.here_then_reset("Finish one iteration");
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
     }catch (std::exception &e) {
