@@ -115,21 +115,21 @@ void backward_path(Param const &param,
     auto matloop_void = MatLoop_void<val_t,dim,dim>{};
     vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
     gradsum_bias.span    += mesg.span;        
-    matloop_void(back_prop_grad_W, 
-                    gradsum_left.span, mesg.span, phrase.left->vec.span);                             
-    matloop_void(back_prop_grad_W, 
-                    gradsum_right.span, mesg.span, phrase.right->vec.span);
+    matloop_void(back_prop_grad_W,
+                 gradsum_left.span, mesg.span, phrase.left->vec.span);                             
+    matloop_void(back_prop_grad_W,
+                 gradsum_right.span, mesg.span, phrase.right->vec.span);
     if(phrase.left->is_combined()){
         Param::vec_type left_mesg;
         matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
         backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
-                        *phrase.left, left_mesg);
+                      *phrase.left, left_mesg);
     }
     if(phrase.right->is_combined()){
         Param::vec_type right_mesg;
         matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
         backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
-                        *phrase.right, right_mesg);
+                      *phrase.right, right_mesg);
     }
 }
 
@@ -142,6 +142,9 @@ void backward_path(Param const &param,
     auto mesg{param.u_score};
     backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
+// weighted_sum=W_left*word_left + W_right*word_right+bias
+// s=u*h(g(f(weighted_sum)))
+// dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
 void backward_path(Param &grad, Param const &param,
                    node_type const &phrase) {
     using namespace rnn::simple_model::compute;

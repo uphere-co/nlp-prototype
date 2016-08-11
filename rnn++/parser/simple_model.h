@@ -92,7 +92,6 @@ auto activation_dfun=[](int64_t i, vec_type const &x) {
 auto update_mesg_common_part=[](int64_t i, vec_type & mesg, vec_type const & weighted_sum) {
     mesg[i]*=activation_dfun(i, weighted_sum);
 };
-
 auto update_mesg_finalize=[](int64_t i,int64_t j, vec_type &out,
                    vec_type const &mesg, mat_type const &w)  {
     out[j]+=mesg[i]*w[i][j];

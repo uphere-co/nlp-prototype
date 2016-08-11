@@ -12,6 +12,7 @@ util::io::H5name voca_name{"1b.model.voca"};
 util::io::H5name w2vmodel_name{"1b.model"};
 
 util::io::H5name rnn_param_store_name{"rnnparser.h5"};
+//HDF5 dataset name to use as inital RNN parameter.
 util::io::H5name rnn_param_name{"rnn.Parser#447cc3c8.18800"};
 
 std::string trainset_name{"1b.training.sample"};
