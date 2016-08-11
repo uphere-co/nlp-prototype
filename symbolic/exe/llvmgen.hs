@@ -3,6 +3,7 @@
 
 import           Control.Concurrent
 import           Data.Hashable
+import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable  as VS
 import           Foreign.ForeignPtr             (withForeignPtr)
@@ -18,12 +19,48 @@ import           LLVM.General.AST.Type            ( double, i64, ptr, void )
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Operation
+import           Symbolic.Differential
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
 
 initModule :: AST.Module
 initModule = emptyModule "my cool jit"
+
+mkArgRef i _ = getElem (ptr double) "args" (ival i)
+
+mkAST exp args =
+  runLLVM initModule $ do
+    llvmAST "fun1" args exp
+    define void "main" [ (ptr double, AST.Name "res")
+                       , (ptr (ptr double), AST.Name "args")
+                       ] $ do
+      argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
+      call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
+      ret_
+
+unsafeWiths vs f = go vs id f
+  where go []     ps f = f (ps [])
+        go (v:vs) ps f = VS.unsafeWith v $ \p -> go vs (ps . (p:)) f
+
+
+
+runJITASTPrinter printer ast vargs vres =
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        unsafeWiths vargs $ \ps -> do
+          let vps = VS.fromList ps
+          mvarg@(VS.MVector _ fparg) <- VS.thaw vps
+          mv@(VS.MVector _ fpr) <- VS.thaw vres
+          withForeignPtr fparg $ \pargs ->
+            withForeignPtr fpr $ \pres -> do
+              run fn pres pargs
+              vr' <- VS.freeze mv
+              printer vr'
+
+
 
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = mul [val 1,val 3]
@@ -32,7 +69,7 @@ exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = delta idxi idxj  --  add [ x , delta idxi idxj, delta idxk idxl ] 
+exp3 = delta idxi idxj 
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
         idxk = ("k",0,2)
@@ -138,14 +175,7 @@ test4 = do
   let ?expHash = trie hash
   let exp = exp3
   prettyPrintR (exp :: MExp Double)
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
-                ret_
+  let ast = mkAST exp []
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
@@ -162,34 +192,11 @@ test5 = do
   prettyPrintR (exp :: MExp Double)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
-  let ast = runLLVM initModule $ do
-              
-              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                yref <- getElem (ptr double) "args" (ival 1)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
-                ret_
-  runJIT ast $ \mfn -> 
-    case mfn of
-      Nothing -> putStrLn "Nothing?"
-      Just fn -> do
-        let vx = VS.fromList [1..100] :: VS.Vector Double
-            vy = VS.fromList [1..10]  :: VS.Vector Double
-            vr = VS.replicate 10 0    :: VS.Vector Double
-        VS.unsafeWith vx $ \px ->
-          VS.unsafeWith vy $ \py -> do
-            let varg = VS.fromList [px,py]
-            mvarg@(VS.MVector _ fparg) <- VS.thaw varg
-            mv@(VS.MVector _ fpr) <- VS.thaw vr
-            withForeignPtr fparg $ \pargs -> 
-              withForeignPtr fpr $ \pres -> do
-                run fn pres pargs
-                vr' <- VS.freeze mv
-                putStrLn $ "original : " ++ show vr
-                putStrLn $ "Evaluated to: " ++ show vr'
+  let ast = mkAST exp  [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ]
+      vx = VS.fromList [1..100] :: VS.Vector Double
+      vy = VS.fromList [1..10]  :: VS.Vector Double
+      vr = VS.replicate 10 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 
 test6 = do
@@ -202,31 +209,35 @@ test6 = do
       idxk = ("k",1,4)
   prettyPrintR (exp :: MExp Double)
   -- digraph exp
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                yref <- getElem (ptr double) "args" (ival 1)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
-                ret_
-  runJIT ast $ \mfn -> 
-    case mfn of
-      Nothing -> putStrLn "Nothing?"
-      Just fn -> do
-        let vx = VS.fromList [1,2,3,4,5,6]
-            vy = VS.fromList [11,12,13,14]  :: VS.Vector Double
-            vr = VS.replicate 10 0    :: VS.Vector Double
-        VS.unsafeWith vx $ \px ->
-          VS.unsafeWith vy $ \py -> do
-            let varg = VS.fromList [px,py]
-            mvarg@(VS.MVector _ fparg) <- VS.thaw varg
-            mv@(VS.MVector _ fpr) <- VS.thaw vr
-            withForeignPtr fparg $ \pargs ->
-              withForeignPtr fpr $ \pres -> do
-                run fn pres pargs
-                vr' <- VS.freeze mv
-                putStrLn $ "Evaluated to: " ++ show vr'
+  let ast = mkAST exp [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ]
+      vx  = VS.fromList [1,2,3,4,5,6]
+      vy  = VS.fromList [11,12,13,14]  :: VS.Vector Double
+      vr  = VS.replicate 10 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-main = test6
+
+test7 = do
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+
+      idxI = ("I",1,4)
+      idxk = ("k",1,2)
+  
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp :: MExp Double
+      exp = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+
+      exp' = sdiff (Indexed "x" [idxk]) exp
+  putStr "f = "
+  prettyPrintR exp
+  putStr "df/dx_k = "
+  prettyPrintR exp'
+  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Double
+      vr = VS.replicate 8 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  
+main = test7
+
