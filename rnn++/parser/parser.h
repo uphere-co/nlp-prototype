@@ -3,6 +3,7 @@
 #include "parser/simple_model.h"
 #include "parser/node.h"
 #include "utils/linear_algebra.h"
+#include "utils/loop_gen.h"
 
 namespace rnn{
 namespace simple_model{
@@ -13,13 +14,12 @@ using value_type= Param::value_type;
 using vec_type  = Param::vec_type;
 using mat_type  = Param::mat_type;
 using node_type = tree::Node;
-
 //TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
                                 vec_type const &word_right) {
     using namespace rnn::simple_model;
     //TODO: change interface to remove .span?
-    auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
+    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
     return vecloop_vec(weighted_sum, param.w_left.span, param.w_right.span, 
                         param.bias.span, word_left.span,word_right.span);
 }
@@ -30,7 +30,7 @@ value_type scoring_node(Param const &param, node_type const &node) {
 
 void set_node_property(Param const &param,node_type &node) {
     using namespace rnn::simple_model;
-    auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
+    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
     node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
     node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
     node.score= scoring_node(param, node);
@@ -111,6 +111,7 @@ void backward_path(Param const &param,
     constexpr auto dim = Param::dim;
     using val_t =Param::value_type;
     using namespace rnn::simple_model; 
+    using namespace util::math;
     auto vecloop_void = VecLoop_void<val_t,dim>{};
     auto matloop_void = MatLoop_void<val_t,dim,dim>{};
     vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);

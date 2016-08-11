@@ -1,19 +1,17 @@
 #pragma once
-#include<vector>
-#include<cmath>
-#include<utility>
-#include<random>
+#include <vector>
+#include <cmath>
+#include <utility>
+#include <random>
 
-#include<gsl.h>
+#include <gsl.h>
 
-#include"parser/basic_type.h"
-#include"parser/config.h"
-#include"utils/string.h"
-#include"utils/math.h"
-#include"utils/linear_algebra.h"
-
-#include "utils/print.h"
-using util::print;
+#include "parser/basic_type.h"
+#include "parser/config.h"
+#include "utils/string.h"
+#include "utils/math.h"
+#include "utils/linear_algebra.h"
+#include "utils/loop_gen.h"
 
 namespace rnn{
 
@@ -101,96 +99,11 @@ auto back_prop_grad_W=[](int64_t i,int64_t j, mat_type &grad,
     grad[i][j]+=mesg[i]*weighted_sum[j];
 };
 
-auto add_assign_vec=[](int64_t i, vec_type const & out,vec_type const & x) {
-    out[i]+=x[i];
-};
-auto sub_assign_vec=[](int64_t i, vec_type const & out, vec_type const & x) {
-    out[i]-=x[i];
-};
-
-auto add_assign_mat=[](int64_t i,int64_t j, mat_type const & out,mat_type const & x) {
-    out[i][j]+=x[i][j];
-};
-auto sub_assign_mat=[](int64_t i,int64_t j, mat_type const & out, mat_type const & x) {
-    out[i][j]-=x[i][j];
-};
-
 auto mul_sum=[](int64_t i,int64_t j, val_type & out, mat_type const &a, mat_type const &b) {
     out+=a[i][j]*b[i][j];
 };
 
-template<typename T, int64_t dim_1>
-struct VecLoop_void{
-    template<typename OP, typename... Args>
-    void operator()(OP const&fun, Args&&... args) const {
-        for(int64_t i=0; i<dim_1; ++i){
-            fun(i, std::forward<Args>(args)...);
-        }
-    }
-};
-template<typename T, int64_t dim_1>
-struct VecLoop_vec{
-    template<typename OP, typename... Args>
-    auto operator()(OP const&fun, Args&&... args) const {
-        util::math::Vector<T,dim_1> result{};
-        for(int64_t i=0; i<dim_1; ++i){
-            result.span[i]=fun(i, std::forward<Args>(args)...);
-        }
-        return result;
-    }
-};
 
-template<typename T, int64_t dim_1, int64_t dim_2>
-struct MatLoop_mat{
-    template<typename OP, typename... Args>
-    void operator()(OP const&fun, Args&&... args) const {
-        util::math::Matrix<T,dim_1,dim_2> result{};
-        for(int64_t i=0; i<dim_1; ++i){
-            for(int64_t j=0; j<dim_2; ++j){
-                result.span[i][j]=fun(i,j, std::forward<Args>(args)...);
-            }
-        }
-    }
-};
-template<typename T, int64_t dim_1, int64_t dim_2>
-struct MatLoop_void{
-    template<typename OP, typename... Args>
-    void operator()(OP const&fun, Args&&... args) const {
-        for(int64_t i=0; i<dim_1; ++i){
-            for(int64_t j=0; j<dim_2; ++j){
-                fun(i,j, std::forward<Args>(args)...);
-            }
-        }
-    }
-};
-
-template<typename T, int64_t M>
-gsl::span<T,M>& operator +=(gsl::span<T,M>& out, const gsl::span<T,M>& x){
-    auto vecloop_void=VecLoop_void<T,M>{};
-    vecloop_void(add_assign_vec, out, x);
-    return out;
-};
-
-template<typename T, int64_t M>
-gsl::span<T,M>& operator -=(gsl::span<T,M>& out, const gsl::span<T,M>& x){
-    auto vecloop_void=VecLoop_void<T,M>{};
-    vecloop_void(sub_assign_vec, out, x);
-    return out;
-};
-
-
-template<typename T, int64_t M, int64_t N>
-gsl::span<T,M,N>& operator +=(gsl::span<T,M,N>& out, const gsl::span<T,M,N>& x){
-    auto matloop_void=MatLoop_void<T,M,N>{};
-    matloop_void(add_assign_mat, out, x);
-    return out;
-};
-template<typename T, int64_t M, int64_t N>
-gsl::span<T,M,N>& operator -=(gsl::span<T,M,N>& out, const gsl::span<T,M,N>& x){
-    auto matloop_void=MatLoop_void<T,M,N>{};
-    matloop_void(sub_assign_mat, out, x);
-    return out;
-};
 
 Param& operator +=(Param& out, const Param& x){
     out.w_left.span  += x.w_left.span;
