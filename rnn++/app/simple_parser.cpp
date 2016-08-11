@@ -146,8 +146,8 @@ void test_forwad_backward(){
 
     auto timer=Timer{};
 
-    auto sentence = u8"A symbol of British pound is £ .";
-    auto nodes = rnn.initialize_tree(sentence);
+    auto sentence_test = u8"A symbol of British pound is £ .";
+    auto nodes = rnn.initialize_tree(sentence_test);
     auto n_words=nodes.size();
     assert(n_words==8);
     
@@ -179,6 +179,11 @@ void test_forwad_backward(){
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
+    //h= delta
+    //score1 = f(x+h) = f(x) + grad_x(f)*h + O(h^2)
+    //score2 = f(x-h) = f(x) - grad_x(f)*h + O(h^2)
+    //score1,2 : from forward path.
+    //score1-score2 = 2*grad_x(f)*h +O(h^3)
     {
         auto param1{param};
         auto param2{param};
@@ -191,9 +196,9 @@ void test_forwad_backward(){
         param1.u_score.span+=dParam.u_score.span;
         param2.u_score.span-=dParam.u_score.span;
 
-        auto words = util::string::split(sentence);  
-        auto nodes1 = rnn.initialize_tree(sentence);
-        auto nodes2 = rnn.initialize_tree(sentence);
+        auto words = util::string::split(sentence_test);  
+        auto nodes1 = rnn.initialize_tree(sentence_test);
+        auto nodes2 = rnn.initialize_tree(sentence_test);
 
         auto top_nodes1 = merge_leaf_nodes(param1, nodes1);
         auto top_nodes2 = merge_leaf_nodes(param2, nodes2);
@@ -233,6 +238,11 @@ rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
         // print_all_descents(node);
         backward_path(grad, param, node);
     }
+    // score(W_left, W_right, bias, u)= score_1(W_left, W_right, bias, u) 
+    //                                  + score_2(W_left, W_right, bias, u)
+    //                                  + .. 
+    //                                  + score_(n-1)
+    // score_1 = f(A*f(A*f(...)+b)+b)
     // timer.here_then_reset("backward path");
     print(grad.bias.span[0]);
     print('\n');
@@ -243,8 +253,8 @@ int main(){
     try {
         // test_init_rnn();
         // test_read_voca();
-        // test_forwad_backward();
-        // return 0;
+        test_forwad_backward();
+        return 0;
 
         auto timer=Timer{};
         auto lines=util::string::readlines(rnn::config::trainset_name);
@@ -261,11 +271,10 @@ int main(){
         //     get_grad(sentence);
         // });
 
-        
         timer.here_then_reset("Finish one iteration");
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
-    }catch (std::exception &e) {
+    } catch (std::exception &e) {
         std::cerr<<"Got "<<e.what()<<std::endl;
     } catch (...) {
         std::cerr << "Unknown exception" << std::endl;
