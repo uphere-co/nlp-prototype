@@ -135,105 +135,75 @@ struct RNN{
 };
 
 void test_forwad_backward(){
+    using namespace rnn::simple_model::parser;
+    using value_type = rnn::simple_model::Param::value_type;
+    
     RNN rnn{};
     auto param = load_param();
 
     auto timer=Timer{};
 
-    // auto raw_text = "A symbol\nof British pound is £."
     auto sentence = u8"A symbol of British pound is £ .";
-    auto idxs = rnn.word2idx.getIndex(sentence);
-    auto word_block = rnn.voca_vecs.getWordVec(idxs);
-    std::cerr << sum(word_block.span) << std::endl;
+    auto nodes = rnn.initialize_tree(sentence);
+    auto n_words=nodes.size();
+    assert(n_words==8);
+    
+    timer.here_then_reset("Setup word2vecs & nodes");
 
-    timer.here_then_reset("Setup");
-
-    using namespace rnn::simple_model::tree;
-    using namespace rnn::simple_model::parser;
-    using vec_type = rnn::simple_model::Param::vec_type;
-    using mat_type = rnn::simple_model::Param::mat_type;
-
-    auto words = util::string::split(sentence);
-    auto nodes = construct_nodes_with_reserve(words);
-    std::cerr<<"Assign word2vecs\n";
-    print(nodes.size());
-    print('\n');
-    for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
-        //TODO: Use VectorView instead.
-        nodes[i].vec=vec_type{word_block[i]};
-        std::cerr<<i<<"-th word2vecs\n";
-    }
-    assert(words.size()==nodes.size());
     auto top_nodes = merge_leaf_nodes(param, nodes);
-    // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
-    // directed_merge(param, top_nodes, merge_history);
     auto merge_history = foward_path(param, top_nodes);
     timer.here_then_reset("Forward path");
-    
-    for(auto x : merge_history)
-        std::cerr<<x<< " ";
-    std::cerr<<"\n";
-    for(auto x : nodes)
-        std::cerr<<x.score<<" "<<x.name.val<< '\n';
-    auto idx=8;
-    auto const &node=nodes[idx];
-    assert(node.is_combined());
-    // print_all_descents(node);
-    mat_type grad_W_left, grad_W_right;
-    vec_type grad_bias, grad_u_score;
-    timer.here_then_reset("1");
-    backward_path(param, grad_W_left, grad_W_right, grad_bias,grad_u_score, node);
-    timer.here_then_reset("2");
-    auto dParam = rnn::simple_model::randomParam(0.001);
-    // auto dParam = rnn::simple_model::Param{};
-    // for(auto &x : dParam.w_left.span) x=0.001;
-    // for(auto &x : dParam.w_right.span)x=0.001;
-    // print(param.w_left.span[1][1]);
-    // print('\n');
-    // dParam.w_left.span[1][1]=param.w_left.span[1][1]*0.01;
-    using namespace rnn::simple_model::compute;
-    
-    rnn_t::float_t ds_grad{};
-    auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};        
-    matloop_void(mul_sum, ds_grad, grad_W_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad_W_right.span, dParam.w_right.span);
-    ds_grad += dot(grad_bias.span, dParam.bias.span);
-    ds_grad += dot(grad_u_score.span, dParam.u_score.span);
+
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }       
 
     timer.here_then_reset("Backward path");
 
-    auto param1{param};
-    auto param2{param};
-    param1.w_left.span +=dParam.w_left.span;
-    param1.w_right.span+=dParam.w_right.span;
-    param2.w_left.span -=dParam.w_left.span;
-    param2.w_right.span-=dParam.w_right.span;
-    param1.bias.span   +=dParam.bias.span;
-    param2.bias.span   -=dParam.bias.span;
-    param1.u_score.span+=dParam.u_score.span;
-    param2.u_score.span-=dParam.u_score.span;
+    for(auto x : nodes)
+        std::cerr<<x.score<<" "<<x.name.val<< '\n';
 
+    rnn_t::float_t ds_grad{};
+    using namespace rnn::simple_model::compute;
+    auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
+    auto dParam = rnn::simple_model::randomParam(0.001);        
+    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    ds_grad += dot(grad.bias.span, dParam.bias.span);
+    ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+    print(ds_grad);
 
-    auto score0 = node.score;
     {
-        auto nodes1 = construct_nodes_with_reserve(words);
-        auto nodes2 = construct_nodes_with_reserve(words);
-        for(decltype(nodes2.size())i=0; i<nodes2.size(); ++i){
-            nodes1[i].vec=vec_type{word_block[i]};
-            nodes2[i].vec=vec_type{word_block[i]};
-        }
+        auto param1{param};
+        auto param2{param};
+        param1.w_left.span +=dParam.w_left.span;
+        param1.w_right.span+=dParam.w_right.span;
+        param2.w_left.span -=dParam.w_left.span;
+        param2.w_right.span-=dParam.w_right.span;
+        param1.bias.span   +=dParam.bias.span;
+        param2.bias.span   -=dParam.bias.span;
+        param1.u_score.span+=dParam.u_score.span;
+        param2.u_score.span-=dParam.u_score.span;
+
+        auto words = util::string::split(sentence);  
+        auto nodes1 = rnn.initialize_tree(sentence);
+        auto nodes2 = rnn.initialize_tree(sentence);
+
         auto top_nodes1 = merge_leaf_nodes(param1, nodes1);
         auto top_nodes2 = merge_leaf_nodes(param2, nodes2);
         foward_path(param1, top_nodes1);
         foward_path(param2, top_nodes2);
-        print('\n');
-        print((nodes1[idx].score-nodes2[idx].score)*0.5);
-        print(nodes1[idx].score-score0);
+        auto score1{0.0}, score2{0.0};
+        for(auto const & node:nodes1) score1+= node.score;
+        for(auto const & node:nodes2) score2+= node.score;
+        print(0.5*(score1-score2));
+        print(score1);
         print('\n');
         print(ds_grad);
-        print('\n');
-        print(node.score);
-        print('\n');
     }
 }
 
