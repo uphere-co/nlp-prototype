@@ -3,6 +3,9 @@
 #include <algorithm> //forward path
 #include <chrono> //profiling
 
+#include "tbb/task_group.h"
+#include "tbb/tbb.h"
+
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
@@ -211,11 +214,12 @@ using value_type = rnn::simple_model::Param::value_type;
 using vec_type = rnn::simple_model::Param::vec_type;
 using mat_type = rnn::simple_model::Param::mat_type;
 
-
-rnn::simple_model::Param get_gradient(std::string sentence, 
-                                  RNN const &rnn, 
-                                  rnn::simple_model::Param const &param){
+            
+rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
+                                      RNN const &rnn, 
+                                      std::string sentence)  {
     // auto timer=Timer{};
+    
     auto nodes = rnn.initialize_tree(sentence);
     auto n_words=nodes.size();
     // timer.here_then_reset("setup");
@@ -230,8 +234,9 @@ rnn::simple_model::Param get_gradient(std::string sentence,
         backward_path(grad, param, node);
     }
     // timer.here_then_reset("backward path");
+    print(grad.bias.span[0]);
+    print('\n');
     return grad;
-
 }
 
 int main(){
@@ -247,12 +252,16 @@ int main(){
 
         RNN rnn{};
         auto param = load_param();
-        auto get_grad = [&](auto sentence){return get_gradient(sentence, rnn, param);};
-        for(auto sentence : lines){
-            // auto timer=Timer{};
-            auto grad=get_grad(sentence);
-            // timer.here_then_reset("One loop");
-        }
+        auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
+        tbb::parallel_for(0,static_cast<int>(lines.size()),1,  [&](int i){
+            get_grad(lines[i]);
+        });
+        // //single-thread counter part:
+        // std::for_each(lines.cbegin(), lines.cend(), [=](std::string sentence) {
+        //     get_grad(sentence);
+        // });
+
+        
         timer.here_then_reset("Finish one iteration");
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
