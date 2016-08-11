@@ -27,6 +27,20 @@ import           Symbolic.Type
 initModule :: AST.Module
 initModule = emptyModule "my cool jit"
 
+mkAST exp args =
+  runLLVM initModule $ do
+    llvmAST "fun1" args exp
+    define void "main" [ (ptr double, AST.Name "res")
+                       , (ptr (ptr double), AST.Name "args")
+                       ] $ do
+      argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
+      call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
+      ret_
+
+
+mkArgRef i _ = getElem (ptr double) "args" (ival i)
+
+
 exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = mul [val 1,val 3]
 
@@ -34,7 +48,7 @@ exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp2 = power 10 x
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = delta idxi idxj  --  add [ x , delta idxi idxj, delta idxk idxl ] 
+exp3 = delta idxi idxj 
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
         idxk = ("k",0,2)
@@ -140,14 +154,7 @@ test4 = do
   let ?expHash = trie hash
   let exp = exp3
   prettyPrintR (exp :: MExp Double)
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
-                ret_
+  let ast = mkAST exp []
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
@@ -164,16 +171,7 @@ test5 = do
   prettyPrintR (exp :: MExp Double)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
-  let ast = runLLVM initModule $ do
-              
-              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                yref <- getElem (ptr double) "args" (ival 1)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
-                ret_
+  let ast = mkAST exp  [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ]
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
@@ -204,15 +202,7 @@ test6 = do
       idxk = ("k",1,4)
   prettyPrintR (exp :: MExp Double)
   -- digraph exp
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ] exp
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                yref <- getElem (ptr double) "args" (ival 1)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
-                ret_
+  let ast = mkAST exp [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ]
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
@@ -232,7 +222,6 @@ test6 = do
                 putStrLn $ "Evaluated to: " ++ show vr'
 
 
-
 test7 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -250,16 +239,7 @@ test7 = do
   prettyPrintR exp
   putStr "df/dx_k = "
   prettyPrintR exp'
-
-  let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "x" [idxi], Indexed "y" [idxj] ] exp'
-              define void "main" [ (ptr double, AST.Name "res")
-                                 , (ptr (ptr double), AST.Name "args")
-                                 ] $ do
-                xref <- getElem (ptr double) "args" (ival 0)
-                yref <- getElem (ptr double) "args" (ival 1)
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
-                ret_
+  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
