@@ -2,24 +2,27 @@
 {-# LANGUAGE TypeOperators #-}
 
 import           Control.Concurrent
+import           Data.Foldable                  ( forM_ )
 import           Data.Hashable
 import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable  as VS
-import           Foreign.ForeignPtr             (withForeignPtr)
+import           Foreign.ForeignPtr             ( withForeignPtr )
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable               (poke, peek, pokeElemOff)
+import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
 import qualified LLVM.General.AST.Constant as C
 import           LLVM.General.AST.Type            ( double, i64, ptr, void )
+import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Operation
 import           Symbolic.Differential
+import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
@@ -233,12 +236,16 @@ test7 = do
       vr = VS.replicate 8 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-  {- 
+  -- comparison
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
   forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
     let iptI = [("I",i)]
         iptj = [("j",j)]
-    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
-  -}
+        
+    printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp)
+  
 
 
 test8 = do
