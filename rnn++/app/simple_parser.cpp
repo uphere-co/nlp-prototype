@@ -92,18 +92,24 @@ int main(){
         namespace rnn_model = rnn::simple_model;
 
         H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
-        auto param_raw = param_storage.getRawData<rnn_t::float_t>(rnn_param_name);
+        auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
+        std::vector<rnn_t::float_t> param_raw;
+        for(auto x: param_raw0) param_raw.push_back(x);
         auto param = rnn_model::deserializeParam(param_raw);
         rnn_model::Parser parser{param};
 
         H5file file{file_name, hdf5::FileMode::read_exist};
         Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
-        WordBlock voca_vecs{file.getRawData<rnn_t::float_t>(w2vmodel_name), word_dim};
+        auto vocavec_tmp=file.getRawData<float>(w2vmodel_name);
+        std::vector<rnn_t::float_t> vocavec;
+        for(auto x: vocavec_tmp) vocavec.push_back(x);
+        WordBlock voca_vecs{vocavec, word_dim};
         VocaIndexMap word2idx = voca.indexing();
 
         auto timer=Timer{};
 
-        auto sentence = u8"A symbol of\tBritish pound is £ .";
+        // auto raw_text = "A symbol\nof British pound is £."
+        auto sentence = u8"A symbol of British pound is £ .";
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
         std::cerr << sum(word_block.span) << std::endl;
@@ -113,22 +119,87 @@ int main(){
         using namespace rnn::simple_model::tree;
         auto words = util::string::split(sentence);
         auto nodes = construct_nodes_with_reserve(words);
+
+        std::cerr<<"Assign word2vecs\n";
         //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block
-        for(decltype(nodes.size())i=0; i<nodes.size(); ++i)
+        print(nodes.size());
+        print('\n');
+        for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
+            //TODO: Use VectorView instead.
             nodes[i].vec=rnn_model::Param::vec_type{word_block[i]};
+            std::cerr<<i<<"-th word2vecs\n";
+        }
         assert(words.size()==nodes.size());
         auto top_nodes = parser.merge_leaf_nodes(nodes);
         // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
         // parser.directed_merge(top_nodes, merge_history);
         auto merge_history = parser.foward_path(top_nodes);
         timer.here_then_reset("Forward path");
-
+        
         for(auto x : merge_history)
             std::cerr<<x<< " ";
         std::cerr<<"\n";
-        print_all_descents(nodes[13]);
-    } catch (H5::Exception ex) {
+        for(auto x : nodes)
+            std::cerr<<x.score<<" "<<x.name.val<< '\n';
+        auto idx=8;
+        auto const &node=nodes[idx];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        rnn_model::Param::mat_type grad_W_left, grad_W_right;
+        parser.backward_path_W(grad_W_left, grad_W_right, node);
+        
+        auto dParam = rnn::simple_model::randomParam(0.001);
+        // auto dParam = rnn::simple_model::Param{};
+        // for(auto &x : dParam.w_left.span) x=0.001;
+        // for(auto &x : dParam.w_right.span)x=0.001;
+        // print(param.w_left.span[1][1]);
+        // print('\n');
+        // dParam.w_left.span[1][1]=param.w_left.span[1][1]*0.01;
+        using namespace rnn::simple_model::compute;
+        
+        rnn_t::float_t dsdW{};
+        auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};
+        
+        matloop_void(mul_sum, dsdW, grad_W_left.span, dParam.w_left.span);
+        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);
+        timer.here_then_reset("Backward path");
+        auto param1{param};
+        auto param2{param};
+        matloop_void(add_assign, param1.w_left.span, dParam.w_left.span);
+        matloop_void(add_assign, param1.w_right.span, dParam.w_right.span);
+        matloop_void(sub_assign, param2.w_left.span, dParam.w_left.span);
+        matloop_void(sub_assign, param2.w_right.span, dParam.w_right.span);
+
+        auto score0 = node.score;
+        {
+            rnn_model::Parser parser1{param1};
+            rnn_model::Parser parser2{param2};
+            auto nodes1 = construct_nodes_with_reserve(words);
+            auto nodes2 = construct_nodes_with_reserve(words);
+            for(decltype(nodes2.size())i=0; i<nodes2.size(); ++i){
+                nodes1[i].vec=rnn_model::Param::vec_type{word_block[i]};
+                nodes2[i].vec=rnn_model::Param::vec_type{word_block[i]};
+            }
+            auto top_nodes1 = parser1.merge_leaf_nodes(nodes1);
+            auto top_nodes2 = parser2.merge_leaf_nodes(nodes2);
+            parser1.foward_path(top_nodes1);
+            parser2.foward_path(top_nodes2);
+            print('\n');
+            print((nodes1[idx].score-nodes2[idx].score)*0.5);
+            print(nodes1[idx].score-score0);
+            print('\n');
+            print(dsdW);
+            print('\n');
+            print(node.score);
+            print('\n');
+        }
+
+
+        // ds_exact= ;
+    } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
+    }catch (std::exception &e) {
+        std::cerr<<"Got "<<e.what()<<std::endl;
     } catch (...) {
         std::cerr << "Unknown exception" << std::endl;
     }

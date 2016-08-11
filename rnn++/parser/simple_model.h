@@ -2,6 +2,7 @@
 #include<vector>
 #include<cmath>
 #include<utility>
+#include<random>
 
 #include<gsl.h>
 
@@ -32,6 +33,7 @@ struct Param{
           vec_type &&bias, vec_type &&u_score)
           : w_left{std::move(w_left)}, w_right{std::move(w_right)},
             bias{std::move(bias)}, u_score{std::move(u_score)} {}
+    Param() {}
     mat_type w_left;
     mat_type w_right;
     vec_type bias;
@@ -50,123 +52,110 @@ auto deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     auto u_score  = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim+1]};
     return Param{std::move(wL), std::move(wR), std::move(bias), std::move(u_score)};
 }
-
+auto randomParam(Param::value_type scale){
+    std::random_device rd;
+    //std::mt19937 e{rd()};
+    std::mt19937 e{}; //fixed seed for testing.
+    std::uniform_real_distribution<Param::value_type>  uniform_dist{-scale, scale};
+    auto dim = Param::dim;
+    std::vector<Param::value_type> param_raw(dim*(dim*2+2));
+    for(auto &x : param_raw)
+        x=uniform_dist(e);
+    return deserializeParam(param_raw);
+}
 namespace compute{
-
-
-
 //Cannot do string comparison at compile time.
 // constexpr auto activation_factory(const char name[]){
 //     if(name=="tanh") return Activation::tanh;
 //     else if(name=="sig") return Activation::sig;
 // }
 
-auto activation_f = util::math::Fun<rnn::config::activation>;//[](auto x){return tanh(x);};
-auto activation_df = [](auto x){
-    auto fx = cosh(x);
-    return decltype(x){1}/(fx*fx);
-};
+using val_type = rnn::type::float_t;
+using vec_type = gsl::span<rnn::type::float_t,rnn::config::word_dim>;
+using mat_type = gsl::span<rnn::type::float_t,rnn::config::word_dim,rnn::config::word_dim>;
 
-template<typename T,int64_t dim>
-struct WeightedSum{
-private:
-    using vec_type = gsl::span<T,dim>;
-    using mat_type = gsl::span<T,dim,dim>;
-public:
-    auto operator()(int64_t i,
-                    mat_type const &w_left,  mat_type const &w_right,
-                    vec_type const &bias,
-                    vec_type const &word_left, vec_type const &word_right) const {
-        using util::math::dot;
-        return dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
-    }
-};
-
-template<typename T,int64_t dim>
-struct Tanh{
-private:
-    using vec_type = gsl::span<T,dim>;
-public:
-    // template<typename VEC>
-    // auto operator()(int64_t i, VEC const &x) const {
-    //     return tanh(x[i]);
-    // }
-    auto operator()(int64_t i, vec_type const &x) const {
-        return tanh(x[i]);
-    }
-};
-// auto Tanh=[](auto i, auto const &x) {  return tanh(x[i]);
-
-template<template<typename ,int64_t > class OP, typename T, int64_t dim, typename... Args>
-auto vectorize(OP<T,dim> const &fun, Args&&... args)
-{
-    util::math::Vector<T,dim> result{};
-    for(int64_t i=0; i<dim; ++i){
-        result.span[i] =fun(i, std::forward<Args>(args)...);
-    }
-    return std::move(result);
-}
-
-//TODO:change name to more approciate one and move to util::math.
-template<typename T, int64_t M>
-auto apply_activation(gsl::span<T,M> const &wsum){
-    util::math::Vector<T,M> phrase{};
-    for(decltype(M) i=0; i<M; ++i){
-        phrase.span[i] = activation_f(wsum[i]);
-    }
-    return std::move(phrase);
-}
-
-auto weighted_sum_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
-                          auto const &word_left, auto const &word_right){
+auto weighted_sum=[](int64_t i,
+                     mat_type const &w_left,  mat_type const &w_right,
+                     vec_type const &bias,
+                     vec_type const &word_left, vec_type const &word_right) {
     using util::math::dot;
-    return dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i;
+    return dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
 };
-template<typename T, int64_t M>
-auto weighted_sum(util::math::Matrix<T,M,M> const &w_left,
-                     util::math::Matrix<T,M,M> const &w_right,
-                     util::math::Vector<T,M> const &bias,
-                     gsl::span<T,Param::dim> const &word_left,
-                     gsl::span<T,Param::dim> const &word_right){
-    util::math::Vector<T,M> wsum{};
-    for(decltype(M) i=0; i<M; ++i){
-        // auto weighted_sum_i = WeightedSum<Param::value_type,Param::dim>{};
-        auto weighted_sum_i = WeightedSum<float,Param::dim>{};
-        wsum.span[i] = weighted_sum_i(i, w_left.span, w_right.span, bias.span,
-                                      word_left, word_right);
-    }
-    return std::move(wsum);
-}
-
-
-auto merge_to_phrase_i=[](auto const &w_left_i, auto const &w_right_i, auto const &b_i,
-                          auto const &word_left, auto const &word_right){
-    using util::math::dot;
-    return activation_f(dot(w_left_i, word_left)+dot(w_right_i, word_right) + b_i);
+auto activation_fun=[](int64_t i, vec_type const &x) {
+    return util::math::Fun<rnn::config::activation>(x[i]);
 };
-template<typename T, int64_t M>
-auto merge_to_phrase(util::math::Matrix<T,M,M> const &w_left,
-                     util::math::Matrix<T,M,M> const &w_right,
-                     util::math::Vector<T,M> const &bias,
-                     gsl::span<T,Param::dim> const &word_left,
-                     gsl::span<T,Param::dim> const &word_right){
-    util::math::Vector<T,M> phrase{};
-    for(decltype(M) i=0; i<M; ++i){
-        auto x_i = merge_to_phrase_i(w_left.span[i], w_right.span[i], bias.span[i],
-                                     word_left, word_right);
-        phrase.span[i] = activation_f(x_i);
+auto activation_dfun=[](int64_t i, vec_type const &x) {
+    return util::math::Fun<rnn::config::activation_df>(x[i]);
+};
+
+auto update_mesg_common_part=[](int64_t i, vec_type & mesg, vec_type const & weighted_sum) {
+    mesg[i]*=activation_dfun(i, weighted_sum);
+};
+
+auto update_mesg_finalize=[](int64_t i,int64_t j, vec_type &out,
+                   vec_type const &mesg, mat_type const &w)  {
+    out[j]+=mesg[i]*w[i][j];
+};
+auto back_prop_grad_W=[](int64_t i,int64_t j, mat_type &grad, 
+                         vec_type const &mesg, vec_type const &weighted_sum)  {
+    grad[i][j]+=mesg[i]*weighted_sum[j];
+};
+
+auto add_assign=[](int64_t i,int64_t j, mat_type const & out,mat_type const & x) {
+    out[i][j]+=x[i][j];
+};
+auto mul_sum=[](int64_t i,int64_t j, val_type & out, mat_type const &a, mat_type const &b) {
+    out+=a[i][j]*b[i][j];
+};
+auto sub_assign=[](int64_t i,int64_t j, mat_type const & out, mat_type const & x) {
+    out[i][j]-=x[i][j];
+};
+
+template<typename T, int64_t dim_1>
+struct VecLoop_void{
+    template<typename OP, typename... Args>
+    void operator()(OP const&fun, Args&&... args) const {
+        for(int64_t i=0; i<dim_1; ++i){
+            fun(i, std::forward<Args>(args)...);
+        }
     }
-    return std::move(phrase);
-}
+};
+template<typename T, int64_t dim_1>
+struct VecLoop_vec{
+    template<typename OP, typename... Args>
+    auto operator()(OP const&fun, Args&&... args) const {
+        util::math::Vector<T,dim_1> result{};
+        for(int64_t i=0; i<dim_1; ++i){
+            result.span[i]=fun(i, std::forward<Args>(args)...);
+        }
+        return result;
+    }
+};
 
+template<typename T, int64_t dim_1, int64_t dim_2>
+struct MatLoop_mat{
+    template<typename OP, typename... Args>
+    void operator()(OP const&fun, Args&&... args) const {
+        util::math::Matrix<T,dim_1,dim_2> result{};
+        for(int64_t i=0; i<dim_1; ++i){
+            for(int64_t j=0; j<dim_2; ++j){
+                result.span[i][j]=fun(i,j, std::forward<Args>(args)...);
+            }
+        }
+    }
+};
+template<typename T, int64_t dim_1, int64_t dim_2>
+struct MatLoop_void{
+    template<typename OP, typename... Args>
+    void operator()(OP const&fun, Args&&... args) const {
+        for(int64_t i=0; i<dim_1; ++i){
+            for(int64_t j=0; j<dim_2; ++j){
+                fun(i,j, std::forward<Args>(args)...);
+            }
+        }
+    }
+};
 
-// auto backward_mesg_w(grad, node, mesg, x, word){
-//     mesg *= activation_df(x);
-//     grad+=outer(mesg, word);
-//     backward_mesg_w(grad, *node.left,  dot(mesg, w_left) , x, word_left);
-//     backward_mesg_w(grad, *node.right, dot(mesg, w_right), x, word_right);
-//     return;
-// }
 }//namespace rnn::simple_model::compute
 }//namespace rnn::simple_model
 }//namespace rnn

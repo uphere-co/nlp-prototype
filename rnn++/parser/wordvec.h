@@ -29,7 +29,7 @@ public:
     WordBlock(data_t raw_data, int word_dim)
     : _val{raw_data},span{_val}, word_dim{word_dim} {}
     WordBlock(WordBlock&& )= default;
-    WordBlock(WordBlock& )= delete;
+    WordBlock(const WordBlock& )= delete;
     WordBlock& operator=(const WordBlock& )= delete;
     WordBlock copy() const {
         return WordBlock{_val, word_dim};
