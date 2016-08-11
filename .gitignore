@@ -13,7 +13,7 @@ python/parse_arxiv_meta.py
 *.o
 dist/
 
-build
+build*/
 boilerplate
 #Data files
 *.h5

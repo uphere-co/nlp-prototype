@@ -12,7 +12,10 @@ util::io::H5name voca_name{"1b.model.voca"};
 util::io::H5name w2vmodel_name{"1b.model"};
 
 util::io::H5name rnn_param_store_name{"rnnparser.h5"};
+//HDF5 dataset name to use as inital RNN parameter.
 util::io::H5name rnn_param_name{"rnn.Parser#447cc3c8.18800"};
+
+std::string trainset_name{"1b.training.sample"};
 
 //voca_max_word_len can be read using `h5dump -H` command.
 //It can be directly read from a H5File,
@@ -23,6 +26,9 @@ constexpr int voca_max_word_len = 74;
 constexpr size_t voca_size=552402;
 constexpr int word_dim=100;
 
+// constexpr auto activation = util::math::FunName::ax;
+// constexpr auto activation_df = util::math::FunName::d_ax;
 constexpr auto activation = util::math::FunName::tanh;
+constexpr auto activation_df = util::math::FunName::d_tanh;
 }//namescpae config
 }//namespace rnn
