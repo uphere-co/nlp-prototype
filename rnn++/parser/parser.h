@@ -17,7 +17,7 @@ using node_type = tree::Node;
 //TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
                                 vec_type const &word_right) {
-    using namespace rnn::simple_model::compute;
+    using namespace rnn::simple_model;
     //TODO: change interface to remove .span?
     auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
     return vecloop_vec(weighted_sum, param.w_left.span, param.w_right.span, 
@@ -29,7 +29,7 @@ value_type scoring_node(Param const &param, node_type const &node) {
 }
 
 void set_node_property(Param const &param,node_type &node) {
-    using namespace rnn::simple_model::compute;
+    using namespace rnn::simple_model;
     auto vecloop_vec = VecLoop_vec<Param::value_type,Param::dim>{};
     node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
     node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
@@ -110,7 +110,7 @@ void backward_path(Param const &param,
                    node_type const &phrase, vec_type mesg) {
     constexpr auto dim = Param::dim;
     using val_t =Param::value_type;
-    using namespace rnn::simple_model::compute; 
+    using namespace rnn::simple_model; 
     auto vecloop_void = VecLoop_void<val_t,dim>{};
     auto matloop_void = MatLoop_void<val_t,dim,dim>{};
     vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
@@ -137,7 +137,7 @@ void backward_path(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias, vec_type &gradsum_u_score,
                    node_type const &phrase) {
-    using namespace rnn::simple_model::compute;
+    using namespace rnn::simple_model;
     gradsum_u_score.span += phrase.vec.span;
     auto mesg{param.u_score};
     backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
@@ -147,7 +147,7 @@ void backward_path(Param const &param,
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
 void backward_path(Param &grad, Param const &param,
                    node_type const &phrase) {
-    using namespace rnn::simple_model::compute;
+    using namespace rnn::simple_model;
     grad.u_score.span += phrase.vec.span;
     auto mesg{param.u_score};
     backward_path(param, grad.w_left, grad.w_right, grad.bias, phrase, mesg);

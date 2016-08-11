@@ -63,7 +63,7 @@ auto randomParam(Param::value_type scale){
         x=uniform_dist(e);
     return deserializeParam(param_raw);
 }
-namespace compute{
+// namespace compute{
 //Cannot do string comparison at compile time.
 // constexpr auto activation_factory(const char name[]){
 //     if(name=="tanh") return Activation::tanh;
@@ -164,36 +164,59 @@ struct MatLoop_void{
     }
 };
 
-vec_type& operator +=(vec_type& out, const vec_type& x){
-    using rnn::type::float_t;
-    using namespace rnn::config;
-    auto vecloop_void=VecLoop_void<float_t,word_dim>{};
+template<typename T, int64_t M>
+gsl::span<T,M>& operator +=(gsl::span<T,M>& out, const gsl::span<T,M>& x){
+    auto vecloop_void=VecLoop_void<T,M>{};
     vecloop_void(add_assign_vec, out, x);
     return out;
 };
-vec_type& operator -=(vec_type& out, const vec_type& x){
-    using rnn::type::float_t;
-    using namespace rnn::config;
-    auto vecloop_void=VecLoop_void<float_t,word_dim>{};
+
+template<typename T, int64_t M>
+gsl::span<T,M>& operator -=(gsl::span<T,M>& out, const gsl::span<T,M>& x){
+    auto vecloop_void=VecLoop_void<T,M>{};
     vecloop_void(sub_assign_vec, out, x);
     return out;
 };
 
-mat_type& operator +=(mat_type& out, const mat_type& x){
-    using rnn::type::float_t;
-    using namespace rnn::config;
-    auto matloop_void=MatLoop_void<float_t,word_dim,word_dim>{};
+
+template<typename T, int64_t M, int64_t N>
+gsl::span<T,M,N>& operator +=(gsl::span<T,M,N>& out, const gsl::span<T,M,N>& x){
+    auto matloop_void=MatLoop_void<T,M,N>{};
     matloop_void(add_assign_mat, out, x);
     return out;
 };
-mat_type& operator -=(mat_type& out, const mat_type& x){
-    using rnn::type::float_t;
-    using namespace rnn::config;
-    auto matloop_void=MatLoop_void<float_t,word_dim,word_dim>{};
+template<typename T, int64_t M, int64_t N>
+gsl::span<T,M,N>& operator -=(gsl::span<T,M,N>& out, const gsl::span<T,M,N>& x){
+    auto matloop_void=MatLoop_void<T,M,N>{};
     matloop_void(sub_assign_mat, out, x);
-    return out; 
+    return out;
 };
 
-}//namespace rnn::simple_model::compute
+Param& operator +=(Param& out, const Param& x){
+    out.w_left.span  += x.w_left.span;
+    out.w_right.span += x.w_right.span;
+    out.bias.span    += x.bias.span;
+    out.u_score.span += x.u_score.span;
+    return out;
+};
+Param& operator -=(Param& out, const Param& x){
+    out.w_left.span  -= x.w_left.span;
+    out.w_right.span -= x.w_right.span;
+    out.bias.span    -= x.bias.span;
+    out.u_score.span -= x.u_score.span;
+    return out;
+};
+Param operator +(const Param& x, const Param& y){
+    Param out{x};
+    out += y;
+    return out;
+};
+Param operator -(const Param& x, const Param& y){
+    Param out{x};
+    out -= y;
+    return out;
+};
+
+// }//namespace rnn::simple_model::compute
 }//namespace rnn::simple_model
 }//namespace rnn
