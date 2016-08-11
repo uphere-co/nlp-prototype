@@ -74,6 +74,7 @@ using val_type = rnn::type::float_t;
 using vec_type = gsl::span<rnn::type::float_t,rnn::config::word_dim>;
 using mat_type = gsl::span<rnn::type::float_t,rnn::config::word_dim,rnn::config::word_dim>;
 
+
 auto weighted_sum=[](int64_t i,
                      mat_type const &w_left,  mat_type const &w_right,
                      vec_type const &bias,
@@ -101,14 +102,22 @@ auto back_prop_grad_W=[](int64_t i,int64_t j, mat_type &grad,
     grad[i][j]+=mesg[i]*weighted_sum[j];
 };
 
-auto add_assign=[](int64_t i,int64_t j, mat_type const & out,mat_type const & x) {
+auto add_assign_vec=[](int64_t i, vec_type const & out,vec_type const & x) {
+    out[i]+=x[i];
+};
+auto sub_assign_vec=[](int64_t i, vec_type const & out, vec_type const & x) {
+    out[i]-=x[i];
+};
+
+auto add_assign_mat=[](int64_t i,int64_t j, mat_type const & out,mat_type const & x) {
     out[i][j]+=x[i][j];
 };
+auto sub_assign_mat=[](int64_t i,int64_t j, mat_type const & out, mat_type const & x) {
+    out[i][j]-=x[i][j];
+};
+
 auto mul_sum=[](int64_t i,int64_t j, val_type & out, mat_type const &a, mat_type const &b) {
     out+=a[i][j]*b[i][j];
-};
-auto sub_assign=[](int64_t i,int64_t j, mat_type const & out, mat_type const & x) {
-    out[i][j]-=x[i][j];
 };
 
 template<typename T, int64_t dim_1>
@@ -154,6 +163,36 @@ struct MatLoop_void{
             }
         }
     }
+};
+
+vec_type& operator +=(vec_type& out, const vec_type& x){
+    using rnn::type::float_t;
+    using namespace rnn::config;
+    auto vecloop_void=VecLoop_void<float_t,word_dim>{};
+    vecloop_void(add_assign_vec, out, x);
+    return out;
+};
+vec_type& operator -=(vec_type& out, const vec_type& x){
+    using rnn::type::float_t;
+    using namespace rnn::config;
+    auto vecloop_void=VecLoop_void<float_t,word_dim>{};
+    vecloop_void(sub_assign_vec, out, x);
+    return out;
+};
+
+mat_type& operator +=(mat_type& out, const mat_type& x){
+    using rnn::type::float_t;
+    using namespace rnn::config;
+    auto matloop_void=MatLoop_void<float_t,word_dim,word_dim>{};
+    matloop_void(add_assign_mat, out, x);
+    return out;
+};
+mat_type& operator -=(mat_type& out, const mat_type& x){
+    using rnn::type::float_t;
+    using namespace rnn::config;
+    auto matloop_void=MatLoop_void<float_t,word_dim,word_dim>{};
+    matloop_void(sub_assign_mat, out, x);
+    return out; 
 };
 
 }//namespace rnn::simple_model::compute

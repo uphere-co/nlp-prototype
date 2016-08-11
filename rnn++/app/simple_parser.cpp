@@ -78,124 +78,185 @@ struct Timer{
     Timer(){}
     void here(std::string mesg) const {
         time_t t_end = std::chrono::high_resolution_clock::now();
-        std::cout << mesg << " Wall time: "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
+        std::cerr << mesg << " Wall time: "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
     }
     void reset(){t_start = std::chrono::high_resolution_clock::now();}
     void here_then_reset(std::string mesg) {here(mesg); reset();}
     time_t t_start = std::chrono::high_resolution_clock::now();
 };
+
+
+rnn::parser::wordrep::Voca load_voca(){
+    using namespace rnn::config;
+    using namespace rnn::parser::wordrep;
+    H5file file{file_name, hdf5::FileMode::read_exist};
+    return Voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
+}
+
+rnn::parser::wordrep::WordBlock load_voca_vecs(){
+    using namespace rnn::config;
+    using namespace rnn::parser::wordrep;
+    H5file file{file_name, hdf5::FileMode::read_exist};
+    auto vocavec_tmp=file.getRawData<float>(w2vmodel_name);
+    std::vector<rnn::type::float_t> vocavec;
+    for(auto x: vocavec_tmp) vocavec.push_back(x);
+    return WordBlock{vocavec, word_dim};
+}
+
+rnn::simple_model::Param load_param(){
+    using namespace rnn::config;
+    H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
+    auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
+    std::vector<rnn_t::float_t> param_raw;
+    for(auto x: param_raw0) param_raw.push_back(x);
+    return rnn::simple_model::deserializeParam(param_raw);
+}
+struct RNN{
+    RNN() : voca{load_voca()}, word2idx{voca.indexing()},
+            voca_vecs{load_voca_vecs()} {}
+
+    std::vector<rnn::simple_model::tree::Node> initialize_tree(std::string sentence) const {
+        auto idxs = word2idx.getIndex(sentence);
+        auto word_block = voca_vecs.getWordVec(idxs);
+        auto words = util::string::split(sentence);    
+        auto nodes = rnn::simple_model::tree::construct_nodes_with_reserve(words);
+        
+        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
+        for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
+            nodes[i].vec=rnn::simple_model::Param::vec_type{word_block[i]};
+        }
+        assert(words.size()==nodes.size());
+        return nodes;
+    }
+
+    rnn::parser::wordrep::Voca voca;
+    rnn::parser::wordrep::VocaIndexMap word2idx;
+    rnn::parser::wordrep::WordBlock voca_vecs;
+};
+
+void test_forwad_backward(){
+    using namespace rnn::simple_model::parser;
+    using value_type = rnn::simple_model::Param::value_type;
+    
+    RNN rnn{};
+    auto param = load_param();
+
+    auto timer=Timer{};
+
+    auto sentence = u8"A symbol of British pound is £ .";
+    auto nodes = rnn.initialize_tree(sentence);
+    auto n_words=nodes.size();
+    assert(n_words==8);
+    
+    timer.here_then_reset("Setup word2vecs & nodes");
+
+    auto top_nodes = merge_leaf_nodes(param, nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    timer.here_then_reset("Forward path");
+
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }       
+
+    timer.here_then_reset("Backward path");
+
+    for(auto x : nodes)
+        std::cerr<<x.score<<" "<<x.name.val<< '\n';
+
+    rnn_t::float_t ds_grad{};
+    using namespace rnn::simple_model::compute;
+    auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
+    auto dParam = rnn::simple_model::randomParam(0.001);        
+    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    ds_grad += dot(grad.bias.span, dParam.bias.span);
+    ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+    print(ds_grad);
+
+    {
+        auto param1{param};
+        auto param2{param};
+        param1.w_left.span +=dParam.w_left.span;
+        param1.w_right.span+=dParam.w_right.span;
+        param2.w_left.span -=dParam.w_left.span;
+        param2.w_right.span-=dParam.w_right.span;
+        param1.bias.span   +=dParam.bias.span;
+        param2.bias.span   -=dParam.bias.span;
+        param1.u_score.span+=dParam.u_score.span;
+        param2.u_score.span-=dParam.u_score.span;
+
+        auto words = util::string::split(sentence);  
+        auto nodes1 = rnn.initialize_tree(sentence);
+        auto nodes2 = rnn.initialize_tree(sentence);
+
+        auto top_nodes1 = merge_leaf_nodes(param1, nodes1);
+        auto top_nodes2 = merge_leaf_nodes(param2, nodes2);
+        foward_path(param1, top_nodes1);
+        foward_path(param2, top_nodes2);
+        auto score1{0.0}, score2{0.0};
+        for(auto const & node:nodes1) score1+= node.score;
+        for(auto const & node:nodes2) score2+= node.score;
+        print(0.5*(score1-score2));
+        print(score1);
+        print('\n');
+        print(ds_grad);
+    }
+}
+
+using namespace rnn::simple_model::parser;
+using value_type = rnn::simple_model::Param::value_type;
+using vec_type = rnn::simple_model::Param::vec_type;
+using mat_type = rnn::simple_model::Param::mat_type;
+
 int main(){
     try {
-        test_init_rnn();
-        //test_directed_merge();
+        // test_init_rnn();
         // test_read_voca();
-        namespace rnn_model = rnn::simple_model;
+        // test_forwad_backward();
+        // return 0;
 
-        H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
-        auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
-        std::vector<rnn_t::float_t> param_raw;
-        for(auto x: param_raw0) param_raw.push_back(x);
-        auto param = rnn_model::deserializeParam(param_raw);
-        rnn_model::Parser parser{param};
-
-        H5file file{file_name, hdf5::FileMode::read_exist};
-        Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
-        auto vocavec_tmp=file.getRawData<float>(w2vmodel_name);
-        std::vector<rnn_t::float_t> vocavec;
-        for(auto x: vocavec_tmp) vocavec.push_back(x);
-        WordBlock voca_vecs{vocavec, word_dim};
-        VocaIndexMap word2idx = voca.indexing();
+        RNN rnn{};
+        auto param = load_param();
 
         auto timer=Timer{};
 
-        // auto raw_text = "A symbol\nof British pound is £."
         auto sentence = u8"A symbol of British pound is £ .";
-        auto idxs = word2idx.getIndex(sentence);
-        auto word_block = voca_vecs.getWordVec(idxs);
-        std::cerr << sum(word_block.span) << std::endl;
-
-        timer.here_then_reset("Setup");
-
-        using namespace rnn::simple_model::tree;
-        auto words = util::string::split(sentence);
-        auto nodes = construct_nodes_with_reserve(words);
-
-        std::cerr<<"Assign word2vecs\n";
-        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block
-        print(nodes.size());
-        print('\n');
-        for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
-            //TODO: Use VectorView instead.
-            nodes[i].vec=rnn_model::Param::vec_type{word_block[i]};
-            std::cerr<<i<<"-th word2vecs\n";
-        }
-        assert(words.size()==nodes.size());
-        auto top_nodes = parser.merge_leaf_nodes(nodes);
-        // std::vector<decltype(nodes.size())> merge_history={2, 1, 0, 0, 0, 1, 0};
-        // parser.directed_merge(top_nodes, merge_history);
-        auto merge_history = parser.foward_path(top_nodes);
-        timer.here_then_reset("Forward path");
+        auto nodes = rnn.initialize_tree(sentence);
+        auto n_words=nodes.size();
+        assert(n_words==8);
         
-        for(auto x : merge_history)
-            std::cerr<<x<< " ";
-        std::cerr<<"\n";
+        timer.here_then_reset("Setup word2vecs & nodes");
+
+        auto top_nodes = merge_leaf_nodes(param, nodes);
+        auto merge_history = foward_path(param, top_nodes);
+        timer.here_then_reset("Forward path");
+
+        rnn::simple_model::Param grad{};
+        for(auto i=n_words; i<nodes.size(); ++i){
+            auto const &node=nodes[i];
+            assert(node.is_combined());
+            // print_all_descents(node);
+            backward_path(grad, param, node);
+        }       
+
+        timer.here_then_reset("Backward path");
+
         for(auto x : nodes)
             std::cerr<<x.score<<" "<<x.name.val<< '\n';
-        auto idx=8;
-        auto const &node=nodes[idx];
-        assert(node.is_combined());
-        // print_all_descents(node);
-        rnn_model::Param::mat_type grad_W_left, grad_W_right;
-        parser.backward_path_W(grad_W_left, grad_W_right, node);
-        
-        auto dParam = rnn::simple_model::randomParam(0.001);
-        // auto dParam = rnn::simple_model::Param{};
-        // for(auto &x : dParam.w_left.span) x=0.001;
-        // for(auto &x : dParam.w_right.span)x=0.001;
-        // print(param.w_left.span[1][1]);
-        // print('\n');
-        // dParam.w_left.span[1][1]=param.w_left.span[1][1]*0.01;
+
+        rnn_t::float_t ds_grad{};
         using namespace rnn::simple_model::compute;
-        
-        rnn_t::float_t dsdW{};
-        auto matloop_void=MatLoop_void<rnn_t::float_t, word_dim, word_dim>{};
-        
-        matloop_void(mul_sum, dsdW, grad_W_left.span, dParam.w_left.span);
-        matloop_void(mul_sum, dsdW, grad_W_right.span, dParam.w_right.span);
-        timer.here_then_reset("Backward path");
-        auto param1{param};
-        auto param2{param};
-        matloop_void(add_assign, param1.w_left.span, dParam.w_left.span);
-        matloop_void(add_assign, param1.w_right.span, dParam.w_right.span);
-        matloop_void(sub_assign, param2.w_left.span, dParam.w_left.span);
-        matloop_void(sub_assign, param2.w_right.span, dParam.w_right.span);
-
-        auto score0 = node.score;
-        {
-            rnn_model::Parser parser1{param1};
-            rnn_model::Parser parser2{param2};
-            auto nodes1 = construct_nodes_with_reserve(words);
-            auto nodes2 = construct_nodes_with_reserve(words);
-            for(decltype(nodes2.size())i=0; i<nodes2.size(); ++i){
-                nodes1[i].vec=rnn_model::Param::vec_type{word_block[i]};
-                nodes2[i].vec=rnn_model::Param::vec_type{word_block[i]};
-            }
-            auto top_nodes1 = parser1.merge_leaf_nodes(nodes1);
-            auto top_nodes2 = parser2.merge_leaf_nodes(nodes2);
-            parser1.foward_path(top_nodes1);
-            parser2.foward_path(top_nodes2);
-            print('\n');
-            print((nodes1[idx].score-nodes2[idx].score)*0.5);
-            print(nodes1[idx].score-score0);
-            print('\n');
-            print(dsdW);
-            print('\n');
-            print(node.score);
-            print('\n');
-        }
-
-
-        // ds_exact= ;
+        auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
+        auto dParam = rnn::simple_model::randomParam(0.001);        
+        matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+        matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+        ds_grad += dot(grad.bias.span, dParam.bias.span);
+        ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+        print(ds_grad);
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
     }catch (std::exception &e) {
