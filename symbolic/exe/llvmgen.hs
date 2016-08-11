@@ -3,6 +3,7 @@
 
 import           Control.Concurrent
 import           Data.Hashable
+import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable  as VS
 import           Foreign.ForeignPtr             (withForeignPtr)
@@ -18,6 +19,7 @@ import           LLVM.General.AST.Type            ( double, i64, ptr, void )
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Operation
+import           Symbolic.Differential
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
@@ -229,4 +231,64 @@ test6 = do
                 vr' <- VS.freeze mv
                 putStrLn $ "Evaluated to: " ++ show vr'
 
-main = test6
+
+
+test7 = do
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+
+      idxI = ("I",1,4)
+      idxk = ("k",1,2)
+  
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp :: MExp Double
+      exp = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+
+      exp' = sdiff (Indexed "x" [idxk]) exp
+  putStr "f = "
+  prettyPrintR exp
+  putStr "df/dx_k = "
+  prettyPrintR exp'
+
+  let ast = runLLVM initModule $ do
+              llvmAST "fun1" [ Indexed "x" [idxi], Indexed "y" [idxj] ] exp'
+              define void "main" [ (ptr double, AST.Name "res")
+                                 , (ptr (ptr double), AST.Name "args")
+                                 ] $ do
+                xref <- getElem (ptr double) "args" (ival 0)
+                yref <- getElem (ptr double) "args" (ival 1)
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
+                ret_
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        let vx = VS.fromList [101,102]
+            vy = VS.fromList [203,204] :: VS.Vector Double
+            vr = VS.replicate 8 0    :: VS.Vector Double
+        VS.unsafeWith vx $ \px ->
+          VS.unsafeWith vy $ \py -> do
+            let varg = VS.fromList [px,py]
+            mvarg@(VS.MVector _ fparg) <- VS.thaw varg
+            mv@(VS.MVector _ fpr) <- VS.thaw vr
+            withForeignPtr fparg $ \pargs ->
+              withForeignPtr fpr $ \pres -> do
+                run fn pres pargs
+                vr' <- VS.freeze mv
+                putStrLn $ "Evaluated to: " ++ show vr'
+  {- 
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %d \n" iI k (seval args (iptI++iptk) exp')
+  -}
+
+  
+main = test7
+
+
