@@ -142,6 +142,13 @@ void backward_path(Param const &param,
     auto mesg{param.u_score};
     backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
+void backward_path(Param &grad, Param const &param,
+                   node_type const &phrase) {
+    using namespace rnn::simple_model::compute;
+    grad.u_score.span += phrase.vec.span;
+    auto mesg{param.u_score};
+    backward_path(param, grad.w_left, grad.w_right, grad.bias, phrase, mesg);
+}
 
 
 
