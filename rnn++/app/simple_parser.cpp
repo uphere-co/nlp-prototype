@@ -257,6 +257,25 @@ rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
     return grad;
 }
 
+
+template<typename IT, typename OP, typename TVAL>
+TVAL parallel_reducer(IT beg, IT end, OP reducer, TVAL zero){
+    auto sum=tbb::parallel_reduce(
+        tbb::blocked_range<IT>{beg, end},
+        zero,
+        //current_sum should be const & or copied by value.
+        [&reducer]( tbb::blocked_range<decltype(beg)> const &r, TVAL current_sum ) {
+            // std::cerr<<r.size()<< " : blocked_range"<<std::endl;
+            for (auto it=r.begin(); it!=r.end(); ++it) {
+                current_sum += reducer(*it); 
+            }
+            return current_sum; // body returns updated value of the accumulator
+        },
+        [](TVAL const &x,TVAL const &y){return x+y;}
+    );
+    return sum;
+}
+
 void test_parallel_reduce(){
     auto timer=Timer{};
     auto lines=util::string::readlines(rnn::config::trainset_name);
@@ -273,21 +292,9 @@ void test_parallel_reduce(){
         grad_serial += get_grad(lines[i]); 
     }
     timer.here_then_reset("Serial reduce");
-    auto grad_parallel=tbb::parallel_reduce(
-        tbb::blocked_range<int>(0, n_minibatch),
-        Param{}, // identity element for summation
-        //current_sum should be const & or copied by value.
-        [&]( tbb::blocked_range<int> const &r, Param current_sum ) {
-            // print(r.end()-r.begin());
-            // print(': blocked range\n');
-            using namespace rnn::simple_model;
-            for (auto i=r.begin(); i!=r.end(); ++i) {
-                current_sum += get_grad(lines[i]); 
-            }
-            return current_sum; // body returns updated value of the accumulator
-        },
-        [](auto const &x,auto const &y){return x+y;}
-    );
+
+    auto beg=lines.cbegin();
+    auto grad_parallel=parallel_reducer(beg, beg+n_minibatch, get_grad, Param{});
     timer.here_then_reset("Parallel reduce");
     print(grad_serial.bias.span[0]);
     print(grad_parallel.bias.span[0]);
@@ -296,6 +303,8 @@ void test_parallel_reduce(){
     print(grad_parallel.w_left.span[0][0]);
     print('\n');
 }
+
+
 
 int main(){
     try {
@@ -311,10 +320,20 @@ int main(){
 
         RNN rnn{};
         auto param = load_param();
-        auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};        
-        tbb::parallel_for(0,static_cast<int>(lines.size()),1,  [&](int i){
-            get_grad(lines[i]);
-        });
+        auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
+        using rnn::simple_model::Param;
+        for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
+            auto beg=it;
+            auto end=beg+n_minibatch;
+            auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            // rnn::simple_model::Param grad_serial{};
+            // for(auto i=beg; i!=end; ++i){
+            //     grad_serial += get_grad(*i); 
+            // }      
+        }
+        // tbb::parallel_for(0UL,lines.size(),1UL,  [&](auto i){
+        //     get_grad(lines[i]);
+        // });
         // //single-thread counter part:
         // std::for_each(lines.cbegin(), lines.cend(), [=](std::string sentence) {
         //     get_grad(sentence);

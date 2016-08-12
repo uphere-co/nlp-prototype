@@ -34,6 +34,7 @@ constexpr int word_dim=100;
 constexpr auto activation = util::math::FunName::tanh;
 constexpr auto activation_df = util::math::FunName::d_tanh;
 
-constexpr int n_minibatch = 100;
+using index_t = int32_t;
+constexpr index_t n_minibatch = 100;
 }//namescpae config
 }//namespace rnn
