@@ -2,24 +2,27 @@
 {-# LANGUAGE TypeOperators #-}
 
 import           Control.Concurrent
+import           Data.Foldable                  ( forM_ )
 import           Data.Hashable
 import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable  as VS
-import           Foreign.ForeignPtr             (withForeignPtr)
+import           Foreign.ForeignPtr             ( withForeignPtr )
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
-import           Foreign.Storable               (poke, peek, pokeElemOff)
+import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
 import qualified LLVM.General.AST.Float    as F
 import qualified LLVM.General.AST.Constant as C
 import           LLVM.General.AST.Type            ( double, i64, ptr, void )
+import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
 import           Symbolic.CodeGen.LLVM.Operation
 import           Symbolic.Differential
+import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
@@ -215,8 +218,37 @@ test6 = do
       vr  = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-
 test7 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxI = ("I",1,4)
+      exp1 :: MExp Double
+      exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
+  let exp :: MExp Double
+      exp = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
+  prettyPrintR exp
+  -- digraph exp
+  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Double
+      vr = VS.replicate 8 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+
+  -- comparison
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+  forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
+    let iptI = [("I",i)]
+        iptj = [("j",j)]
+        
+    printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp)
+  
+
+
+test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
 
@@ -233,11 +265,27 @@ test7 = do
   prettyPrintR exp
   putStr "df/dx_k = "
   prettyPrintR exp'
-  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+  let ast = mkAST exp' [ Indexed "x" [idxi], Indexed "y" [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Double
       vr = VS.replicate 8 0    :: VS.Vector Double
+  putStrLn "====================="
+  putStrLn "=    LLVM result    ="
+  putStrLn "====================="
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+
+  putStrLn "======================"
+  putStrLn "= interpreter result ="
+  putStrLn "======================"
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
   
-main = test7
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
+
+  
+main = test8
 

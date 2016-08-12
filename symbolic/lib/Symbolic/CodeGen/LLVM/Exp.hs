@@ -90,21 +90,21 @@ splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
                      -> [MExp Double]
                      -> Operand
                      -> Codegen Operand
-splitIndexDisjointFM action lst j = do
+splitIndexDisjointFM f lst j = do
     case lst of
       []     -> error "splitIndexDisjointFM: empty list"
-      [e]    -> eachaction e ((HS.toList . mexpIdx) e)
+      [e]    -> f' e ((HS.toList . mexpIdx) e)
       (e:es) ->
         let (is:iss) = map (HS.toList . mexpIdx) (e:es)
             label = concatMap indexName is
             size = ival (sizeIndex is)
         in cgencond double label (icmp IP.ULT j size)
-             (eachaction e is) (splitIndexDisjointFM action es =<< isub j size)
+             (f' e is) (splitIndexDisjointFM f es =<< isub j size)
   where
-    eachaction e is = do
+    f' e is = do
       js <- splitIndexM is j
       zipWithM (\i j -> assign (indexName i) j) is js
-      action e
+      f e
 
 
 cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
@@ -184,7 +184,19 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
   j <- getIndex idxj
   x <- cgencond double ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
-llvmCodegen name (MExp (CDelta _ _ _) _ _) = error "CDelta not implemented"
+llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
+  let js = iss !! (p-1) 
+      prejs = take (p-1) iss
+      startjs = sum (map sizeIndex prejs)
+      nI = indexName idxI
+      nj = concatMap indexName js
+  iI <- flatIndexM [idxI] =<< mapM getIndex [idxI]
+  j0 <- flatIndexM js =<< mapM getIndex js
+  j <- iadd (ival startjs) j0
+  x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
+  assign name x
+
+  --error "CDelta not implemented"
 llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
    mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
