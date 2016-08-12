@@ -265,11 +265,27 @@ test8 = do
   prettyPrintR exp
   putStr "df/dx_k = "
   prettyPrintR exp'
-  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+  let ast = mkAST exp' [ Indexed "x" [idxi], Indexed "y" [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Double
       vr = VS.replicate 8 0    :: VS.Vector Double
+  putStrLn "====================="
+  putStrLn "=    LLVM result    ="
+  putStrLn "====================="
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+
+  putStrLn "======================"
+  putStrLn "= interpreter result ="
+  putStrLn "======================"
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
   
-main = test7
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
+
+  
+main = test8
 
