@@ -5,10 +5,14 @@
 
 #include "tbb/task_group.h"
 #include "tbb/tbb.h"
+#include "tbb/parallel_reduce.h"
+#include "tbb/blocked_range.h"
 
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
+#include "utils/print.h"
+
 #include "parser/voca.h"
 #include "parser/wordvec.h"
 #include "parser/simple_model.h"
@@ -16,6 +20,7 @@
 #include "parser/node.h"
 #include "parser/parser.h"
 
+using namespace util;
 using namespace util::io;
 using namespace util::math;
 using namespace rnn::parser::wordrep;
@@ -138,6 +143,7 @@ struct RNN{
 };
 
 void test_forwad_backward(){
+    using namespace rnn::simple_model;
     using namespace rnn::simple_model::parser;
     using value_type = rnn::simple_model::Param::value_type;
     
@@ -171,7 +177,6 @@ void test_forwad_backward(){
         std::cerr<<x.score<<" "<<x.name.val<< '\n';
 
     rnn_t::float_t ds_grad{};
-    using namespace rnn::simple_model::compute;
     auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
     auto dParam = rnn::simple_model::randomParam(0.001);        
     matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
@@ -185,16 +190,23 @@ void test_forwad_backward(){
     //score1,2 : from forward path.
     //score1-score2 = 2*grad_x(f)*h +O(h^3)
     {
-        auto param1{param};
-        auto param2{param};
-        param1.w_left.span +=dParam.w_left.span;
-        param1.w_right.span+=dParam.w_right.span;
-        param2.w_left.span -=dParam.w_left.span;
-        param2.w_right.span-=dParam.w_right.span;
-        param1.bias.span   +=dParam.bias.span;
-        param2.bias.span   -=dParam.bias.span;
-        param1.u_score.span+=dParam.u_score.span;
-        param2.u_score.span-=dParam.u_score.span;
+        // auto adder = [](auto const &x,auto const &y){return x+y;};
+        // auto param1 = adder(param, dParam);
+        auto param1 = std::plus<rnn::simple_model::Param>{}(param, dParam);
+        // auto param1 = param + dParam;
+        auto param2 = param - dParam;
+        // auto param1{param};
+        // auto param2{param};
+        // param1 += dParam;
+        // param2 -= dParam;
+        // param1.w_left.span +=dParam.w_left.span;
+        // param1.w_right.span+=dParam.w_right.span;
+        // param2.w_left.span -=dParam.w_left.span;
+        // param2.w_right.span-=dParam.w_right.span;
+        // param1.bias.span   +=dParam.bias.span;
+        // param2.bias.span   -=dParam.bias.span;
+        // param1.u_score.span+=dParam.u_score.span;
+        // param2.u_score.span-=dParam.u_score.span;
 
         auto words = util::string::split(sentence_test);  
         auto nodes1 = rnn.initialize_tree(sentence_test);
@@ -214,15 +226,13 @@ void test_forwad_backward(){
     }
 }
 
-using namespace rnn::simple_model::parser;
-using value_type = rnn::simple_model::Param::value_type;
-using vec_type = rnn::simple_model::Param::vec_type;
-using mat_type = rnn::simple_model::Param::mat_type;
 
             
 rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
                                       RNN const &rnn, 
                                       std::string sentence)  {
+    using namespace rnn::simple_model::parser;
+
     // auto timer=Timer{};
     
     auto nodes = rnn.initialize_tree(sentence);
@@ -244,16 +254,64 @@ rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
     //                                  + score_(n-1)
     // score_1 = f(A*f(A*f(...)+b)+b)
     // timer.here_then_reset("backward path");
-    print(grad.bias.span[0]);
-    print('\n');
     return grad;
 }
+
+
+template<typename IT, typename OP, typename TVAL>
+TVAL parallel_reducer(IT beg, IT end, OP reducer, TVAL zero){
+    auto sum=tbb::parallel_reduce(
+        tbb::blocked_range<IT>{beg, end},
+        zero,
+        //current_sum should be const & or copied by value.
+        [&reducer]( tbb::blocked_range<decltype(beg)> const &r, TVAL current_sum ) {
+            // std::cerr<<r.size()<< " : blocked_range"<<std::endl;
+            for (auto it=r.begin(); it!=r.end(); ++it) {
+                current_sum += reducer(*it); 
+            }
+            return current_sum; // body returns updated value of the accumulator
+        },
+        [](TVAL const &x,TVAL const &y){return x+y;}
+    );
+    return sum;
+}
+
+void test_parallel_reduce(){
+    auto timer=Timer{};
+    auto lines=util::string::readlines(rnn::config::trainset_name);
+    timer.here_then_reset("Read trainset");
+
+    RNN rnn{};
+    auto param = load_param();
+    auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
+    using rnn::config::n_minibatch;
+    using rnn::simple_model::Param;
+    timer.here_then_reset("Setup");
+    Param grad_serial{};
+    for(auto i=0; i<n_minibatch; ++i){
+        grad_serial += get_grad(lines[i]); 
+    }
+    timer.here_then_reset("Serial reduce");
+
+    auto beg=lines.cbegin();
+    auto grad_parallel=parallel_reducer(beg, beg+n_minibatch, get_grad, Param{});
+    timer.here_then_reset("Parallel reduce");
+    print(grad_serial.bias.span[0]);
+    print(grad_parallel.bias.span[0]);
+    print('\n');
+    print(grad_serial.w_left.span[0][0]);
+    print(grad_parallel.w_left.span[0][0]);
+    print('\n');
+}
+
+
 
 int main(){
     try {
         // test_init_rnn();
         // test_read_voca();
-        test_forwad_backward();
+        // test_forwad_backward();
+        test_parallel_reduce();
         return 0;
 
         auto timer=Timer{};
@@ -263,9 +321,19 @@ int main(){
         RNN rnn{};
         auto param = load_param();
         auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
-        tbb::parallel_for(0,static_cast<int>(lines.size()),1,  [&](int i){
-            get_grad(lines[i]);
-        });
+        using rnn::simple_model::Param;
+        for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
+            auto beg=it;
+            auto end=beg+n_minibatch;
+            auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            // rnn::simple_model::Param grad_serial{};
+            // for(auto i=beg; i!=end; ++i){
+            //     grad_serial += get_grad(*i); 
+            // }      
+        }
+        // tbb::parallel_for(0UL,lines.size(),1UL,  [&](auto i){
+        //     get_grad(lines[i]);
+        // });
         // //single-thread counter part:
         // std::for_each(lines.cbegin(), lines.cend(), [=](std::string sentence) {
         //     get_grad(sentence);
