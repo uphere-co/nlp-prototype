@@ -4,17 +4,15 @@
 #include<gsl.h>
 
 #include "parser/basic_type.h"
+#include "parser/config.h"
 
-#include "utils/hdf5.h"
 #include "utils/string.h"
-#include "utils/math.h"
+#include "utils/linear_algebra.h"
 
 namespace rnn{
 namespace wordrep{
 
-using char_t = rnn::type::char_t;
-
-using WordVec=const util::math::VectorView<float_t, rnn::config::word_dim>;
+using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;
 
 class WordBlock{
 public:
@@ -67,15 +65,7 @@ public:
     const int word_dim;
 };
 
-WordBlock load_voca_vecs(){
-    using namespace rnn::config;
-    using namespace util::io;
-    H5file file{file_name, hdf5::FileMode::read_exist};
-    auto vocavec_tmp=file.getRawData<float>(w2vmodel_name);
-    std::vector<WordBlock::float_t> vocavec;
-    for(auto x: vocavec_tmp) vocavec.push_back(x);
-    return WordBlock{vocavec, word_dim};
-}
+WordBlock load_voca_vecs();
 
 
 }//namespace rnn::wordrep
