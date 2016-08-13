@@ -23,8 +23,9 @@
 using namespace util;
 using namespace util::io;
 using namespace util::math;
-using namespace rnn::parser::wordrep;
+using namespace rnn::wordrep;
 using namespace rnn::config;
+
 
 namespace rnn_t = rnn::type;
 
@@ -94,67 +95,13 @@ struct Timer{
 };
 
 
-rnn::parser::wordrep::Voca load_voca(){
-    using namespace rnn::config;
-    using namespace rnn::parser::wordrep;
-    H5file file{file_name, hdf5::FileMode::read_exist};
-    return Voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
-}
-
-rnn::parser::wordrep::WordBlock load_voca_vecs(){
-    using namespace rnn::config;
-    using namespace rnn::parser::wordrep;
-    H5file file{file_name, hdf5::FileMode::read_exist};
-    auto vocavec_tmp=file.getRawData<float>(w2vmodel_name);
-    std::vector<rnn::type::float_t> vocavec;
-    for(auto x: vocavec_tmp) vocavec.push_back(x);
-    return WordBlock{vocavec, word_dim};
-}
-
-rnn::simple_model::Param load_param(){
-    using namespace rnn::config;
-    H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
-    auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
-    std::vector<rnn_t::float_t> param_raw;
-    for(auto x: param_raw0) param_raw.push_back(x);
-    return rnn::simple_model::deserializeParam(param_raw);
-}
-
-using rnn::simple_model::tree::UninializedLeafNodes;
-using rnn::simple_model::tree::Node;
-struct InializedLeafNodes{
-    InializedLeafNodes(UninializedLeafNodes &&nodes,
-                       WordBlock const &word_block) : val{std::move(nodes.val)} {
-        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
-        for(decltype(val.size())i=0; i<val.size(); ++i){
-            val[i].vec=rnn::simple_model::Param::vec_type{word_block[i]};
-        }
-    }
-    std::vector<Node> val;
-};
-struct RNN{
-    RNN() : voca{load_voca()}, word2idx{voca.indexing()},
-            voca_vecs{load_voca_vecs()} {}
-
-    InializedLeafNodes initialize_tree(std::string sentence) const {
-        auto idxs = word2idx.getIndex(sentence);
-        auto word_block = voca_vecs.getWordVec(idxs);
-        auto words = util::string::split(sentence);    
-        auto nodes = rnn::simple_model::tree::construct_nodes_with_reserve(words);
-        return InializedLeafNodes{std::move(nodes), word_block};
-    }
-
-    rnn::parser::wordrep::Voca voca;
-    rnn::parser::wordrep::VocaIndexMap word2idx;
-    rnn::parser::wordrep::WordBlock voca_vecs;
-};
 
 void test_forwad_backward(){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
-    RNN rnn{};
+    TrainData rnn{};
     auto param = load_param();
 
     auto timer=Timer{};
@@ -258,11 +205,12 @@ TVAL parallel_reducer(IT beg, IT end, OP reducer, TVAL zero){
 }
 
 void test_parallel_reduce(){
+    using namespace rnn::simple_model;
     auto timer=Timer{};
     auto lines=util::string::readlines(rnn::config::trainset_name);
     timer.here_then_reset("Read trainset");
 
-    RNN rnn{};
+    TrainData rnn{};
     auto param = load_param();
     auto get_grad = [&](auto sentence){
         auto initial_nodes = rnn.initialize_tree(sentence);
@@ -303,7 +251,8 @@ int main(){
         auto lines=util::string::readlines(rnn::config::trainset_name);
         timer.here_then_reset("Read trainset");
 
-        RNN rnn{};
+        using namespace rnn::simple_model;
+        TrainData rnn{};
         auto param = load_param();
         auto get_grad = [&](auto sentence){
             auto initial_nodes = rnn.initialize_tree(sentence);
@@ -338,6 +287,6 @@ int main(){
     }
     static_assert(std::is_nothrow_destructible<H5file>::value == true, "");
     static_assert(sizeof(WordBlock::idx_t) == 8, "");
-
+    
     return 0;
 }

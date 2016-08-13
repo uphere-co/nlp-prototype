@@ -12,6 +12,7 @@
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
 #include "utils/loop_gen.h"
+#include "utils/hdf5.h" 
 
 namespace rnn{
 
@@ -61,6 +62,17 @@ auto randomParam(Param::value_type scale){
         x=uniform_dist(e);
     return deserializeParam(param_raw);
 }
+
+Param load_param(){
+    using namespace rnn::config;
+    using namespace util::io;
+    H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
+    auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
+    std::vector<rnn::type::float_t> param_raw;
+    for(auto x: param_raw0) param_raw.push_back(x);
+    return rnn::simple_model::deserializeParam(param_raw);
+}
+
 // namespace compute{
 //Cannot do string comparison at compile time.
 // constexpr auto activation_factory(const char name[]){

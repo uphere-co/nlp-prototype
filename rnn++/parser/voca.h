@@ -9,11 +9,12 @@
 #include <gsl.h>
 
 #include "parser/basic_type.h"
+#include "parser/config.h"
 #include "utils/string.h"
 #include "utils/math.h"
+#include "utils/hdf5.h"
 
 namespace rnn{
-namespace parser{
 namespace wordrep{
 using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
@@ -88,6 +89,12 @@ private:
     const data_t::size_type voca_size;
 };
 
+Voca load_voca(){
+    using namespace rnn::config;
+    using namespace util::io;
+    H5file file{file_name, hdf5::FileMode::read_exist};
+    return Voca{file.getRawData<rnn::type::char_t>(voca_name), voca_max_word_len};
+}
+
 }//namespace rnn::wordrep
-}//namespace rnn::parser
 }//namespace rnn

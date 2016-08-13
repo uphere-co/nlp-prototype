@@ -10,7 +10,7 @@ namespace simple_model{
 namespace tree{
 
 struct Node{
-    using word_type = rnn::parser::wordrep::Word;
+    using word_type = rnn::wordrep::Word;
     using vec_type  = rnn::simple_model::Param::vec_type;
     using value_type= rnn::simple_model::Param::value_type;
     Node(word_type word) : name{word}{}

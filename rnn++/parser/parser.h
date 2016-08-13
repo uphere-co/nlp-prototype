@@ -2,6 +2,8 @@
 
 #include "parser/simple_model.h"
 #include "parser/node.h"
+#include "parser/voca.h" // for TrainData
+#include "parser//wordvec.h" // for TrainData
 #include "utils/linear_algebra.h"
 #include "utils/loop_gen.h"
 
@@ -163,6 +165,34 @@ void backward_path(Param &grad, Param const &param,
 
 namespace rnn{
 namespace simple_model{
+
+struct InializedLeafNodes{
+    InializedLeafNodes(tree::UninializedLeafNodes &&nodes,
+                       rnn::wordrep::WordBlock const &word_block) : val{std::move(nodes.val)} {
+        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
+        for(decltype(val.size())i=0; i<val.size(); ++i){
+            val[i].vec=Param::vec_type{word_block[i]};
+        }
+    }
+    std::vector<tree::Node> val;
+};
+
+struct TrainData{
+    TrainData() : voca{rnn::wordrep::load_voca()}, 
+                  word2idx{voca.indexing()},
+                  voca_vecs{rnn::wordrep::load_voca_vecs()} {}
+    InializedLeafNodes initialize_tree(std::string sentence) const {
+        auto idxs = word2idx.getIndex(sentence);
+        auto word_block = voca_vecs.getWordVec(idxs);
+        auto words = util::string::split(sentence);    
+        auto nodes = tree::construct_nodes_with_reserve(words);
+        return InializedLeafNodes{std::move(nodes), word_block};
+    }
+    rnn::wordrep::Voca voca;
+    rnn::wordrep::VocaIndexMap word2idx;
+    rnn::wordrep::WordBlock voca_vecs;
+};
+
 Param get_gradient(Param const &param, std::vector<tree::Node> &nodes )  {
     using namespace detail;
 
@@ -187,6 +217,7 @@ Param get_gradient(Param const &param, std::vector<tree::Node> &nodes )  {
     // timer.here_then_reset("backward path");
     return grad;
 }
+
 
 }//namespace rnn::simple_model
 }//namespace rnn
