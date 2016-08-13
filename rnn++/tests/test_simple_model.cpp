@@ -14,6 +14,7 @@ using namespace util::io;
 using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
+using namespace rnn::simple_model;
 
 namespace rnn_t = rnn::type;
 
@@ -44,11 +45,8 @@ void test_init_rnn(){
     u⋅W_right⋅b=1.5551
     */
 
-    namespace rnn_model = rnn::simple_model;
-    H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
-    auto param_raw = param_storage.getRawData<rnn_t::float_t>(rnn_param_name);
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    rnn_model::Param param = rnn_model::deserializeParam(param_raw);
+    Param param = load_param();    
     std::cerr << "Test:   3.248616=="<< sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << "Test: -50.581345=="<< sum(param.bias.span) << std::endl;
     std::cerr << "Test:  -0.190589=="<< sum(param.u_score.span) << std::endl;
@@ -58,8 +56,8 @@ void test_init_rnn(){
 }
 void test_read_voca(){
     H5file file{file_name, hdf5::FileMode::read_exist};
-    Voca voca{file.getRawData<rnn_t::char_t>(voca_name), voca_max_word_len};
-    WordBlock voca_vecs{file.getRawData<rnn_t::float_t>(w2vmodel_name), word_dim};
+    Voca voca =load_voca();
+    WordBlock voca_vecs = load_voca_vecs();
     std::cerr << voca_vecs.size() << " " << voca_size <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
@@ -68,7 +66,7 @@ void test_read_voca(){
     auto idxs = word2idx.getIndex(sentence);
     auto word_block = voca_vecs.getWordVec(idxs);
 
-    std::cerr << sum(word_block.span) << std::endl;
+    std::cerr << "Test:  -148.346 =="<<sum(word_block.span) << std::endl;
 }
 
 
