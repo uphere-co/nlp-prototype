@@ -13,11 +13,6 @@
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
 
-#include "parser/voca.h"
-#include "parser/wordvec.h"
-#include "parser/simple_model.h"
-#include "parser/config.h"
-#include "parser/node.h"
 #include "parser/parser.h"
 
 using namespace util;
@@ -213,8 +208,7 @@ void test_parallel_reduce(){
     TrainData rnn{};
     auto param = load_param();
     auto get_grad = [&](auto sentence){
-        auto initial_nodes = rnn.initialize_tree(sentence);
-        auto &nodes = initial_nodes.val;
+        auto nodes = rnn.initialize_tree(sentence);
         return get_gradient(param, nodes);
     };
     using rnn::config::n_minibatch;
@@ -243,9 +237,9 @@ int main(){
     try {
         // test_init_rnn();
         // test_read_voca();
-        // test_forwad_backward();
+        test_forwad_backward();
         test_parallel_reduce();
-        // return 0;
+        return 0;
 
         auto timer=Timer{};
         auto lines=util::string::readlines(rnn::config::trainset_name);
@@ -255,8 +249,7 @@ int main(){
         TrainData rnn{};
         auto param = load_param();
         auto get_grad = [&](auto sentence){
-            auto initial_nodes = rnn.initialize_tree(sentence);
-            auto &nodes = initial_nodes.val;
+            auto nodes = rnn.initialize_tree(sentence);
             return get_gradient(param, nodes);
         };
         using rnn::simple_model::Param;
@@ -287,6 +280,6 @@ int main(){
     }
     static_assert(std::is_nothrow_destructible<H5file>::value == true, "");
     static_assert(sizeof(WordBlock::idx_t) == 8, "");
-    
+
     return 0;
 }

@@ -15,7 +15,6 @@
 #include "utils/hdf5.h" 
 
 namespace rnn{
-
 namespace simple_model{
 struct Param{
     static constexpr auto dim = rnn::config::word_dim;
@@ -73,50 +72,6 @@ Param load_param(){
     return rnn::simple_model::deserializeParam(param_raw);
 }
 
-// namespace compute{
-//Cannot do string comparison at compile time.
-// constexpr auto activation_factory(const char name[]){
-//     if(name=="tanh") return Activation::tanh;
-//     else if(name=="sig") return Activation::sig;
-// }
-
-using val_type = rnn::type::float_t;
-using vec_type = gsl::span<rnn::type::float_t,rnn::config::word_dim>;
-using mat_type = gsl::span<rnn::type::float_t,rnn::config::word_dim,rnn::config::word_dim>;
-
-
-auto weighted_sum=[](int64_t i,
-                     mat_type const &w_left,  mat_type const &w_right,
-                     vec_type const &bias,
-                     vec_type const &word_left, vec_type const &word_right) {
-    using util::math::dot;
-    return dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
-};
-auto activation_fun=[](int64_t i, vec_type const &x) {
-    return util::math::Fun<rnn::config::activation>(x[i]);
-};
-auto activation_dfun=[](int64_t i, vec_type const &x) {
-    return util::math::Fun<rnn::config::activation_df>(x[i]);
-};
-
-auto update_mesg_common_part=[](int64_t i, vec_type & mesg, vec_type const & weighted_sum) {
-    mesg[i]*=activation_dfun(i, weighted_sum);
-};
-auto update_mesg_finalize=[](int64_t i,int64_t j, vec_type &out,
-                   vec_type const &mesg, mat_type const &w)  {
-    out[j]+=mesg[i]*w[i][j];
-};
-auto back_prop_grad_W=[](int64_t i,int64_t j, mat_type &grad, 
-                         vec_type const &mesg, vec_type const &weighted_sum)  {
-    grad[i][j]+=mesg[i]*weighted_sum[j];
-};
-
-auto mul_sum=[](int64_t i,int64_t j, val_type & out, mat_type const &a, mat_type const &b) {
-    out+=a[i][j]*b[i][j];
-};
-
-
-
 Param& operator +=(Param& out, const Param& x){
     out.w_left.span  += x.w_left.span;
     out.w_right.span += x.w_right.span;
@@ -142,6 +97,7 @@ Param operator -(const Param& x, const Param& y){
     return out;
 };
 
-// }//namespace rnn::simple_model::compute
 }//namespace rnn::simple_model
 }//namespace rnn
+
+

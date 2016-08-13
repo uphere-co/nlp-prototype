@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "parser/voca.h"
-#include "parser/simple_model.h"
+#include "parser/param.h"
 
 namespace rnn{
 namespace simple_model{
@@ -11,8 +11,8 @@ namespace tree{
 
 struct Node{
     using word_type = rnn::wordrep::Word;
-    using vec_type  = rnn::simple_model::Param::vec_type;
-    using value_type= rnn::simple_model::Param::value_type;
+    using vec_type  = Param::vec_type;
+    using value_type= Param::value_type;
     Node(word_type word) : name{word}{}
     // Node() : name{word_t{std::string{}}}{}
     // Node(Node &&node) = default;
@@ -38,12 +38,20 @@ void print_all_descents(Node const & node) {
     if(node.left != nullptr) print_all_descents(*node.left);
     if(node.right!= nullptr) print_all_descents(*node.right);
 }
+}//namespace rnn::simple_model::tree
+}//namespace rnn::simple_model
+}//namespace rnn
+
+namespace rnn{
+namespace simple_model{
 
 struct UninializedLeafNodes{
-    UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
-    std::vector<Node> val;
+    UninializedLeafNodes(std::vector<tree::Node> &&nodes) : val(std::move(nodes)) {}
+    std::vector<tree::Node> val;
 };
+
 auto construct_nodes_with_reserve=[](auto const &words){
+    using tree::Node;
     std::vector<Node> nodes;
     nodes.reserve(words.size()*2-1);
     for(auto const &word: words)
@@ -51,6 +59,5 @@ auto construct_nodes_with_reserve=[](auto const &words){
     return UninializedLeafNodes{std::move(nodes)};;
 };
 
-}//namespace rnn::simple_model::tree
 }//namespace rnn::simple_model
 }//namespace rnn
