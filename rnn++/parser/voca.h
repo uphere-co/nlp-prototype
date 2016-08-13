@@ -9,7 +9,7 @@
 #include <gsl.h>
 
 #include "parser/basic_type.h"
-#include "parser/config.h"
+
 #include "utils/string.h"
 #include "utils/math.h"
 #include "utils/hdf5.h"

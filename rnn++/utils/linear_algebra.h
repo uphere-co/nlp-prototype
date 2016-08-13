@@ -1,6 +1,7 @@
 #pragma once
-#include<vector>
-#include<array>
+#include <vector>
+#include <array>
+#include <iostream>
 #include <stdexcept>
 #include <cassert>
 

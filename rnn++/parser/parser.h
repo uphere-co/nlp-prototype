@@ -45,7 +45,7 @@ struct TrainData{
 //                                  + .. 
 //                                  + score_(n-1)
 // score_1 = f(A*f(A*f(...)+b)+b)
-Param get_gradient(Param const &param, InializedLeafNodes &nodes )  {
+Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     using namespace detail;
 
     // auto timer=Timer{};

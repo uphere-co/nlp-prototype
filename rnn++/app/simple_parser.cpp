@@ -21,7 +21,6 @@ using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
 
-
 namespace rnn_t = rnn::type;
 
 namespace{
