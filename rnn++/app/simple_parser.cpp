@@ -119,22 +119,29 @@ rnn::simple_model::Param load_param(){
     for(auto x: param_raw0) param_raw.push_back(x);
     return rnn::simple_model::deserializeParam(param_raw);
 }
+
+using rnn::simple_model::tree::UninializedLeafNodes;
+using rnn::simple_model::tree::Node;
+struct InializedLeafNodes{
+    InializedLeafNodes(UninializedLeafNodes &&nodes,
+                       WordBlock const &word_block) : val{std::move(nodes.val)} {
+        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
+        for(decltype(val.size())i=0; i<val.size(); ++i){
+            val[i].vec=rnn::simple_model::Param::vec_type{word_block[i]};
+        }
+    }
+    std::vector<Node> val;
+};
 struct RNN{
     RNN() : voca{load_voca()}, word2idx{voca.indexing()},
             voca_vecs{load_voca_vecs()} {}
 
-    std::vector<rnn::simple_model::tree::Node> initialize_tree(std::string sentence) const {
+    InializedLeafNodes initialize_tree(std::string sentence) const {
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
         auto words = util::string::split(sentence);    
         auto nodes = rnn::simple_model::tree::construct_nodes_with_reserve(words);
-        
-        //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
-        for(decltype(nodes.size())i=0; i<nodes.size(); ++i){
-            nodes[i].vec=rnn::simple_model::Param::vec_type{word_block[i]};
-        }
-        assert(words.size()==nodes.size());
-        return nodes;
+        return InializedLeafNodes{std::move(nodes), word_block};
     }
 
     rnn::parser::wordrep::Voca voca;
@@ -144,7 +151,7 @@ struct RNN{
 
 void test_forwad_backward(){
     using namespace rnn::simple_model;
-    using namespace rnn::simple_model::parser;
+    using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
     RNN rnn{};
@@ -153,7 +160,8 @@ void test_forwad_backward(){
     auto timer=Timer{};
 
     auto sentence_test = u8"A symbol of British pound is £ .";
-    auto nodes = rnn.initialize_tree(sentence_test);
+    auto initial_nodes = rnn.initialize_tree(sentence_test);
+    auto &nodes = initial_nodes.val;
     auto n_words=nodes.size();
     assert(n_words==8);
     
@@ -208,9 +216,13 @@ void test_forwad_backward(){
         // param1.u_score.span+=dParam.u_score.span;
         // param2.u_score.span-=dParam.u_score.span;
 
-        auto words = util::string::split(sentence_test);  
-        auto nodes1 = rnn.initialize_tree(sentence_test);
-        auto nodes2 = rnn.initialize_tree(sentence_test);
+        auto words = util::string::split(sentence_test); 
+        auto initial_nodes1 = rnn.initialize_tree(sentence_test);
+        auto &nodes1 = initial_nodes1.val;
+        auto initial_nodes2 = rnn.initialize_tree(sentence_test);
+        auto &nodes2 = initial_nodes2.val; 
+        // auto nodes1 = rnn.initialize_tree(sentence_test);
+        // auto nodes2 = rnn.initialize_tree(sentence_test);
 
         auto top_nodes1 = merge_leaf_nodes(param1, nodes1);
         auto top_nodes2 = merge_leaf_nodes(param2, nodes2);
@@ -224,37 +236,6 @@ void test_forwad_backward(){
         print('\n');
         print(ds_grad);
     }
-}
-
-
-            
-rnn::simple_model::Param get_gradient(rnn::simple_model::Param const &param,
-                                      RNN const &rnn, 
-                                      std::string sentence)  {
-    using namespace rnn::simple_model::parser;
-
-    // auto timer=Timer{};
-    
-    auto nodes = rnn.initialize_tree(sentence);
-    auto n_words=nodes.size();
-    // timer.here_then_reset("setup");
-    auto top_nodes = merge_leaf_nodes(param, nodes);
-    auto merge_history = foward_path(param, top_nodes);
-    // timer.here_then_reset("forward path");
-    rnn::simple_model::Param grad{};
-    for(auto i=n_words; i<nodes.size(); ++i){
-        auto const &node=nodes[i];
-        assert(node.is_combined());
-        // print_all_descents(node);
-        backward_path(grad, param, node);
-    }
-    // score(W_left, W_right, bias, u)= score_1(W_left, W_right, bias, u) 
-    //                                  + score_2(W_left, W_right, bias, u)
-    //                                  + .. 
-    //                                  + score_(n-1)
-    // score_1 = f(A*f(A*f(...)+b)+b)
-    // timer.here_then_reset("backward path");
-    return grad;
 }
 
 
@@ -283,7 +264,11 @@ void test_parallel_reduce(){
 
     RNN rnn{};
     auto param = load_param();
-    auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
+    auto get_grad = [&](auto sentence){
+        auto initial_nodes = rnn.initialize_tree(sentence);
+        auto &nodes = initial_nodes.val;
+        return get_gradient(param, nodes);
+    };
     using rnn::config::n_minibatch;
     using rnn::simple_model::Param;
     timer.here_then_reset("Setup");
@@ -312,7 +297,7 @@ int main(){
         // test_read_voca();
         // test_forwad_backward();
         test_parallel_reduce();
-        return 0;
+        // return 0;
 
         auto timer=Timer{};
         auto lines=util::string::readlines(rnn::config::trainset_name);
@@ -320,7 +305,11 @@ int main(){
 
         RNN rnn{};
         auto param = load_param();
-        auto get_grad = [&](auto sentence){return get_gradient(param, rnn, sentence);};
+        auto get_grad = [&](auto sentence){
+            auto initial_nodes = rnn.initialize_tree(sentence);
+            auto &nodes = initial_nodes.val;
+            return get_gradient(param, nodes);
+        };
         using rnn::simple_model::Param;
         for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
             auto beg=it;

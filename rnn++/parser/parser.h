@@ -5,9 +5,10 @@
 #include "utils/linear_algebra.h"
 #include "utils/loop_gen.h"
 
+
 namespace rnn{
-namespace simple_model{
-namespace parser{
+namespace simple_model{ 
+namespace detail{
 
 //TODO: move these from this header to .cpp body. 
 using value_type= Param::value_type;
@@ -156,6 +157,36 @@ void backward_path(Param &grad, Param const &param,
 
 
 
-}//namespace rnn::simple_model::parser
+}//namespace rnn::simple_model::detail
+}//namespace rnn::simple_model
+}//namespace rnn
+
+namespace rnn{
+namespace simple_model{
+Param get_gradient(Param const &param, std::vector<tree::Node> &nodes )  {
+    using namespace detail;
+
+    // auto timer=Timer{};
+    auto n_words=nodes.size();
+    // timer.here_then_reset("setup");
+    auto top_nodes = merge_leaf_nodes(param, nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    // timer.here_then_reset("forward path");
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }
+    // score(W_left, W_right, bias, u)= score_1(W_left, W_right, bias, u) 
+    //                                  + score_2(W_left, W_right, bias, u)
+    //                                  + .. 
+    //                                  + score_(n-1)
+    // score_1 = f(A*f(A*f(...)+b)+b)
+    // timer.here_then_reset("backward path");
+    return grad;
+}
+
 }//namespace rnn::simple_model
 }//namespace rnn

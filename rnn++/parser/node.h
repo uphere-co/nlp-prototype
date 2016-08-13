@@ -39,12 +39,16 @@ void print_all_descents(Node const & node) {
     if(node.right!= nullptr) print_all_descents(*node.right);
 }
 
+struct UninializedLeafNodes{
+    UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
+    std::vector<Node> val;
+};
 auto construct_nodes_with_reserve=[](auto const &words){
-    std::vector<Node> nodes{};
+    std::vector<Node> nodes;
     nodes.reserve(words.size()*2-1);
     for(auto const &word: words)
-        nodes.push_back(Node{word});
-    return nodes;
+        nodes.push_back(Node{word});    
+    return UninializedLeafNodes{std::move(nodes)};;
 };
 
 }//namespace rnn::simple_model::tree
