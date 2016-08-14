@@ -75,7 +75,7 @@ void test_forwad_backward(){
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
-    TrainData rnn{};
+    VocaInfo rnn{};
     auto param = load_param();
 
     auto timer=Timer{};
@@ -166,7 +166,7 @@ void test_parallel_reduce(){
     auto lines=util::string::readlines(rnn::config::trainset_name);
     timer.here_then_reset("Read trainset");
 
-    TrainData rnn{};
+    VocaInfo rnn{};
     auto param = load_param();
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
