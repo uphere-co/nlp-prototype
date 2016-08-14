@@ -38,6 +38,7 @@ Param& operator +=(Param& out, const Param& x);
 Param& operator -=(Param& out, const Param& x);
 Param operator +(const Param& x, const Param& y);
 Param operator -(const Param& x, const Param& y);
+// Param operator *(Param::value_type x, const Param& y);
 
 Param deserializeParam(std::vector<rnn::type::float_t> &param_raw);
 Param randomParam(Param::value_type scale);

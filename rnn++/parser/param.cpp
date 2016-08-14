@@ -64,6 +64,11 @@ Param operator -(const Param& x, const Param& y){
     out -= y;
     return out;
 };
+// Param operator *(Param::value_type x, const Param& y){
+//     Param out{y};
+//     out *= x;
+//     return out;
+// };
 
 }//namespace rnn::simple_model
 }//namespace rnn

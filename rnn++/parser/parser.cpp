@@ -1,7 +1,14 @@
 #include "parser/parser.h"
 
+#include "utils/parallel.h"
+
 namespace rnn{
 namespace simple_model{
+
+
+TokenizedSentences::TokenizedSentences(std::string tokenized_file)
+    : val{util::string::readlines(tokenized_file)} {}
+
     
 Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     using namespace detail;
@@ -23,6 +30,39 @@ Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     // timer.here_then_reset("backward path");
     return grad;
 }
+
+Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes ) {
+    using namespace rnn::simple_model::detail;
+    auto& all_nodes = nodes.val; 
+    auto n_words=all_nodes.size();
+    auto top_nodes = merge_leaf_nodes(param, all_nodes);
+    foward_path(param, top_nodes);
+    Param::value_type score{};
+    for(auto node: top_nodes){
+        score+= node->score;
+    }
+    return score;
+}
+
+Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
+                                  TokenizedSentences const &dataset){
+    using rnn::type::float_t;
+    auto &lines = dataset.val;
+    // //Serial version for debugging:
+    // float_t score_accum{};
+    // for(auto it=lines.cbegin();it <lines.cend(); ++it){
+    //     auto sentence = *it;
+    //     auto nodes = rnn.initialize_tree(sentence);
+    //     score_accum += get_full_score(param, nodes);
+    // }
+    auto get_score=[&rnn,&param](auto sentence){
+        auto nodes = rnn.initialize_tree(sentence);
+        return get_full_score(param, nodes);
+    };
+    auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
+    return score_accum;
+}
+
 
 }//namespace rnn::simple_model
 }//namespace rnn
