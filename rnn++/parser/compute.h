@@ -61,7 +61,7 @@ node_type merge_node(Param const &param, node_type const &left, node_type const 
 //top_node  : a node which has no parent
 //leaf_node : a node which has no children
 std::vector<node_type*> merge_leaf_nodes(Param const &param, std::vector<node_type> &leaves);
-auto foward_path(Param const &param, std::vector<node_type*> &top_nodes) ->
+auto foward_path(Param const &param, std::vector<node_type*> top_nodes) ->
     std::vector<decltype(top_nodes.size())>;
 
 void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,

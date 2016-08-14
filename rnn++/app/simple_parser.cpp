@@ -17,24 +17,30 @@ using namespace util::io;
 using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
+using namespace rnn::simple_model::test;
 
 namespace rnn_t = rnn::type;
 
+
 int main(){
     try {
-        test_init_rnn();
-        test_read_voca();
-        test_forwad_backward();
-        test_parallel_reduce();
+        // test_init_rnn();
+        // test_read_voca();
+        // test_forwad_backward();
+        // test_parallel_reduce();
+        test_rnn_full_step();
         return 0;
 
         auto timer=Timer{};
-        auto lines=util::string::readlines(rnn::config::trainset_name);
+        // auto lines=util::string::readlines(rnn::config::trainset_name);
+        auto lines=util::string::readlines(rnn::config::testset_name);
+        auto lines_testset=util::string::readlines(rnn::config::testset_name);
         timer.here_then_reset("Read trainset");
-
         using namespace rnn::simple_model;
-        TrainData rnn{};
+        VocaInfo rnn{};
         auto param = load_param();
+        timer.here_then_reset("Preparing data");
+
         auto get_grad = [&](auto sentence){
             auto nodes = rnn.initialize_tree(sentence);
             return get_gradient(param, nodes);
@@ -43,6 +49,7 @@ int main(){
         for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
             auto beg=it;
             auto end=beg+n_minibatch;
+            end=end<lines.cend()?end:lines.cend();
             auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
             // rnn::simple_model::Param grad_serial{};
             // for(auto i=beg; i!=end; ++i){
