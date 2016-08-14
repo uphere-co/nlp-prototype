@@ -9,11 +9,11 @@
 #include <gsl.h>
 
 #include "parser/basic_type.h"
+
 #include "utils/string.h"
 #include "utils/math.h"
 
 namespace rnn{
-namespace parser{
 namespace wordrep{
 using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
@@ -25,10 +25,7 @@ struct Word{
     gsl::cstring_span<> span;
     std::string val;
 };
-std::ostream& operator<<(std::ostream& os, const Word& obj) {
-    os<<gsl::to_string(obj.span);
-    return os;
-}
+std::ostream& operator<<(std::ostream& os, const Word& obj);
 
 struct cmp_str {
    bool operator()(char const *a, char const *b) const {
@@ -62,7 +59,7 @@ private:
 
 class Voca{
 public:
-    typedef std::vector<char_t> data_t;
+    typedef std::vector<rnn::type::char_t> data_t;
     Voca(data_t raw_data, int max_word_len)
     : _val{raw_data}, span{_val},
       max_word_len{max_word_len},
@@ -88,6 +85,7 @@ private:
     const data_t::size_type voca_size;
 };
 
+Voca load_voca();
+
 }//namespace rnn::wordrep
-}//namespace rnn::parser
 }//namespace rnn

@@ -3,27 +3,24 @@
 
 #include<gsl.h>
 
-#include"parser/basic_type.h"
-#include"parser/config.h"
+#include "parser/basic_type.h"
+#include "parser/config.h"
 
-#include"utils/string.h"
-#include"utils/math.h"
+#include "utils/string.h"
+#include "utils/linear_algebra.h"
 
 namespace rnn{
-namespace parser{
 namespace wordrep{
 
-using char_t = rnn::type::char_t;
-using float_t = rnn::type::float_t;
-
-using WordVec=const util::math::VectorView<float_t, rnn::config::word_dim>;
+using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;
 
 class WordBlock{
 public:
-    typedef std::vector<float_t>     data_t;
-    typedef gsl::span<float_t> span_t;
-    typedef gsl::span<float_t,rnn::config::word_dim> wordspan_t;
-    typedef data_t::size_type idx_t;
+    using float_t    = rnn::type::float_t;
+    using data_t     = std::vector<float_t>;
+    using span_t     = gsl::span<float_t>;
+    using wordspan_t = gsl::span<float_t,rnn::config::word_dim>;
+    using idx_t      = data_t::size_type ;
     WordBlock(int word_dim)
     : _val{},span{_val}, word_dim{word_dim} {}
     WordBlock(data_t raw_data, int word_dim)
@@ -68,7 +65,8 @@ public:
     const int word_dim;
 };
 
+WordBlock load_voca_vecs();
+
 
 }//namespace rnn::wordrep
-}//namespace rnn::parser
 }//namespace rnn
