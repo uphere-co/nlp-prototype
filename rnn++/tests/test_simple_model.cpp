@@ -191,3 +191,48 @@ void test_parallel_reduce(){
     print(grad_parallel.w_left.span[0][0]);
     print('\n');
 }
+
+void test_rnn_full_step(){
+    using namespace rnn::simple_model;
+    using namespace rnn::simple_model::detail;
+
+    auto timer=Timer{};
+    auto testset=TokenizedSentences{rnn::config::testset_name};
+    auto &lines = testset.val;
+    // auto tmp=util::string::readlines(rnn::config::testset_name);
+    // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
+    timer.here_then_reset("Read trainset");
+    VocaInfo rnn{};
+    auto param = load_param();
+    timer.here_then_reset("Preparing data");
+
+    auto get_grad = [&](auto sentence){
+        auto nodes = rnn.initialize_tree(sentence);
+        return get_gradient(param, nodes);
+    };
+    auto dParam = randomParam(0.001);
+    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
+    timer.here_then_reset("Back-propagation for whole testset");
+    auto score = scoring_dataset(rnn, param, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score1 = scoring_dataset(rnn, param+dParam, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score2 = scoring_dataset(rnn, param-dParam, testset);
+    timer.here_then_reset("Scoring testset");
+
+    auto &grad =grad_sum;
+    rnn_t::float_t ds_grad{};
+    auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
+    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    ds_grad += dot(grad.bias.span, dParam.bias.span);
+    ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+
+    print(0.5*(score1-score2));
+    print(score1-score);
+    print(score-score2);
+    print(score);
+    print('\n');
+    print(ds_grad);
+    print('\n');
+}
