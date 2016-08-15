@@ -87,8 +87,8 @@ test-suite test
 
 -------------------------------------------------------
     
-Executable trie
-  Main-is:              trie.hs
+Executable interpreter
+  Main-is:              interpreter.hs
   hs-source-dirs:       exe
   other-modules:       
   ghc-options:          -Wall -O2
@@ -112,8 +112,8 @@ Executable trie
 -------------------------------------------------------
 
                         
-Executable llvmgen
-  Main-is:              llvmgen.hs
+Executable llvm
+  Main-is:              llvm.hs
   hs-source-dirs:       exe
 
   other-modules:       

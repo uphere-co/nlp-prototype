@@ -325,6 +325,6 @@ justLookupL :: (Eq k,Show k,Show v) => k -> [(k,v)] -> v
 justLookupL k l = case (lookup k l) of
                     Nothing -> error ("justLookup: error in retrieving " ++ show k ++ " in " ++ show l)
                     Just v -> v
--- fromJust . lookup k
+
 
 
