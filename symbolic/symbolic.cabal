@@ -89,7 +89,7 @@ Executable eval
   Main-is:              eval.hs
   hs-source-dirs:       exe
   other-modules:       
-  ghc-options:          -Wall -Werror -O2
+  ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
                         -fno-warn-unused-do-bind
