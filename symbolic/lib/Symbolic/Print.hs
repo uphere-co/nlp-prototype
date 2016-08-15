@@ -17,7 +17,6 @@ import           Text.Printf
 --
 import           Symbolic.Type
 -- 
-import           Debug.Trace
 
 listPrintf :: PrintfType r => String -> [String] -> r
 listPrintf _   []     = printf ""

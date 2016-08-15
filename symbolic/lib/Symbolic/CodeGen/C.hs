@@ -9,7 +9,6 @@
 
 module Symbolic.CodeGen.C where
 
-import           Control.Lens                    (view, _1)
 import           Data.Array                      ((!))
 import           Data.Graph                      (topSort)
 import qualified Data.HashMap.Strict       as HM
@@ -122,6 +121,7 @@ cPrint' name (MExp (Delta i j) _ _)  = [ CIf cond  stru (Just sfal) nodeinfo ]
   where cond = mkBinary (mkVar (indexName i)) CEqOp (mkVar (indexName j))
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
+cPrint' _    (MExp (CDelta _ _ _) _ _) = error "cPrint' undefined for CDelta case"        
 cPrint' name (MExp (Var v)     _ _)  = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
                 Simple s -> mkVar s

@@ -10,12 +10,13 @@ import qualified Data.Vector.Storable  as VS
 import           Foreign.ForeignPtr             ( withForeignPtr )
 import qualified Foreign.Marshal.Alloc as Alloc
 import qualified Foreign.Marshal.Array as Array
+import           Foreign.Ptr                    ( Ptr )
 import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
-import qualified LLVM.General.AST.Float    as F
-import qualified LLVM.General.AST.Constant as C
-import           LLVM.General.AST.Type            ( double, i64, ptr, void )
+
+
+import           LLVM.General.AST.Type            ( double, ptr, void )
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Exp
@@ -30,11 +31,14 @@ import           Symbolic.Type
 initModule :: AST.Module
 initModule = emptyModule "my cool jit"
 
+mkArgRef :: Int -> a -> Codegen AST.Operand
 mkArgRef i _ = getElem (ptr double) "args" (ival i)
 
-mkAST exp args =
+mkAST :: (?expHash :: Exp Double :->: Hash) =>
+         MExp Double -> [Symbol] -> AST.Module
+mkAST e args =
   runLLVM initModule $ do
-    llvmAST "fun1" args exp
+    llvmAST "fun1" args e
     define void "main" [ (ptr double, AST.Name "res")
                        , (ptr (ptr double), AST.Name "args")
                        ] $ do
@@ -42,12 +46,17 @@ mkAST exp args =
       call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
       ret_
 
-unsafeWiths vs f = go vs id f
+unsafeWiths :: VS.Storable a => [VS.Vector a] -> ([Ptr a] -> IO b) -> IO b
+unsafeWiths vs = go vs id
   where go []     ps f = f (ps [])
-        go (v:vs) ps f = VS.unsafeWith v $ \p -> go vs (ps . (p:)) f
+        go (x:xs) ps f = VS.unsafeWith x $ \p -> go xs (ps . (p:)) f
 
 
-
+runJITASTPrinter :: (VS.Vector Double -> IO ())
+                 -> AST.Module
+                 -> [VS.Vector Double]
+                 -> VS.Vector Double
+                 -> IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
   runJIT ast $ \mfn -> 
     case mfn of
@@ -55,7 +64,7 @@ runJITASTPrinter printer ast vargs vres =
       Just fn -> do
         unsafeWiths vargs $ \ps -> do
           let vps = VS.fromList ps
-          mvarg@(VS.MVector _ fparg) <- VS.thaw vps
+          VS.MVector _ fparg <- VS.thaw vps
           mv@(VS.MVector _ fpr) <- VS.thaw vres
           withForeignPtr fparg $ \pargs ->
             withForeignPtr fpr $ \pres -> do
@@ -65,45 +74,43 @@ runJITASTPrinter printer ast vargs vres =
 
 
 
-exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp1 = mul [val 1,val 3]
+testexp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp1 = mul [val 1,val 3]
 
-exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 10 x
+testexp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp2 = power 10 varx
 
-exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = delta idxi idxj 
+testexp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp3 = delta idxi idxj 
   where idxi = ("i",0,2)
         idxj = ("j",0,2)
-        idxk = ("k",0,2)
-        idxl = ("l",0,2) 
 
-exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
+testexp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp4 = add [ zero , y_ [("i",0,3),("j",1,2)] ] 
 
 
-exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
+testexp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
 
-exp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp7 = add [ x, y ] 
+testexp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp7 = add [ varx, vary ] 
 
-exp8 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
+testexp8 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
+testexp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
   where idxi = ("i",0,9)
         idxj = ("j",0,9)
 
-
+test2 :: IO (Either String ())
 test2 = do
   let ?expHash = trie hash
-  let exp :: MExp Double
-      exp = sum_ [idxi, idxj] (y_ [idxi,idxj])
+  let exp1 :: MExp Double
+      exp1 = sum_ [idxi, idxj] (y_ [idxi,idxj])
       idxi = ("i",0,2)
       idxj = ("j",0,2)
   
-  prettyPrintR exp
+  prettyPrintR exp1
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [idxi, idxj] ] exp
+              llvmAST "fun1" [ Indexed "y" [idxi, idxj] ] exp1
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -124,12 +131,12 @@ test2 = do
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res
           
-
+test3 :: IO (Either String ())
 test3 = do
   let ?expHash = trie hash
-  prettyPrintR exp7
+  prettyPrintR testexp7
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Simple "x", Simple "y" ] exp7
+              llvmAST "fun1" [ Simple "x", Simple "y" ] testexp7
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -173,12 +180,11 @@ test3 = do
                   putStrLn $ "Evaluated to: " ++ show res
 
 
-
+test4 :: IO (Either String ())
 test4 = do
   let ?expHash = trie hash
-  let exp = exp3
-  prettyPrintR (exp :: MExp Double)
-  let ast = mkAST exp []
+  prettyPrintR (testexp3 :: MExp Double)
+  let ast = mkAST testexp3 []
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
@@ -189,35 +195,36 @@ test4 = do
             res <- Array.peekArray 9 pres
             putStrLn $ "Evaluated to: " ++ show res
 
+test5 :: IO (Either String ())
 test5 = do
   let ?expHash = trie hash
-  let exp = exp8
-  prettyPrintR (exp :: MExp Double)
+  prettyPrintR (testexp8 :: MExp Double)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
-  let ast = mkAST exp  [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ]
+  let ast = mkAST testexp8  [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ]
       vx = VS.fromList [1..100] :: VS.Vector Double
       vy = VS.fromList [1..10]  :: VS.Vector Double
       vr = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-
+test6 :: IO (Either String ())
 test6 = do
   let ?expHash = trie hash
-  let exp :: MExp Double
-      exp = concat_ idxA [ x_ [idxi,idxj], y_ [idxk] ] 
+  let exp1 :: MExp Double
+      exp1 = concat_ idxA [ x_ [idxi,idxj], y_ [idxk] ] 
       idxA = ("A",1,10)
       idxi = ("i",1,2)
       idxj = ("j",1,3)
       idxk = ("k",1,4)
-  prettyPrintR (exp :: MExp Double)
+  prettyPrintR (exp1 :: MExp Double)
   -- digraph exp
-  let ast = mkAST exp [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ]
+  let ast = mkAST exp1 [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ]
       vx  = VS.fromList [1,2,3,4,5,6]
       vy  = VS.fromList [11,12,13,14]  :: VS.Vector Double
       vr  = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
+test7 :: IO ()
 test7 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -226,11 +233,11 @@ test7 = do
       idxI = ("I",1,4)
       exp1 :: MExp Double
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  let exp :: MExp Double
-      exp = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
-  prettyPrintR exp
-  -- digraph exp
-  let ast = mkAST exp [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+  let exp2 :: MExp Double
+      exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
+  prettyPrintR exp2
+  -- digraph exp2
+  let ast = mkAST exp2 [ Indexed "x" [idxi], Indexed "y" [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Double
       vr = VS.replicate 8 0    :: VS.Vector Double
@@ -244,10 +251,10 @@ test7 = do
     let iptI = [("I",i)]
         iptj = [("j",j)]
         
-    printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp)
+    printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp2)
   
 
-
+test8 :: IO ()
 test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -257,12 +264,12 @@ test8 = do
   
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp :: MExp Double
-      exp = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+  let exp1 :: MExp Double
+      exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (Indexed "x" [idxk]) exp
+      exp' = sdiff (Indexed "x" [idxk]) exp1
   putStr "f = "
-  prettyPrintR exp
+  prettyPrintR exp1
   putStr "df/dx_k = "
   prettyPrintR exp'
   let ast = mkAST exp' [ Indexed "x" [idxi], Indexed "y" [idxj] ]
@@ -286,6 +293,6 @@ test8 = do
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-  
+main :: IO ()
 main = test8
 

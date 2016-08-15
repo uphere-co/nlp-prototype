@@ -6,19 +6,17 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-import           Control.Monad ((>=>))
-import           Control.Monad.Trans.State
+module Test where
+
+
+
 import           Data.Foldable             (forM_)
-import           Data.Function             (fix)
+
 import           Data.Hashable
-import           Data.HashMap.Strict       (HashMap)
+
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet        as HS
-import           Data.List                 (lookup,foldl')
-import           Data.Maybe                (fromJust)
+
 import           Data.MemoTrie
-import           Data.Monoid               ((<>))
-import           Data.Vector.Storable       (Vector(..),Storable(..),(!))
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
@@ -31,130 +29,8 @@ import           Symbolic.Simplify
 import           Symbolic.Type
 import           Symbolic.Util
 --
-import           Debug.Trace
 
-
-{- 
-
-exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])
-
-exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp4 = sum_ ["i"] exp3
-
-exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ ["i","j"] ((x_ ["i"] `mul` y_ ["i","j"]) `mul` x_ ["j"])
-
-
-expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
-expfib' _ 0 = x -- x_ ["i"]
-expfib' _ 1 = y -- y_ ["i"]
-expfib' t n = let e1 = untrie t (n-1)
-                  e2 = untrie t (n-2)
-              in add e1 e2
-
-expfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Int -> MExp a
-expfib = 
-    let t = trie expfib
-        extfib = expfib' t
-    in extfib
-
-dexpfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => 
-            (Int :->: MExp a, (Symbol,Exp a) :->: MExp a)
-         -> (Symbol,Int) -> MExp a
-dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' m tdiff (s,e)
-
-dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Symbol,Int) -> MExp a
-dexpfib (s,n) = let tfib = trie ffib
-                    ffib = expfib' tfib
-                    MExp _ m _ = untrie tfib n
-                    tdiff = trie (diff' m tdiff)
-                    f = dexpfib' (tfib,tdiff) 
-                in f (s,n)
-
-eval_fib :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) => Args a -> IdxPoint -> Int -> EExp a
-eval_fib a ip n = let tfib = trie ffib
-                      ffib = expfib' tfib
-                      e = mexpExp (ffib n)
-                      m = mexpMap (ffib n)
-                      feval = eval m teval
-                      teval = trie feval 
-                  in untrie teval (a,ip,e)
-
-test123 :: IO ()
-test123 = do
-    let ?expHash = trie hash
-    -- let MExp e m _ = exp1
-    --    diff = fix (diff' m . trie)
-    putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
-    let lexp1 = expfib 100 :: MExp Int
-        lexp2 = dexpfib (Simple "y",100)
-    -- prettyPrintR $ lexp1
-    -- prettyPrintR $ lexp2    
-    (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
-
-    --let MExp e' m' _ = exp2
-    --     ndiff = fix (diff' m' . trie)
-    prettyPrintR $ sdiff (Simple "x") exp2
-
-    --let MExp e3 m3 _ = exp3
-    --    diff3 = fix (diff' m3 . trie)
-    
-test3 = do
-  let ?expHash = trie hash
-  let r = sdiff (Indexed "x" ["j"]) (exp3 :: MExp Int)
-  prettyPrintR r
-  digraph r  
-
-
-test4 = do
-  let ?expHash = trie hash
-  
-  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp4 :: MExp Int) :: String)
-  let r' = sdiff (Indexed "x" ["j"]) exp4
-  printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
-
-  digraph r'
-
-  -- print (mexpIdx r')
-
-test5 = do
-  let ?expHash = trie hash  
-  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp5 ::  MExp Int) :: String)
-  let r = sdiff (Indexed "y" ["m","n"]) exp5
-  printf "df/d(y_mn) = %s\n" ((prettyPrint . exp2RExp) r :: String)
-  digraph r
-
-  mapM_ (\(h1,h2) -> printf "x%x -> x%x\n" h1 h2) $ mkDepGraph r
-
-test6 :: IO ()
-test6 = do
-  let ?expHash = trie hash    
-  -- let lexp1 = expfib 10
-  let n = 3
-      lexp1 = expfib n :: MExp Int
-      lexp2 = dexpfib (Indexed "x" ["j"],n)
-  prettyPrintR $ lexp1
-  prettyPrintR $ lexp2    
-  (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
-
-test7 :: IO ()
-test7 = do
-  let ?expHash = trie hash :: Exp Double :->: Hash
-  let n = 100
-      -- lexp1 = expfib n
-      -- lexp2 = dexpfib (Indexed "x" ["j"],n)
-  
-  -- prettyPrintR lexp1
-  let args = [(Simple "x",1),(Simple "y",1 :: Double)]
-  -- let args' = [(Indexed "x" 1,1),(Indexed "y" 1,1 :: Double)]  
-     
-  prettyPrintE $ seval args [] exp3 -- eval_fib args n -- eval args lexp1
-
-
-
--}
-
+idxi, idxj, idxI, idxk, idxm, idxn :: Index
 idxi = ("i",1,2)
 idxj = ("j",1,2)
 
@@ -164,12 +40,13 @@ idxk = ("k",1,2)
 idxm = ("m",1,2)
 idxn = ("n",1,2)
 
-exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 3 x -- power 10 (x `add'` y)
 
 test2 :: IO ()
 test2 = do
     let ?expHash = trie hash
+    let exp2 :: MExp Int
+        exp2 = power 3 varx -- power 10 (x `add'` y)
+    
     digraph (exp2 :: MExp Int)
 
 test8 :: IO ()
@@ -182,13 +59,11 @@ test8 = do
   printf "e2 = %s\n" ((prettyPrint . exp2RExp) (e2 ::  MExp Int) :: String)
   -- digraph e2
 
-  let e3 = mul [x, x, mul [x, x , x] , x]
+  let e3 = mul [varx, varx, mul [varx, varx , varx] , varx]
       de3 = (sdiff (Simple "x") e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
-
   digraph de3
-
 
 test9 :: IO ()
 test9 = do
@@ -206,7 +81,7 @@ test10 :: IO ()
 test10 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let e = mul [x, y] :: MExp Int
+  let e = mul [varx, vary] :: MExp Int
       args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
   printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
   
@@ -233,11 +108,11 @@ test12 :: IO ()
 test12 = do
   let ?expHash = trie hash
       ?functionMap = HM.fromList [ ("f", \[x,y] -> x*x + y*y)
-                                 , ("f_1", \[x,y] -> 2*x)
-                                 , ("f_2", \[x,y] -> 2*y) ]
+                                 , ("f_1", \[x,_y] -> 2*x)
+                                 , ("f_2", \[_x,y] -> 2*y) ]
   let e1 :: MExp Int
-      e1 = add' [mul' [val 2,x],y]
-      fe1 = fun "f" [e1,x]
+      e1 = add' [mul' [val 2,varx],vary]
+      fe1 = fun "f" [e1,varx]
       dfe1 = sdiff (Simple "x") fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
   printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
@@ -246,6 +121,7 @@ test12 = do
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
+test13 :: IO ()
 test13 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -256,13 +132,14 @@ test13 = do
       exp2 = sum_ [idxm] (add' [exp0,exp1])
       exp3 = mul' [ z_ [idxk], z_ [idxk] ]
       exp4 = sum_ [(idxk)] exp3
-      exp5 = add' [ sum_ [idxn] (mul [exp2,  exp4]), x ] 
+      exp5 = add' [ sum_ [idxn] (mul [exp2,  exp4]), varx ] 
 
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
   
   cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
 
+test14 :: IO ()
 test14 = do
   let idxset = [idxi,idxj,idxk]
       idxset2 = [idxm,idxn]
@@ -285,17 +162,15 @@ test15 :: IO ()
 test15 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp :: MExp Int
-      exp = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  let exp0 :: MExp Int
-      exp0 = x_ [idxi]
+  let exp1 :: MExp Int
+      exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
       args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
       
   forM_ [1,2,3,4] $ \i -> do
     let iptI = [("I",i)]
-    printf "val(I=%d) = %d \n" i (seval args iptI exp)
+    printf "val(I=%d) = %d \n" i (seval args iptI exp1)
 
 test16 :: IO ()
 test16 = do
@@ -303,30 +178,30 @@ test16 = do
       ?functionMap = HM.empty
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  let exp :: MExp Int
-      exp = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
+  let exp2 :: MExp Int
+      exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
       args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
-  prettyPrintR exp
+  prettyPrintR exp2
   -- digraph exp
 
   forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
     let iptI = [("I",i)]
         iptj = [("j",j)]
-    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp)
+    printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp2)
 
 
 test17 :: IO ()
 test17 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp :: MExp Int
-      exp = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+  let exp1 :: MExp Int
+      exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (Indexed "x" [idxk]) exp
+      exp' = sdiff (Indexed "x" [idxk]) exp1
   putStr "f = "
-  prettyPrintR exp
+  prettyPrintR exp1
   putStr "df/dx_k = "
   prettyPrintR exp'
 
@@ -339,5 +214,4 @@ test17 = do
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %d \n" iI k (seval args (iptI++iptk) exp')
   
-main = test17
     
