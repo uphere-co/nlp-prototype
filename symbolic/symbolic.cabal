@@ -4,9 +4,7 @@ Cabal-version:          >=1.8
 Tested-with:            GHC >= 7.10
 Build-type:             Simple
 Synopsis:               Symbolic computation
-Description:
-  Efficient symbolic computation library
-
+Description:            Efficient symbolic computation library
 License:                OtherLicense
 License-file:           LICENSE
 Author:                 UpHere, Inc.
@@ -91,7 +89,7 @@ Executable eval
   Main-is:              eval.hs
   hs-source-dirs:       exe
   other-modules:       
-  ghc-options:          -Wall -O2
+  ghc-options:          -Wall -Werror -O2
                         -threaded
                         -funbox-strict-fields
                         -fno-warn-unused-do-bind

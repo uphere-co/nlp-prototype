@@ -8,35 +8,18 @@
 
 module Fib where
 
-import           Control.Monad ((>=>))
-import           Control.Monad.Trans.State
-import           Data.Foldable             (forM_)
-import           Data.Function             (fix)
 import           Data.Hashable
-import           Data.HashMap.Strict       (HashMap)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet        as HS
-import           Data.List                 (lookup,foldl')
-import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
-import           Data.Monoid               ((<>))
-import           Data.Vector.Storable       (Vector(..),Storable(..),(!))
-import qualified Data.Vector.Storable as VS
-import           Text.Printf
 --
-import           Symbolic.CodeGen.C
 import           Symbolic.Differential
-import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
-import           Symbolic.Simplify
 import           Symbolic.Type
-import           Symbolic.Util
-
+--
 
 expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
-expfib' _ 0 = x -- x_ ["i"]
-expfib' _ 1 = y -- y_ ["i"]
+expfib' _ 0 = varx -- x_ ["i"]
+expfib' _ 1 = vary -- y_ ["i"]
 expfib' t n = let e1 = untrie t (n-1)
                   e2 = untrie t (n-2)
               in add [e1, e2]

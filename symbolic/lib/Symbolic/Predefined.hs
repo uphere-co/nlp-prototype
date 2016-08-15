@@ -20,14 +20,14 @@ var s = MExp (Var (Simple s)) HM.empty HS.empty
 ivar :: String -> [Index] -> MExp a
 ivar n i = MExp (Var (Indexed n i)) HM.empty (HS.fromList i)
 
-x :: MExp a
-x = var "x"
+varx :: MExp a
+varx = var "x"
 
-y :: MExp a
-y = var "y"
+vary :: MExp a
+vary = var "y"
 
-z :: MExp a
-z = var "z"
+varz :: MExp a
+varz = var "z"
 
 x_ :: [Index] -> MExp a
 x_ i = ivar "x" i

@@ -69,7 +69,7 @@ exp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp1 = mul [val 1,val 3]
 
 exp2 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp2 = power 10 x
+exp2 = power 10 varx
 
 exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp3 = delta idxi idxj 
@@ -86,7 +86,7 @@ exp6 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp6 = sum_ [("i",0,9)] (fun "sin" [ y_ [("i",0,9)] ])
 
 exp7 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp7 = add [ x, y ] 
+exp7 = add [ varx, vary ] 
 
 exp8 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 exp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
