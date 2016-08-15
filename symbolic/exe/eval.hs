@@ -31,129 +31,10 @@ import           Symbolic.Simplify
 import           Symbolic.Type
 import           Symbolic.Util
 --
+import           Fib
+--
 import           Debug.Trace
 
-
-{- 
-
-exp3 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp3 = (x_ ["i"] `mul'` y_ ["i"]) `add'` (x_ ["i"] `mul` x_ ["i"])
-
-exp4 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp4 = sum_ ["i"] exp3
-
-exp5 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
-exp5 = sum_ ["i","j"] ((x_ ["i"] `mul` y_ ["i","j"]) `mul` x_ ["j"])
-
-
-expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
-expfib' _ 0 = x -- x_ ["i"]
-expfib' _ 1 = y -- y_ ["i"]
-expfib' t n = let e1 = untrie t (n-1)
-                  e2 = untrie t (n-2)
-              in add e1 e2
-
-expfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Int -> MExp a
-expfib = 
-    let t = trie expfib
-        extfib = expfib' t
-    in extfib
-
-dexpfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => 
-            (Int :->: MExp a, (Symbol,Exp a) :->: MExp a)
-         -> (Symbol,Int) -> MExp a
-dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' m tdiff (s,e)
-
-dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Symbol,Int) -> MExp a
-dexpfib (s,n) = let tfib = trie ffib
-                    ffib = expfib' tfib
-                    MExp _ m _ = untrie tfib n
-                    tdiff = trie (diff' m tdiff)
-                    f = dexpfib' (tfib,tdiff) 
-                in f (s,n)
-
-eval_fib :: (HasTrie a, Num a, Floating a, ?expHash :: Exp a :->: Hash) => Args a -> IdxPoint -> Int -> EExp a
-eval_fib a ip n = let tfib = trie ffib
-                      ffib = expfib' tfib
-                      e = mexpExp (ffib n)
-                      m = mexpMap (ffib n)
-                      feval = eval m teval
-                      teval = trie feval 
-                  in untrie teval (a,ip,e)
-
-test123 :: IO ()
-test123 = do
-    let ?expHash = trie hash
-    -- let MExp e m _ = exp1
-    --    diff = fix (diff' m . trie)
-    putStrLn . prettyPrint . exp2RExp $ sdiff (Simple "x") exp1
-    let lexp1 = expfib 100 :: MExp Int
-        lexp2 = dexpfib (Simple "y",100)
-    -- prettyPrintR $ lexp1
-    -- prettyPrintR $ lexp2    
-    (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
-
-    --let MExp e' m' _ = exp2
-    --     ndiff = fix (diff' m' . trie)
-    prettyPrintR $ sdiff (Simple "x") exp2
-
-    --let MExp e3 m3 _ = exp3
-    --    diff3 = fix (diff' m3 . trie)
-    
-test3 = do
-  let ?expHash = trie hash
-  let r = sdiff (Indexed "x" ["j"]) (exp3 :: MExp Int)
-  prettyPrintR r
-  digraph r  
-
-
-test4 = do
-  let ?expHash = trie hash
-  
-  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp4 :: MExp Int) :: String)
-  let r' = sdiff (Indexed "x" ["j"]) exp4
-  printf "df/d(x_j) = %s\n" ((prettyPrint . exp2RExp) r' :: String)
-
-  digraph r'
-
-  -- print (mexpIdx r')
-
-test5 = do
-  let ?expHash = trie hash  
-  printf "f = %s\n" ((prettyPrint . exp2RExp) (exp5 ::  MExp Int) :: String)
-  let r = sdiff (Indexed "y" ["m","n"]) exp5
-  printf "df/d(y_mn) = %s\n" ((prettyPrint . exp2RExp) r :: String)
-  digraph r
-
-  mapM_ (\(h1,h2) -> printf "x%x -> x%x\n" h1 h2) $ mkDepGraph r
-
-test6 :: IO ()
-test6 = do
-  let ?expHash = trie hash    
-  -- let lexp1 = expfib 10
-  let n = 3
-      lexp1 = expfib n :: MExp Int
-      lexp2 = dexpfib (Indexed "x" ["j"],n)
-  prettyPrintR $ lexp1
-  prettyPrintR $ lexp2    
-  (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
-
-test7 :: IO ()
-test7 = do
-  let ?expHash = trie hash :: Exp Double :->: Hash
-  let n = 100
-      -- lexp1 = expfib n
-      -- lexp2 = dexpfib (Indexed "x" ["j"],n)
-  
-  -- prettyPrintR lexp1
-  let args = [(Simple "x",1),(Simple "y",1 :: Double)]
-  -- let args' = [(Indexed "x" 1,1),(Indexed "y" 1,1 :: Double)]  
-     
-  prettyPrintE $ seval args [] exp3 -- eval_fib args n -- eval args lexp1
-
-
-
--}
 
 idxi = ("i",1,2)
 idxj = ("j",1,2)
@@ -186,9 +67,7 @@ test8 = do
       de3 = (sdiff (Simple "x") e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
-
   digraph de3
-
 
 test9 :: IO ()
 test9 = do
@@ -339,5 +218,6 @@ test17 = do
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %d \n" iI k (seval args (iptI++iptk) exp')
   
-main = test17
+-- main = test17
+main = testfib
     
