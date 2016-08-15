@@ -18,8 +18,25 @@ using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
 using namespace rnn::simple_model::test;
-
+using namespace rnn::simple_model;
 namespace rnn_t = rnn::type;
+
+struct GradientDescent{
+    GradientDescent(rnn::type::float_t scale) : scale{scale} {}
+    template<typename T, typename TV>
+    void update(T &param, T const &grad, TV scale){
+        grad_update(param,grad, scale);
+    }
+    void update(Param &param, Param &grad_sum){
+        update(param.w_left.span, grad_sum.w_left.span, scale);
+        update(param.w_right.span, grad_sum.w_right.span, scale);
+        update(param.bias.span, grad_sum.bias.span, scale);
+        // update(param.u_score.span, grad_sum.u_score.span, scale);
+    }
+
+    rnn::type::float_t scale;
+};
+
 
 
 int main(){
@@ -28,17 +45,17 @@ int main(){
         // test_read_voca();
         // test_forwad_backward();
         // test_parallel_reduce();
-        test_rnn_full_step();
-        return 0;
+        // test_rnn_full_step();
+        // return 0;
 
         auto timer=Timer{};
         // auto lines=util::string::readlines(rnn::config::trainset_name);
         auto lines=util::string::readlines(rnn::config::testset_name);
-        auto lines_testset=util::string::readlines(rnn::config::testset_name);
+        auto testset=TokenizedSentences{rnn::config::testset_name};
         timer.here_then_reset("Read trainset");
-        using namespace rnn::simple_model;
         VocaInfo rnn{};
         auto param = load_param();
+        // auto param = randomParam(0.1);
         timer.here_then_reset("Preparing data");
 
         auto get_grad = [&](auto sentence){
@@ -46,24 +63,18 @@ int main(){
             return get_gradient(param, nodes);
         };
         using rnn::simple_model::Param;
+        auto optimizer = GradientDescent{0.001};
+        print(scoring_dataset(rnn, param, testset));
+        timer.here_then_reset("Begin training");
         for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
             auto beg=it;
             auto end=beg+n_minibatch;
             end=end<lines.cend()?end:lines.cend();
             auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
-            // rnn::simple_model::Param grad_serial{};
-            // for(auto i=beg; i!=end; ++i){
-            //     grad_serial += get_grad(*i); 
-            // }      
+            optimizer.update(param, grad_sum);
+            auto test_score = scoring_dataset(rnn, param, testset);
+            print(test_score);
         }
-        // tbb::parallel_for(0UL,lines.size(),1UL,  [&](auto i){
-        //     get_grad(lines[i]);
-        // });
-        // //single-thread counter part:
-        // std::for_each(lines.cbegin(), lines.cend(), [=](std::string sentence) {
-        //     get_grad(sentence);
-        // });
-
         timer.here_then_reset("Finish one iteration");
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;

@@ -31,6 +31,10 @@ void test_voca_index(Voca const &voca, VocaIndexMap const &word2idx){
 }//nameless namespace
 
 
+namespace rnn{
+namespace simple_model{
+namespace test{
+
 void test_init_rnn(){
     /*
     -148.346
@@ -236,3 +240,7 @@ void test_rnn_full_step(){
     print(ds_grad);
     print('\n');
 }
+
+}//namespace rnn::simple_model::test
+}//namespace rnn::simple_model
+}//namespace rnn
