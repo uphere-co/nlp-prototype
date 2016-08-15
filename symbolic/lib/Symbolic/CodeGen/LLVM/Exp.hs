@@ -7,7 +7,6 @@
 
 module Symbolic.CodeGen.LLVM.Exp where
 
-import           Control.Lens                             (view, _1)
 import           Control.Monad.State
 import           Data.Array                               ((!))
 import           Data.Foldable                            (foldrM)
@@ -19,7 +18,7 @@ import           Data.MemoTrie
 import           LLVM.General.AST ( Operand(..) )
 import qualified LLVM.General.AST                  as AST
 import qualified LLVM.General.AST.IntegerPredicate as IP
-import           LLVM.General.AST.Type                    (double, i64, i32, ptr)
+import           LLVM.General.AST.Type                    (double, i64, ptr)
 import qualified LLVM.General.AST.Type             as T   (void) 
 import           Text.Printf
 --
@@ -28,10 +27,9 @@ import           Symbolic.Type
 import qualified Symbolic.Type                     as S   (Exp(..))
 import           Symbolic.Util                            (indexFlatteningFactors, sizeIndex)
 --
-import           Debug.Trace
 
 scanM :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m [a]
-scanM f q [] = return [q]
+scanM _ q [] = return [q]
 scanM f q (x:xs) = do
   q2 <- f q x
   qs <- scanM f q2 xs
@@ -74,7 +72,7 @@ flattenByM is fac = do
 
 splitByM :: Operand -> [Int] -> Codegen [Operand]
 splitByM j fac = (map fst . tail) <$> (scanM f (ival 0,j) fac)
-  where f (d,m) i | i == 1    = return (m,ival 0)
+  where f (_,m) i | i == 1    = return (m,ival 0)
                   | otherwise = (,) <$> udiv m (ival i) <*> urem m (ival i)
 
 -- | Get a flat index from multi-dimensional indices. We assume that input indices
@@ -90,19 +88,19 @@ splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
                      -> [MExp Double]
                      -> Operand
                      -> Codegen Operand
-splitIndexDisjointFM f lst j = do
+splitIndexDisjointFM f lst jj = do
     case lst of
       []     -> error "splitIndexDisjointFM: empty list"
       [e]    -> f' e ((HS.toList . mexpIdx) e)
       (e:es) ->
-        let (is:iss) = map (HS.toList . mexpIdx) (e:es)
+        let (is:_iss) = map (HS.toList . mexpIdx) (e:es)
             label = concatMap indexName is
             size = ival (sizeIndex is)
-        in cgencond double label (icmp IP.ULT j size)
-             (f' e is) (splitIndexDisjointFM f es =<< isub j size)
+        in cgencond double label (icmp IP.ULT jj size)
+             (f' e is) (splitIndexDisjointFM f es =<< isub jj size)
   where
     f' e is = do
-      js <- splitIndexM is j
+      js <- splitIndexM is jj
       zipWithM (\i j -> assign (indexName i) j) is js
       f e
 
@@ -221,11 +219,11 @@ llvmCodegen name (MExp (Sum is h1) m _)          = do
   foldr (.) id (map mkFor is) innerstmt
   rval <- load sumref
   assign name rval
-llvmCodegen name (MExp (Concat i hs) m is)    = do
+llvmCodegen name (MExp (Concat i hs) m _is)    = do
   iI <- flatIndexM [i] =<< mapM getIndex [i]
   let es = map (flip justLookup m) hs
   r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
-    let is = (HS.toList . mexpIdx) e
+    -- let is = (HS.toList . mexpIdx) e
     mkInnerbody e
     let innername = hVar (getMHash e)
     v <- getvar innername

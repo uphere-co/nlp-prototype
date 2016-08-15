@@ -26,10 +26,9 @@ import qualified LLVM.General.AST.Float                  as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
 import           LLVM.General.AST.Global
 import qualified LLVM.General.AST.IntegerPredicate       as IP
-import           LLVM.General.AST.Type                           ( double, i64)
+import           LLVM.General.AST.Type                           ( double )
 --
-import           Symbolic.Type
---
+
 
 -------------------------------------------------------------------------------
 -- Module Level

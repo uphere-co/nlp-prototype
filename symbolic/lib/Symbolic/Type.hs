@@ -17,7 +17,6 @@ import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.HashSet              (HashSet)
 import qualified Data.HashSet        as HS
-import           Data.Maybe                (fromJust)
 import           Data.MemoTrie
 import           Data.Vector.Storable      (Vector)
 --

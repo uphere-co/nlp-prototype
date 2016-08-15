@@ -53,9 +53,9 @@ diff' m t (s,e) =
                           in mul' [fun (suffix_n i sym) args , e'] 
 
   -- 
-  diffc i iss (n,e) = let e' = untrie t (s,mexpExp e)
-                          si = iss !! (n-1)
-                      in sum_ si (mul' [cdelta i iss n,e']) 
+  diffc i iss (n,e1) = let e' = untrie t (s,mexpExp e1)
+                           si = iss !! (n-1)
+                       in sum_ si (mul' [cdelta i iss n,e']) 
                              
 
 -- | differentiation of variables

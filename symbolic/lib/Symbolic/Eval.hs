@@ -71,10 +71,11 @@ eval m (args,ip,Concat idx hs) = select es di
         i' = index0base idx (justLookupL (view _1 idx) ip)
         iss = map (HS.toList . mexpIdx) es 
         di = splitIndexDisjoint iss i'
-        select (x:xs) (L i)
-          = let i' = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
-            in eval m (args,i',mexpExp x)
-        select (x:xs) (R d) = select xs d
+        select (x:_)  (L i)
+          = let ii = zipWith (\(k,_,_) v -> (k,v)) (HS.toList (mexpIdx x)) i
+            in eval m (args,ii,mexpExp x)
+        select (_:xs) (R d) = select xs d
+        select [] _ = error "empty list in eval, Concat, select"
 
 -- | simple evaluation without complex memoization
 seval :: ( Storable a, HasTrie a, Num a
