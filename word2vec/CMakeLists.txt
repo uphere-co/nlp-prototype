@@ -34,8 +34,8 @@ target_link_libraries(word2vec m pca armadillo ${GFORTRAN_LIBRARY} openblas boos
 add_executable(app_pca pca.cpp utils.cpp)
 target_link_libraries(app_pca m pca armadillo ${GFORTRAN_LIBRARY} openblas boost_iostreams boost_system boost_filesystem)
 
-add_executable(voca_builder app/voca_builder)
+add_executable(voca_builder app/voca_builder  ../rnn++/utils/string ../rnn++/utils/hdf5)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
 
-add_executable(wordvec_trainer app/wordvec_trainer)
+add_executable(wordvec_trainer app/wordvec_trainer  ../rnn++/utils/string ../rnn++/utils/hdf5)
 target_link_libraries(wordvec_trainer ${CMAKE_THREAD_LIBS_INIT} hdf5_cpp hdf5_hl_cpp)

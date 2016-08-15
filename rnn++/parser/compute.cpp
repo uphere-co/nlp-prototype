@@ -53,7 +53,7 @@ std::vector<node_type*> merge_leaf_nodes(Param const &param, std::vector<node_ty
         top_node.push_back(it);
     return top_node;
 }
-auto foward_path(Param const &param, std::vector<node_type*> &top_nodes) ->
+auto foward_path(Param const &param, std::vector<node_type*> top_nodes) ->
     std::vector<decltype(top_nodes.size())> {
     std::vector<decltype(top_nodes.size())> merge_history;
     while(top_nodes.size()){

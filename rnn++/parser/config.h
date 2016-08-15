@@ -20,6 +20,7 @@ extern util::io::H5name rnn_param_store_name;
 extern util::io::H5name rnn_param_name;
 
 extern std::string trainset_name;
+extern std::string testset_name;
 
 //voca_max_word_len can be read using `h5dump -H` command.
 //It can be directly read from a H5File,
@@ -35,6 +36,6 @@ constexpr int word_dim=100;
 constexpr auto activation    = util::math::FunName::tanh;
 constexpr auto activation_df = util::math::FunName::d_tanh;
 
-constexpr rnn::type::idx_t n_minibatch = 100;
+constexpr rnn::type::idx_t n_minibatch = 101;
 }//namescpae config
 }//namespace rnn
