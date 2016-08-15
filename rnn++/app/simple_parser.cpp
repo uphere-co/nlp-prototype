@@ -70,7 +70,15 @@ int main(){
             auto beg=it;
             auto end=beg+n_minibatch;
             end=end<lines.cend()?end:lines.cend();
-            auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            auto f_grad = [&beg,&end,&rnn](Param const &param){
+                auto get_grad = [&](auto sentence){
+                    auto nodes = rnn.initialize_tree(sentence);
+                    return get_gradient(param, nodes);
+                };
+                return parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            };
+            auto grad_sum = f_grad(param);
+            // auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
             optimizer.update(param, grad_sum);
             auto test_score = scoring_dataset(rnn, param, testset);
             print(test_score);
