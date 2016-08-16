@@ -1,4 +1,5 @@
 #include "parser/compute.h"
+#include "utils/print.h"
 
 namespace rnn{
 namespace simple_model{
@@ -21,7 +22,8 @@ vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
 }
  
 value_type scoring_node(Param const &param, node_type const &node) {
-    return util::math::dot(param.u_score.span, node.vec.span);
+    using namespace util::math;    
+    return dot(param.u_score.span, node.vec.span) / norm_L2(param.u_score.span);
 }
 
 void set_node_property(Param const &param,node_type &node) {
@@ -129,12 +131,36 @@ void backward_path(Param const &param,
     }
 }
 
+auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
+                            auto factor_p, auto const &phrase)  {
+    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
+};
+
+auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
+    using namespace util::math;
+    constexpr auto dim = Param::dim;
+    using val_t = Param::value_type;
+    auto norm = norm_L2(u_score);
+    auto score = dot(u_score, phrase);
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    
+    vecloop_void(grad_u_score_L2norm_i, grad, 
+                 -score/(norm*norm*norm), u_score, 
+                 val_t{1}/norm, phrase);
+    // //Original scoring function without L2-norm factor
+    // vecloop_void(grad_u_score_L2norm_i, grad, 0, u_score, 
+    //              1, phrase);
+};
+
 void backward_path(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias, vec_type &gradsum_u_score,
                    node_type const &phrase) {
-    gradsum_u_score.span += phrase.vec.span;
+    grad_u_score_L2norm(gradsum_u_score.span, param.u_score.span, phrase.vec.span);
+    // gradsum_u_score.span += phrase.vec.span;
+    auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
     auto mesg{param.u_score};
+    mesg.span *=factor;
     backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
 // weighted_sum=W_left*word_left + W_right*word_right+bias
@@ -142,9 +168,7 @@ void backward_path(Param const &param,
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
 void backward_path(Param &grad, Param const &param,
                    node_type const &phrase) {
-    grad.u_score.span += phrase.vec.span;
-    auto mesg{param.u_score};
-    backward_path(param, grad.w_left, grad.w_right, grad.bias, phrase, mesg);
+    backward_path(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
 }//namespace rnn::simple_model::detail
