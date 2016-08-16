@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <cmath>
 
 #include <lbfgs.h>
 
@@ -33,7 +34,7 @@ struct GradientDescent{
         update(param.w_left.span, grad_sum.w_left.span, scale);
         update(param.w_right.span, grad_sum.w_right.span, scale);
         update(param.bias.span, grad_sum.bias.span, scale);
-        // update(param.u_score.span, grad_sum.u_score.span, scale);
+        update(param.u_score.span, grad_sum.u_score.span, scale);
     }
 
     rnn::type::float_t scale;
@@ -61,18 +62,20 @@ public:
     LBFGSoptimizer(int n_dim, Param &param, VocaInfo const &rnn, 
                    TokenizedSentences const &testset, c_iter beg, c_iter end)
     : n_dim{n_dim}, m_x{lbfgs_malloc(n_dim)}, lbfgs_param{},
-      param{param},rnn{rnn},testset{testset}, beg{beg},end{end}
-     {
+      param{param},rnn{rnn},testset{testset}, beg{beg},end{end}{
+        //http://www.chokkan.org/software/liblbfgs/structlbfgs__parameter__t.html
         lbfgs_parameter_init(&lbfgs_param);
         lbfgs_param.max_iterations=10;
+        lbfgs_param.epsilon       =1e-2;
+        lbfgs_param.delta         =1e-2;
         if (m_x == NULL) {
-            printf("ERROR: Failed to allocate a memory block for variables.\n");
-            std::bad_alloc exception;
-            throw exception;
+        printf("ERROR: Failed to allocate a memory block for variables.\n");
+        std::bad_alloc exception;
+        throw exception;
         }
     }
     virtual ~LBFGSoptimizer() {lbfgs_free(m_x);}
-
+    
     // instance	The user data sent for lbfgs() function by the client.
     // x	The current values of variables.
     // g	The current gradient values of variables.
@@ -83,7 +86,7 @@ public:
     // n	The number of variables.
     // k	The iteration count.
     // ls	The number of evaluations called for this iteration.
-    int run() {
+    int update() {
         write_to_ptr(m_x, param);
         auto _evaluate = [](
                   void *instance, const lfloat_t *x, 
@@ -105,24 +108,52 @@ public:
 
         /* Report the result. */
         printf("L-BFGS optimization terminated with status code = %d\n", ret);
-        printf("  fx = %f, x[0] = %f, x[1] = %f\n", fx, m_x[0], m_x[1]);
+        printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%d\n", 
+               fx, norm_L1(param.w_left.span), norm_L1(param.w_right.span), 
+               norm_L1(param.bias.span), norm_L1(param.u_score.span));
         
         return ret;
     }
 
 protected:
+    /*
+      rnn, sentence -> nodes
+      param, nodes -> grad
+      i.e.
+      foo : param, rnn, sentence -> grad
+      bar : param, rnn, beg, end -> grad_sum
+
+      get_grad : sentence -> grad
+      get_grad = foo(param, rnn, _)
+      f_grad : param -> grad_sum
+      f_grad = bar(_, rnn, beg, end)
+
+      scoring_dataset : rnn, param, testset -> score_sum
+
+      
+      write_from_ptr : x -> param
+      write_to_ptr : param -> x
+      write_to_ptr : grad_sum -> g
+      evaluate : x, g -> score_sum
+      
+
+    */
     lfloat_t evaluate(const lfloat_t *x, lfloat_t *g, const int n, const lfloat_t step) {
         auto f_grad = [this](Param const &param){
             auto get_grad = [&](auto sentence){
                 auto nodes = this->rnn.initialize_tree(sentence);
                 return get_gradient(param, nodes);
             };
-            return parallel_reducer(this->beg, this->end, get_grad, Param{});
+            return Param{} - parallel_reducer(this->beg, this->end, get_grad, Param{});
         };
         write_from_ptr(x, param);
         auto grad_sum = f_grad(param);
-        lfloat_t fx = scoring_dataset(rnn, param, testset);
         write_to_ptr(g, grad_sum);
+        lfloat_t fx = -scoring_minibatch(rnn, param, beg, end);
+        // printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%e   \n", 
+        //        fx, norm_L1(param.w_left.span), norm_L1(param.w_right.span), 
+        //        norm_L1(param.bias.span), norm_L1(param.u_score.span));
+        // std::cout << "From LBFGSoptimizer::evaluate " << fx << " step: " << step<<std::endl;
         return fx;
     }
 
@@ -153,35 +184,37 @@ int main(){
         auto testset=TokenizedSentences{rnn::config::testset_name};
         timer.here_then_reset("Read trainset");
         VocaInfo rnn{};
-        auto param = load_param();
-        // auto param = randomParam(0.1);
+        // auto param = load_param();
+        auto param = randomParam(0.1);
         timer.here_then_reset("Preparing data");
 
         auto get_grad = [&](auto sentence){
             auto nodes = rnn.initialize_tree(sentence);
             return get_gradient(param, nodes);
         };
-        using rnn::simple_model::Param;
-        // auto optimizer = GradientDescent{0.001};        
+        using rnn::simple_model::Param;        
         print(scoring_dataset(rnn, param, testset));
         timer.here_then_reset("Begin training");
         for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
             auto beg=it;
             auto end=beg+n_minibatch;
             end=end<lines.cend()?end:lines.cend();
-            auto f_grad = [&beg,&end,&rnn](Param const &param){
-                auto get_grad = [&](auto sentence){
-                    auto nodes = rnn.initialize_tree(sentence);
-                    return get_gradient(param, nodes);
-                };
-                return parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
-            };
-            auto grad_sum = f_grad(param);
-            // auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
-            auto optimizer = LBFGSoptimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
-            optimizer.run();
+            // auto f_grad = [&beg,&end,&rnn](Param const &param){
+            //     auto get_grad = [&](auto sentence){
+            //         auto nodes = rnn.initialize_tree(sentence);
+            //         return get_gradient(param, nodes);
+            //     };
+            //     return parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            // };
+            // auto grad_sum = f_grad(param);
+            auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
+            // auto optimizer = LBFGSoptimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
+            // optimizer.update();
+            auto optimizer = GradientDescent{0.0001};
+            optimizer.update(param, grad_sum);            
             auto test_score = scoring_dataset(rnn, param, testset);
             print(test_score);
+            print(": test score\n");
         }
         timer.here_then_reset("Finish one iteration");
     } catch (H5::Exception &ex) {
