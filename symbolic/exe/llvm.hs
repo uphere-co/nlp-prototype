@@ -144,9 +144,9 @@ test3 = do
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
                 yref <- getElem (ptr double) "args" (ival 1)
-                x <- load xref
-                y <- load yref
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), x, y ]
+                -- x <- load xref
+                -- y <- load yref
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -293,5 +293,5 @@ test8 = do
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-main = test2
+main = test3
 
