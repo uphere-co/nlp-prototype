@@ -6,6 +6,20 @@
 namespace rnn{
 namespace simple_model{
 
+Param::raw_type Param::serialize() const{
+    auto wLT       = util::math::transpose(w_left.span);
+    auto wRT       = util::math::transpose(w_right.span);
+    raw_type raw_data(dim*(dim*2+2));
+    std::copy(wLT.span.cbegin(),wLT.span.cend(), raw_data.data());
+    std::copy(wRT.span.cbegin(),wRT.span.cend(), raw_data.data()+dim*dim);
+    std::copy(bias.span.cbegin(),bias.span.cend(), raw_data.data()+2*dim*dim);
+    std::copy(u_score.span.cbegin(),u_score.span.cend(), raw_data.data()+(1+2*dim)*dim);
+    // bias._val[0]=1;
+    //TODO: fix bug in Param::serialize. span assignment should be disabled in const methods.
+    //  bias.span[0]=1;
+    return raw_data;
+}
+
 Param deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     constexpr auto dim = rnn::config::word_dim;
     auto span2d   = gsl::as_span(param_raw.data(), gsl::dim<dim*2+2>(),gsl::dim<dim>());

@@ -59,6 +59,5 @@ Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param,
     return score_accum;
 }
 
-
 }//namespace rnn::simple_model
 }//namespace rnn
