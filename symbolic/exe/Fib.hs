@@ -31,11 +31,11 @@ expfib =
     in extfib
 
 dexpfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => 
-            (Int :->: MExp a, (Symbol,Exp a) :->: MExp a)
-         -> (Symbol,Int) -> MExp a
+            (Int :->: MExp a, (Variable,Exp a) :->: MExp a)
+         -> (Variable,Int) -> MExp a
 dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' m tdiff (s,e)
 
-dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Symbol,Int) -> MExp a
+dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Variable,Int) -> MExp a
 dexpfib (s,n) = let tfib = trie ffib
                     ffib = expfib' tfib
                     MExp _ m _ = untrie tfib n

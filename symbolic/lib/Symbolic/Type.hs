@@ -30,31 +30,30 @@ type Index = (IndexSymbol,Int,Int)
 indexName :: Index -> IndexSymbol
 indexName = view _1
 
-data Symbol = V String [Index]
-            deriving (Show, Eq)
+data Variable = V String [Index] deriving (Show, Eq)
 
-varName :: Symbol -> String
+varName :: Variable -> String
 varName (V v _) = v
 
-showSym :: Symbol -> String
-showSym (V x k)
+showVar :: Variable -> String
+showVar (V x k)
   | null k    = x
   | otherwise = x ++ "_" ++ concat (map indexName k)
 
-instance HasTrie Symbol where
-  data (Symbol :->: b) = SymbolTrie ((String,[Index]) :->: b)
+instance HasTrie Variable where
+  data (Variable :->: b) = VariableTrie ((String,[Index]) :->: b)
   
-  trie :: (Symbol -> b) -> (Symbol :->: b)
-  trie f = SymbolTrie (trie (f . uncurry V))
+  trie :: (Variable -> b) -> (Variable :->: b)
+  trie f = VariableTrie (trie (f . uncurry V))
 
-  untrie :: (Symbol :->: b) -> Symbol -> b
-  untrie (SymbolTrie i) (V x k) = untrie i (x,k)
+  untrie :: (Variable :->: b) -> Variable -> b
+  untrie (VariableTrie i) (V x k) = untrie i (x,k)
 
-  enumerate :: (Symbol :->: b) -> [(Symbol,b)]
-  enumerate (SymbolTrie i) = enum' (uncurry V) i  
+  enumerate :: (Variable :->: b) -> [(Variable,b)]
+  enumerate (VariableTrie i) = enum' (uncurry V) i  
 
-instance Hashable Symbol where
-  hashWithSalt :: Hash -> Symbol -> Hash
+instance Hashable Variable where
+  hashWithSalt :: Hash -> Variable -> Hash
   hashWithSalt s (V x k) = s `hashWithSalt` x `hashWithSalt` k
 
 data Exp a = Zero
@@ -64,7 +63,7 @@ data Exp a = Zero
                 -- ^ delta for collective index
                 -- (collective index, index scheme, partition number (1-based))
            | Val a
-           | Var Symbol
+           | Var Variable
            | Add [Hash]
            | Mul [Hash]
            | Fun String [Hash]
@@ -108,7 +107,7 @@ data RExp a = RZero
             | RDelta Index Index
             | RCDelta Index [[Index]] Int
             | RVal a
-            | RVar Symbol
+            | RVar Variable
             | RAdd [RExp a]
             | RMul [RExp a]              
             | RFun String [RExp a]
@@ -139,7 +138,7 @@ instance HasTrie a => HasTrie (Exp a) where
                                 ((Index,Index) :->: b)
                                 ((Index,[[Index]],Int) :->: b)
                                 (a :->: b)
-                                (Symbol :->: b)
+                                (Variable :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
                                 ([Hash] :->: b)     -- ^ for Mul
                                 ((String,[Hash]) :->: b) -- ^ for Fun

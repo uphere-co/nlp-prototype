@@ -35,7 +35,7 @@ mkArgRef :: Int -> a -> Codegen AST.Operand
 mkArgRef i _ = getElem (ptr double) "args" (ival i)
 
 mkAST :: (?expHash :: Exp Double :->: Hash) =>
-         MExp Double -> [Symbol] -> AST.Module
+         MExp Double -> [Variable] -> AST.Module
 mkAST e args =
   runLLVM initModule $ do
     llvmAST "fun1" args e

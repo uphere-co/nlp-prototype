@@ -69,7 +69,7 @@ mkCFunction typ name decllst bodylst =
       ccompound = CCompound [] bodylst  nodeinfo
   in CFunDef [typspec] cdeclr [] ccompound nodeinfo
 
-mkArgs :: [Symbol] -> [CDecl]
+mkArgs :: [Variable] -> [CDecl]
 mkArgs = map mkArg
  where -- mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
        mkArg (V s is) = mkDecl CDoubleType (length is) s Nothing
@@ -149,7 +149,7 @@ cPrint' name (MExp (Sum is h1)  m _) = [ mkExpr (mkAssign name (mkConst (mkF 0))
 cPrint' _name (MExp (Concat _i _hs)  _m _) = error "cPrint': Concat not implemented"
 
         
-cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit
+cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Variable] -> MExp Double -> CTranslUnit
 cAST name syms v = 
   let h_result = untrie ?expHash (mexpExp v)
       (_hashmap,table,depgraph) = mkDepGraphNoSum v
@@ -161,7 +161,8 @@ cAST name syms v =
       bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
   in CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
 
-cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
+cPrint :: (?expHash :: Exp Double :->: Hash) =>
+          String -> [Variable] -> MExp Double -> IO ()
 cPrint name syms v = let ctu = cAST name syms v in (putStrLn . render . pretty) ctu
 
 

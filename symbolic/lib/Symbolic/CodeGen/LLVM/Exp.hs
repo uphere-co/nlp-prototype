@@ -229,7 +229,7 @@ llvmCodegen name (MExp (Concat i hs) m _is)    = do
 
 -- | generate LLVM AST from a symbolic expression
 llvmAST :: (?expHash :: Exp Double :->: Hash) =>
-           String -> [Symbol] -> MExp Double -> LLVM ()
+           String -> [Variable] -> MExp Double -> LLVM ()
 llvmAST name syms v =
   define T.void name symsllvm $ do
     let rref = LocalReference (ptr double) (AST.Name "result")
