@@ -30,42 +30,45 @@ type Index = (IndexSymbol,Int,Int)
 indexName :: Index -> IndexSymbol
 indexName = view _1
 
-data Symbol = Simple String
-            | Indexed String [Index]
+data Symbol = --  Simple String |
+            Indexed String [Index]
             deriving (Show, Eq)
 
+{- 
 isSimple :: Symbol -> Bool
 isSimple (Simple _) = True
 isSimple _          = False
+-}
 
 isIndexed :: Symbol -> Bool
 isIndexed (Indexed _ _) = True
 isIndexed _             = False
 
 varName :: Symbol -> String
-varName (Simple v) = v
+-- varName (Simple v) = v
 varName (Indexed v _) = v
 
 showSym :: Symbol -> String
-showSym (Simple str) = str
+-- showSym (Simple str) = str
 showSym (Indexed x k) = x ++ "_" ++ concat (map indexName k)
 
 instance HasTrie Symbol where
-  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,[Index]) :->: b)
+  data (Symbol :->: b) = SymbolTrie {- (String :->: b) -} ((String,[Index]) :->: b)
   
   trie :: (Symbol -> b) -> (Symbol :->: b)
-  trie f = SymbolTrie (trie (f . Simple)) (trie (f . uncurry Indexed))
+  trie f = SymbolTrie {- (trie (f . Simple)) -} (trie (f . uncurry Indexed))
 
   untrie :: (Symbol :->: b) -> Symbol -> b
-  untrie (SymbolTrie s _) (Simple x) = untrie s x
-  untrie (SymbolTrie _ i) (Indexed x k) = untrie i (x,k)
+  -- untrie (SymbolTrie s _) (Simple x) = untrie s x
+  untrie (SymbolTrie i) (Indexed x k) = untrie i (x,k)
 
   enumerate :: (Symbol :->: b) -> [(Symbol,b)]
-  enumerate (SymbolTrie s i) = enum' Simple s `weave` enum' (uncurry Indexed) i
+  -- enumerate (SymbolTrie s i) = enum' Simple s `weave` enum' (uncurry Indexed) i
+  enumerate (SymbolTrie i) = enum' (uncurry Indexed) i  
 
 instance Hashable Symbol where
   hashWithSalt :: Hash -> Symbol -> Hash
-  hashWithSalt s (Simple str)  = s `hashWithSalt` str
+  -- hashWithSalt s (Simple str)  = s `hashWithSalt` str
   hashWithSalt s (Indexed x k) = s `hashWithSalt` x `hashWithSalt` k
 
 data Exp a = Zero
@@ -308,8 +311,8 @@ data Pos = Pos1 | Pos2
 
 type IdxPoint = [(IndexSymbol,Int)]
 
-data Args a = Args { varSimple :: HashMap String a
-                   , varIndexed :: HashMap String (Vector a) }
+data Args a = Args { -- varSimple :: HashMap String a, 
+                     varIndexed :: HashMap String (Vector a) }
 
 
 type FunctionMap a = HashMap String ([a] -> a)

@@ -193,9 +193,7 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   j <- iadd (ival startjs) j0
   x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
   assign name x
-
-  --error "CDelta not implemented"
-llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
+-- llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
    mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
@@ -255,6 +253,6 @@ llvmAST name syms v =
         foldr (.) id (map mkFor is) innerstmt
         ret_
   where
-    mkarg (Simple n) = (double,AST.Name n)
+    -- mkarg (Simple n) = (double,AST.Name n)
     mkarg (Indexed n _) = (ptr double,AST.Name n)
     symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)
