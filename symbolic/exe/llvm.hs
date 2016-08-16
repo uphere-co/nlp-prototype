@@ -293,6 +293,5 @@ test8 = do
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-main :: IO ()
-main = test8
+main = test3
 

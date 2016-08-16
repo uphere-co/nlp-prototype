@@ -82,7 +82,8 @@ test10 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
   let e = mul [varx, vary] :: MExp Int
-      args = Args HM.empty -- (HM.fromList [("x",2),("y",3)]) (HM.empty)
+      args = Args (HM.fromList [("x",VS.fromList [2])
+                               ,("y",VS.fromList [3])])
   printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
   
   printf "val(e) = %d\n" (eval (mexpMap e) (args,[],mexpExp e))
@@ -117,7 +118,8 @@ test12 = do
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
   printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
   --  digraph dfe1
-  let args = Args HM.empty -- (HM.fromList [("x",2),("y",3)]) (HM.empty)
+  let args = Args (HM.fromList [("x",VS.fromList [2])
+                               ,("y",VS.fromList [3])])
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
