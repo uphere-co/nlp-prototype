@@ -48,21 +48,16 @@ Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param,
                                   TokenizedSentences const &dataset){
     using rnn::type::float_t;
     auto &lines = dataset.val;
-    // //Serial version for debugging:
-    // float_t score_accum{};
-    // for(auto it=lines.cbegin();it <lines.cend(); ++it){
-    //     auto sentence = *it;
-    //     auto nodes = rnn.initialize_tree(sentence);
-    //     score_accum += get_full_score(param, nodes);
-    // }
     auto get_score=[&rnn,&param](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
         return get_full_score(param, nodes);
     };
+    // //Serial version for debugging:
+    // float_t score_accum{};
+    // for(auto sentence : lines) score_accum += get_score(sentence);
     auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
     return score_accum;
 }
-
 
 }//namespace rnn::simple_model
 }//namespace rnn

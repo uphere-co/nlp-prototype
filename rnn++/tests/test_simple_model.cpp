@@ -31,6 +31,10 @@ void test_voca_index(Voca const &voca, VocaIndexMap const &word2idx){
 }//nameless namespace
 
 
+namespace rnn{
+namespace simple_model{
+namespace test{
+
 void test_init_rnn(){
     /*
     -148.346
@@ -102,6 +106,9 @@ void test_forwad_backward(){
 
     timer.here_then_reset("Backward path");
 
+    for(auto x : merge_history)
+        std::cerr<<x<<" ";
+    std::cerr<<'\n';
     for(auto x : nodes)
         std::cerr<<x.score<<" "<<x.name.val<< '\n';
 
@@ -203,21 +210,42 @@ void test_rnn_full_step(){
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
     VocaInfo rnn{};
-    auto param = load_param();
+    // auto param = load_param();
+    auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
         return get_gradient(param, nodes);
     };
-    auto dParam = randomParam(0.001);
+    auto dParam = randomParam(1.0);
+    // dParam.w_left.span  *= 0.00001;
+    // dParam.w_right.span *= 0.00001;
+    // // dParam.w_left.span  *= 0.0000;
+    // // dParam.w_right.span *= 0.0000;
+    // dParam.bias.span    *= 0.0001;
+    dParam.w_left.span  *= 0.000001;
+    dParam.w_right.span *= 0.000001;
+    dParam.bias.span    *= 0.0000;
+    dParam.u_score.span *= 0.000;
+    print(norm_L1(param.w_left.span));
+    print(norm_L1(param.w_right.span));
+    print(norm_L1(param.bias.span));
+    print(norm_L1(param.u_score.span));
+    print(": L1-norm\n");
     auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
     timer.here_then_reset("Back-propagation for whole testset");
     auto score = scoring_dataset(rnn, param, testset);
     timer.here_then_reset("Scoring testset");
+    // auto param1{param};
+    // param1.u_score.span *= rnn::type::float_t{2};
+    // auto param2{param};
+    // param2.u_score.span *= rnn::type::float_t{0.5};
+    // auto score1 = scoring_dataset(rnn, param1, testset);
     auto score1 = scoring_dataset(rnn, param+dParam, testset);
     timer.here_then_reset("Scoring testset");
     auto score2 = scoring_dataset(rnn, param-dParam, testset);
+    // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
     auto &grad =grad_sum;
@@ -236,3 +264,7 @@ void test_rnn_full_step(){
     print(ds_grad);
     print('\n');
 }
+
+}//namespace rnn::simple_model::test
+}//namespace rnn::simple_model
+}//namespace rnn

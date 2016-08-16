@@ -29,7 +29,7 @@ stdenv.mkDerivation {
                    wget jdk zip unzip
                    cmake pkgconfig clang_38 clang-analyzer
                    boost
-                   hdf5 hdf5-cpp zeromq
+                   hdf5 hdf5-cpp liblbfgs zeromq
                    tbb openblas  
                  ];
   shellHook = ''

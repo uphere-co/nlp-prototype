@@ -3,6 +3,7 @@
 #include <cmath>
 #include <utility>
 #include <random>
+#include <algorithm>
 
 #include <gsl.h>
 
@@ -15,6 +16,7 @@ namespace rnn{
 namespace simple_model{
 struct Param{
     static constexpr auto dim = rnn::config::word_dim;
+    using raw_type = std::vector<rnn::type::float_t>;
     using value_type = rnn::type::float_t;
     using mat_type   = util::math::Matrix<value_type, dim, dim>;
     using vec_type   = util::math::Vector<value_type, dim>;
@@ -29,6 +31,9 @@ struct Param{
           : w_left{std::move(w_left)}, w_right{std::move(w_right)},
             bias{std::move(bias)}, u_score{std::move(u_score)} {}
     Param() {}
+
+    raw_type serialize() const;
+
     mat_type w_left;
     mat_type w_right;
     vec_type bias;
@@ -40,11 +45,9 @@ Param operator +(const Param& x, const Param& y);
 Param operator -(const Param& x, const Param& y);
 // Param operator *(Param::value_type x, const Param& y);
 
-Param deserializeParam(std::vector<rnn::type::float_t> &param_raw);
+Param deserializeParam(Param::raw_type &param_raw);
 Param randomParam(Param::value_type scale);
 Param load_param();
 
 }//namespace rnn::simple_model
 }//namespace rnn
-
-

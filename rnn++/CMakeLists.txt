@@ -21,8 +21,10 @@ add_executable(app app/simple_parser parser/compute parser/config parser/node pa
                    parser/parser parser/voca parser/wordvec 
                    utils/string utils/hdf5 utils/math tests/test_simple_model)
 #https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
-target_link_libraries(app hdf5_cpp hdf5_hl_cpp tbb)
+target_link_libraries(app hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
-add_executable(gsl boilerplate/gsl)
-add_executable(string boilerplate/string)
-add_executable(math boilerplate/math)
+#add_executable(gsl boilerplate/gsl)
+#add_executable(string boilerplate/string)
+#add_executable(math boilerplate/math)
+#add_executable(bfgs boilerplate/lbfgs)
+#target_link_libraries(bfgs lbfgs)
