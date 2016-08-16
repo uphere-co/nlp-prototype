@@ -65,6 +65,7 @@ renormalizeIndexM :: Index -> Operand -> Codegen Operand
 renormalizeIndexM (_,s,_) x = if s == 0 then return x else iadd x (ival s)
 
 flattenByM :: [Operand] -> [Int] -> Codegen Operand
+flattenByM [] _ = return (ival 0)
 flattenByM is fac = do
   (i1:irest) <-
     zipWithM (\x y -> if y == 1 then return x else imul x (ival y)) is fac 
@@ -206,7 +207,7 @@ llvmCodegen name (MExp (Fun sym hs) _ _)         = do
 llvmCodegen name (MExp (Sum is h1) m _)          = do
   sumref <- alloca double
   store sumref (fval 0)
-  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
+  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s)
       innerstmt = do
         mkInnerbody (justLookup h1 m)
         s <- load sumref
@@ -242,7 +243,7 @@ llvmAST name syms v =
         store rref val
         ret_
       else do
-        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
+        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s)
             innerstmt = do
               theindex <- flatIndexM is =<< mapM getIndex is
               mkInnerbody v
