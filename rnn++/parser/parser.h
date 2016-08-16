@@ -41,6 +41,7 @@ struct VocaInfo{
 };
 
 struct TokenizedSentences{
+    using c_iter = std::vector<std::string>::const_iterator;
     TokenizedSentences(std::string tokenized_file);
     std::vector<std::string> val;
 };
