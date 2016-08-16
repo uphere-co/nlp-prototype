@@ -30,18 +30,46 @@ type Index = (IndexSymbol,Int,Int)
 indexName :: Index -> IndexSymbol
 indexName = view _1
 
-data Variable = V String [Index] deriving (Show, Eq)
+data Symbol = Atom String
+            | Deriv String String
+            deriving (Show, Eq)
+
+instance HasTrie Symbol where
+  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,String) :->: b)
+  
+  trie :: (Symbol -> b) -> (Symbol :->: b)
+  trie f = SymbolTrie (trie (f . Atom)) (trie (f . uncurry Deriv))
+
+  untrie :: (Symbol :->: b) -> Symbol -> b
+  untrie (SymbolTrie a d) (Atom x) = untrie a x  
+  untrie (SymbolTrie a d) (Deriv f x) = untrie d (f,x)
+
+  enumerate :: (Symbol :->: b) -> [(Symbol,b)]
+  enumerate (SymbolTrie a d) = enum' Atom a `weave` enum' (uncurry Deriv) d  
+
+instance Hashable Symbol where
+  hashWithSalt :: Hash -> Symbol -> Hash
+  hashWithSalt s (Atom x)    = s `hashWithSalt` (0 :: Int) `hashWithSalt` x
+  hashWithSalt s (Deriv f x) = s `hashWithSalt` (1 :: Int) `hashWithSalt` f `hashWithSalt` x
+  
+
+showSym (Atom s) = s
+showSym (Deriv f x) = ('d':f)++('d':x)  -- for the time being we will try to use only ascii character. Later, let's make a string-mangling function.  
+
+mkSym = Atom
+
+data Variable = V Symbol [Index] deriving (Show, Eq)
 
 varName :: Variable -> String
-varName (V v _) = v
+varName (V v _) = showSym v
 
 showVar :: Variable -> String
 showVar (V x k)
-  | null k    = x
-  | otherwise = x ++ "_" ++ concat (map indexName k)
+  | null k    = showSym x
+  | otherwise = showSym x ++ "_" ++ concat (map indexName k)
 
 instance HasTrie Variable where
-  data (Variable :->: b) = VariableTrie ((String,[Index]) :->: b)
+  data (Variable :->: b) = VariableTrie ((Symbol,[Index]) :->: b)
   
   trie :: (Variable -> b) -> (Variable :->: b)
   trie f = VariableTrie (trie (f . uncurry V))
@@ -296,7 +324,7 @@ data Pos = Pos1 | Pos2
 
 type IdxPoint = [(IndexSymbol,Int)]
 
-data Args a = Args { varIndexed :: HashMap String (Vector a) }
+data Args a = Args { argMap :: HashMap Symbol (Vector a) }
 
 type FunctionMap a = HashMap String ([a] -> a)
 

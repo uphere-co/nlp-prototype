@@ -23,7 +23,7 @@ import           Symbolic.Util
 
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Variable -> a
 evalVar args ip (V s is) = let i's = map (flip justLookupL ip . indexName) is
-                               vs = justLookup s (varIndexed args)
+                               vs = justLookup s (argMap args)
                            in vs ! flatIndex is i's
 
 evalDelta :: (Num a) => [(IndexSymbol,Int)] -> IndexSymbol -> IndexSymbol -> a

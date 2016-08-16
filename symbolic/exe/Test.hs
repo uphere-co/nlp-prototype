@@ -60,7 +60,7 @@ test8 = do
   -- digraph e2
 
   let e3 = mul [varx, varx, mul [varx, varx , varx] , varx]
-      de3 = (sdiff (V "x" []) e3 ::  MExp Int)
+      de3 = (sdiff (V (mkSym "x") []) e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
   digraph de3
@@ -82,8 +82,8 @@ test10 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
   let e = mul [varx, vary] :: MExp Int
-      args = Args (HM.fromList [("x",VS.fromList [2])
-                               ,("y",VS.fromList [3])])
+      args = Args (HM.fromList [(mkSym "x",VS.fromList [2])
+                               ,(mkSym "y",VS.fromList [3])])
   printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
   
   printf "val(e) = %d\n" (eval (mexpMap e) (args,[],mexpExp e))
@@ -99,7 +99,7 @@ test11 = do
       e5 = sum_ [idxm,idxn] e4
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
   let vals = VS.fromList [1,2,3,4]
-      args = Args (HM.fromList [("x",vals)])
+      args = Args (HM.fromList [(mkSym "x",vals)])
   forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
     let idx = [("i",i),("j",j)] 
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
@@ -114,12 +114,12 @@ test12 = do
   let e1 :: MExp Int
       e1 = add' [mul' [val 2,varx],vary]
       fe1 = fun "f" [e1,varx]
-      dfe1 = sdiff (V "x" []) fe1
+      dfe1 = sdiff (V (mkSym "x") []) fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
   printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
   --  digraph dfe1
-  let args = Args (HM.fromList [("x",VS.fromList [2])
-                               ,("y",VS.fromList [3])])
+  let args = Args (HM.fromList [(mkSym "x",VS.fromList [2])
+                               ,(mkSym "y",VS.fromList [3])])
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
@@ -140,7 +140,7 @@ test13 = do
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
   
-  cPrint "testfunction" [V "x" [], V "y" [idxi,idxj], V "z" [idxi] ] exp5
+  cPrint "testfunction" [V (mkSym "x") [], V (mkSym "y") [idxi,idxj], V (mkSym "z") [idxi] ] exp5
 
 
 test14 :: IO ()
@@ -170,7 +170,7 @@ test15 = do
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
       
   forM_ [1,2,3,4] $ \i -> do
     let iptI = [("I",i)]
@@ -186,7 +186,7 @@ test16 = do
       exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
   prettyPrintR exp2
   -- digraph exp
 
@@ -203,7 +203,7 @@ test17 = do
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (V "x" [idxk]) exp1
+      exp' = sdiff (V (mkSym "x") [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "
@@ -211,7 +211,7 @@ test17 = do
 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]

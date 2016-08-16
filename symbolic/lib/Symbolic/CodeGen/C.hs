@@ -71,8 +71,7 @@ mkCFunction typ name decllst bodylst =
 
 mkArgs :: [Variable] -> [CDecl]
 mkArgs = map mkArg
- where -- mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
-       mkArg (V s is) = mkDecl CDoubleType (length is) s Nothing
+ where mkArg (V s is) = mkDecl CDoubleType (length is) (showSym s) Nothing
 
 mkFor :: String -> Int -> Int -> CStat -> CStat
 mkFor name start end stmts =
@@ -84,8 +83,8 @@ mkFor name start end stmts =
 mkVar :: String -> CExpr
 mkVar name = CVar (ident name) nodeinfo
 
-mkIVar :: (Foldable t) => String -> t IndexSymbol -> CExpr
-mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar name) is
+mkIVar :: (Foldable t) => Symbol -> t IndexSymbol -> CExpr
+mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar (showSym name)) is
 
 mkUnary :: String -> CUnaryOp -> CExpr
 mkUnary name op = CUnary op (mkVar name) nodeinfo
@@ -124,7 +123,6 @@ cPrint' name (MExp (Delta i j) _ _)  = [ CIf cond  stru (Just sfal) nodeinfo ]
 cPrint' _    (MExp (CDelta _ _ _) _ _) = error "cPrint' undefined for CDelta case"        
 cPrint' name (MExp (Var v)     _ _)  = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
-                -- Simple s -> mkVar s
                 V s is -> mkIVar s (map indexName is)
 cPrint' name (MExp (Val n)     _ _)  = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (MExp (Add hs)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]

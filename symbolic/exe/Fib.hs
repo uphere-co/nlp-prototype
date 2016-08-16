@@ -60,7 +60,7 @@ testfib = do
   -- let lexp1 = expfib 10
   let n = 5
       lexp1 = expfib n :: MExp Int
-      lexp2 = dexpfib (V "x" [],n)
+      lexp2 = dexpfib (V (mkSym "x") [],n)
   prettyPrintR $ lexp1
   prettyPrintR $ lexp2    
   -- (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
