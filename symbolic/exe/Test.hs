@@ -20,7 +20,7 @@ import           Data.MemoTrie
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
-import           Symbolic.CodeGen.C
+-- import           Symbolic.CodeGen.C
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Predefined
@@ -60,7 +60,7 @@ test8 = do
   -- digraph e2
 
   let e3 = mul [varx, varx, mul [varx, varx , varx] , varx]
-      de3 = (sdiff (Simple "x") e3 ::  MExp Int)
+      de3 = (sdiff (Indexed "x" []) e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
   digraph de3
@@ -82,7 +82,8 @@ test10 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
   let e = mul [varx, vary] :: MExp Int
-      args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
+      args = Args (HM.fromList [("x",VS.fromList [2])
+                               ,("y",VS.fromList [3])])
   printf "e = %s\n"  ((prettyPrint . exp2RExp) e :: String)
   
   printf "val(e) = %d\n" (eval (mexpMap e) (args,[],mexpExp e))
@@ -98,7 +99,7 @@ test11 = do
       e5 = sum_ [idxm,idxn] e4
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
   let vals = VS.fromList [1,2,3,4]
-      args = Args HM.empty (HM.fromList [("x",vals)])
+      args = Args (HM.fromList [("x",vals)])
   forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
     let idx = [("i",i),("j",j)] 
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
@@ -113,14 +114,16 @@ test12 = do
   let e1 :: MExp Int
       e1 = add' [mul' [val 2,varx],vary]
       fe1 = fun "f" [e1,varx]
-      dfe1 = sdiff (Simple "x") fe1
+      dfe1 = sdiff (Indexed "x" []) fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
   printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
   --  digraph dfe1
-  let args = Args (HM.fromList [("x",2),("y",3)]) (HM.empty)
+  let args = Args (HM.fromList [("x",VS.fromList [2])
+                               ,("y",VS.fromList [3])])
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
+{- 
 test13 :: IO ()
 test13 = do
   let ?expHash = trie hash
@@ -138,6 +141,7 @@ test13 = do
   putStrLn "\n---------------------------------------\n"
   
   cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
+-}
 
 test14 :: IO ()
 test14 = do
@@ -166,7 +170,7 @@ test15 = do
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [("x",xvals),("y",yvals)])
       
   forM_ [1,2,3,4] $ \i -> do
     let iptI = [("I",i)]
@@ -182,7 +186,7 @@ test16 = do
       exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [("x",xvals),("y",yvals)])
   prettyPrintR exp2
   -- digraph exp
 
@@ -207,7 +211,7 @@ test17 = do
 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [("x",xvals),("y",yvals)])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]

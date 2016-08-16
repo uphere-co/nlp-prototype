@@ -65,6 +65,7 @@ renormalizeIndexM :: Index -> Operand -> Codegen Operand
 renormalizeIndexM (_,s,_) x = if s == 0 then return x else iadd x (ival s)
 
 flattenByM :: [Operand] -> [Int] -> Codegen Operand
+flattenByM [] _ = return (ival 0)
 flattenByM is fac = do
   (i1:irest) <-
     zipWithM (\x y -> if y == 1 then return x else imul x (ival y)) is fac 
@@ -193,9 +194,7 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   j <- iadd (ival startjs) j0
   x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
   assign name x
-
-  --error "CDelta not implemented"
-llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
+-- llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
 llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
    mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
@@ -208,7 +207,7 @@ llvmCodegen name (MExp (Fun sym hs) _ _)         = do
 llvmCodegen name (MExp (Sum is h1) m _)          = do
   sumref <- alloca double
   store sumref (fval 0)
-  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
+  let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s)
       innerstmt = do
         mkInnerbody (justLookup h1 m)
         s <- load sumref
@@ -244,7 +243,7 @@ llvmAST name syms v =
         store rref val
         ret_
       else do
-        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s+1)
+        let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s)
             innerstmt = do
               theindex <- flatIndexM is =<< mapM getIndex is
               mkInnerbody v
@@ -255,6 +254,6 @@ llvmAST name syms v =
         foldr (.) id (map mkFor is) innerstmt
         ret_
   where
-    mkarg (Simple n) = (double,AST.Name n)
+    -- mkarg (Simple n) = (double,AST.Name n)
     mkarg (Indexed n _) = (ptr double,AST.Name n)
     symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)

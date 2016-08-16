@@ -136,7 +136,7 @@ test3 = do
   let ?expHash = trie hash
   prettyPrintR testexp7
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Simple "x", Simple "y" ] testexp7
+              llvmAST "fun1" [ Indexed "x" [], Indexed "y" [] ] testexp7
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -144,9 +144,9 @@ test3 = do
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
                 yref <- getElem (ptr double) "args" (ival 1)
-                x <- load xref
-                y <- load yref
-                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), x, y ]
+                -- x <- load xref
+                -- y <- load yref
+                call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
                 ret_
   runJIT ast $ \mfn -> 
     case mfn of
@@ -246,7 +246,7 @@ test7 = do
   -- comparison
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [("x",xvals),("y",yvals)])
   forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
     let iptI = [("I",i)]
         iptj = [("j",j)]
@@ -286,13 +286,12 @@ test8 = do
   putStrLn "======================"
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args HM.empty (HM.fromList [("x",xvals),("y",yvals)])
+      args = Args (HM.fromList [("x",xvals),("y",yvals)])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]
         iptk = [("k",k)]
     printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-main :: IO ()
-main = test8
+main = test3
 

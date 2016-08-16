@@ -13,6 +13,6 @@ import           Test
 
 main :: IO ()
 main = do
-  testfib
-  test17
+  -- testfib
+  test9
     
