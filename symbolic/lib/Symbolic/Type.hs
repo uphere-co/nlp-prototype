@@ -30,30 +30,32 @@ type Index = (IndexSymbol,Int,Int)
 indexName :: Index -> IndexSymbol
 indexName = view _1
 
-data Symbol = Indexed String [Index]
+data Symbol = V String [Index]
             deriving (Show, Eq)
 
 varName :: Symbol -> String
-varName (Indexed v _) = v
+varName (V v _) = v
 
 showSym :: Symbol -> String
-showSym (Indexed x k) = x ++ "_" ++ concat (map indexName k)
+showSym (V x k)
+  | null k    = x
+  | otherwise = x ++ "_" ++ concat (map indexName k)
 
 instance HasTrie Symbol where
   data (Symbol :->: b) = SymbolTrie ((String,[Index]) :->: b)
   
   trie :: (Symbol -> b) -> (Symbol :->: b)
-  trie f = SymbolTrie (trie (f . uncurry Indexed))
+  trie f = SymbolTrie (trie (f . uncurry V))
 
   untrie :: (Symbol :->: b) -> Symbol -> b
-  untrie (SymbolTrie i) (Indexed x k) = untrie i (x,k)
+  untrie (SymbolTrie i) (V x k) = untrie i (x,k)
 
   enumerate :: (Symbol :->: b) -> [(Symbol,b)]
-  enumerate (SymbolTrie i) = enum' (uncurry Indexed) i  
+  enumerate (SymbolTrie i) = enum' (uncurry V) i  
 
 instance Hashable Symbol where
   hashWithSalt :: Hash -> Symbol -> Hash
-  hashWithSalt s (Indexed x k) = s `hashWithSalt` x `hashWithSalt` k
+  hashWithSalt s (V x k) = s `hashWithSalt` x `hashWithSalt` k
 
 data Exp a = Zero
            | One
@@ -296,7 +298,6 @@ data Pos = Pos1 | Pos2
 type IdxPoint = [(IndexSymbol,Int)]
 
 data Args a = Args { varIndexed :: HashMap String (Vector a) }
-
 
 type FunctionMap a = HashMap String ([a] -> a)
 

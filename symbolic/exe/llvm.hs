@@ -72,8 +72,6 @@ runJITASTPrinter printer ast vargs vres =
               vr' <- VS.freeze mv
               printer vr'
 
-
-
 testexp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 testexp1 = mul [val 1,val 3]
 
@@ -110,7 +108,7 @@ test2 = do
   
   prettyPrintR exp1
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "y" [idxi, idxj] ] exp1
+              llvmAST "fun1" [ V "y" [idxi, idxj] ] exp1
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -136,7 +134,7 @@ test3 = do
   let ?expHash = trie hash
   prettyPrintR testexp7
   let ast = runLLVM initModule $ do
-              llvmAST "fun1" [ Indexed "x" [], Indexed "y" [] ] testexp7
+              llvmAST "fun1" [ V "x" [], V "y" [] ] testexp7
               external double "sin" [(double, AST.Name "x")] 
              
               define void "main" [ (ptr double, AST.Name "res")
@@ -144,8 +142,6 @@ test3 = do
                                  ] $ do
                 xref <- getElem (ptr double) "args" (ival 0)
                 yref <- getElem (ptr double) "args" (ival 1)
-                -- x <- load xref
-                -- y <- load yref
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
                 ret_
   runJIT ast $ \mfn -> 
@@ -201,7 +197,7 @@ test5 = do
   prettyPrintR (testexp8 :: MExp Double)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
-  let ast = mkAST testexp8  [ Indexed "x" [idxi,idxj], Indexed "y" [idxj] ]
+  let ast = mkAST testexp8  [ V "x" [idxi,idxj], V "y" [idxj] ]
       vx = VS.fromList [1..100] :: VS.Vector Double
       vy = VS.fromList [1..10]  :: VS.Vector Double
       vr = VS.replicate 10 0    :: VS.Vector Double
@@ -218,7 +214,7 @@ test6 = do
       idxk = ("k",1,4)
   prettyPrintR (exp1 :: MExp Double)
   -- digraph exp
-  let ast = mkAST exp1 [ Indexed "x" [idxi,idxj], Indexed "y" [idxk] ]
+  let ast = mkAST exp1 [ V "x" [idxi,idxj], V "y" [idxk] ]
       vx  = VS.fromList [1,2,3,4,5,6]
       vy  = VS.fromList [11,12,13,14]  :: VS.Vector Double
       vr  = VS.replicate 10 0    :: VS.Vector Double
@@ -237,7 +233,7 @@ test7 = do
       exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   prettyPrintR exp2
   -- digraph exp2
-  let ast = mkAST exp2 [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+  let ast = mkAST exp2 [ V "x" [idxi], V "y" [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Double
       vr = VS.replicate 8 0    :: VS.Vector Double
@@ -267,12 +263,12 @@ test8 = do
   let exp1 :: MExp Double
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (Indexed "x" [idxk]) exp1
+      exp' = sdiff (V "x" [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "
   prettyPrintR exp'
-  let ast = mkAST exp' [ Indexed "x" [idxi], Indexed "y" [idxj] ]
+  let ast = mkAST exp' [ V "x" [idxi], V "y" [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Double
       vr = VS.replicate 8 0    :: VS.Vector Double

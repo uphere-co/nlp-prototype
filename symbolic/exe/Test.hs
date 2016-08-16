@@ -20,7 +20,7 @@ import           Data.MemoTrie
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
--- import           Symbolic.CodeGen.C
+import           Symbolic.CodeGen.C
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Predefined
@@ -60,7 +60,7 @@ test8 = do
   -- digraph e2
 
   let e3 = mul [varx, varx, mul [varx, varx , varx] , varx]
-      de3 = (sdiff (Indexed "x" []) e3 ::  MExp Int)
+      de3 = (sdiff (V "x" []) e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
   digraph de3
@@ -114,7 +114,7 @@ test12 = do
   let e1 :: MExp Int
       e1 = add' [mul' [val 2,varx],vary]
       fe1 = fun "f" [e1,varx]
-      dfe1 = sdiff (Indexed "x" []) fe1
+      dfe1 = sdiff (V "x" []) fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
   printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
   --  digraph dfe1
@@ -123,7 +123,7 @@ test12 = do
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
-{- 
+
 test13 :: IO ()
 test13 = do
   let ?expHash = trie hash
@@ -140,8 +140,8 @@ test13 = do
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
   
-  cPrint "testfunction" [Simple "x", Indexed "y" [idxi,idxj], Indexed "z" [idxi] ] exp5
--}
+  cPrint "testfunction" [V "x" [], V "y" [idxi,idxj], V "z" [idxi] ] exp5
+
 
 test14 :: IO ()
 test14 = do
@@ -203,7 +203,7 @@ test17 = do
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (Indexed "x" [idxk]) exp1
+      exp' = sdiff (V "x" [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "

@@ -194,7 +194,7 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   j <- iadd (ival startjs) j0
   x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
   assign name x
-llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
+llvmCodegen name (MExp (Var (V s is)) _ _) = 
    mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
@@ -252,5 +252,5 @@ llvmAST name syms v =
         foldr (.) id (map mkFor is) innerstmt
         ret_
   where
-    mkarg (Indexed n _) = (ptr double,AST.Name n)
+    mkarg (V n _) = (ptr double,AST.Name n)
     symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)

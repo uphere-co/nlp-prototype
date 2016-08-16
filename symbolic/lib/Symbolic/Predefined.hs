@@ -15,10 +15,10 @@ import           Symbolic.Type
 --
 
 var :: String -> MExp a
-var s = MExp (Var (Indexed s [])) HM.empty HS.empty
+var s = MExp (Var (V s [])) HM.empty HS.empty
 
 ivar :: String -> [Index] -> MExp a
-ivar n i = MExp (Var (Indexed n i)) HM.empty (HS.fromList i)
+ivar n i = MExp (Var (V n i)) HM.empty (HS.fromList i)
 
 varx :: MExp a
 varx = var "x"

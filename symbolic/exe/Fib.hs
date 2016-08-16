@@ -60,22 +60,10 @@ testfib = do
   -- let lexp1 = expfib 10
   let n = 5
       lexp1 = expfib n :: MExp Int
-      lexp2 = dexpfib (Indexed "x" [],n) -- (Simple "x",n) -- (Indexed "x" ["j"],n)
+      lexp2 = dexpfib (V "x" [],n)
   prettyPrintR $ lexp1
   prettyPrintR $ lexp2    
   -- (printf "lexp2: %x\n" . untrie ?expHash . mexpExp) lexp2
 
-{-
-test7 :: IO ()
-test7 = do
-  let ?expHash = trie hash :: Exp Double :->: Hash
-  let n = 100
-      -- lexp1 = expfib n
-      -- lexp2 = dexpfib (Indexed "x" ["j"],n)
-  -- prettyPrintR lexp1
-  let args = [(Simple "x",1),(Simple "y",1 :: Double)]
-  -- let args' = [(Indexed "x" 1,1),(Indexed "y" 1,1 :: Double)]  
-  prettyPrintE $ seval args [] exp3 -- eval_fib args n -- eval args lexp1
--}
 
 

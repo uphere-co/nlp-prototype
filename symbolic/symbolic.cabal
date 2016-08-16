@@ -44,7 +44,7 @@ Library
                         unordered-containers,
                         vector
   Exposed-modules:
-                        -- Symbolic.CodeGen.C
+                        Symbolic.CodeGen.C
                         Symbolic.CodeGen.LLVM.Exp
                         Symbolic.CodeGen.LLVM.JIT
                         Symbolic.CodeGen.LLVM.Operation

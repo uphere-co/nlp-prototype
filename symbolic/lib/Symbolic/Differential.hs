@@ -60,7 +60,7 @@ diff' m t (s,e) =
 
 -- | differentiation of variables
 dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
-dvar (Indexed x1 j) (Indexed y1 k)
+dvar (V x1 j) (V y1 k)
   | x1 == y1 && length j == length k = let djk = zipWith delta j k
                                        in mul' djk
   | otherwise = zero
