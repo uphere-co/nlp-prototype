@@ -205,8 +205,8 @@ test17 = do
       ?functionMap = HM.empty
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
-
-      exp' = sdiff HM.empty (V (mkSym "x") [idxk]) exp1
+      dm = HM.fromList [ ("y",["x"]) ]
+      exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "
@@ -214,7 +214,11 @@ test17 = do
 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
+      dydxvals = VS.fromList [0,1,1,0]
+      args = Args (HM.fromList [(mkSym "x",xvals)
+                               ,(mkSym "y",yvals)
+                               ,(Deriv "y" "x",dydxvals)
+                               ])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]
