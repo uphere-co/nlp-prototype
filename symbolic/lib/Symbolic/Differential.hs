@@ -20,8 +20,8 @@ import           Symbolic.Type
 diff'
   :: forall a. (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
   => HashMap Hash (MExp a)
-  -> ((Symbol,Exp a) :->: MExp a)
-  -> (Symbol,Exp a) -> MExp a
+  -> ((Variable,Exp a) :->: MExp a)
+  -> (Variable,Exp a) -> MExp a
 diff' m t (s,e) =
   case e of
     Zero         -> zero 
@@ -59,16 +59,13 @@ diff' m t (s,e) =
                              
 
 -- | differentiation of variables
-dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> Symbol -> MExp a
--- dvar (Simple s)    (Simple s')   = if s == s' then one else zero
--- dvar (Simple _)    _             = zero
--- dvar _             (Simple _ )   = zero
-dvar (Indexed x1 j) (Indexed y1 k)
+dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Variable -> Variable -> MExp a
+dvar (V x1 j) (V y1 k)
   | x1 == y1 && length j == length k = let djk = zipWith delta j k
                                        in mul' djk
   | otherwise = zero
 
 -- | simple differentiation without complex memoization
-sdiff :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Symbol -> MExp a -> MExp a
+sdiff :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Variable -> MExp a -> MExp a
 sdiff s (MExp e m _) = let diff = fix (diff' m . trie) in diff (s,e)
 

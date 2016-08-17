@@ -69,10 +69,9 @@ mkCFunction typ name decllst bodylst =
       ccompound = CCompound [] bodylst  nodeinfo
   in CFunDef [typspec] cdeclr [] ccompound nodeinfo
 
-mkArgs :: [Symbol] -> [CDecl]
+mkArgs :: [Variable] -> [CDecl]
 mkArgs = map mkArg
- where mkArg (Simple s) = mkDecl CDoubleType 0 s Nothing
-       mkArg (Indexed s is) = mkDecl CDoubleType (length is) s Nothing
+ where mkArg (V s is) = mkDecl CDoubleType (length is) (showSym s) Nothing
 
 mkFor :: String -> Int -> Int -> CStat -> CStat
 mkFor name start end stmts =
@@ -84,8 +83,8 @@ mkFor name start end stmts =
 mkVar :: String -> CExpr
 mkVar name = CVar (ident name) nodeinfo
 
-mkIVar :: (Foldable t) => String -> t IndexSymbol -> CExpr
-mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar name) is
+mkIVar :: (Foldable t) => Symbol -> t IndexSymbol -> CExpr
+mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar (showSym name)) is
 
 mkUnary :: String -> CUnaryOp -> CExpr
 mkUnary name op = CUnary op (mkVar name) nodeinfo
@@ -124,8 +123,7 @@ cPrint' name (MExp (Delta i j) _ _)  = [ CIf cond  stru (Just sfal) nodeinfo ]
 cPrint' _    (MExp (CDelta _ _ _) _ _) = error "cPrint' undefined for CDelta case"        
 cPrint' name (MExp (Var v)     _ _)  = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
-                Simple s -> mkVar s
-                Indexed s is -> mkIVar s (map indexName is)
+                V s is -> mkIVar s (map indexName is)
 cPrint' name (MExp (Val n)     _ _)  = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (MExp (Add hs)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs
@@ -149,7 +147,7 @@ cPrint' name (MExp (Sum is h1)  m _) = [ mkExpr (mkAssign name (mkConst (mkF 0))
 cPrint' _name (MExp (Concat _i _hs)  _m _) = error "cPrint': Concat not implemented"
 
         
-cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> CTranslUnit
+cAST :: (?expHash :: Exp Double :->: Hash) => String -> [Variable] -> MExp Double -> CTranslUnit
 cAST name syms v = 
   let h_result = untrie ?expHash (mexpExp v)
       (_hashmap,table,depgraph) = mkDepGraphNoSum v
@@ -161,7 +159,8 @@ cAST name syms v =
       bodylst = decllst ++ bodylst' ++ [CBlockStmt (mkReturn (mkVar (hVar h_result))) ]
   in CTranslUnit [CFDefExt (mkCFunction CDoubleType name (mkArgs syms) bodylst)] nodeinfo
 
-cPrint :: (?expHash :: Exp Double :->: Hash) => String -> [Symbol] -> MExp Double -> IO ()
+cPrint :: (?expHash :: Exp Double :->: Hash) =>
+          String -> [Variable] -> MExp Double -> IO ()
 cPrint name syms v = let ctu = cAST name syms v in (putStrLn . render . pretty) ctu
 
 

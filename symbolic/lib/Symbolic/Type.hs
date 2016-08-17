@@ -30,46 +30,59 @@ type Index = (IndexSymbol,Int,Int)
 indexName :: Index -> IndexSymbol
 indexName = view _1
 
-data Symbol = --  Simple String |
-            Indexed String [Index]
+data Symbol = Atom String
+            | Deriv String String
             deriving (Show, Eq)
 
-{- 
-isSimple :: Symbol -> Bool
-isSimple (Simple _) = True
-isSimple _          = False
--}
-
-isIndexed :: Symbol -> Bool
-isIndexed (Indexed _ _) = True
-isIndexed _             = False
-
-varName :: Symbol -> String
--- varName (Simple v) = v
-varName (Indexed v _) = v
-
-showSym :: Symbol -> String
--- showSym (Simple str) = str
-showSym (Indexed x k) = x ++ "_" ++ concat (map indexName k)
-
 instance HasTrie Symbol where
-  data (Symbol :->: b) = SymbolTrie {- (String :->: b) -} ((String,[Index]) :->: b)
+  data (Symbol :->: b) = SymbolTrie (String :->: b) ((String,String) :->: b)
   
   trie :: (Symbol -> b) -> (Symbol :->: b)
-  trie f = SymbolTrie {- (trie (f . Simple)) -} (trie (f . uncurry Indexed))
+  trie f = SymbolTrie (trie (f . Atom)) (trie (f . uncurry Deriv))
 
   untrie :: (Symbol :->: b) -> Symbol -> b
-  -- untrie (SymbolTrie s _) (Simple x) = untrie s x
-  untrie (SymbolTrie i) (Indexed x k) = untrie i (x,k)
+  untrie (SymbolTrie a d) (Atom x) = untrie a x  
+  untrie (SymbolTrie a d) (Deriv f x) = untrie d (f,x)
 
   enumerate :: (Symbol :->: b) -> [(Symbol,b)]
-  -- enumerate (SymbolTrie s i) = enum' Simple s `weave` enum' (uncurry Indexed) i
-  enumerate (SymbolTrie i) = enum' (uncurry Indexed) i  
+  enumerate (SymbolTrie a d) = enum' Atom a `weave` enum' (uncurry Deriv) d  
 
 instance Hashable Symbol where
   hashWithSalt :: Hash -> Symbol -> Hash
-  -- hashWithSalt s (Simple str)  = s `hashWithSalt` str
-  hashWithSalt s (Indexed x k) = s `hashWithSalt` x `hashWithSalt` k
+  hashWithSalt s (Atom x)    = s `hashWithSalt` (0 :: Int) `hashWithSalt` x
+  hashWithSalt s (Deriv f x) = s `hashWithSalt` (1 :: Int) `hashWithSalt` f `hashWithSalt` x
+  
+
+showSym (Atom s) = s
+showSym (Deriv f x) = ('d':f)++('d':x)  -- for the time being we will try to use only ascii character. Later, let's make a string-mangling function.  
+
+mkSym = Atom
+
+data Variable = V Symbol [Index] deriving (Show, Eq)
+
+varName :: Variable -> String
+varName (V v _) = showSym v
+
+showVar :: Variable -> String
+showVar (V x k)
+  | null k    = showSym x
+  | otherwise = showSym x ++ "_" ++ concat (map indexName k)
+
+instance HasTrie Variable where
+  data (Variable :->: b) = VariableTrie ((Symbol,[Index]) :->: b)
+  
+  trie :: (Variable -> b) -> (Variable :->: b)
+  trie f = VariableTrie (trie (f . uncurry V))
+
+  untrie :: (Variable :->: b) -> Variable -> b
+  untrie (VariableTrie i) (V x k) = untrie i (x,k)
+
+  enumerate :: (Variable :->: b) -> [(Variable,b)]
+  enumerate (VariableTrie i) = enum' (uncurry V) i  
+
+instance Hashable Variable where
+  hashWithSalt :: Hash -> Variable -> Hash
+  hashWithSalt s (V x k) = s `hashWithSalt` x `hashWithSalt` k
 
 data Exp a = Zero
            | One
@@ -78,7 +91,7 @@ data Exp a = Zero
                 -- ^ delta for collective index
                 -- (collective index, index scheme, partition number (1-based))
            | Val a
-           | Var Symbol
+           | Var Variable
            | Add [Hash]
            | Mul [Hash]
            | Fun String [Hash]
@@ -122,7 +135,7 @@ data RExp a = RZero
             | RDelta Index Index
             | RCDelta Index [[Index]] Int
             | RVal a
-            | RVar Symbol
+            | RVar Variable
             | RAdd [RExp a]
             | RMul [RExp a]              
             | RFun String [RExp a]
@@ -153,7 +166,7 @@ instance HasTrie a => HasTrie (Exp a) where
                                 ((Index,Index) :->: b)
                                 ((Index,[[Index]],Int) :->: b)
                                 (a :->: b)
-                                (Symbol :->: b)
+                                (Variable :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
                                 ([Hash] :->: b)     -- ^ for Mul
                                 ((String,[Hash]) :->: b) -- ^ for Fun
@@ -311,9 +324,7 @@ data Pos = Pos1 | Pos2
 
 type IdxPoint = [(IndexSymbol,Int)]
 
-data Args a = Args { -- varSimple :: HashMap String a, 
-                     varIndexed :: HashMap String (Vector a) }
-
+data Args a = Args { argMap :: HashMap Symbol (Vector a) }
 
 type FunctionMap a = HashMap String ([a] -> a)
 

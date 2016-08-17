@@ -194,9 +194,8 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   j <- iadd (ival startjs) j0
   x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
   assign name x
--- llvmCodegen name (MExp (Var (Simple s)) _ _)     = assign name (local (AST.Name s))
-llvmCodegen name (MExp (Var (Indexed s is)) _ _) = 
-   mapM getIndex is >>= flatIndexM is >>= getElem double s >>= assign name
+llvmCodegen name (MExp (Var (V s is)) _ _) = 
+   mapM getIndex is >>= flatIndexM is >>= getElem double (showSym s) >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -222,7 +221,6 @@ llvmCodegen name (MExp (Concat i hs) m _is)    = do
   iI <- flatIndexM [i] =<< mapM getIndex [i]
   let es = map (flip justLookup m) hs
   r <- (\a -> splitIndexDisjointFM a es iI) $ \e -> do
-    -- let is = (HS.toList . mexpIdx) e
     mkInnerbody e
     let innername = hVar (getMHash e)
     v <- getvar innername
@@ -231,7 +229,7 @@ llvmCodegen name (MExp (Concat i hs) m _is)    = do
 
 -- | generate LLVM AST from a symbolic expression
 llvmAST :: (?expHash :: Exp Double :->: Hash) =>
-           String -> [Symbol] -> MExp Double -> LLVM ()
+           String -> [Variable] -> MExp Double -> LLVM ()
 llvmAST name syms v =
   define T.void name symsllvm $ do
     let rref = LocalReference (ptr double) (AST.Name "result")
@@ -254,6 +252,5 @@ llvmAST name syms v =
         foldr (.) id (map mkFor is) innerstmt
         ret_
   where
-    -- mkarg (Simple n) = (double,AST.Name n)
-    mkarg (Indexed n _) = (ptr double,AST.Name n)
+    mkarg (V n _) = (ptr double,AST.Name (showSym n))
     symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)

@@ -14,30 +14,29 @@ import           Data.Monoid               ((<>))
 import           Symbolic.Type
 --
 
-var :: String -> MExp a
--- var s = MExp (Var (Simple s)) HM.empty HS.empty
-var s = MExp (Var (Indexed s [])) HM.empty HS.empty
+var :: Symbol -> MExp a
+var s = MExp (Var (V s [])) HM.empty HS.empty
 
-ivar :: String -> [Index] -> MExp a
-ivar n i = MExp (Var (Indexed n i)) HM.empty (HS.fromList i)
+ivar :: Symbol -> [Index] -> MExp a
+ivar n i = MExp (Var (V n i)) HM.empty (HS.fromList i)
 
 varx :: MExp a
-varx = var "x"
+varx = var (mkSym "x")
 
 vary :: MExp a
-vary = var "y"
+vary = var (mkSym "y")
 
 varz :: MExp a
-varz = var "z"
+varz = var (mkSym "z")
 
 x_ :: [Index] -> MExp a
-x_ i = ivar "x" i
+x_ i = ivar (mkSym "x") i
 
 y_ :: [Index] -> MExp a
-y_ i = ivar "y" i
+y_ i = ivar (mkSym "y") i
 
 z_ :: [Index] -> MExp a
-z_ i = ivar "z" i
+z_ i = ivar (mkSym "z") i
 
 one :: MExp a
 one = MExp One HM.empty HS.empty

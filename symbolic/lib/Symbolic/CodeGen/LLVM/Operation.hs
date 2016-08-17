@@ -104,7 +104,6 @@ data CodegenState
     currentBlock :: AST.Name                     -- Name of the active block to append to
   , blocks       :: Map.Map AST.Name BlockState  -- Blocks for function
   , symtab       :: SymbolTable              -- Function scope symbol table
-  -- , symval       :: SymbolTable              -- Function scope symbol-value table
   , blockCount   :: Int                      -- Count of basic blocks
   , count        :: Word                     -- Count of unnamed instructions
   , names        :: Names                    -- Name Supply
@@ -232,11 +231,6 @@ getvar var = do
 -- References
 local :: AST.Name -> Operand
 local = LocalReference double
-
-{-
-idxval :: IndexSymbol -> Operand
-idxval = LocalReference i64 . AST.Name
--}
 
 global :: AST.Name -> C.Constant
 global = C.GlobalReference double
