@@ -96,6 +96,7 @@ Executable autoencode
                         --
                         autoencode
 
+--
 -- rnnresult program. 
 --
 Executable rnnresult
@@ -122,7 +123,33 @@ Executable rnnresult
                         --
                         autoencode
 
+--
+-- symbolic program. 
+--
+Executable symbolic
+  Main-is:              symbolic.hs
+  hs-source-dirs:       exe
 
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base                            >= 4.7 && < 4.9,
+                        --
+                        hashable,
+                        MemoTrie,
+                        symbolic,
+                        unordered-containers,  
+                        --
+                        autoencode
+
+
+--                        
 -- treebank program. 
 --
 Executable treebank
