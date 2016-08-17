@@ -32,14 +32,10 @@ source-repository HEAD
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
-                        -- accelerate                      == 2.*,
-                        -- accelerate-cuda                 == 2.*,
-                        -- accelerate-io                   == 2.*,
                         attoparsec,
                         bytestring,
                         conduit,
                         conduit-extra,
-                        -- cuda,
                         resourcet,
                         text,
                         transformers,
@@ -49,7 +45,6 @@ Library
                         
 
   Exposed-modules:
-                        -- Data.Array.Accelerate.Matrix
                         Data.Vector.Storable.Matrix
                         NLP.RecursiveNN.AutoEncoder
                         NLP.SyntaxTree.Binarize
@@ -60,14 +55,12 @@ Library
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
                         Numeric.Kahan
-                        -- Symbolic.Diff
-                        -- Symbolic.Type
-                        -- Symbolic.Parser
   Other-modules:        
 
-  ghc-options:          -O2 -Wall -funbox-strict-fields
+  ghc-options:          -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind
   ghc-prof-options:     -caf-all -auto-all
-  
+
+--  
 -- autoencoder program. 
 --
 Executable autoencode
@@ -75,7 +68,7 @@ Executable autoencode
   hs-source-dirs:       exe
 
   other-modules:       
-  ghc-options:          -Wall -O2
+  ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
 
@@ -85,9 +78,6 @@ Executable autoencode
                         
   build-depends:        base                            >= 4.7 && < 4.9,
                         --
-                        -- accelerate                      == 2.*,
-                        -- accelerate-cuda                 == 2.*,
-                        -- accelerate-io                   == 2.*,
                         attoparsec,
                         bytestring,
                         unordered-containers,
@@ -104,7 +94,7 @@ Executable rnnresult
   hs-source-dirs:       exe
 
   other-modules:       
-  ghc-options:          -Wall -O2
+  ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
 
@@ -131,7 +121,7 @@ Executable symbolic
   hs-source-dirs:       exe
 
   other-modules:       
-  ghc-options:          -Wall -O2
+  ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
 
@@ -148,7 +138,6 @@ Executable symbolic
                         --
                         autoencode
 
-
 --                        
 -- treebank program. 
 --
@@ -157,7 +146,7 @@ Executable treebank
   hs-source-dirs:       exe
 
   other-modules:       
-  ghc-options:          -Wall -O2
+  ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
 
@@ -176,6 +165,7 @@ Executable treebank
                         --
                         autoencode
 
+--                        
 -- wordvecparser program. 
 --
 Executable wordvecparser
@@ -186,7 +176,7 @@ Executable wordvecparser
   ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
-
+                        -fno-warn-orphans
   ghc-prof-options:     -auto-all
   extra-libraries:     
   c-sources:            
@@ -204,7 +194,8 @@ Executable wordvecparser
 
 
 -- 
-
+-- lbfgs program
+--
 
 Executable lbfgs
   Main-is:              lbfgs.hs

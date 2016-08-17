@@ -84,7 +84,7 @@ test = do
              , lbfgsL1NormCoefficient = Nothing
              }
             
-
+main :: IO ()
 main = do
     putStrLn "lbfgs test"
     (r,_) <- test

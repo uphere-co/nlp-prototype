@@ -1,7 +1,7 @@
 module Numeric.Kahan where
 
 import qualified Data.List            as L
-import           Data.Vector.Storable      ((!), Vector)
+import           Data.Vector.Storable      (Vector)
 import qualified Data.Vector.Storable as V
 
 -- Naive summation is not good. We should reduce error using Kahan summation algorithm.
@@ -13,10 +13,10 @@ unKahan :: KahanSum -> Float
 unKahan (KahanSum s _) = s
 
 kahanAdd :: KahanSum -> Float -> KahanSum
-kahanAdd (KahanSum sum c) x = KahanSum sum' c'
-  where sum' = sum + y
-        c'   = (sum' - sum) - y
-        y    = x - c
+kahanAdd (KahanSum s c) x = KahanSum s' c'
+  where s' = s + y
+        c' = (s' - s) - y
+        y  = x - c
 
 kahanZero :: KahanSum
 kahanZero = KahanSum 0 0

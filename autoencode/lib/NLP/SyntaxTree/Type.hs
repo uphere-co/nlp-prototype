@@ -5,7 +5,7 @@
 
 module NLP.SyntaxTree.Type where
 
-import           Data.Text                   (Text(..))
+import           Data.Text                   (Text)
 
 data PennTree = PT Text [PennTree]
               | PN Text
@@ -35,6 +35,7 @@ rootElem :: BNTree e a -> Either e a
 rootElem (BNTLeaf x) = Right x
 rootElem (BNTNode x _ _) = Left x
 
+fromEither :: Either a a -> a
 fromEither = either id id
 
 binTree2BNTree :: BinTree a -> BNTree () a

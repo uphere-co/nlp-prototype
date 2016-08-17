@@ -7,7 +7,6 @@ import           Control.Monad.IO.Class    (MonadIO(..), liftIO)
 import           Control.Monad.ST
 import           Data.Function             (on)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.List           as L
 import           Data.Text                 (Text)
 import qualified Data.Text           as T
 import qualified Data.Vector.Algorithms.Intro as VA
@@ -16,7 +15,6 @@ import qualified Data.Vector as VB
 import           Foreign.Ptr
 import           Foreign.Storable
 import           System.Environment        (getArgs)
-import           System.IO
 --
 import           NLP.WordVector.Vectorize
 
@@ -31,10 +29,10 @@ main = do
     putStrLn "parsing a result of word2vec program"
     filename <- getArgs >>= \args -> return (args !! 0) 
     (lst,wvm) <- createWordVectorMap filename
-    -- let vec = V.fromList $ map snd lst
     let namemap = VB.fromList $ map fst lst -- this is very fragile
     forever (bot (namemap,lst,wvm))
 
+bot :: (VB.Vector Text, [(Text, (Int, V.Vector Float))], WordVectorMap) -> IO ()
 bot (nm,vec,wvm) = do    
     ln <- getLine
     lookupSimilarWord (nm,vec,wvm) (T.pack (head (words ln)))
@@ -49,5 +47,5 @@ lookupSimilarWord (namemap,lst,wvm) word =
                   vec'  <- V.thaw . V.fromList . map ((,) <$> fst . snd <*> cosDist vv . snd . snd) $ lst
                   VA.partialSortBy (flip compare `on` snd) vec' 40
                   V.freeze vec' 
-        mapM_ print $ map (\(i,d) -> (namemap VB.! i,d)) $ V.toList . V.take 40 $ v
+        mapM_ print $ map (\(j,d) -> (namemap VB.! j,d)) $ V.toList . V.take 40 $ v
           

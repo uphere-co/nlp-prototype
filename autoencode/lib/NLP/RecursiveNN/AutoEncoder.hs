@@ -4,19 +4,8 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
--- import           Data.Array.Accelerate             (use, (:.)(..), Array(..), Z(..),
---                                                    DIM1, DIM2, All(..), Acc, Exp)
--- import qualified Data.Array.Accelerate      as A
--- import qualified Data.Array.Accelerate.AST  as A
--- import qualified Data.Array.Accelerate.Array.Sugar as S
--- import           Data.Array.Accelerate.CUDA
--- import           Data.Array.Accelerate.CUDA.Foreign
--- import qualified Data.Array.Accelerate.IO   as AIO
-import           Data.Vector.Storable              ((!), Vector)
+import           Data.Vector.Storable              (Vector)
 import qualified Data.Vector.Storable       as V
--- import qualified Foreign.CUDA.Driver        as CUDA
---
--- import           Data.Array.Accelerate.Matrix
 import           Data.Vector.Storable.Matrix
 import           NLP.SyntaxTree.Type
 
@@ -71,13 +60,13 @@ encode autoenc btr = go btr
 decode :: AutoDecoder -> BNTree (Vector Float) ()-> BNTree (Vector Float) (Vector Float)
 decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
-    go v (BNTNode _ x y) = let ad = ADNode autodec v
-                               (c1,c2) = decodeP ad
-                             in BNTNode v (go c1 x) (go c1 y)
-    go v (BNTLeaf ()) = BNTLeaf v
-decode autodec (BNTLeaf _) = error "shouldn't happen"
+    go v1 (BNTNode _ x y) = let ad     = ADNode autodec v1
+                                (c1,_) = decodeP ad
+                            in BNTNode v1 (go c1 x) (go c1 y)
+    go v1 (BNTLeaf ()) = BNTLeaf v1
+decode _ (BNTLeaf _) = error "shouldn't happen"
 
 
 recDecode :: AutoDecoder -> BNTree (Vector Float) () -> BNTree (BNTree (Vector Float) (Vector Float)) ()
-recDecode autodec (BNTLeaf ()) = BNTLeaf ()
-recDecode autodec n@(BNTNode v x y) = BNTNode (decode autodec n) (recDecode autodec x) (recDecode autodec y) 
+recDecode _       (BNTLeaf ())      = BNTLeaf ()
+recDecode autodec n@(BNTNode _ x y) = BNTNode (decode autodec n) (recDecode autodec x) (recDecode autodec y) 

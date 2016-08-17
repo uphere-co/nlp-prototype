@@ -7,17 +7,15 @@
 module NLP.SyntaxTree.Binarize where
 
 import           Data.Text (Text)
-import qualified Data.Text as T (replicate)
-import           Data.Monoid
 -- 
-import NLP.SyntaxTree.Type
+import           NLP.SyntaxTree.Type
 
 testbtree :: BinTree Text
 testbtree = BinNode (BinNode (BinLeaf "a") (BinLeaf "b")) (BinLeaf "c")
 
 binarizeR :: PennTree -> BinTree Text
 binarizeR (PN t)    = BinLeaf t
-binarizeR (PT _ xs) = go xs
+binarizeR (PT _ ys) = go ys
  where
    go []       = error "impossible"
    go (x:[])   = binarizeR x 

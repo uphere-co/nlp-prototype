@@ -9,10 +9,8 @@
 module Main where
 
 import           Data.Hashable
-import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 --
-import           Symbolic.Differential
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
@@ -36,9 +34,7 @@ testfib = do
   let ?expHash = trie hash    
   let n = 5
       lexp1 = expfib n :: MExp Int
-      -- lexp2 = dexpfib (V (mkSym "x") [],n)
   prettyPrintR $ lexp1
-  -- prettyPrintR $ lexp2    
 
-
+main :: IO ()
 main = testfib
