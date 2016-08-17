@@ -14,5 +14,5 @@ import           Test
 main :: IO ()
 main = do
   -- testfib
-  test13
+  test12
     

@@ -53,6 +53,8 @@ instance Hashable Symbol where
   hashWithSalt s (Atom x)    = s `hashWithSalt` (0 :: Int) `hashWithSalt` x
   hashWithSalt s (Deriv f x) = s `hashWithSalt` (1 :: Int) `hashWithSalt` f `hashWithSalt` x
   
+type DependencyMap = HashMap String [String]   -- dependency map between atomic symbols
+
 
 showSym (Atom s) = s
 showSym (Deriv f x) = ('d':f)++('/':'d':x) 

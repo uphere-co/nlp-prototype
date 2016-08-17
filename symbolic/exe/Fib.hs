@@ -9,6 +9,7 @@
 module Fib where
 
 import           Data.Hashable
+import qualified Data.HashMap.Strict   as HM
 import           Data.MemoTrie
 --
 import           Symbolic.Differential
@@ -33,13 +34,13 @@ expfib =
 dexpfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => 
             (Int :->: MExp a, (Variable,Exp a) :->: MExp a)
          -> (Variable,Int) -> MExp a
-dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' m tdiff (s,e)
+dexpfib' (tfib,tdiff) (s,n) = let MExp e m _ = untrie tfib n in diff' HM.empty m tdiff (s,e)
 
 dexpfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Variable,Int) -> MExp a
 dexpfib (s,n) = let tfib = trie ffib
                     ffib = expfib' tfib
                     MExp _ m _ = untrie tfib n
-                    tdiff = trie (diff' m tdiff)
+                    tdiff = trie (diff' HM.empty m tdiff)
                     f = dexpfib' (tfib,tdiff) 
                 in f (s,n)
 

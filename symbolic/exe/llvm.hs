@@ -263,7 +263,7 @@ test8 = do
   let exp1 :: MExp Double
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
 
-      exp' = sdiff (V (mkSym "x") [idxk]) exp1
+      exp' = sdiff HM.empty (V (mkSym "x") [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "
