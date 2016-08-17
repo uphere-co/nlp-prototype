@@ -19,6 +19,7 @@ import           Data.HashSet              (HashSet)
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 import           Data.Vector.Storable      (Vector)
+import           Text.Encoding.Z           (zEncodeString)
 --
 
 type Hash = Int
@@ -54,7 +55,11 @@ instance Hashable Symbol where
   
 
 showSym (Atom s) = s
-showSym (Deriv f x) = ('d':f)++('d':x)  -- for the time being we will try to use only ascii character. Later, let's make a string-mangling function.  
+showSym (Deriv f x) = ('d':f)++('/':'d':x) 
+
+zencSym :: Symbol -> String
+zencSym = zEncodeString . showSym
+
 
 mkSym = Atom
 
@@ -67,6 +72,7 @@ showVar :: Variable -> String
 showVar (V x k)
   | null k    = showSym x
   | otherwise = showSym x ++ "_" ++ concat (map indexName k)
+
 
 instance HasTrie Variable where
   data (Variable :->: b) = VariableTrie ((Symbol,[Index]) :->: b)

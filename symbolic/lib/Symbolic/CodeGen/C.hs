@@ -71,7 +71,7 @@ mkCFunction typ name decllst bodylst =
 
 mkArgs :: [Variable] -> [CDecl]
 mkArgs = map mkArg
- where mkArg (V s is) = mkDecl CDoubleType (length is) (showSym s) Nothing
+ where mkArg (V s is) = mkDecl CDoubleType (length is) (zencSym s) Nothing
 
 mkFor :: String -> Int -> Int -> CStat -> CStat
 mkFor name start end stmts =
@@ -84,7 +84,7 @@ mkVar :: String -> CExpr
 mkVar name = CVar (ident name) nodeinfo
 
 mkIVar :: (Foldable t) => Symbol -> t IndexSymbol -> CExpr
-mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar (showSym name)) is
+mkIVar name is = foldl' (\acc i -> CIndex acc (mkVar i) nodeinfo) (mkVar (zencSym name)) is
 
 mkUnary :: String -> CUnaryOp -> CExpr
 mkUnary name op = CUnary op (mkVar name) nodeinfo
