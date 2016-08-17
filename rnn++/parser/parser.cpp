@@ -34,7 +34,6 @@ Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes ) {
     using namespace rnn::simple_model::detail;
     auto& all_nodes = nodes.val; 
-    auto n_words=all_nodes.size();
     auto top_nodes = merge_leaf_nodes(param, all_nodes);
     foward_path(param, top_nodes);
     Param::value_type score{};

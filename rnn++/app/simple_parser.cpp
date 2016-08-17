@@ -65,7 +65,7 @@ public:
       param{param},rnn{rnn},testset{testset}, beg{beg},end{end}{
         //http://www.chokkan.org/software/liblbfgs/structlbfgs__parameter__t.html
         lbfgs_parameter_init(&lbfgs_param);
-        lbfgs_param.max_iterations=10;
+        // lbfgs_param.max_iterations=10;
         lbfgs_param.epsilon       =1e-2;
         lbfgs_param.delta         =1e-2;
         if (m_x == NULL) {
@@ -75,7 +75,7 @@ public:
         }
     }
     virtual ~LBFGSoptimizer() {lbfgs_free(m_x);}
-    
+
     // instance	The user data sent for lbfgs() function by the client.
     // x	The current values of variables.
     // g	The current gradient values of variables.
@@ -94,9 +94,9 @@ public:
             return reinterpret_cast<LBFGSoptimizer*>(instance)->evaluate(x, g, n, step);
         };
         // std::function<lfloat_t(*)(void*, const lfloat_t*,lfloat_t*,const int, const lfloat_t)> evaluate = _evaluate;
-        auto _progress =  [](void *instance, const lfloat_t *x, const lfloat_t *g, const lfloat_t fx,
+        auto _progress =  [](void * /*instance*/, const lfloat_t *x, const lfloat_t * /*g*/, const lfloat_t fx,
                             const lfloat_t xnorm, const lfloat_t gnorm, const lfloat_t step,
-                            int n, int k, int ls) {
+                            int /*n*/, int k, int /*ls*/) {
             printf("Iteration %d:\n", k);
             printf("  fx = %f, x[0] = %f, x[1] = %f\n", fx, x[0], x[1]);
             printf("  xnorm = %f, gnorm = %f, step = %f\n", xnorm, gnorm, step);
@@ -108,7 +108,7 @@ public:
 
         /* Report the result. */
         printf("L-BFGS optimization terminated with status code = %d\n", ret);
-        printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%d\n", 
+        printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%e\n", 
                fx, norm_L1(param.w_left.span), norm_L1(param.w_right.span), 
                norm_L1(param.bias.span), norm_L1(param.u_score.span));
         
@@ -138,7 +138,7 @@ protected:
       
 
     */
-    lfloat_t evaluate(const lfloat_t *x, lfloat_t *g, const int n, const lfloat_t step) {
+    lfloat_t evaluate(const lfloat_t *x, lfloat_t *g, const int /*n*/, const lfloat_t /*step*/) {
         auto f_grad = [this](Param const &param){
             auto get_grad = [&](auto sentence){
                 auto nodes = this->rnn.initialize_tree(sentence);
@@ -157,9 +157,10 @@ protected:
         return fx;
     }
 
+    
+    int n_dim;
     lfloat_t *m_x;
     lbfgs_parameter_t lbfgs_param;
-    int n_dim;
 
     Param &param;
     VocaInfo const &rnn;
@@ -175,8 +176,8 @@ int main(){
         // test_read_voca();
         // test_forwad_backward();
         // test_parallel_reduce();
-        // test_rnn_full_step();
-        // return 0;
+        test_rnn_full_step();
+        return 0;
 
         auto timer=Timer{};
         // auto lines=util::string::readlines(rnn::config::trainset_name);
@@ -199,19 +200,11 @@ int main(){
             auto beg=it;
             auto end=beg+n_minibatch;
             end=end<lines.cend()?end:lines.cend();
-            // auto f_grad = [&beg,&end,&rnn](Param const &param){
-            //     auto get_grad = [&](auto sentence){
-            //         auto nodes = rnn.initialize_tree(sentence);
-            //         return get_gradient(param, nodes);
-            //     };
-            //     return parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
-            // };
-            // auto grad_sum = f_grad(param);
-            auto grad_sum = parallel_reducer(beg, end, get_grad, rnn::simple_model::Param{});
-            // auto optimizer = LBFGSoptimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
-            // optimizer.update();
-            auto optimizer = GradientDescent{0.0001};
-            optimizer.update(param, grad_sum);            
+            auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
+            auto optimizer = LBFGSoptimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
+            optimizer.update();
+            // auto optimizer = GradientDescent{0.0001};
+            // optimizer.update(param, grad_sum);            
             auto test_score = scoring_dataset(rnn, param, testset);
             print(test_score);
             print(": test score\n");
