@@ -9,6 +9,7 @@ module Symbolic.Differential where
 
 import           Data.Function             (fix)
 import           Data.HashMap.Strict       (HashMap)
+import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 --
@@ -19,17 +20,18 @@ import           Symbolic.Type
 
 diff'
   :: forall a. (HasTrie a, Num a, ?expHash :: Exp a :->: Hash)
-  => HashMap Hash (MExp a)
+  => DependencyMap
+  -> HashMap Hash (MExp a)
   -> ((Variable,Exp a) :->: MExp a)
   -> (Variable,Exp a) -> MExp a
-diff' m t (s,e) =
+diff' dm m t (s,e) =
   case e of
     Zero         -> zero 
     One          -> zero
     Delta _ _    -> zero
     CDelta _ _ _ -> zero    
     Val _        -> zero
-    Var s'       -> dvar s s'
+    Var s'       -> dvar dm s s'
     Add hs       -> let es = map (flip justLookup m) hs
                     in add' (map (\e' -> untrie t (s,mexpExp e')) es)
     Mul hs       -> let es = map (flip justLookup m) hs
@@ -59,13 +61,22 @@ diff' m t (s,e) =
                              
 
 -- | differentiation of variables
-dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Variable -> Variable -> MExp a
-dvar (V x1 j) (V y1 k)
+dvar :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) =>
+        DependencyMap -> Variable -> Variable -> MExp a
+dvar dm (V x1 j) (V y1 k)
   | x1 == y1 && length j == length k = let djk = zipWith delta j k
                                        in mul' djk
-  | otherwise = zero
+  | otherwise =
+    case (x1,y1) of 
+      (Atom sx,Atom sy) ->
+        let deps = maybe [] id (HM.lookup sy dm) 
+        in if sx `elem` deps
+           then let newsym = Deriv sy sx in ivar newsym (k++j)
+           else zero
+      _ -> zero -- for the time being 
 
 -- | simple differentiation without complex memoization
-sdiff :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Variable -> MExp a -> MExp a
-sdiff s (MExp e m _) = let diff = fix (diff' m . trie) in diff (s,e)
+sdiff :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) =>
+         DependencyMap -> Variable -> MExp a -> MExp a
+sdiff dm s (MExp e m _) = let diff = fix (diff' dm m . trie) in diff (s,e)
 

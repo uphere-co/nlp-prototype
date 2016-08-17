@@ -60,7 +60,7 @@ test8 = do
   -- digraph e2
 
   let e3 = mul [varx, varx, mul [varx, varx , varx] , varx]
-      de3 = (sdiff (V (mkSym "x") []) e3 ::  MExp Int)
+      de3 = (sdiff HM.empty (V (mkSym "x") []) e3 ::  MExp Int)
   printf "e3 = %s\n" ((prettyPrint . exp2RExp) (e3 ::  MExp Int) :: String)
   printf "d(e3)/dx = %s\n" ((prettyPrint . exp2RExp) de3  :: String)
   digraph de3
@@ -114,12 +114,15 @@ test12 = do
   let e1 :: MExp Int
       e1 = add' [mul' [val 2,varx],vary]
       fe1 = fun "f" [e1,varx]
-      dfe1 = sdiff (V (mkSym "x") []) fe1
+      dm = HM.fromList [ ("y",["x"]) ]
+      dfe1 = sdiff dm (V (mkSym "x") []) fe1
   printf "fe1 = %s\n"  ((prettyPrint . exp2RExp) fe1 :: String)
-  printf "d(fe1)/dy = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
+  printf "d(fe1)/dx = %s\n" ((prettyPrint . exp2RExp) dfe1 :: String)
   --  digraph dfe1
   let args = Args (HM.fromList [(mkSym "x",VS.fromList [2])
-                               ,(mkSym "y",VS.fromList [3])])
+                               ,(mkSym "y",VS.fromList [3])
+                               ,(Deriv "y" "x", VS.fromList [4])
+                               ])
   
   printf "dfe1/dx(2,3)) = %d\n" (seval args [] dfe1)
 
@@ -202,8 +205,8 @@ test17 = do
       ?functionMap = HM.empty
   let exp1 :: MExp Int
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
-
-      exp' = sdiff (V (mkSym "x") [idxk]) exp1
+      dm = HM.fromList [ ("y",["x"]) ]
+      exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
   putStr "f = "
   prettyPrintR exp1
   putStr "df/dx_k = "
@@ -211,7 +214,11 @@ test17 = do
 
   let xvals = VS.fromList [101,102]
       yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
+      dydxvals = VS.fromList [0,1,1,0]
+      args = Args (HM.fromList [(mkSym "x",xvals)
+                               ,(mkSym "y",yvals)
+                               ,(Deriv "y" "x",dydxvals)
+                               ])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]

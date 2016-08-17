@@ -42,7 +42,8 @@ Library
                         pretty,
                         transformers,
                         unordered-containers,
-                        vector
+                        vector,
+                        zenc
   Exposed-modules:
                         Symbolic.CodeGen.C
                         Symbolic.CodeGen.LLVM.Exp

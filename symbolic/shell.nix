@@ -206,9 +206,7 @@ let
 	      tasty-hunit
 	      tasty-quickcheck
 	      tasty-smallcheck
-	      #test-framework
-	      #test-framework-hunit
-	      #test-framework-quickcheck2
+              zenc              
             ]);
 
     llvm_35_debug = llvm_35.override { debugVersion = true; }; 
