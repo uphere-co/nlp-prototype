@@ -16,7 +16,7 @@ import           Foreign.Ptr                    ( Ptr )
 import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
-import           LLVM.General.AST.Type            ( double, ptr, void )
+import           LLVM.General.AST.Type            ( double, float, ptr, void )
 import           LLVM.General.Context             ( withContext )
 import           Text.Printf
 --
@@ -269,9 +269,11 @@ test9 = do
   liftIO $ do
     putStr "f = "
     prettyPrintR exp1
-  let ast = mkAST exp1 [ V (mkSym "x") [idxi]
-                       , V (mkSym "y") [idxj]
-                       ]
+  let ext = define float "temp" [(float, AST.Name "x")] $ do
+              let xref = local (AST.Name "x")
+              v <- fdiv xref (fval 100)
+              ret v
+      ast = mkASTWithExt ext exp1 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Float
       vr = VS.replicate 4 0    :: VS.Vector Float

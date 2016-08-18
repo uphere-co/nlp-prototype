@@ -27,15 +27,14 @@ initModule = emptyModule "my cool jit"
 mkArgRef :: Int -> a -> Codegen AST.Operand
 mkArgRef i _ = getElem (ptr float) "args" (ival i)
 
-mkAST :: (?expHash :: Exp Float :->: Hash) =>
-         MExp Float -> [Variable] -> AST.Module
-mkAST e args =
+mkASTWithExt :: (?expHash :: Exp Float :->: Hash) =>
+                LLVM ()
+             -> MExp Float
+             -> [Variable]
+             -> AST.Module
+mkASTWithExt ext e args =
   runLLVM initModule $ do
-    define float "temp" [(float, AST.Name "x")] $ do
-      let xref = local (AST.Name "x")
-      v <- fdiv xref (fval 100)
-      ret v
-    
+    ext
     llvmAST "fun1" args e
     define void "main" [ (ptr float, AST.Name "res")
                        , (ptr (ptr float), AST.Name "args")
@@ -43,6 +42,17 @@ mkAST e args =
       argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
       call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
       ret_
+
+
+
+mkAST :: (?expHash :: Exp Float :->: Hash) =>
+         MExp Float
+      -> [Variable]
+      -> AST.Module
+mkAST = mkASTWithExt (return ())
+
+
+
 
 unsafeWiths :: VS.Storable a => [VS.Vector a] -> ([Ptr a] -> IO b) -> IO b
 unsafeWiths vs = go vs id
