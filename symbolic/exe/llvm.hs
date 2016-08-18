@@ -76,7 +76,7 @@ test2 = do
                 xref <- getElem (ptr double) "args" (ival 0)
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
                 ret_
-  runJIT ast $ \mfn -> 
+  runJIT "main" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -103,7 +103,7 @@ test3 = do
                 yref <- getElem (ptr double) "args" (ival 1)
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
                 ret_
-  runJIT ast $ \mfn -> 
+  runJIT "main" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -140,7 +140,7 @@ test4 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp3 :: MExp Float)
   let ast = mkAST testexp3 []
-  runJIT ast $ \mfn -> 
+  runJIT "fun1Wrapper" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -160,7 +160,7 @@ test5 = do
       vx = VS.fromList [1..100] :: VS.Vector Float
       vy = VS.fromList [1..10]  :: VS.Vector Float
       vr = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test6 :: LLVMContextT IO (Either String ())
 test6 = do
@@ -177,7 +177,7 @@ test6 = do
       vx  = VS.fromList [1,2,3,4,5,6]
       vy  = VS.fromList [11,12,13,14]  :: VS.Vector Float
       vr  = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test7 :: LLVMContextT IO ()
 test7 = do
@@ -196,7 +196,7 @@ test7 = do
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Float
       vr = VS.replicate 8 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
   -- comparison
   let xvals = VS.fromList [101,102]
@@ -240,7 +240,7 @@ test8 = do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="
     putStrLn "====================="
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
   liftIO $ do
     putStrLn "======================"
     putStrLn "= interpreter result ="
@@ -273,7 +273,7 @@ test9 = do
               let xref = local (AST.Name "x")
               v <- fdiv xref (fval 100)
               ret v
-      ast = mkASTWithExt ext exp1 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
+      ast = mkASTWithExt ext [("fun1",(exp1,[ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]))]
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Float
       vr = VS.replicate 4 0    :: VS.Vector Float
@@ -281,7 +281,7 @@ test9 = do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="
     putStrLn "====================="
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
   liftIO $ do
     putStrLn "======================"
     putStrLn "= interpreter result ="

@@ -44,10 +44,11 @@ jit action = do c <- ask
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
-runJIT :: AST.Module
+runJIT :: String
+       -> AST.Module
        -> (Maybe (FunPtr ()) -> IO b)
        -> LLVMContextT IO (Either String b)
-runJIT mod' action = do
+runJIT name mod' action = do
   jit $ \context executionEngine -> do
       r <- runExceptT $ withModuleFromAST context mod' $ \m ->
         withPassManager passes $ \pm -> do
@@ -58,7 +59,7 @@ runJIT mod' action = do
           putStrLn s
           
           EE.withModuleInEngine executionEngine m $ \ee -> do
-            mfn <- EE.getFunction ee (AST.Name "main")
+            mfn <- EE.getFunction ee (AST.Name name)
             action mfn
       case r of
         Left err -> putStrLn err >> return r

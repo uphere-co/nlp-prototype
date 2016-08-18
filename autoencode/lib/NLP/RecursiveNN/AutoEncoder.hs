@@ -67,7 +67,7 @@ encodeP AENode {..} = do
       vb  = autoenc_b aenode_autoenc
       vr = VS.replicate 100 0    :: VS.Vector Float
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
-  runMain [vc1,vc2,vwe,vb] fpr
+  callFn "main" [vc1,vc2,vwe,vb] fpr
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
