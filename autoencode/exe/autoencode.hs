@@ -78,5 +78,4 @@ main' = do
             TIO.putStrLn . bntPrint [] printer (const "") $ rdec
 
 main :: IO ()
-main = do
-  testfib
+main = test8

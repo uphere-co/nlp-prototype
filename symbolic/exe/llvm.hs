@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 import           Control.Concurrent
+import           Control.Monad.IO.Class         ( liftIO )
 import           Data.Foldable                  ( forM_ )
 import           Data.Hashable
 import qualified Data.HashMap.Strict   as HM
@@ -14,9 +15,8 @@ import           Foreign.Ptr                    ( Ptr )
 import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
-
-
 import           LLVM.General.AST.Type            ( double, ptr, void )
+import           LLVM.General.Context             ( withContext )
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Exp
@@ -56,7 +56,7 @@ testexp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
   where idxi = ("i",0,9)
         idxj = ("j",0,9)
 
-test2 :: IO (Either String ())
+test2 :: LLVMRunT IO (Either String ())
 test2 = do
   let ?expHash = trie hash
   let exp1 :: MExp Double
@@ -64,7 +64,7 @@ test2 = do
       idxi = ("i",0,2)
       idxj = ("j",0,2)
   
-  prettyPrintR exp1
+  liftIO $ prettyPrintR exp1
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [ V (mkSym "y") [idxi, idxj] ] exp1
               external double "sin" [(double, AST.Name "x")] 
@@ -87,10 +87,10 @@ test2 = do
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res
           
-test3 :: IO (Either String ())
+test3 :: LLVMRunT IO (Either String ())
 test3 = do
   let ?expHash = trie hash
-  prettyPrintR testexp7
+  liftIO $ prettyPrintR testexp7
   let ast = runLLVM initModule $ do
               llvmAST "fun1" [ V (mkSym "x") [], V (mkSym "y") [] ] testexp7
               external double "sin" [(double, AST.Name "x")] 
@@ -134,10 +134,10 @@ test3 = do
                   putStrLn $ "Evaluated to: " ++ show res
 
 
-test4 :: IO (Either String ())
+test4 :: LLVMRunT IO (Either String ())
 test4 = do
   let ?expHash = trie hash
-  prettyPrintR (testexp3 :: MExp Double)
+  liftIO $ prettyPrintR (testexp3 :: MExp Double)
   let ast = mkAST testexp3 []
   runJIT ast $ \mfn -> 
     case mfn of

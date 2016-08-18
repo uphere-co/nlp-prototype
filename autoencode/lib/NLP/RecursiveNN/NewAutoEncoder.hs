@@ -5,9 +5,16 @@
 
 module NLP.RecursiveNN.NewAutoEncoder where
 
+import           Data.Foldable
 import           Data.Hashable
+import qualified Data.HashMap.Strict       as HM
 import           Data.MemoTrie
+import qualified Data.Vector.Storable      as VS
+import           Text.Printf
 --
+import           Symbolic.CodeGen.LLVM.Run
+import           Symbolic.Differential           ( sdiff )
+import           Symbolic.Eval                   ( seval )
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
@@ -32,6 +39,53 @@ testfib = do
   let n = 5
       lexp1 = expfib n :: MExp Int
   prettyPrintR $ lexp1
+
+test8 :: IO ()
+test8 = do
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+
+      idxI = ("I",1,4)
+      idxk = ("k",1,2)
+  
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let exp1 :: MExp Double
+      exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
+      dm = HM.fromList [ ("y", ["x"]) ]
+      exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
+  putStr "f = "
+  prettyPrintR exp1
+  putStr "df/dx_k = "
+  prettyPrintR exp'
+  let ast = mkAST exp' [ V (mkSym "x") [idxi]
+                       , V (mkSym "y") [idxj]
+                       , V (Deriv "y" "x") [idxj,idxi]
+                       ]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Double
+      vdydx = VS.fromList [0,1,1,0] 
+      vr = VS.replicate 8 0    :: VS.Vector Double
+  putStrLn "====================="
+  putStrLn "=    LLVM result    ="
+  putStrLn "====================="
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
+
+  putStrLn "======================"
+  putStrLn "= interpreter result ="
+  putStrLn "======================"
+  -- let xvals = VS.fromList [101,102]
+  --     yvals = VS.fromList [203,204]
+  --     dydxvals = VS.fromList [0,1,1,0]
+  let  args = Args (HM.fromList [(mkSym "x",vx)
+                                ,(mkSym "y",vy)
+                                ,(Deriv "y" "x",vdydx)
+                                ])
+  
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
 
 

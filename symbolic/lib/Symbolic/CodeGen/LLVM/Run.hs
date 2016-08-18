@@ -3,12 +3,14 @@
 
 module Symbolic.CodeGen.LLVM.Run where
 
+import           Control.Monad.Trans.Reader       ( runReaderT )
 import           Data.MemoTrie                    ( (:->:) )
 import qualified Data.Vector.Storable      as VS
 import           Foreign.ForeignPtr               ( withForeignPtr )
 import           Foreign.Ptr                      ( Ptr )
 import qualified LLVM.General.AST          as AST
 import           LLVM.General.AST.Type            ( double, ptr, void )
+import           LLVM.General.Context             ( withContext )
 --
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
@@ -45,16 +47,18 @@ runJITASTPrinter :: (VS.Vector Double -> IO ())
                  -> VS.Vector Double
                  -> IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
-  runJIT ast $ \mfn -> 
-    case mfn of
-      Nothing -> putStrLn "Nothing?"
-      Just fn -> do
-        unsafeWiths vargs $ \ps -> do
-          let vps = VS.fromList ps
-          VS.MVector _ fparg <- VS.thaw vps
-          mv@(VS.MVector _ fpr) <- VS.thaw vres
-          withForeignPtr fparg $ \pargs ->
-            withForeignPtr fpr $ \pres -> do
-              run fn pres pargs
-              vr' <- VS.freeze mv
-              printer vr'
+  withContext $ \context ->
+    flip runLLVMRunT context $ 
+      runJIT ast $ \mfn -> 
+        case mfn of
+          Nothing -> putStrLn "Nothing?"
+          Just fn -> do
+            unsafeWiths vargs $ \ps -> do
+              let vps = VS.fromList ps
+              VS.MVector _ fparg <- VS.thaw vps
+              mv@(VS.MVector _ fpr) <- VS.thaw vres
+              withForeignPtr fparg $ \pargs ->
+                withForeignPtr fpr $ \pres -> do
+                  run fn pres pargs
+                  vr' <- VS.freeze mv
+                  printer vr'
