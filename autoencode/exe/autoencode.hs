@@ -25,7 +25,6 @@ import           Symbolic.CodeGen.LLVM.JIT
 --
 import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
--- import           NLP.RecursiveNN.NewAutoEncoder
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
 import           NLP.SyntaxTree.Printer
@@ -83,7 +82,6 @@ main = do
                   liftIO $ putStrLn "================"
                   let printer :: BNTree (Vector Float) (Vector Float) -> Text
                       printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
-
                   liftIO $ TIO.putStrLn $ printer enc
                 {- 
                 putStrLn "----------------"

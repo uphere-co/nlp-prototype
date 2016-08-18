@@ -14,9 +14,11 @@ import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
 import qualified LLVM.General.AST            as AST
+import           LLVM.General.AST.Type           ( double )
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT, LLVMRun2T )
+import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential           ( sdiff )
 import           Symbolic.Eval                   ( seval )
@@ -39,18 +41,33 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
 ast :: (?expHash :: Exp Float :->: Hash) => AST.Module
 ast = let idxi = ("i",1,100)
           idxj = ("j",1,100)
-          exp1 :: MExp Float
-          exp1 = add [ x_ [idxi], y_ [idxi] ]
-      in mkAST exp1 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
+          idxk = ("k",1,100)
+          idxI = ("I",1,200)
+          c1 = ivar (mkSym "c1") [idxi]
+          c2 = ivar (mkSym "c2") [idxj]
+          w = ivar (mkSym "w") [idxk, idxI]
+          b = ivar (mkSym "b") [idxk]
+          
+          c = concat_ idxI [c1,c2]
+          prd = sum_ [idxI] (mul [w, c])
+          result = tanh_ [ add [prd, b] ]
+          ext = external double "tanh" [(double, AST.Name "x")] 
+
+      in mkASTWithExt ext result [ V (mkSym "c1") [idxi]
+                                 , V (mkSym "c2") [idxj]
+                                 , V (mkSym "w") [idxk,idxI]
+                                 , V (mkSym "b") [idxk] ]
 
                    
 encodeP :: AENode -> LLVMRun2T IO (Vector Float)
 encodeP AENode {..} = do
-  let vx = aenode_c1 -- VS.fromList [101..200]
-      vy = aenode_c2 -- VS.fromList [201..300] :: VS.Vector Float
+  let vc1 = aenode_c1 -- VS.fromList [101..200]
+      vc2 = aenode_c2 -- VS.fromList [201..300] :: VS.Vector Float
+      vwe = mat_content (autoenc_We aenode_autoenc)
+      vb  = autoenc_b aenode_autoenc
       vr = VS.replicate 100 0    :: VS.Vector Float
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
-  runMain [vx,vy] fpr
+  runMain [vc1,vc2,vwe,vb] fpr
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
