@@ -53,10 +53,10 @@ encodeAST =
       prd = sum_ [idxI] (mul [w, c])
       result = tanh_ [ add [prd, b] ]
       ext = external double "tanh" [(double, AST.Name "x")] 
-  in mkASTWithExt ext result [ V (mkSym "c1") [idxi]
-                             , V (mkSym "c2") [idxj]
-                             , V (mkSym "w") [idxk,idxI]
-                             , V (mkSym "b") [idxk] ]
+  in mkASTWithExt ext [("fun1",(result,[ V (mkSym "c1") [idxi]
+                                       , V (mkSym "c2") [idxj]
+                                       , V (mkSym "w") [idxk,idxI]
+                                       , V (mkSym "b") [idxk] ] ))]
 
                    
 encodeP :: AENode -> LLVMRunT IO (Vector Float)
@@ -67,7 +67,7 @@ encodeP AENode {..} = do
       vb  = autoenc_b aenode_autoenc
       vr = VS.replicate 100 0    :: VS.Vector Float
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
-  callFn "main" [vc1,vc2,vwe,vb] fpr
+  callFn "fun1Wrapper" [vc1,vc2,vwe,vb] fpr
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
