@@ -60,6 +60,9 @@ public:
     : _val{raw_data}, span{_val},
       max_word_len{max_word_len},
       voca_size{raw_data.size()/max_word_len}{}
+    Voca(data_t raw_data)
+    : _val{raw_data}, span{_val},words{util::string::unpack_word_views(_val)},
+      max_word_len{-1}, voca_size{words.size()} {}
     Word getWord(data_t::size_type idx) const {
         auto beg=std::cbegin(_val)+idx*max_word_len;
         auto end=std::find(beg, beg+max_word_len, '\0');
@@ -77,11 +80,12 @@ public:
 private:
     const data_t _val;
     util::cstring_span<> span;
+    const std::vector<const char*> words;
     const int max_word_len;
     const data_t::size_type voca_size;
 };
 
-Voca load_voca();
+Voca load_voca(std::string filename, std::string dataset);
 
 }//namespace rnn::wordrep
 }//namespace rnn

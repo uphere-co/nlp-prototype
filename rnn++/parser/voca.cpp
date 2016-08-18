@@ -11,11 +11,11 @@ std::ostream& operator<<(std::ostream& os, const Word& obj) {
     return os;
 }
 
-Voca load_voca(){
+Voca load_voca(std::string filename, std::string dataset){
     using namespace rnn::config;
     using namespace util::io;
-    H5file file{file_name, hdf5::FileMode::read_exist};
-    return Voca{file.getRawData<rnn::type::char_t>(voca_name), voca_max_word_len};
+    H5file file{H5name{file_name}, hdf5::FileMode::read_exist};
+    return Voca{file.getRawData<rnn::type::char_t>(H5name{voca_name}), voca_max_word_len};
 }
 
 }//namespace rnn::wordrep

@@ -2,6 +2,8 @@
 
 #include <sstream>
 #include <fstream>
+#include <algorithm>
+#include <functional>
 #include <boost/algorithm/string.hpp>
 
 namespace util{
@@ -37,7 +39,7 @@ std::vector<std::string> unpack_words(std::vector<char> const &concat_words){
     while(it!=end){
         words.push_back(std::string{&(*it)});
         it=std::find(it, end, '\0');
-        ++it;
+        it=std::find_if_not(it, end, [](auto x){return x=='\0';});
     }
     return words;
 }
