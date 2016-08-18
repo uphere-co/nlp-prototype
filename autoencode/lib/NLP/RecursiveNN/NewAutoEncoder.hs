@@ -46,54 +46,25 @@ testfib = do
       lexp1 = expfib n :: MExp Int
   prettyPrintR $ lexp1
 
-test8 :: LLVMRunT IO ()
+test8 :: LLVMRunT IO (Either String ())
 test8 = do
-  let idxi = ("i",1,2)
-      idxj = ("j",1,2)
-
-      idxI = ("I",1,4)
-      idxk = ("k",1,2)
+  let idxi = ("i",1,100)
+      idxj = ("j",1,100)
   
   let ?expHash = trie hash
       ?functionMap = HM.empty
   let exp1 :: MExp Double
-      exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
-      dm = HM.fromList [ ("y", ["x"]) ]
-      exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
+      exp1 = add [ x_ [idxi], y_ [idxi] ]
   liftIO $ do
     putStr "f = "
     prettyPrintR exp1
-    putStr "df/dx_k = "
-    prettyPrintR exp' 
-  let ast = mkAST exp' [ V (mkSym "x") [idxi]
+  let ast = mkAST exp1 [ V (mkSym "x") [idxi]
                        , V (mkSym "y") [idxj]
-                       , V (Deriv "y" "x") [idxj,idxi]
                        ]
-      vx = VS.fromList [101,102]
-      vy = VS.fromList [203,204] :: VS.Vector Double
-      vdydx = VS.fromList [0,1,1,0] 
-      vr = VS.replicate 8 0    :: VS.Vector Double
-  liftIO $ do 
-    putStrLn "====================="
-    putStrLn "=    LLVM result    ="
-    putStrLn "=====================" 
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
-  liftIO $ do
-    putStrLn "======================"
-    putStrLn "= interpreter result ="
-    putStrLn "======================"
-  -- let xvals = VS.fromList [101,102]
-  --     yvals = VS.fromList [203,204]
-  --     dydxvals = VS.fromList [0,1,1,0]
-  let  args = Args (HM.fromList [(mkSym "x",vx)
-                                ,(mkSym "y",vy)
-                                ,(Deriv "y" "x",vdydx)
-                                ])
-  
-  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
-    let iptI = [("I",iI)]
-        iptk = [("k",k)]
-    liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
+      vx = VS.fromList [101..200]
+      vy = VS.fromList [201..300] :: VS.Vector Double
+      vr = VS.replicate 100 0    :: VS.Vector Double
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
@@ -106,8 +77,8 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_b   :: Vector Float
                                } 
 
-
-encodeP :: AENode -> Vector Float
+{- 
+encodeP :: AENode -> LLVMRunT IO (Vector Float)
 encodeP AENode {..} = VS.map tanh $ VS.zipWith (+) r b
   where
     we = autoenc_We aenode_autoenc
@@ -115,7 +86,10 @@ encodeP AENode {..} = VS.map tanh $ VS.zipWith (+) r b
     c = aenode_c1 VS.++ aenode_c2  
     r = mulMV we c
 
-encode :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
+
+
+encode :: AutoEncoder -> BinTree (Vector Float)
+       -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
 encode autoenc btr = go btr
   where go (BinNode x y) = let x' = go x
                                y' = go y
@@ -124,7 +98,7 @@ encode autoenc btr = go btr
                                ae = AENode autoenc vx vy
                            in BNTNode (encodeP ae) x' y'
         go (BinLeaf x) = BNTLeaf x
-
+-}
 
 {- 
 

@@ -47,8 +47,6 @@ runJITASTPrinter :: (VS.Vector Double -> IO ())
                  -> VS.Vector Double
                  -> LLVMRunT IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
-  -- withContext $ \context ->
-    -- flip runLLVMRunT context $ 
   runJIT ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"

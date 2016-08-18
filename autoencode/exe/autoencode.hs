@@ -65,7 +65,7 @@ main = do
       Left err -> print err
       Right lst -> do
         withContext $ \context ->
-          flip runReaderT context test8
+          flip runReaderT context test8 >> return ()
           
         {- 
         forM_ ((drop n1 . take n2) lst) $ \tr -> do
