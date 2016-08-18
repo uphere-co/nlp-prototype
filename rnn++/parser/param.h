@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <string>
 #include <cmath>
 #include <utility>
 #include <random>
@@ -12,13 +13,6 @@
 #include "parser/basic_type.h"
 #include "parser/config.h"
 
-
-//forward declaration for load_param().
-namespace util{
-namespace io{
-struct H5name;
-}
-}
 
 namespace rnn{
 namespace simple_model{
@@ -56,8 +50,8 @@ Param operator -(const Param& x, const Param& y);
 Param deserializeParam(Param::raw_type &param_raw);
 Param randomParam(Param::value_type scale);
 
-Param load_param(util::io::H5name const &h5_name,  
-                 util::io::H5name const &param_name, util::DataType param_type);
+Param load_param(std::string const &h5_name,  
+                 std::string const &param_name, util::DataType param_type);
 
 }//namespace rnn::simple_model
 }//namespace rnn

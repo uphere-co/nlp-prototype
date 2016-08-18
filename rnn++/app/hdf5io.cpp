@@ -3,7 +3,7 @@
 
 #include "utils/print.h"
 #include "utils/string.h"
-
+#include "utils/hdf5.h"
 #include "parser/config.h"
 #include "parser/param.h"
 
@@ -20,8 +20,8 @@ void test_param_serialization(){
     H5file h5store{H5name{"iotest.h5"}, hdf5::FileMode::rw_exist};
     h5store.overwriteRawData(H5name{"param.0"}, param_raw);
     h5store.overwriteRawData(H5name{"param.1"}, param_raw);
-    auto param1 = load_param(H5name{"iotest.h5"}, H5name{"param.0"}, DataType::dp);
-    auto param2 = load_param(H5name{"iotest.h5"}, H5name{"param.1"}, DataType::dp);
+    auto param1 = load_param("iotest.h5", "param.0", DataType::dp);
+    auto param2 = load_param("iotest.h5", "param.1", DataType::dp);
 
     assert(param.bias.span==param1.bias.span);
     assert(param.bias.span==param2.bias.span);

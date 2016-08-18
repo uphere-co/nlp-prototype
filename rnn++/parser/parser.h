@@ -25,9 +25,9 @@ struct InializedLeafNodes{
 };
 
 struct VocaInfo{
-    VocaInfo() : voca{rnn::wordrep::load_voca()}, 
-                  word2idx{voca.indexing()},
-                  voca_vecs{rnn::wordrep::load_voca_vecs()} {}
+    VocaInfo(std::string vocafile, std::string voca_dataset, std::string w2vmodel_dataset)
+    : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
+      voca_vecs{rnn::wordrep::load_voca_vecs(vocafile, w2vmodel_dataset,util::DataType::sp)} {}
     InializedLeafNodes initialize_tree(std::string sentence) const {
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);

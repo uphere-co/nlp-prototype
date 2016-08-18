@@ -1,23 +1,23 @@
 #pragma once
 
+#include <string>
 #include "parser/basic_type.h"
-#include "utils/hdf5.h"
 #include "utils/math_funname.h"
 
 namespace rnn{
 namespace config{
 
 //TODO: remove the include and replace util::io::H5name with std::string??
-extern util::io::H5name file_name;
-extern util::io::H5name voca_name;
-extern util::io::H5name w2vmodel_name;
+extern std::string file_name;
+extern std::string voca_name;
+extern std::string w2vmodel_name;
 // util::io::H5name file_name{"word2vec.h5"};
 // util::io::H5name voca_name{"foo.word"};
 // util::io::H5name w2vmodel_name{"foo.vec"};
 
-extern util::io::H5name rnn_param_store_name;
+extern std::string rnn_param_store_name;
 //HDF5 dataset name to use as inital RNN parameter.
-extern util::io::H5name rnn_param_name;
+extern std::string rnn_param_name;
 
 extern std::string trainset_name;
 extern std::string testset_name;

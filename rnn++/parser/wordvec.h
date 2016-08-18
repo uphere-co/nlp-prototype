@@ -7,6 +7,7 @@
 #include "utils/span.h"
 #include "utils/string.h"
 #include "utils/linear_algebra.h"
+#include "utils/type_param.h"
 
 namespace rnn{
 namespace wordrep{
@@ -64,7 +65,7 @@ public:
     const int word_dim;
 };
 
-WordBlock load_voca_vecs();
+WordBlock load_voca_vecs(std::string filename, std::string dataset, util::DataType param_type);
 
 
 }//namespace rnn::wordrep
