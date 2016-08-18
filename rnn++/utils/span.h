@@ -19,4 +19,5 @@ using dim = gsl::dim<T>;
 
 template<std::ptrdiff_t Extent = gsl::dynamic_range>
 using cstring_span = gsl::basic_string_span<const char, Extent>;
-}//namespa
+}//namespace util
+

@@ -14,9 +14,6 @@
 
 namespace rnn{
 namespace wordrep{
-using char_t = rnn::type::char_t;
-using float_t = rnn::type::float_t;
-
 struct Word{
     Word(util::cstring_span<> word) : span{word}, val{span.data()}{}
     Word(std::string word) : span{word}, val{word}{}

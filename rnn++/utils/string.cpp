@@ -21,5 +21,38 @@ std::vector<std::string> readlines(std::string file){
     return lines;
 }
 
+std::vector<char> pack_words(std::vector<std::string> const &words){
+    std::vector<char> vec;
+    for(auto const &x:words){
+        std::copy(x.cbegin(),x.cend(),std::back_inserter(vec));
+        vec.push_back('\0');
+    }
+    return vec;
+}
+
+std::vector<std::string> unpack_words(std::vector<char> const &concat_words){
+    std::vector<std::string> words;
+    auto it =concat_words.cbegin();
+    auto end=concat_words.cend();
+    while(it!=end){
+        words.push_back(std::string{&(*it)});
+        it=std::find(it, end, '\0');
+        ++it;
+    }
+    return words;
+}
+
+std::vector<const char *> unpack_word_views(std::vector<char> const &concat_words){
+    std::vector<const char *> words;
+    auto it =concat_words.cbegin();
+    auto end=concat_words.cend();
+    while(it!=end){
+        words.push_back(&(*it));
+        it=std::find(it, end, '\0');
+        ++it;
+    }
+    return words;
+}
+
 }//namespace util::string
 }//namespace util
