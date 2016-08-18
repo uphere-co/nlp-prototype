@@ -22,6 +22,12 @@ namespace{
 void test_voca_index(Voca const &voca, VocaIndexMap const &word2idx){
     for(size_t i=0; i<voca.size(); ++i){
         if(i>100) break;
+        // if(word2idx.getIndex(voca.getWord(i)) != i){
+        //     print(i);
+        //     print(voca.getWord(i).val);
+        //     print(word2idx.getIndex(voca.getWord(i)));
+        //     print(":conflict!\n");
+        // }
         assert(word2idx.getIndex(voca.getWord(i)) == i);
     }
     for(size_t i=0; i<voca.size(); ++i){
@@ -50,7 +56,7 @@ void test_init_rnn(){
     */
 
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    Param param = load_param();    
+    Param param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);    
     std::cerr << "Test:   3.248616=="<< sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << "Test: -50.581345=="<< sum(param.bias.span) << std::endl;
     std::cerr << "Test:  -0.190589=="<< sum(param.u_score.span) << std::endl;
@@ -60,17 +66,36 @@ void test_init_rnn(){
 }
 void test_read_voca(){
     H5file file{file_name, hdf5::FileMode::read_exist};
-    Voca voca =load_voca();
-    WordBlock voca_vecs = load_voca_vecs();
-    std::cerr << voca_vecs.size() << " " << voca_size <<std::endl;
+    Voca voca =load_voca("data.h5", "1b.model.voca");
+    WordBlock voca_vecs = load_voca_vecs("data.h5", "1b.model", 100, util::DataType::sp);
+    std::cerr << voca_vecs.size() << " " << voca.size() <<" "<< voca_size <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
     test_voca_index(voca, word2idx);
-    auto sentence = u8"A symbol of\tBritish pound is £ .";
+    auto sentence = u8"A symbol of British pound is £ .";
     auto idxs = word2idx.getIndex(sentence);
     auto word_block = voca_vecs.getWordVec(idxs);
 
     std::cerr << "Test:  -148.346 =="<<sum(word_block.span) << std::endl;
+}
+
+void test_read_word2vec_output(){
+    H5file file{file_name, hdf5::FileMode::read_exist};
+    Voca voca =load_voca("word2vec.h5", "foo.word");
+    WordBlock voca_vecs = load_voca_vecs("word2vec.h5", "foo.vec", 200, util::DataType::dp); 
+    std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
+    VocaIndexMap word2idx = voca.indexing();
+
+    test_voca_index(voca, word2idx);
+    auto sentence = u8"this is a typical sentence";
+    auto idxs = word2idx.getIndex(sentence);
+    for(auto i:idxs) print(i);
+    print(": idxs\n");
+    print(voca_vecs.size());
+    print(": voca_vec.size()\n");
+    auto word_block = voca_vecs.getWordVec(idxs);
+
+    std::cerr << "Test: -82.7994 =="<<sum(word_block.span) << std::endl;
 }
 
 
@@ -79,8 +104,8 @@ void test_forwad_backward(){
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
-    VocaInfo rnn{};
-    auto param = load_param();
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
 
     auto timer=Timer{};
 
@@ -173,8 +198,8 @@ void test_parallel_reduce(){
     auto lines=util::string::readlines(rnn::config::trainset_name);
     timer.here_then_reset("Read trainset");
 
-    VocaInfo rnn{};
-    auto param = load_param();
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
         return get_gradient(param, nodes);
@@ -209,8 +234,8 @@ void test_rnn_full_step(){
     // auto tmp=util::string::readlines(rnn::config::testset_name);
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
-    VocaInfo rnn{};
-    auto param = load_param();
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
     // auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 

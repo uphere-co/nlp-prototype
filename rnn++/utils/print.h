@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include <gsl.h>
 
 namespace util{

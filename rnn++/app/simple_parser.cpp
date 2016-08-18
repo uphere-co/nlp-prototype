@@ -173,9 +173,10 @@ protected:
 int main(){
     try {
         // test_init_rnn();
-        // test_read_voca();
-        // test_forwad_backward();
-        // test_parallel_reduce();
+        test_read_voca();
+        test_read_word2vec_output();
+        test_forwad_backward();
+        test_parallel_reduce();
         test_rnn_full_step();
         return 0;
 
@@ -184,8 +185,8 @@ int main(){
         auto lines=util::string::readlines(rnn::config::testset_name);
         auto testset=TokenizedSentences{rnn::config::testset_name};
         timer.here_then_reset("Read trainset");
-        VocaInfo rnn{};
-        // auto param = load_param();
+        VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
+        // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.1);
         timer.here_then_reset("Preparing data");
 

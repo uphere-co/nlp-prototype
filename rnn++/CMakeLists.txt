@@ -25,6 +25,10 @@ add_executable(app app/simple_parser parser/compute parser/config parser/node pa
 #https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
 target_link_libraries(app hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
+add_executable(hdf5io app/hdf5io parser/config parser/param utils/hdf5 utils/string)
+target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
+
+
 #add_executable(gsl boilerplate/gsl)
 #add_executable(string boilerplate/string)
 #add_executable(math boilerplate/math)

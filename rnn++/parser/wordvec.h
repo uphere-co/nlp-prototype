@@ -2,24 +2,25 @@
 #include<vector>
 
 #include "parser/basic_type.h"
-#include "parser/config.h"
 
 #include "utils/span.h"
 #include "utils/string.h"
 #include "utils/linear_algebra.h"
+#include "utils/type_param.h"
 
 namespace rnn{
 namespace wordrep{
 
-using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;
+
 
 class WordBlock{
 public:
     using float_t    = rnn::type::float_t;
     using data_t     = std::vector<float_t>;
     using span_t     = util::span_dyn<float_t>;
-    using wordspan_t = util::span_1d<float_t,rnn::config::word_dim>;
     using idx_t      = data_t::size_type ;
+    //TODO: fix bug! WordVec should be defined by WordBlock::word_dim.
+    // using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;
     WordBlock(int word_dim)
     : _val{},span{_val}, word_dim{word_dim} {}
     WordBlock(data_t raw_data, int word_dim)
@@ -30,12 +31,12 @@ public:
     WordBlock copy() const {
         return WordBlock{_val, word_dim};
     }
-    wordspan_t operator[](idx_t idx) const{
+    span_t operator[](idx_t idx) const{
         return span.subspan(idx*word_dim, word_dim);
     }
-    WordVec getWordVec(idx_t idx) const{
-        return WordVec{(*this)[idx]};
-    }
+    // WordVec getWordVec(idx_t idx) const{
+    //     return WordVec{(*this)[idx]};
+    // }
     WordBlock getWordVec(util::span_dyn<idx_t> idxs) const {
         // auto t_start = std::chrono::high_resolution_clock::now();
         // data_t new_block(2*idxs.size()*word_dim);
@@ -52,7 +53,7 @@ public:
         // std::cerr << "WordBlock::getWordVec : "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
         return WordBlock{new_block, word_dim};
    }
-   void push_back(wordspan_t word_vec){
+   void push_back(span_t word_vec){
        std::copy_n(std::cbegin(word_vec), word_dim, std::back_inserter(_val));
        span=span_t{_val};
    }
@@ -64,7 +65,8 @@ public:
     const int word_dim;
 };
 
-WordBlock load_voca_vecs();
+WordBlock load_voca_vecs(std::string filename, std::string dataset, 
+                         int word_dim, util::DataType param_type);
 
 
 }//namespace rnn::wordrep

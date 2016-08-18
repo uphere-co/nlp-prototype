@@ -47,13 +47,19 @@ Param randomParam(Param::value_type scale){
     return deserializeParam(param_raw);
 }
 
-Param load_param(){
+Param load_param(std::string const &h5_name,  
+                 std::string const &param_name, util::DataType param_type) {
     using namespace rnn::config;
     using namespace util::io;
-    H5file param_storage{rnn_param_store_name, hdf5::FileMode::read_exist};
-    auto param_raw0 = param_storage.getRawData<float>(rnn_param_name);
+    H5file param_storage{H5name{h5_name}, hdf5::FileMode::read_exist};
     std::vector<rnn::type::float_t> param_raw;
-    for(auto x: param_raw0) param_raw.push_back(x);
+    if(param_type == util::DataType::sp){
+        auto param_raw0 = param_storage.getRawData<float>(H5name{param_name});
+        for(auto x: param_raw0) param_raw.push_back(x);
+    } else if(param_type == util::DataType::dp){
+        auto param_raw0 = param_storage.getRawData<double>(H5name{param_name});
+        for(auto x: param_raw0) param_raw.push_back(x);
+    }
     return rnn::simple_model::deserializeParam(param_raw);
 }
 
