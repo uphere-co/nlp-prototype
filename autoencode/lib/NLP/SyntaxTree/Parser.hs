@@ -1,6 +1,6 @@
 module NLP.SyntaxTree.Parser where
 
-import           Data.Text                   (Text(..))
+import           Data.Text                   (Text)
 import           Control.Applicative
 import qualified Data.Attoparsec.Text as A
 --
@@ -43,6 +43,7 @@ bintree =
       return (BinNode n1 n2))
   <|> binleaf
 
+binleaf :: A.Parser (BinTree Text)
 binleaf = do    
   s <- A.takeWhile1 (not . (`elem` ['(',')',' ']))
   return (BinLeaf s)

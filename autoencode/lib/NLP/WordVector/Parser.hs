@@ -12,7 +12,6 @@ import qualified Data.Conduit        as C
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List   as CL
 import           Data.Text                  (Text)
-import qualified Data.Text           as T   (concat)
 import qualified Data.Text.Encoding  as TE
 import           Data.Vector.Storable       (Vector)
 import qualified Data.Vector.Storable as V

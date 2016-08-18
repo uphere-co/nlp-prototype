@@ -9,8 +9,6 @@ import qualified Data.Text as T (drop, find, filter, head, null, reverse, splitO
                                  tail, take, toLower)
 --
 import NLP.SyntaxTree.Type
---
-import Debug.Trace
 
 isPunctuation :: Text -> Bool
 isPunctuation x = x `elem` [ ".", "?", "!", ",", ":", ";"
@@ -23,6 +21,7 @@ isPunctuation x = x `elem` [ ".", "?", "!", ",", ":", ";"
 isxRB :: Text -> Bool
 isxRB x = x' == "lrb" || x' == "rrb" where x' = T.toLower x
 
+expandShortened :: Text -> Text
 expandShortened txt
   | txt == "'s"  = "his"  -- this is very tempororay.
   | txt == "'ll" = "will"
@@ -34,7 +33,8 @@ expandShortened txt
   | txt == "..." = "ellipsis"
   | otherwise = txt
     
-    
+
+removeTrailingPunctuation :: Text -> Text
 removeTrailingPunctuation = T.reverse . T.filter (not . (`elem` ['.',',',' '] )  ) . T.reverse 
 
 removeDollarAnnot :: Text -> Text
@@ -42,7 +42,7 @@ removeDollarAnnot txt = if (T.take 2 txt == "$ ") then T.drop 2 txt else txt
 
 replaceNumber :: Text -> Text
 replaceNumber txt | T.null txt = ""
-replaceNumber txt | (not . T.null) txt = 
+replaceNumber txt | otherwise  = 
     let (h,t) = (T.head txt, T.tail txt)
         r | isDigit h                      = "some-number"
           | h == '.' && T.null t           = "."
@@ -73,7 +73,7 @@ nullify (BinNode x y) =
     in if (isNulled x' && isNulled y') then BNTNode True x' y' else BNTNode False x' y'
 
 isNulled :: BNTree Bool (Bool,Text) -> Bool
-isNulled (BNTLeaf (b,x)) = b
+isNulled (BNTLeaf (b,_)) = b
 isNulled (BNTNode b _ _) = b
 
 regularize :: BinTree Text -> BinTree Text
