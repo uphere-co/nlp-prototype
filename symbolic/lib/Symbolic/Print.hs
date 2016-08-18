@@ -36,6 +36,7 @@ prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 prettyPrint (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrint es) :: String)
 
+
 prettyPrintR :: (Show a) => MExp a -> IO ()
 prettyPrintR = (prettyPrint . exp2RExp) >=> const endl
 

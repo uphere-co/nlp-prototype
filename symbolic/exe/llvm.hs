@@ -16,7 +16,7 @@ import           Foreign.Ptr                    ( Ptr )
 import           Foreign.Storable               ( poke, peek, pokeElemOff )
 
 import qualified LLVM.General.AST          as AST
-import           LLVM.General.AST.Type            ( double, ptr, void )
+import           LLVM.General.AST.Type            ( double, float, ptr, void )
 import           LLVM.General.Context             ( withContext )
 import           Text.Printf
 --
@@ -57,7 +57,7 @@ testexp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
   where idxi = ("i",0,9)
         idxj = ("j",0,9)
 
-test2 :: LLVMRunT IO (Either String ())
+test2 :: LLVMContextT IO (Either String ())
 test2 = do
   let ?expHash = trie hash
   let exp1 :: MExp Float
@@ -76,7 +76,7 @@ test2 = do
                 xref <- getElem (ptr double) "args" (ival 0)
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref ]
                 ret_
-  runJIT ast $ \mfn -> 
+  runJIT "main" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -88,7 +88,7 @@ test2 = do
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res
           
-test3 :: LLVMRunT IO (Either String ())
+test3 :: LLVMContextT IO (Either String ())
 test3 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR testexp7
@@ -103,7 +103,7 @@ test3 = do
                 yref <- getElem (ptr double) "args" (ival 1)
                 call (externf (AST.Name "fun1")) [ local (AST.Name "res"), xref, yref ]
                 ret_
-  runJIT ast $ \mfn -> 
+  runJIT "main" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -135,12 +135,12 @@ test3 = do
                   putStrLn $ "Evaluated to: " ++ show res
 
 
-test4 :: LLVMRunT IO (Either String ())
+test4 :: LLVMContextT IO (Either String ())
 test4 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp3 :: MExp Float)
   let ast = mkAST testexp3 []
-  runJIT ast $ \mfn -> 
+  runJIT "fun1Wrapper" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -150,7 +150,7 @@ test4 = do
             res <- Array.peekArray 9 pres
             putStrLn $ "Evaluated to: " ++ show res
 
-test5 :: LLVMRunT IO (Either String ())
+test5 :: LLVMContextT IO (Either String ())
 test5 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp8 :: MExp Float)
@@ -160,9 +160,9 @@ test5 = do
       vx = VS.fromList [1..100] :: VS.Vector Float
       vy = VS.fromList [1..10]  :: VS.Vector Float
       vr = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test6 :: LLVMRunT IO (Either String ())
+test6 :: LLVMContextT IO (Either String ())
 test6 = do
   let ?expHash = trie hash
   let exp1 :: MExp Float
@@ -177,9 +177,9 @@ test6 = do
       vx  = VS.fromList [1,2,3,4,5,6]
       vy  = VS.fromList [11,12,13,14]  :: VS.Vector Float
       vr  = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test7 :: LLVMRunT IO ()
+test7 :: LLVMContextT IO ()
 test7 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -196,7 +196,7 @@ test7 = do
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Float
       vr = VS.replicate 8 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
   -- comparison
   let xvals = VS.fromList [101,102]
@@ -209,7 +209,7 @@ test7 = do
     liftIO $ printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp2)
   
 
-test8 :: LLVMRunT IO ()
+test8 :: LLVMContextT IO ()
 test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -240,14 +240,11 @@ test8 = do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="
     putStrLn "====================="
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
   liftIO $ do
     putStrLn "======================"
     putStrLn "= interpreter result ="
     putStrLn "======================"
-  -- let xvals = VS.fromList [101,102]
-  --     yvals = VS.fromList [203,204]
-  --     dydxvals = VS.fromList [0,1,1,0]
   let  args = Args (HM.fromList [(mkSym "x",vx)
                                 ,(mkSym "y",vy)
                                 ,(Deriv "y" "x",vdydx)
@@ -258,6 +255,46 @@ test8 = do
         iptk = [("k",k)]
     liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
+
+test9 :: LLVMContextT IO ()
+test9 = do
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxI = ("I",1,4)
+  
+  let ?expHash = trie hash
+      ?functionMap = HM.fromList [("temp", (/100.0) . head)]      
+  let exp1 :: MExp Float
+      exp1 = fun "temp" [concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ] ]
+  liftIO $ do
+    putStr "f = "
+    prettyPrintR exp1
+  let ext = define float "temp" [(float, AST.Name "x")] $ do
+              let xref = local (AST.Name "x")
+              v <- fdiv xref (fval 100)
+              ret v
+      ast = mkASTWithExt ext [("fun1",(exp1,[ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]))]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Float
+      vr = VS.replicate 4 0    :: VS.Vector Float
+  liftIO $ do
+    putStrLn "====================="
+    putStrLn "=    LLVM result    ="
+    putStrLn "====================="
+  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  liftIO $ do
+    putStrLn "======================"
+    putStrLn "= interpreter result ="
+    putStrLn "======================"
+  let  args = Args (HM.fromList [(mkSym "x",vx)
+                                ,(mkSym "y",vy)
+                                ])
+  
+  forM_ [ iI | iI <- [1,2,3,4] ] $ \iI -> do
+    let iptI = [("I",iI)]
+    liftIO $ printf "val(I=%d) = %f \n" iI (seval args iptI exp1)
+
+
 main = withContext $ \context ->
-         flip runReaderT context test8
+         flip runReaderT context test9
 

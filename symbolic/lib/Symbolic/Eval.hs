@@ -75,6 +75,7 @@ eval m (args,ip,Concat idx hs) = select es di
         select (_:xs) (R d) = select xs d
         select [] _ = error "empty list in eval, Concat, select"
 
+
 -- | simple evaluation without complex memoization
 seval :: ( Storable a, HasTrie a, Num a
          , ?expHash :: Exp a :->: Hash

@@ -14,7 +14,8 @@ import qualified LLVM.General.AST          as AST
 import           LLVM.General.AST.Type            ( double, float, ptr, void )
 import           LLVM.General.Context             ( withContext )
 import qualified LLVM.General.ExecutionEngine as EE
-import           LLVM.General.Module         as Mod
+import           LLVM.General.Module          as Mod
+import           Text.Encoding.Z                     (zEncodeString)
 --
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
@@ -27,17 +28,32 @@ initModule = emptyModule "my cool jit"
 mkArgRef :: Int -> a -> Codegen AST.Operand
 mkArgRef i _ = getElem (ptr float) "args" (ival i)
 
-mkAST :: (?expHash :: Exp Float :->: Hash) =>
-         MExp Float -> [Variable] -> AST.Module
-mkAST e args =
+mkASTWithExt :: (?expHash :: Exp Float :->: Hash) =>
+                LLVM ()
+             -> [(String,(MExp Float,[Variable]))]
+             -> AST.Module
+mkASTWithExt external lst =
   runLLVM initModule $ do
-    llvmAST "fun1" args e
-    define void "main" [ (ptr float, AST.Name "res")
-                       , (ptr (ptr float), AST.Name "args")
-                       ] $ do
-      argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
-      call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
-      ret_
+    external
+    mapM_ (\(n,(e,vs)) -> mkAST1 n e vs) lst
+
+mkAST1 :: (?expHash :: Exp Float :->: Hash) =>
+          String -> MExp Float -> [Variable] -> LLVM ()
+mkAST1 n e args = do
+  let zn = zEncodeString n
+  llvmAST zn args e
+  define void (zn ++ "Wrapper") [ (ptr float, AST.Name "res")
+                                , (ptr (ptr float), AST.Name "args") ] $ do
+    argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
+    call (externf (AST.Name zn)) (local (AST.Name "res") : argrefs)
+    ret_
+
+
+mkAST :: (?expHash :: Exp Float :->: Hash) =>
+         MExp Float
+      -> [Variable]
+      -> AST.Module
+mkAST e vs = mkASTWithExt (return ()) [("fun1",(e,vs))]
 
 unsafeWiths :: VS.Storable a => [VS.Vector a] -> ([Ptr a] -> IO b) -> IO b
 unsafeWiths vs = go vs id
@@ -45,30 +61,26 @@ unsafeWiths vs = go vs id
         go (x:xs) ps f = VS.unsafeWith x $ \p -> go xs (ps . (p:)) f
 
 
+-- runMain = callFn "main"
 
-runMain :: [VS.Vector Float] -- -> VS.Vector Float
-           -> ForeignPtr Float
-           -> LLVMRun2T IO ()
-runMain vargs fpr = do
-  fn <- ask 
+callFn :: String -> [VS.Vector Float] -> ForeignPtr Float -> LLVMRunT IO ()
+callFn name vargs fpr = do
+  fn <- lookupFun name -- "main" -- ask
   liftIO  . unsafeWiths vargs $ \ps -> do
     let vps = VS.fromList ps
     VS.MVector _ fparg <- VS.thaw vps
-    -- mv@(VS.MVector _ fpr) <- VS.thaw vres
     withForeignPtr fparg $ \pargs ->
-      withForeignPtr fpr $ \pres -> -- do
+      withForeignPtr fpr $ \pres ->
         run fn pres pargs
-        -- vr' <- VS.freeze mv
 
-
-
-runJITASTPrinter :: (VS.Vector Float -> IO ())
+runJITASTPrinter :: String 
+                 -> (VS.Vector Float -> IO ())
                  -> AST.Module
                  -> [VS.Vector Float]
                  -> VS.Vector Float
-                 -> LLVMRunT IO (Either String ())
-runJITASTPrinter printer ast vargs vres =
-  runJIT ast $ \mfn -> 
+                 -> LLVMContextT IO (Either String ())
+runJITASTPrinter name printer ast vargs vres =
+  runJIT name ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do

@@ -25,7 +25,6 @@ import           Symbolic.CodeGen.LLVM.JIT
 --
 import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
--- import           NLP.RecursiveNN.NewAutoEncoder
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
 import           NLP.SyntaxTree.Printer
@@ -63,7 +62,7 @@ main = do
         bd = V.slice 40100 200 . V.map (/50.0) $ v
     let ?expHash = trie hash        
     let autoenc = AutoEncoder 100 we be
-        -- autodec = AutoDecoder 100 wd bd
+        autodec = AutoDecoder 100 wd bd
     txt <- TIO.readFile "/home/wavewave/repo/srcp/nlp-data/LDC2003T05_parsed/LDC2003T05_parsed1.pos" -- "parsed.txt"
     (_,wvm) <- createWordVectorMap "/home/wavewave/repo/srcp/nlp-data/word2vec-result-20150501/vectors100statmt.bin" -- "vectors100t8.bin"
     let p' = penntree <* A.skipSpace 
@@ -73,24 +72,24 @@ main = do
       Right lst -> do
         withContext $ \context ->
           flip runReaderT context $ do -- test8 >> return ()
-            runJIT2 ast $ do
+            compileNRun ["encodeWrapper", "decodeWrapper"] fullAST $ do
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
                 forM_ mvtr $ \vtr -> do
                   enc <- encode autoenc vtr
-                      -- dec = decode autodec (fmap (const ()) enc)
+                  dec <- decode autodec (fmap (const ()) enc)
                   liftIO $ putStrLn "================"
                   let printer :: BNTree (Vector Float) (Vector Float) -> Text
                       printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
-
                   liftIO $ TIO.putStrLn $ printer enc
-                {- 
-                putStrLn "----------------"
-                TIO.putStrLn $ printer dec
-                let rdec = recDecode autodec (fmap (const ()) enc)
-                TIO.putStrLn . bntPrint [] printer (const "") $ rdec
-                -}
+                  -----------
+                  rdec <- recDecode autodec (fmap (const ()) enc)
+                  liftIO $ do
+                    putStrLn "----------------"
+                    TIO.putStrLn $ printer dec
+                    TIO.putStrLn . bntPrint [] printer (const "") $ rdec
+
         return ()
 {- 
 main :: IO ()
