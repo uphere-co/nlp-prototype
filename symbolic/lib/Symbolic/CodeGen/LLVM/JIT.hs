@@ -21,16 +21,6 @@ type JITFunction = Ptr Float -> Ptr (Ptr Float) -> IO ()
 
 foreign import ccall "dynamic" haskFun :: FunPtr JITFunction -> JITFunction 
 
-{- 
-newtype LLVMRunT m a = LLVMRunT { runLLVMRunT :: ReaderT Context m a }
-
-deriving instance (Functor m) => Functor (LLVMRunT m)
-deriving instance (Applicative m) => Applicative (LLVMRunT m)
-deriving instance (Monad m) => Monad (LLVMRunT m)
-deriving instance (Monad m) => MonadReader Context (LLVMRunT m)
-deriving instance (MonadIO m) => MonadIO (LLVMRunT m)
--}
-
 type LLVMContextT m = ReaderT Context m
 
 runLLVMContextT = runReaderT
@@ -70,10 +60,10 @@ runJIT mod' action = do
         Left err -> putStrLn err >> return r
         Right _ -> return r
 
-type LLVMRun2T = ReaderT (FunPtr ()) 
+type LLVMRunT = ReaderT (FunPtr ()) 
 
-runJIT2 :: AST.Module -> LLVMRun2T IO b -> LLVMContextT IO (Either String b)
-runJIT2 mod' action = do
+compileNRun :: AST.Module -> LLVMRunT IO b -> LLVMContextT IO (Either String b)
+compileNRun mod' action = do
   jit $ \context executionEngine -> do
       runExceptT $ withModuleFromAST context mod' $ \m ->
         withPassManager passes $ \pm -> do
@@ -88,7 +78,3 @@ runJIT2 mod' action = do
             case mfn of
               Nothing -> error "no main"
               Just fn -> runReaderT action fn
-{-      case r of
-        Left err -> putStrLn err >> return r
-        Right _ -> return r
--}

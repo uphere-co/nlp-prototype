@@ -72,7 +72,7 @@ main = do
       Right lst -> do
         withContext $ \context ->
           flip runReaderT context $ do -- test8 >> return ()
-            runJIT2 encodeAST $ do
+            compileNRun encodeAST $ do
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr

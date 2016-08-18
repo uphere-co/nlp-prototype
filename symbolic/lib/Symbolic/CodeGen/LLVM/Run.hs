@@ -51,9 +51,6 @@ mkAST :: (?expHash :: Exp Float :->: Hash) =>
       -> AST.Module
 mkAST = mkASTWithExt (return ())
 
-
-
-
 unsafeWiths :: VS.Storable a => [VS.Vector a] -> ([Ptr a] -> IO b) -> IO b
 unsafeWiths vs = go vs id
   where go []     ps f = f (ps [])
@@ -61,7 +58,7 @@ unsafeWiths vs = go vs id
 
 
 
-runMain :: [VS.Vector Float] -> ForeignPtr Float -> LLVMRun2T IO ()
+runMain :: [VS.Vector Float] -> ForeignPtr Float -> LLVMRunT IO ()
 runMain vargs fpr = do
   fn <- ask 
   liftIO  . unsafeWiths vargs $ \ps -> do

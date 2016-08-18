@@ -17,7 +17,7 @@ import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
 import           Text.Printf
 --
-import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRun2T )
+import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential           ( sdiff )
@@ -59,7 +59,7 @@ encodeAST =
                              , V (mkSym "b") [idxk] ]
 
                    
-encodeP :: AENode -> LLVMRun2T IO (Vector Float)
+encodeP :: AENode -> LLVMRunT IO (Vector Float)
 encodeP AENode {..} = do
   let vc1 = aenode_c1
       vc2 = aenode_c2
@@ -83,7 +83,7 @@ encodeP AENode {..} = do
 
 encode :: AutoEncoder
        -> BinTree (Vector Float)
-       -> LLVMRun2T IO (BNTree (Vector Float) (Vector Float))
+       -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
 encode autoenc btr = go btr
   where go (BinNode x y) = do x' <- go x
                               y' <- go y
