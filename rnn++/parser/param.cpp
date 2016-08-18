@@ -1,5 +1,8 @@
 #include "parser/param.h"
 
+#include <gsl.h>
+#include "utils/span.h"
+
 #include "utils/hdf5.h" 
 #include "utils/loop_gen.h"
 
@@ -22,10 +25,10 @@ Param::raw_type Param::serialize() const{
 
 Param deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     constexpr auto dim = rnn::config::word_dim;
-    auto span2d   = gsl::as_span(param_raw.data(), gsl::dim<dim*2+2>(),gsl::dim<dim>());
-    // auto w_span = gsl::as_span(span2d.data(), gsl::dim<dim*2>(),gsl::dim<dim>());
-    auto wLT_span = gsl::as_span(span2d.data(),      gsl::dim<dim>(),gsl::dim<dim>());
-    auto wRT_span = gsl::as_span(span2d[dim].data(), gsl::dim<dim>(),gsl::dim<dim>());
+    auto span2d   = gsl::as_span(param_raw.data(), util::dim<dim*2+2>(),util::dim<dim>());
+    // auto w_span = gsl::as_span(span2d.data(), util::dim<dim*2>(),util::dim<dim>());
+    auto wLT_span = gsl::as_span(span2d.data(),      util::dim<dim>(),util::dim<dim>());
+    auto wRT_span = gsl::as_span(span2d[dim].data(), util::dim<dim>(),util::dim<dim>());
     auto wL       = util::math::transpose(wLT_span);
     auto wR       = util::math::transpose(wRT_span);
     auto bias     = util::math::Vector<rnn::type::float_t,dim>{span2d[2*dim]};

@@ -210,8 +210,8 @@ void test_rnn_full_step(){
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
     VocaInfo rnn{};
-    // auto param = load_param();
-    auto param = randomParam(0.1);
+    auto param = load_param();
+    // auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 
     auto get_grad = [&](auto sentence){

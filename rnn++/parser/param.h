@@ -5,7 +5,7 @@
 #include <random>
 #include <algorithm>
 
-#include <gsl.h>
+#include "utils/span.h"
 
 #include "parser/basic_type.h"
 #include "parser/config.h"
@@ -20,10 +20,10 @@ struct Param{
     using value_type = rnn::type::float_t;
     using mat_type   = util::math::Matrix<value_type, dim, dim>;
     using vec_type   = util::math::Vector<value_type, dim>;
-    Param(gsl::span<value_type, dim, dim> w_left_span,
-          gsl::span<value_type, dim, dim> w_right_span,
-          gsl::span<value_type, dim> bias_span,
-          gsl::span<value_type, dim> u_score_span)
+    Param(util::span_2d<value_type, dim, dim> w_left_span,
+          util::span_2d<value_type, dim, dim> w_right_span,
+          util::span_1d<value_type, dim> bias_span,
+          util::span_1d<value_type, dim> u_score_span)
           : w_left{w_left_span}, w_right{w_right_span},
             bias{bias_span}, u_score{u_score_span} {}
     Param(mat_type &&w_left, mat_type &&w_right,
