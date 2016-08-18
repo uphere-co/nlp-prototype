@@ -26,48 +26,6 @@ import           Symbolic.Type
 --
 import           NLP.SyntaxTree.Type
 
-
-expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
-expfib' _ 0 = varx
-expfib' _ 1 = vary
-expfib' t n = let e1 = untrie t (n-1)
-                  e2 = untrie t (n-2)
-              in add [e1, e2]
-
-expfib :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => Int -> MExp a
-expfib = 
-    let t = trie expfib
-        extfib = expfib' t
-    in extfib
-
-testfib :: IO ()
-testfib = do
-  let ?expHash = trie hash    
-  let n = 5
-      lexp1 = expfib n :: MExp Int
-  prettyPrintR $ lexp1
-
-test8 :: LLVMRunT IO (Either String ())
-test8 = do
-  let idxi = ("i",1,100)
-      idxj = ("j",1,100)
-  
-  let ?expHash = trie hash
-      ?functionMap = HM.empty
-  let exp1 :: MExp Float
-      exp1 = add [ x_ [idxi], y_ [idxi] ]
-  liftIO $ do
-    putStr "f = "
-    prettyPrintR exp1
-  let ast = mkAST exp1 [ V (mkSym "x") [idxi]
-                       , V (mkSym "y") [idxj]
-                       ]
-      vx = VS.fromList [101..200]
-      vy = VS.fromList [201..300] :: VS.Vector Float
-      vr = VS.replicate 100 0    :: VS.Vector Float
-  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
-
-
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
                      , aenode_c2  :: Vector Float
@@ -77,9 +35,6 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_We  :: Matrix Float
                                , autoenc_b   :: Vector Float
                                } 
-
---   let ?expHash = trie hash
---      ?functionMap = HM.empty
 
 ast :: (?expHash :: Exp Float :->: Hash) => AST.Module
 ast = let idxi = ("i",1,100)
