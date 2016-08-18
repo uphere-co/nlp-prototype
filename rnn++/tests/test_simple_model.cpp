@@ -50,7 +50,7 @@ void test_init_rnn(){
     */
 
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    Param param = load_param();    
+    Param param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);    
     std::cerr << "Test:   3.248616=="<< sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << "Test: -50.581345=="<< sum(param.bias.span) << std::endl;
     std::cerr << "Test:  -0.190589=="<< sum(param.u_score.span) << std::endl;
@@ -80,7 +80,7 @@ void test_forwad_backward(){
     using value_type = rnn::simple_model::Param::value_type;
     
     VocaInfo rnn{};
-    auto param = load_param();
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
 
     auto timer=Timer{};
 
@@ -174,7 +174,7 @@ void test_parallel_reduce(){
     timer.here_then_reset("Read trainset");
 
     VocaInfo rnn{};
-    auto param = load_param();
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
         return get_gradient(param, nodes);
@@ -210,7 +210,7 @@ void test_rnn_full_step(){
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
     VocaInfo rnn{};
-    auto param = load_param();
+    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
     // auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 

@@ -61,6 +61,7 @@ enum class FileMode {
     read_exist,
     rw_exist,
 };
+
 unsigned int OpenWith(FileMode mode);
 
 }// namespace util::io::hdf5
@@ -93,6 +94,14 @@ struct H5file {
         auto h5PredType = hdf5::ToH5PredType<T>();
     	plist.setFillValue(h5PredType, &fillvalue);
     	val.createDataSet(dataset_name.val, h5PredType, space, plist);
+    	H5dataset data{val, dataset_name};
+        data.pimpl->val.write(data_raw.data(), h5PredType, space);
+    }
+    template<typename T>
+    void overwriteRawData(H5name dataset_name, std::vector<T> const &data_raw){
+        hsize_t fdim[] = {data_raw.size()};
+        H5::DataSpace space(1, fdim);
+        auto h5PredType = hdf5::ToH5PredType<T>();
     	H5dataset data{val, dataset_name};
         data.pimpl->val.write(data_raw.data(), h5PredType, space);
     }

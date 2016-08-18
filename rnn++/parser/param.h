@@ -6,11 +6,19 @@
 #include <algorithm>
 
 #include "utils/span.h"
+#include "utils/linear_algebra.h"
+#include "utils/type_param.h"
 
 #include "parser/basic_type.h"
 #include "parser/config.h"
 
-#include "utils/linear_algebra.h"
+
+//forward declaration for load_param().
+namespace util{
+namespace io{
+struct H5name;
+}
+}
 
 namespace rnn{
 namespace simple_model{
@@ -47,7 +55,9 @@ Param operator -(const Param& x, const Param& y);
 
 Param deserializeParam(Param::raw_type &param_raw);
 Param randomParam(Param::value_type scale);
-Param load_param();
+
+Param load_param(util::io::H5name const &h5_name,  
+                 util::io::H5name const &param_name, util::DataType param_type);
 
 }//namespace rnn::simple_model
 }//namespace rnn

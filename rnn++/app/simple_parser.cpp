@@ -185,7 +185,7 @@ int main(){
         auto testset=TokenizedSentences{rnn::config::testset_name};
         timer.here_then_reset("Read trainset");
         VocaInfo rnn{};
-        // auto param = load_param();
+        // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.1);
         timer.here_then_reset("Preparing data");
 
