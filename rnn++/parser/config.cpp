@@ -5,7 +5,7 @@ namespace rnn{
 namespace config{
 
 std::string file_name{"data.h5"};
-std::string voca_name{"1b.model.voca"};
+std::string voca_name{"1b.model.voca"}; 
 std::string w2vmodel_name{"1b.model"};
 // std::string file_name{"word2vec.h5"};
 // std::string voca_name{"foo.word"};

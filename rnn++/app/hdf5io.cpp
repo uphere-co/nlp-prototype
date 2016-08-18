@@ -45,13 +45,21 @@ void test_variable_length_word_packing(){
 
     auto views=unpack_word_views(raw_data);
     for(auto x : views) print(x);
-    print('\n');
+    print(": variable length encoding\n");
+    
+}
+void test_fixed_length_word_packing(){
+    std::vector<char> words_concat={'a','\0','\0','b','c','\0','d','e','\0','f','\0','\0','g','h','\0'};
+    auto views=unpack_word_views(words_concat);
+    for(auto x : views) print(x);
+    print(": fixed length encoding\n");
     
 }
 
 int main(){
     try {
         test_param_serialization();
+        test_fixed_length_word_packing();
         test_variable_length_word_packing();
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;

@@ -5,8 +5,8 @@
 namespace rnn{
 namespace wordrep{
 
-WordBlock load_voca_vecs(std::string filename, std::string dataset, util::DataType param_type){
-    using namespace rnn::config;
+WordBlock load_voca_vecs(std::string filename, std::string dataset, 
+                         int word_dim, util::DataType param_type){
     using namespace util::io;
     H5file file{H5name{filename}, hdf5::FileMode::read_exist};
     std::vector<WordBlock::float_t> vocavec;

@@ -1,5 +1,4 @@
 #include "parser/voca.h"
-#include "parser/config.h"
 
 #include "utils/hdf5.h"
 
@@ -12,10 +11,9 @@ std::ostream& operator<<(std::ostream& os, const Word& obj) {
 }
 
 Voca load_voca(std::string filename, std::string dataset){
-    using namespace rnn::config;
     using namespace util::io;
-    H5file file{H5name{file_name}, hdf5::FileMode::read_exist};
-    return Voca{file.getRawData<rnn::type::char_t>(H5name{voca_name}), voca_max_word_len};
+    H5file file{H5name{filename}, hdf5::FileMode::read_exist};
+    return Voca{file.getRawData<rnn::type::char_t>(H5name{dataset})};
 }
 
 }//namespace rnn::wordrep

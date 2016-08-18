@@ -7,7 +7,9 @@
 #include <chrono>
 
 #include "parser/basic_type.h"
+#include <gsl.h>
 
+#include "utils/print.h"
 #include "utils/span.h"
 #include "utils/string.h"
 #include "utils/math.h"
@@ -56,17 +58,11 @@ private:
 class Voca{
 public:
     typedef std::vector<rnn::type::char_t> data_t;
-    Voca(data_t raw_data, int max_word_len)
-    : _val{raw_data}, span{_val},
-      max_word_len{max_word_len},
-      voca_size{raw_data.size()/max_word_len}{}
     Voca(data_t raw_data)
-    : _val{raw_data}, span{_val},words{util::string::unpack_word_views(_val)},
-      max_word_len{-1}, voca_size{words.size()} {}
+    : _val{raw_data}, span{_val},word_views{util::string::unpack_word_views(_val)},
+      voca_size{word_views.size()} {}
     Word getWord(data_t::size_type idx) const {
-        auto beg=std::cbegin(_val)+idx*max_word_len;
-        auto end=std::find(beg, beg+max_word_len, '\0');
-        util::cstring_span<> word = span.subspan(idx*max_word_len, end-beg);
+        util::cstring_span<> word = gsl::ensure_z(word_views[idx]);
         return Word{word};
     }
     auto size() const {return voca_size;}
@@ -80,8 +76,7 @@ public:
 private:
     const data_t _val;
     util::cstring_span<> span;
-    const std::vector<const char*> words;
-    const int max_word_len;
+    const std::vector<const char*> word_views;
     const data_t::size_type voca_size;
 };
 
