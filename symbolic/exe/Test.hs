@@ -226,3 +226,24 @@ test17 = do
     printf "val(I=%d,k=%d) = %d \n" iI k (seval args (iptI++iptk) exp')
   
     
+test18 :: IO ()
+test18 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.fromList [("temp", (/100.0) . head)]
+  let exp1 :: MExp Float
+      exp1 = fun "temp" [concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]]
+  putStr "f = "
+  prettyPrintR exp1
+
+  let xvals = VS.fromList [101,102]
+      yvals = VS.fromList [203,204]
+      args = Args (HM.fromList [(mkSym "x",xvals)
+                               ,(mkSym "y",yvals)
+                               ])
+  
+  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+    let iptI = [("I",iI)]
+        iptk = [("k",k)]
+    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp1)
+  
+    

@@ -150,7 +150,6 @@ data RExp a = RZero
             | RSum [Index] (RExp a)
             | RConcat Index [RExp a]
 
-
 mangle :: Double -> [Int]
 mangle = map fromIntegral . LB.unpack . Bi.encode
 
@@ -248,7 +247,6 @@ instance HasTrie a => HasTrie (Exp a) where
     enum' (uncurry Sum) su
     `weave`
     enum' (uncurry Concat) c
-    
 
 enum' :: (HasTrie a) => (a -> a') -> (a :->: b) -> [(a',b)]
 enum' f = fmap (over _1 f) . enumerate
