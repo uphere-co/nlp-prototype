@@ -89,8 +89,10 @@ Executable autoencode
                         --
                         attoparsec,
                         bytestring,
-                        unordered-containers,
+                        llvm-general,
                         text,
+                        transformers,
+                        unordered-containers,
                         vector,
                         --
                         autoencode

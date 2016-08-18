@@ -45,20 +45,20 @@ runJITASTPrinter :: (VS.Vector Double -> IO ())
                  -> AST.Module
                  -> [VS.Vector Double]
                  -> VS.Vector Double
-                 -> IO (Either String ())
+                 -> LLVMRunT IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
-  withContext $ \context ->
-    flip runLLVMRunT context $ 
-      runJIT ast $ \mfn -> 
-        case mfn of
-          Nothing -> putStrLn "Nothing?"
-          Just fn -> do
-            unsafeWiths vargs $ \ps -> do
-              let vps = VS.fromList ps
-              VS.MVector _ fparg <- VS.thaw vps
-              mv@(VS.MVector _ fpr) <- VS.thaw vres
-              withForeignPtr fparg $ \pargs ->
-                withForeignPtr fpr $ \pres -> do
-                  run fn pres pargs
-                  vr' <- VS.freeze mv
-                  printer vr'
+  -- withContext $ \context ->
+    -- flip runLLVMRunT context $ 
+  runJIT ast $ \mfn -> 
+    case mfn of
+      Nothing -> putStrLn "Nothing?"
+      Just fn -> do
+        unsafeWiths vargs $ \ps -> do
+          let vps = VS.fromList ps
+          VS.MVector _ fparg <- VS.thaw vps
+          mv@(VS.MVector _ fpr) <- VS.thaw vres
+          withForeignPtr fparg $ \pargs ->
+            withForeignPtr fpr $ \pres -> do
+              run fn pres pargs
+              vr' <- VS.freeze mv
+              printer vr'

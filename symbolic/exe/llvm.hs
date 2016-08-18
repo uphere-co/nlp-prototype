@@ -3,6 +3,7 @@
 
 import           Control.Concurrent
 import           Control.Monad.IO.Class         ( liftIO )
+import           Control.Monad.Trans.Reader     ( runReaderT )
 import           Data.Foldable                  ( forM_ )
 import           Data.Hashable
 import qualified Data.HashMap.Strict   as HM
@@ -149,10 +150,10 @@ test4 = do
             res <- Array.peekArray 9 pres
             putStrLn $ "Evaluated to: " ++ show res
 
-test5 :: IO (Either String ())
+test5 :: LLVMRunT IO (Either String ())
 test5 = do
   let ?expHash = trie hash
-  prettyPrintR (testexp8 :: MExp Double)
+  liftIO $ prettyPrintR (testexp8 :: MExp Double)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
   let ast = mkAST testexp8  [ V (mkSym "x") [idxi,idxj], V (mkSym "y") [idxj] ]
@@ -161,7 +162,7 @@ test5 = do
       vr = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test6 :: IO (Either String ())
+test6 :: LLVMRunT IO (Either String ())
 test6 = do
   let ?expHash = trie hash
   let exp1 :: MExp Double
@@ -170,7 +171,7 @@ test6 = do
       idxi = ("i",1,2)
       idxj = ("j",1,3)
       idxk = ("k",1,4)
-  prettyPrintR (exp1 :: MExp Double)
+  liftIO $ prettyPrintR (exp1 :: MExp Double)
   -- digraph exp
   let ast = mkAST exp1 [ V (mkSym "x") [idxi,idxj], V (mkSym "y") [idxk] ]
       vx  = VS.fromList [1,2,3,4,5,6]
@@ -178,7 +179,7 @@ test6 = do
       vr  = VS.replicate 10 0    :: VS.Vector Double
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test7 :: IO ()
+test7 :: LLVMRunT IO ()
 test7 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -189,7 +190,7 @@ test7 = do
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
   let exp2 :: MExp Double
       exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
-  prettyPrintR exp2
+  liftIO $ prettyPrintR exp2
   -- digraph exp2
   let ast = mkAST exp2 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
       vx = VS.fromList [101,102]
@@ -205,10 +206,10 @@ test7 = do
     let iptI = [("I",i)]
         iptj = [("j",j)]
         
-    printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp2)
+    liftIO $ printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp2)
   
 
-test8 :: IO ()
+test8 :: LLVMRunT IO ()
 test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -222,10 +223,11 @@ test8 = do
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
       dm = HM.fromList [ ("y", ["x"]) ]
       exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
-  putStr "f = "
-  prettyPrintR exp1
-  putStr "df/dx_k = "
-  prettyPrintR exp'
+  liftIO $ do
+    putStr "f = "
+    prettyPrintR exp1
+    putStr "df/dx_k = "
+    prettyPrintR exp'
   let ast = mkAST exp' [ V (mkSym "x") [idxi]
                        , V (mkSym "y") [idxj]
                        , V (Deriv "y" "x") [idxj,idxi]
@@ -234,14 +236,15 @@ test8 = do
       vy = VS.fromList [203,204] :: VS.Vector Double
       vdydx = VS.fromList [0,1,1,0] 
       vr = VS.replicate 8 0    :: VS.Vector Double
-  putStrLn "====================="
-  putStrLn "=    LLVM result    ="
-  putStrLn "====================="
+  liftIO $ do
+    putStrLn "====================="
+    putStrLn "=    LLVM result    ="
+    putStrLn "====================="
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
-
-  putStrLn "======================"
-  putStrLn "= interpreter result ="
-  putStrLn "======================"
+  liftIO $ do
+    putStrLn "======================"
+    putStrLn "= interpreter result ="
+    putStrLn "======================"
   -- let xvals = VS.fromList [101,102]
   --     yvals = VS.fromList [203,204]
   --     dydxvals = VS.fromList [0,1,1,0]
@@ -253,7 +256,8 @@ test8 = do
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]
         iptk = [("k",k)]
-    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
+    liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-main = test8
+main = withContext $ \context ->
+         flip runReaderT context test8
 

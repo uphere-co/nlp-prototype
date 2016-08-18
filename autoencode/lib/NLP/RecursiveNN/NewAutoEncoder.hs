@@ -5,13 +5,17 @@
 
 module NLP.RecursiveNN.NewAutoEncoder where
 
+import           Control.Monad.IO.Class          ( liftIO )
 import           Data.Foldable
 import           Data.Hashable
 import qualified Data.HashMap.Strict       as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable      as VS
+import           Data.Vector.Storable            ( Vector )
+import           Data.Vector.Storable.Matrix
 import           Text.Printf
 --
+import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential           ( sdiff )
 import           Symbolic.Eval                   ( seval )
@@ -19,6 +23,8 @@ import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
 --
+import           NLP.SyntaxTree.Type
+
 
 expfib' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (Int :->: MExp a) -> Int -> MExp a
 expfib' _ 0 = varx
@@ -40,7 +46,7 @@ testfib = do
       lexp1 = expfib n :: MExp Int
   prettyPrintR $ lexp1
 
-test8 :: IO ()
+test8 :: LLVMRunT IO ()
 test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -54,10 +60,11 @@ test8 = do
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
       dm = HM.fromList [ ("y", ["x"]) ]
       exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
-  putStr "f = "
-  prettyPrintR exp1
-  putStr "df/dx_k = "
-  prettyPrintR exp'
+  liftIO $ do
+    putStr "f = "
+    prettyPrintR exp1
+    putStr "df/dx_k = "
+    prettyPrintR exp' 
   let ast = mkAST exp' [ V (mkSym "x") [idxi]
                        , V (mkSym "y") [idxj]
                        , V (Deriv "y" "x") [idxj,idxi]
@@ -66,14 +73,15 @@ test8 = do
       vy = VS.fromList [203,204] :: VS.Vector Double
       vdydx = VS.fromList [0,1,1,0] 
       vr = VS.replicate 8 0    :: VS.Vector Double
-  putStrLn "====================="
-  putStrLn "=    LLVM result    ="
-  putStrLn "====================="
+  liftIO $ do 
+    putStrLn "====================="
+    putStrLn "=    LLVM result    ="
+    putStrLn "=====================" 
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
-
-  putStrLn "======================"
-  putStrLn "= interpreter result ="
-  putStrLn "======================"
+  liftIO $ do
+    putStrLn "======================"
+    putStrLn "= interpreter result ="
+    putStrLn "======================"
   -- let xvals = VS.fromList [101,102]
   --     yvals = VS.fromList [203,204]
   --     dydxvals = VS.fromList [0,1,1,0]
@@ -85,15 +93,8 @@ test8 = do
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]
         iptk = [("k",k)]
-    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
+    liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
-
-
-{- 
-import           Data.Vector.Storable              (Vector)
-import qualified Data.Vector.Storable       as V
-import           Data.Vector.Storable.Matrix
-import           NLP.SyntaxTree.Type
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
@@ -105,6 +106,29 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_b   :: Vector Float
                                } 
 
+
+encodeP :: AENode -> Vector Float
+encodeP AENode {..} = VS.map tanh $ VS.zipWith (+) r b
+  where
+    we = autoenc_We aenode_autoenc
+    b = autoenc_b aenode_autoenc
+    c = aenode_c1 VS.++ aenode_c2  
+    r = mulMV we c
+
+encode :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
+encode autoenc btr = go btr
+  where go (BinNode x y) = let x' = go x
+                               y' = go y
+                               vx = fromEither (rootElem x')
+                               vy = fromEither (rootElem y')
+                               ae = AENode autoenc vx vy
+                           in BNTNode (encodeP ae) x' y'
+        go (BinLeaf x) = BNTLeaf x
+
+
+{- 
+
+
 data ADNode = ADNode { adnode_autodec :: AutoDecoder
                      , adnode_y  :: Vector Float
                      }
@@ -114,13 +138,6 @@ data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_b   :: Vector Float
                                }
 
-encodeP :: AENode -> Vector Float
-encodeP AENode {..} = V.map tanh $ V.zipWith (+) r b
-  where
-    we = autoenc_We aenode_autoenc
-    b = autoenc_b aenode_autoenc
-    c = aenode_c1 V.++ aenode_c2  
-    r = mulMV we c
 
 decodeP :: ADNode -> (Vector Float, Vector Float)
 decodeP ADNode {..} = (c1,c2)
@@ -133,15 +150,6 @@ decodeP ADNode {..} = (c1,c2)
     c1 = V.slice 0 dim rc
     c2 = V.slice dim dim rc
    
-encode :: AutoEncoder -> BinTree (Vector Float) -> BNTree (Vector Float) (Vector Float)
-encode autoenc btr = go btr
-  where go (BinNode x y) = let x' = go x
-                               y' = go y
-                               vx = fromEither (rootElem x')
-                               vy = fromEither (rootElem y')
-                               ae = AENode autoenc vx vy
-                           in BNTNode (encodeP ae) x' y'
-        go (BinLeaf x) = BNTLeaf x
 
 decode :: AutoDecoder -> BNTree (Vector Float) ()-> BNTree (Vector Float) (Vector Float)
 decode autodec bntr@(BNTNode v _ _) = go v bntr
