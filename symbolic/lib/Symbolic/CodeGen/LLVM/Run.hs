@@ -3,14 +3,18 @@
 
 module Symbolic.CodeGen.LLVM.Run where
 
-import           Control.Monad.Trans.Reader       ( runReaderT )
+import           Control.Monad.IO.Class           ( MonadIO(liftIO) )
+import           Control.Monad.Reader.Class       ( MonadReader(ask) )
+import           Control.Monad.Trans.Reader       ( ReaderT(..) )
 import           Data.MemoTrie                    ( (:->:) )
 import qualified Data.Vector.Storable      as VS
-import           Foreign.ForeignPtr               ( withForeignPtr )
+import           Foreign.ForeignPtr               ( ForeignPtr, withForeignPtr )
 import           Foreign.Ptr                      ( Ptr )
 import qualified LLVM.General.AST          as AST
 import           LLVM.General.AST.Type            ( double, float, ptr, void )
 import           LLVM.General.Context             ( withContext )
+import qualified LLVM.General.ExecutionEngine as EE
+import           LLVM.General.Module         as Mod
 --
 import           Symbolic.CodeGen.LLVM.Exp
 import           Symbolic.CodeGen.LLVM.JIT
@@ -39,6 +43,23 @@ unsafeWiths :: VS.Storable a => [VS.Vector a] -> ([Ptr a] -> IO b) -> IO b
 unsafeWiths vs = go vs id
   where go []     ps f = f (ps [])
         go (x:xs) ps f = VS.unsafeWith x $ \p -> go xs (ps . (p:)) f
+
+
+
+runMain :: [VS.Vector Float] -- -> VS.Vector Float
+           -> ForeignPtr Float
+           -> LLVMRun2T IO ()
+runMain vargs fpr = do
+  fn <- ask 
+  liftIO  . unsafeWiths vargs $ \ps -> do
+    let vps = VS.fromList ps
+    VS.MVector _ fparg <- VS.thaw vps
+    -- mv@(VS.MVector _ fpr) <- VS.thaw vres
+    withForeignPtr fparg $ \pargs ->
+      withForeignPtr fpr $ \pres -> -- do
+        run fn pres pargs
+        -- vr' <- VS.freeze mv
+
 
 
 runJITASTPrinter :: (VS.Vector Float -> IO ())

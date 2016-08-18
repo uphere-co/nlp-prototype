@@ -39,6 +39,7 @@ Library
                         conduit,
                         conduit-extra,
                         hashable,
+                        llvm-general-pure,
                         MemoTrie,
                         resourcet,
                         text,
@@ -89,7 +90,10 @@ Executable autoencode
                         --
                         attoparsec,
                         bytestring,
+                        hashable,
                         llvm-general,
+                        MemoTrie,
+                        symbolic,
                         text,
                         transformers,
                         unordered-containers,

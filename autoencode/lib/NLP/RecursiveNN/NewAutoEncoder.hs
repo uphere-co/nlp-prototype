@@ -13,9 +13,10 @@ import           Data.MemoTrie
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
+import qualified LLVM.General.AST            as AST
 import           Text.Printf
 --
-import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
+import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT, LLVMRun2T )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential           ( sdiff )
 import           Symbolic.Eval                   ( seval )
@@ -77,28 +78,50 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_b   :: Vector Float
                                } 
 
+--   let ?expHash = trie hash
+--      ?functionMap = HM.empty
+
+ast :: (?expHash :: Exp Float :->: Hash) => AST.Module
+ast = let idxi = ("i",1,100)
+          idxj = ("j",1,100)
+          exp1 :: MExp Float
+          exp1 = add [ x_ [idxi], y_ [idxi] ]
+      in mkAST exp1 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
+
+                   
+encodeP :: AENode -> LLVMRun2T IO (Vector Float)
+encodeP AENode {..} = do
+  let vx = aenode_c1 -- VS.fromList [101..200]
+      vy = aenode_c2 -- VS.fromList [201..300] :: VS.Vector Float
+      vr = VS.replicate 100 0    :: VS.Vector Float
+  mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
+  runMain [vx,vy] fpr
+  vr' <- liftIO $ VS.freeze mv
+  return vr'
+  
 {- 
-encodeP :: AENode -> LLVMRunT IO (Vector Float)
-encodeP AENode {..} = VS.map tanh $ VS.zipWith (+) r b
+  VS.map tanh $ VS.zipWith (+) r b
   where
     we = autoenc_We aenode_autoenc
     b = autoenc_b aenode_autoenc
     c = aenode_c1 VS.++ aenode_c2  
     r = mulMV we c
-
-
-
-encode :: AutoEncoder -> BinTree (Vector Float)
-       -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
-encode autoenc btr = go btr
-  where go (BinNode x y) = let x' = go x
-                               y' = go y
-                               vx = fromEither (rootElem x')
-                               vy = fromEither (rootElem y')
-                               ae = AENode autoenc vx vy
-                           in BNTNode (encodeP ae) x' y'
-        go (BinLeaf x) = BNTLeaf x
 -}
+
+
+encode :: AutoEncoder
+       -> BinTree (Vector Float)
+       -> LLVMRun2T IO (BNTree (Vector Float) (Vector Float))
+encode autoenc btr = go btr
+  where go (BinNode x y) = do x' <- go x
+                              y' <- go y
+                              let vx = fromEither (rootElem x')
+                                  vy = fromEither (rootElem y')
+                                  ae = AENode autoenc vx vy
+                              r <- encodeP ae
+                              return (BNTNode r x' y')
+        go (BinLeaf x) = return (BNTLeaf x)
+
 
 {- 
 

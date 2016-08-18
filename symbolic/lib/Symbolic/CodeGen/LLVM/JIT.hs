@@ -38,7 +38,7 @@ runLLVMRunT = runReaderT
 run :: FunPtr a -> JITFunction
 run fn = haskFun (castFunPtr fn :: FunPtr JITFunction)
 
-jit :: {- Context -> -} (Context -> EE.MCJIT -> IO a) -> LLVMRunT IO a
+jit :: (Context -> EE.MCJIT -> IO a) -> LLVMRunT IO a
 jit action = do c <- ask 
                 liftIO $ EE.withMCJIT c optlevel model ptrelim fastins (action c)
   where
@@ -54,8 +54,6 @@ runJIT :: AST.Module
        -> (Maybe (FunPtr ()) -> IO b)
        -> LLVMRunT IO (Either String b)
 runJIT mod' action = do
-  -- withContext $ \context ->
-  --   jit context $ \executionEngine -> do
   jit $ \context executionEngine -> do
       r <- runExceptT $ withModuleFromAST context mod' $ \m ->
         withPassManager passes $ \pm -> do
@@ -72,3 +70,25 @@ runJIT mod' action = do
         Left err -> putStrLn err >> return r
         Right _ -> return r
 
+type LLVMRun2T = ReaderT (FunPtr ()) 
+
+runJIT2 :: AST.Module -> LLVMRun2T IO b -> LLVMRunT IO (Either String b)
+runJIT2 mod' action = do
+  jit $ \context executionEngine -> do
+      runExceptT $ withModuleFromAST context mod' $ \m ->
+        withPassManager passes $ \pm -> do
+          -- Optimization Pass
+          runPassManager pm m
+          _optmod <- moduleAST m
+          s <- moduleLLVMAssembly m
+          putStrLn s
+          
+          EE.withModuleInEngine executionEngine m $ \ee -> do
+            mfn <- EE.getFunction ee (AST.Name "main")
+            case mfn of
+              Nothing -> error "no main"
+              Just fn -> runReaderT action fn
+{-      case r of
+        Left err -> putStrLn err >> return r
+        Right _ -> return r
+-}
