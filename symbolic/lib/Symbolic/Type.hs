@@ -157,6 +157,13 @@ mangle = map fromIntegral . LB.unpack . Bi.encode
 unmangle :: [Int] -> Double
 unmangle = Bi.decode . LB.pack . map fromIntegral
 
+fmangle :: Float -> [Int]
+fmangle = map fromIntegral . LB.unpack . Bi.encode
+
+funmangle :: [Int] -> Float
+funmangle = Bi.decode . LB.pack . map fromIntegral
+
+
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c 
 
@@ -167,6 +174,15 @@ instance HasTrie Double where
 
   -- for the time being
   enumerate = error "enumerate of HasTrie instance of Double is undefined"
+
+instance HasTrie Float where
+  data Float :->: a = FloatTrie ([Int] :->: a)
+  trie f = FloatTrie $ trie $ f . funmangle
+  untrie (FloatTrie t) = untrie t . fmangle
+
+  -- for the time being
+  enumerate = error "enumerate of HasTrie instance of Float is undefined"
+
 
 instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)

@@ -328,8 +328,8 @@ ret_ = terminator $ Do $ Ret Nothing []
 
 --
 
-fval :: Double -> Operand
-fval v = cons $ C.Float (F.Double v)
+fval :: Float -> Operand
+fval v = cons $ C.Float (F.Single v)
 
 fzero :: Operand
 fzero = fval 0

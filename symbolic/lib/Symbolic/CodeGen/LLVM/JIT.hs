@@ -16,7 +16,7 @@ import qualified LLVM.General.ExecutionEngine as EE
 import           LLVM.General.Module         as Mod
 import           LLVM.General.PassManager
 
-type JITFunction = Ptr Double -> Ptr (Ptr Double) -> IO ()
+type JITFunction = Ptr Float -> Ptr (Ptr Float) -> IO ()
 
 
 foreign import ccall "dynamic" haskFun :: FunPtr JITFunction -> JITFunction 

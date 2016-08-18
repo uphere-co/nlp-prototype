@@ -53,7 +53,7 @@ test8 = do
   
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp1 :: MExp Double
+  let exp1 :: MExp Float
       exp1 = add [ x_ [idxi], y_ [idxi] ]
   liftIO $ do
     putStr "f = "
@@ -62,8 +62,8 @@ test8 = do
                        , V (mkSym "y") [idxj]
                        ]
       vx = VS.fromList [101..200]
-      vy = VS.fromList [201..300] :: VS.Vector Double
-      vr = VS.replicate 100 0    :: VS.Vector Double
+      vy = VS.fromList [201..300] :: VS.Vector Float
+      vr = VS.replicate 100 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 

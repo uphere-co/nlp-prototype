@@ -60,7 +60,7 @@ testexp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
 test2 :: LLVMRunT IO (Either String ())
 test2 = do
   let ?expHash = trie hash
-  let exp1 :: MExp Double
+  let exp1 :: MExp Float
       exp1 = sum_ [idxi, idxj] (y_ [idxi,idxj])
       idxi = ("i",0,2)
       idxj = ("j",0,2)
@@ -138,7 +138,7 @@ test3 = do
 test4 :: LLVMRunT IO (Either String ())
 test4 = do
   let ?expHash = trie hash
-  liftIO $ prettyPrintR (testexp3 :: MExp Double)
+  liftIO $ prettyPrintR (testexp3 :: MExp Float)
   let ast = mkAST testexp3 []
   runJIT ast $ \mfn -> 
     case mfn of
@@ -153,30 +153,30 @@ test4 = do
 test5 :: LLVMRunT IO (Either String ())
 test5 = do
   let ?expHash = trie hash
-  liftIO $ prettyPrintR (testexp8 :: MExp Double)
+  liftIO $ prettyPrintR (testexp8 :: MExp Float)
   let idxi = ("i",1,10)
       idxj = ("j",1,10)
   let ast = mkAST testexp8  [ V (mkSym "x") [idxi,idxj], V (mkSym "y") [idxj] ]
-      vx = VS.fromList [1..100] :: VS.Vector Double
-      vy = VS.fromList [1..10]  :: VS.Vector Double
-      vr = VS.replicate 10 0    :: VS.Vector Double
+      vx = VS.fromList [1..100] :: VS.Vector Float
+      vy = VS.fromList [1..10]  :: VS.Vector Float
+      vr = VS.replicate 10 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test6 :: LLVMRunT IO (Either String ())
 test6 = do
   let ?expHash = trie hash
-  let exp1 :: MExp Double
+  let exp1 :: MExp Float
       exp1 = concat_ idxA [ x_ [idxi,idxj], y_ [idxk] ] 
       idxA = ("A",1,10)
       idxi = ("i",1,2)
       idxj = ("j",1,3)
       idxk = ("k",1,4)
-  liftIO $ prettyPrintR (exp1 :: MExp Double)
+  liftIO $ prettyPrintR (exp1 :: MExp Float)
   -- digraph exp
   let ast = mkAST exp1 [ V (mkSym "x") [idxi,idxj], V (mkSym "y") [idxk] ]
       vx  = VS.fromList [1,2,3,4,5,6]
-      vy  = VS.fromList [11,12,13,14]  :: VS.Vector Double
-      vr  = VS.replicate 10 0    :: VS.Vector Double
+      vy  = VS.fromList [11,12,13,14]  :: VS.Vector Float
+      vr  = VS.replicate 10 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test7 :: LLVMRunT IO ()
@@ -186,16 +186,16 @@ test7 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
       idxI = ("I",1,4)
-      exp1 :: MExp Double
+      exp1 :: MExp Float
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  let exp2 :: MExp Double
+  let exp2 :: MExp Float
       exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
   liftIO $ prettyPrintR exp2
   -- digraph exp2
   let ast = mkAST exp2 [ V (mkSym "x") [idxi], V (mkSym "y") [idxj] ]
       vx = VS.fromList [101,102]
-      vy = VS.fromList [203,204] :: VS.Vector Double
-      vr = VS.replicate 8 0    :: VS.Vector Double
+      vy = VS.fromList [203,204] :: VS.Vector Float
+      vr = VS.replicate 8 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
   -- comparison
@@ -219,7 +219,7 @@ test8 = do
   
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp1 :: MExp Double
+  let exp1 :: MExp Float
       exp1 = concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ]
       dm = HM.fromList [ ("y", ["x"]) ]
       exp' = sdiff dm (V (mkSym "x") [idxk]) exp1
@@ -233,9 +233,9 @@ test8 = do
                        , V (Deriv "y" "x") [idxj,idxi]
                        ]
       vx = VS.fromList [101,102]
-      vy = VS.fromList [203,204] :: VS.Vector Double
+      vy = VS.fromList [203,204] :: VS.Vector Float
       vdydx = VS.fromList [0,1,1,0] 
-      vr = VS.replicate 8 0    :: VS.Vector Double
+      vr = VS.replicate 8 0    :: VS.Vector Float
   liftIO $ do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="

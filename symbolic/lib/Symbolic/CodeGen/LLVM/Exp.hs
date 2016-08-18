@@ -18,7 +18,7 @@ import           Data.MemoTrie
 import           LLVM.General.AST ( Operand(..) )
 import qualified LLVM.General.AST                  as AST
 import qualified LLVM.General.AST.IntegerPredicate as IP
-import           LLVM.General.AST.Type                    (double, i64, ptr)
+import           LLVM.General.AST.Type                    (double, float, i64, ptr)
 import qualified LLVM.General.AST.Type             as T   (void) 
 import           Text.Printf
 --
@@ -85,8 +85,8 @@ flatIndexM is ivs =   flattenByM ivs (indexFlatteningFactors is)
 splitIndexM :: [Index] -> Operand -> Codegen [Operand]
 splitIndexM is j = splitByM j (indexFlatteningFactors is) 
 
-splitIndexDisjointFM :: (MExp Double -> Codegen Operand)
-                     -> [MExp Double]
+splitIndexDisjointFM :: (MExp Float -> Codegen Operand)
+                     -> [MExp Float]
                      -> Operand
                      -> Codegen Operand
 splitIndexDisjointFM f lst jj = do
@@ -97,7 +97,7 @@ splitIndexDisjointFM f lst jj = do
         let (is:_iss) = map (HS.toList . mexpIdx) (e:es)
             label = concatMap indexName is
             size = ival (sizeIndex is)
-        in cgencond double label (icmp IP.ULT jj size)
+        in cgencond float label (icmp IP.ULT jj size)
              (f' e is) (splitIndexDisjointFM f es =<< isub jj size)
   where
     f' e is = do
@@ -106,7 +106,7 @@ splitIndexDisjointFM f lst jj = do
       f e
 
 
-cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Double -> [Int] -> Codegen Operand
+cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Float -> [Int] -> Codegen Operand
 cgen4fold name _  ini []     = assign name (fval ini)
 cgen4fold name op _   (h:hs) = do
   val1 <- getvar (hVar h)
@@ -161,7 +161,7 @@ cgenfor label (ivar,start,end) body = do
   setBlock forexit
   return ()  
 
-mkInnerbody :: (?expHash :: Exp Double :->: Hash) => MExp Double -> Codegen Operand
+mkInnerbody :: (?expHash :: Exp Float :->: Hash) => MExp Float -> Codegen Operand
 mkInnerbody v = do
   mapM_ (\e -> llvmCodegen (hVar (getMHash e)) e) $ es_ordered
   llvmCodegen (hVar h_result) v
@@ -172,8 +172,8 @@ mkInnerbody v = do
   hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
   es_ordered = map (flip justLookup bmap) hs_ordered
   
-llvmCodegen :: (?expHash :: Exp Double :->: Hash) =>
-               String -> MExp Double -> Codegen Operand
+llvmCodegen :: (?expHash :: Exp Float :->: Hash) =>
+               String -> MExp Float -> Codegen Operand
 llvmCodegen name (MExp Zero _ _)                 = assign name (fval 0)
 llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
@@ -181,7 +181,7 @@ llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
       nj = indexName idxj
   i <- getIndex idxi
   j <- getIndex idxj
-  x <- cgencond double ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
+  x <- cgencond float ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
   assign name x
 llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   let js = iss !! (p-1) 
@@ -192,10 +192,10 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   iI <- flatIndexM [idxI] =<< mapM getIndex [idxI]
   j0 <- flatIndexM js =<< mapM getIndex js
   j <- iadd (ival startjs) j0
-  x <- cgencond double ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
+  x <- cgencond float ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
   assign name x
 llvmCodegen name (MExp (Var (V s is)) _ _) = 
-   mapM getIndex is >>= flatIndexM is >>= getElem double (zencSym s) >>= assign name
+   mapM getIndex is >>= flatIndexM is >>= getElem float (zencSym s) >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
 llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
@@ -204,7 +204,7 @@ llvmCodegen name (MExp (Fun sym hs) _ _)         = do
   val <- call (externf (AST.Name sym)) lst
   assign name val
 llvmCodegen name (MExp (Sum is h1) m _)          = do
-  sumref <- alloca double
+  sumref <- alloca float
   store sumref (fval 0)
   let mkFor = \(i,s,e) -> cgenfor ("for_" ++ i) (i,0,e-s)
       innerstmt = do
@@ -228,11 +228,11 @@ llvmCodegen name (MExp (Concat i hs) m _is)    = do
   assign name r
 
 -- | generate LLVM AST from a symbolic expression
-llvmAST :: (?expHash :: Exp Double :->: Hash) =>
-           String -> [Variable] -> MExp Double -> LLVM ()
+llvmAST :: (?expHash :: Exp Float :->: Hash) =>
+           String -> [Variable] -> MExp Float -> LLVM ()
 llvmAST name syms v =
   define T.void name symsllvm $ do
-    let rref = LocalReference (ptr double) (AST.Name "result")
+    let rref = LocalReference (ptr float) (AST.Name "result")
         is = HS.toList (mexpIdx v)
     if null is
       then do
@@ -252,5 +252,5 @@ llvmAST name syms v =
         foldr (.) id (map mkFor is) innerstmt
         ret_
   where
-    mkarg (V n _) = (ptr double,AST.Name (zencSym n))
-    symsllvm = (ptr double, AST.Name "result") : (map mkarg syms)
+    mkarg (V n _) = (ptr float,AST.Name (zencSym n))
+    symsllvm = (ptr float, AST.Name "result") : (map mkarg syms)

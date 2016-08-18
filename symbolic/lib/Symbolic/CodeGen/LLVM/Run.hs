@@ -9,7 +9,7 @@ import qualified Data.Vector.Storable      as VS
 import           Foreign.ForeignPtr               ( withForeignPtr )
 import           Foreign.Ptr                      ( Ptr )
 import qualified LLVM.General.AST          as AST
-import           LLVM.General.AST.Type            ( double, ptr, void )
+import           LLVM.General.AST.Type            ( double, float, ptr, void )
 import           LLVM.General.Context             ( withContext )
 --
 import           Symbolic.CodeGen.LLVM.Exp
@@ -21,15 +21,15 @@ initModule :: AST.Module
 initModule = emptyModule "my cool jit"
 
 mkArgRef :: Int -> a -> Codegen AST.Operand
-mkArgRef i _ = getElem (ptr double) "args" (ival i)
+mkArgRef i _ = getElem (ptr float) "args" (ival i)
 
-mkAST :: (?expHash :: Exp Double :->: Hash) =>
-         MExp Double -> [Variable] -> AST.Module
+mkAST :: (?expHash :: Exp Float :->: Hash) =>
+         MExp Float -> [Variable] -> AST.Module
 mkAST e args =
   runLLVM initModule $ do
     llvmAST "fun1" args e
-    define void "main" [ (ptr double, AST.Name "res")
-                       , (ptr (ptr double), AST.Name "args")
+    define void "main" [ (ptr float, AST.Name "res")
+                       , (ptr (ptr float), AST.Name "args")
                        ] $ do
       argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
       call (externf (AST.Name "fun1")) (local (AST.Name "res") : argrefs)
@@ -41,10 +41,10 @@ unsafeWiths vs = go vs id
         go (x:xs) ps f = VS.unsafeWith x $ \p -> go xs (ps . (p:)) f
 
 
-runJITASTPrinter :: (VS.Vector Double -> IO ())
+runJITASTPrinter :: (VS.Vector Float -> IO ())
                  -> AST.Module
-                 -> [VS.Vector Double]
-                 -> VS.Vector Double
+                 -> [VS.Vector Float]
+                 -> VS.Vector Float
                  -> LLVMRunT IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
   runJIT ast $ \mfn -> 
