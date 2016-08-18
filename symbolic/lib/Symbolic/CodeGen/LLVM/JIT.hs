@@ -5,10 +5,14 @@
 
 module Symbolic.CodeGen.LLVM.JIT where
 
+import           Control.Monad                      ( foldM )
 import           Control.Monad.IO.Class             ( MonadIO(liftIO) )
 import           Control.Monad.Reader.Class         ( MonadReader(ask) )
+import           Control.Monad.Trans.Either         ( EitherT(..) )
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.Reader         ( ReaderT(..) )
+import           Data.HashMap.Strict                ( HashMap )
+import qualified Data.HashMap.Strict         as HM
 import           Foreign.Ptr                        (FunPtr, Ptr, castFunPtr)
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.Context
@@ -60,10 +64,16 @@ runJIT mod' action = do
         Left err -> putStrLn err >> return r
         Right _ -> return r
 
-type LLVMRunT = ReaderT (FunPtr ()) 
+type LLVMRunT m = EitherT String (ReaderT (HashMap String (FunPtr ())) m)
 
-compileNRun :: AST.Module -> LLVMRunT IO b -> LLVMContextT IO (Either String b)
-compileNRun mod' action = do
+lookupFun :: (Monad m) => String -> LLVMRunT m (FunPtr ())
+lookupFun n = do 
+  fnmap <- ask
+  EitherT . return . maybe (Left (n++" is not registered.")) Right . HM.lookup n $ fnmap
+  
+
+compileNRun :: [String] -> AST.Module -> LLVMRunT IO b -> LLVMContextT IO (Either String b)
+compileNRun names mod' action = do
   jit $ \context executionEngine -> do
       runExceptT $ withModuleFromAST context mod' $ \m ->
         withPassManager passes $ \pm -> do
@@ -74,7 +84,23 @@ compileNRun mod' action = do
           putStrLn s
           
           EE.withModuleInEngine executionEngine m $ \ee -> do
-            mfn <- EE.getFunction ee (AST.Name "main")
-            case mfn of
-              Nothing -> error "no main"
-              Just fn -> runReaderT action fn
+            let errf n = maybe (Left (n ++ " is missing")) Right
+                f fm n = do
+                  fn <- EitherT $ errf n <$> EE.getFunction ee (AST.Name n)
+                  return (HM.insert n fn fm)
+            e1 <- runEitherT (foldM f HM.empty names)
+            case e1 of
+              Left err -> error err
+              Right fnmap -> do
+                e2 <- runReaderT (runEitherT action) fnmap
+                case e2 of
+                  Left err -> error err
+                  Right r -> return r
+
+{- 
+            $ \name ->
+               mfn <- EE.getFunction ee (AST.Name "main")
+               case mfn of
+                 Nothing -> error "no main"
+                 Just fn -> runReaderT action fn
+-}

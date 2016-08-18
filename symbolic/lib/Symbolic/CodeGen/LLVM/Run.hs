@@ -60,7 +60,7 @@ unsafeWiths vs = go vs id
 
 runMain :: [VS.Vector Float] -> ForeignPtr Float -> LLVMRunT IO ()
 runMain vargs fpr = do
-  fn <- ask 
+  fn <- lookupFun "main" -- ask
   liftIO  . unsafeWiths vargs $ \ps -> do
     let vps = VS.fromList ps
     VS.MVector _ fparg <- VS.thaw vps
