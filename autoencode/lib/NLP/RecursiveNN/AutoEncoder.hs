@@ -69,14 +69,12 @@ encodeExp =
 
 decodeExp :: (?expHash :: Exp Float :->: Hash) => (MExp Float, [Variable]) -- AST.Module
 decodeExp =
-  let idxi = ("i",1,100)
-      idxj = ("j",1,100)
-      idxk = ("k",1,100)
+  let idxk = ("k",1,100)
       idxI = ("I",1,200)
       y = ivar (mkSym "y") [idxk]
       wd = ivar (mkSym "wd") [idxI, idxk]
       bd = ivar (mkSym "bd") [idxI]
-      prd = sum_ [idxI] (mul [wd, y])
+      prd = sum_ [idxk] (mul [wd, y])
       result = tanh_ [ add [prd, bd] ]
   in (result, [ V (mkSym "y") [idxk]
               , V (mkSym "wd") [idxI,idxk]
