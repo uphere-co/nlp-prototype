@@ -51,7 +51,7 @@ std::vector<const char *> unpack_word_views(std::vector<char> const &concat_word
     while(it!=end){
         words.push_back(&(*it));
         it=std::find(it, end, '\0');
-        ++it;
+        it=std::find_if_not(it, end, [](auto x){return x=='\0';});
     }
     return words;
 }
