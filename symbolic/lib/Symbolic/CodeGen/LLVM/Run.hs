@@ -75,7 +75,7 @@ runJITASTPrinter :: (VS.Vector Float -> IO ())
                  -> AST.Module
                  -> [VS.Vector Float]
                  -> VS.Vector Float
-                 -> LLVMRunT IO (Either String ())
+                 -> LLVMContextT IO (Either String ())
 runJITASTPrinter printer ast vargs vres =
   runJIT ast $ \mfn -> 
     case mfn of

@@ -31,14 +31,14 @@ deriving instance (Monad m) => MonadReader Context (LLVMRunT m)
 deriving instance (MonadIO m) => MonadIO (LLVMRunT m)
 -}
 
-type LLVMRunT m = ReaderT Context m
+type LLVMContextT m = ReaderT Context m
 
-runLLVMRunT = runReaderT
+runLLVMContextT = runReaderT
 
 run :: FunPtr a -> JITFunction
 run fn = haskFun (castFunPtr fn :: FunPtr JITFunction)
 
-jit :: (Context -> EE.MCJIT -> IO a) -> LLVMRunT IO a
+jit :: (Context -> EE.MCJIT -> IO a) -> LLVMContextT IO a
 jit action = do c <- ask 
                 liftIO $ EE.withMCJIT c optlevel model ptrelim fastins (action c)
   where
@@ -52,7 +52,7 @@ passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
 runJIT :: AST.Module
        -> (Maybe (FunPtr ()) -> IO b)
-       -> LLVMRunT IO (Either String b)
+       -> LLVMContextT IO (Either String b)
 runJIT mod' action = do
   jit $ \context executionEngine -> do
       r <- runExceptT $ withModuleFromAST context mod' $ \m ->
@@ -72,7 +72,7 @@ runJIT mod' action = do
 
 type LLVMRun2T = ReaderT (FunPtr ()) 
 
-runJIT2 :: AST.Module -> LLVMRun2T IO b -> LLVMRunT IO (Either String b)
+runJIT2 :: AST.Module -> LLVMRun2T IO b -> LLVMContextT IO (Either String b)
 runJIT2 mod' action = do
   jit $ \context executionEngine -> do
       runExceptT $ withModuleFromAST context mod' $ \m ->

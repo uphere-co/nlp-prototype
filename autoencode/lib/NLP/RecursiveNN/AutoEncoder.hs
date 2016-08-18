@@ -17,7 +17,7 @@ import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
 import           Text.Printf
 --
-import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT, LLVMRun2T )
+import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRun2T )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential           ( sdiff )
@@ -38,31 +38,31 @@ data AutoEncoder = AutoEncoder { autoenc_dim :: Int
                                , autoenc_b   :: Vector Float
                                } 
 
-ast :: (?expHash :: Exp Float :->: Hash) => AST.Module
-ast = let idxi = ("i",1,100)
-          idxj = ("j",1,100)
-          idxk = ("k",1,100)
-          idxI = ("I",1,200)
-          c1 = ivar (mkSym "c1") [idxi]
-          c2 = ivar (mkSym "c2") [idxj]
-          w = ivar (mkSym "w") [idxk, idxI]
-          b = ivar (mkSym "b") [idxk]
-          
-          c = concat_ idxI [c1,c2]
-          prd = sum_ [idxI] (mul [w, c])
-          result = tanh_ [ add [prd, b] ]
-          ext = external double "tanh" [(double, AST.Name "x")] 
+encodeAST :: (?expHash :: Exp Float :->: Hash) => AST.Module
+encodeAST =
+  let idxi = ("i",1,100)
+      idxj = ("j",1,100)
+      idxk = ("k",1,100)
+      idxI = ("I",1,200)
+      c1 = ivar (mkSym "c1") [idxi]
+      c2 = ivar (mkSym "c2") [idxj]
+      w = ivar (mkSym "w") [idxk, idxI]
+      b = ivar (mkSym "b") [idxk]
 
-      in mkASTWithExt ext result [ V (mkSym "c1") [idxi]
-                                 , V (mkSym "c2") [idxj]
-                                 , V (mkSym "w") [idxk,idxI]
-                                 , V (mkSym "b") [idxk] ]
+      c = concat_ idxI [c1,c2]
+      prd = sum_ [idxI] (mul [w, c])
+      result = tanh_ [ add [prd, b] ]
+      ext = external double "tanh" [(double, AST.Name "x")] 
+  in mkASTWithExt ext result [ V (mkSym "c1") [idxi]
+                             , V (mkSym "c2") [idxj]
+                             , V (mkSym "w") [idxk,idxI]
+                             , V (mkSym "b") [idxk] ]
 
                    
 encodeP :: AENode -> LLVMRun2T IO (Vector Float)
 encodeP AENode {..} = do
-  let vc1 = aenode_c1 -- VS.fromList [101..200]
-      vc2 = aenode_c2 -- VS.fromList [201..300] :: VS.Vector Float
+  let vc1 = aenode_c1
+      vc2 = aenode_c2
       vwe = mat_content (autoenc_We aenode_autoenc)
       vb  = autoenc_b aenode_autoenc
       vr = VS.replicate 100 0    :: VS.Vector Float

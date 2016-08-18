@@ -57,7 +57,7 @@ testexp8 = sum_ [idxj] (mul [ x_ [idxi,idxj] , y_ [ idxj ] ] )
   where idxi = ("i",0,9)
         idxj = ("j",0,9)
 
-test2 :: LLVMRunT IO (Either String ())
+test2 :: LLVMContextT IO (Either String ())
 test2 = do
   let ?expHash = trie hash
   let exp1 :: MExp Float
@@ -88,7 +88,7 @@ test2 = do
               res <- peek pres
               putStrLn $ "Evaluated to: " ++ show res
           
-test3 :: LLVMRunT IO (Either String ())
+test3 :: LLVMContextT IO (Either String ())
 test3 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR testexp7
@@ -135,7 +135,7 @@ test3 = do
                   putStrLn $ "Evaluated to: " ++ show res
 
 
-test4 :: LLVMRunT IO (Either String ())
+test4 :: LLVMContextT IO (Either String ())
 test4 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp3 :: MExp Float)
@@ -150,7 +150,7 @@ test4 = do
             res <- Array.peekArray 9 pres
             putStrLn $ "Evaluated to: " ++ show res
 
-test5 :: LLVMRunT IO (Either String ())
+test5 :: LLVMContextT IO (Either String ())
 test5 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp8 :: MExp Float)
@@ -162,7 +162,7 @@ test5 = do
       vr = VS.replicate 10 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test6 :: LLVMRunT IO (Either String ())
+test6 :: LLVMContextT IO (Either String ())
 test6 = do
   let ?expHash = trie hash
   let exp1 :: MExp Float
@@ -179,7 +179,7 @@ test6 = do
       vr  = VS.replicate 10 0    :: VS.Vector Float
   runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
-test7 :: LLVMRunT IO ()
+test7 :: LLVMContextT IO ()
 test7 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
@@ -209,7 +209,7 @@ test7 = do
     liftIO $ printf "val(I=%d,j=%d) = %f \n" i j (seval args (iptI++iptj) exp2)
   
 
-test8 :: LLVMRunT IO ()
+test8 :: LLVMContextT IO ()
 test8 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
@@ -256,7 +256,7 @@ test8 = do
     liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
 
-test9 :: LLVMRunT IO ()
+test9 :: LLVMContextT IO ()
 test9 = do
   let idxi = ("i",1,2)
       idxj = ("j",1,2)
