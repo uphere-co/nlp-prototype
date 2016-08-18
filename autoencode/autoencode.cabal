@@ -52,7 +52,6 @@ Library
   Exposed-modules:
                         Data.Vector.Storable.Matrix
                         NLP.RecursiveNN.AutoEncoder
-                        NLP.RecursiveNN.NewAutoEncoder
                         NLP.SyntaxTree.Binarize
                         NLP.SyntaxTree.Parser
                         NLP.SyntaxTree.Printer

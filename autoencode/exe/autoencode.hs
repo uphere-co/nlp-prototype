@@ -24,8 +24,8 @@ import           System.Environment
 import           Symbolic.CodeGen.LLVM.JIT
 --
 import           Data.Vector.Storable.Matrix
--- import           NLP.RecursiveNN.AutoEncoder
-import           NLP.RecursiveNN.NewAutoEncoder
+import           NLP.RecursiveNN.AutoEncoder
+-- import           NLP.RecursiveNN.NewAutoEncoder
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
 import           NLP.SyntaxTree.Printer
