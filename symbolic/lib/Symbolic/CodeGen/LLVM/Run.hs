@@ -41,11 +41,11 @@ mkAST1 :: (?expHash :: Exp Float :->: Hash) =>
           String -> MExp Float -> [Variable] -> LLVM ()
 mkAST1 n e args = do
   let zn = zEncodeString n
-  llvmAST zn args e
-  define void (zn ++ "Wrapper") [ (ptr float, AST.Name "res")
+  llvmAST (zn++"i") args e
+  define void zn [ (ptr float, AST.Name "res")
                                 , (ptr (ptr float), AST.Name "args") ] $ do
     argrefs <- mapM (uncurry mkArgRef) (zip [0..] args)
-    call (externf (AST.Name zn)) (local (AST.Name "res") : argrefs)
+    call (externf (AST.Name (zn++"i"))) (local (AST.Name "res") : argrefs)
     ret_
 
 
@@ -61,11 +61,9 @@ unsafeWiths vs = go vs id
         go (x:xs) ps f = VS.unsafeWith x $ \p -> go xs (ps . (p:)) f
 
 
--- runMain = callFn "main"
-
 callFn :: String -> [VS.Vector Float] -> ForeignPtr Float -> LLVMRunT IO ()
 callFn name vargs fpr = do
-  fn <- lookupFun name -- "main" -- ask
+  fn <- lookupFun name
   liftIO  . unsafeWiths vargs $ \ps -> do
     let vps = VS.fromList ps
     VS.MVector _ fparg <- VS.thaw vps

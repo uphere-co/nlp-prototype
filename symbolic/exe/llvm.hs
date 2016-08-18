@@ -140,7 +140,7 @@ test4 = do
   let ?expHash = trie hash
   liftIO $ prettyPrintR (testexp3 :: MExp Float)
   let ast = mkAST testexp3 []
-  runJIT "fun1Wrapper" ast $ \mfn -> 
+  runJIT "fun1" ast $ \mfn -> 
     case mfn of
       Nothing -> putStrLn "Nothing?"
       Just fn -> do
@@ -160,7 +160,7 @@ test5 = do
       vx = VS.fromList [1..100] :: VS.Vector Float
       vy = VS.fromList [1..10]  :: VS.Vector Float
       vr = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test6 :: LLVMContextT IO (Either String ())
 test6 = do
@@ -177,7 +177,7 @@ test6 = do
       vx  = VS.fromList [1,2,3,4,5,6]
       vy  = VS.fromList [11,12,13,14]  :: VS.Vector Float
       vr  = VS.replicate 10 0    :: VS.Vector Float
-  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
 test7 :: LLVMContextT IO ()
 test7 = do
@@ -196,7 +196,7 @@ test7 = do
       vx = VS.fromList [101,102]
       vy = VS.fromList [203,204] :: VS.Vector Float
       vr = VS.replicate 8 0    :: VS.Vector Float
-  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
 
   -- comparison
   let xvals = VS.fromList [101,102]
@@ -240,7 +240,7 @@ test8 = do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="
     putStrLn "====================="
-  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
+  runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy,vdydx] vr
   liftIO $ do
     putStrLn "======================"
     putStrLn "= interpreter result ="
@@ -281,7 +281,7 @@ test9 = do
     putStrLn "====================="
     putStrLn "=    LLVM result    ="
     putStrLn "====================="
-  runJITASTPrinter "fun1Wrapper" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
   liftIO $ do
     putStrLn "======================"
     putStrLn "= interpreter result ="

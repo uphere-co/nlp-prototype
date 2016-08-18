@@ -94,7 +94,7 @@ encodeP AENode {..} = do
       vb  = autoenc_b aenode_autoenc
       vr = VS.replicate 100 0    :: VS.Vector Float
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
-  callFn "encodeWrapper" [vc1,vc2,vwe,vb] fpr
+  callFn "encode" [vc1,vc2,vwe,vb] fpr
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
@@ -130,7 +130,7 @@ decodeP ADNode {..} = do
       vbd = autodec_b adnode_autodec
       vr = VS.replicate 200 0 :: VS.Vector Float
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
-  callFn "decodeWrapper" [vy,vwd,vbd] fpr
+  callFn "decode" [vy,vwd,vbd] fpr
   vr' <- liftIO $ VS.freeze mv
   let c1 = VS.slice 0 dim vr'
       c2 = VS.slice dim dim vr'

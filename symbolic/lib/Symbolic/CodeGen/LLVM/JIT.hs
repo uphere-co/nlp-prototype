@@ -98,10 +98,3 @@ compileNRun names mod' action = do
                   Left err -> error err
                   Right r -> return r
 
-{- 
-            $ \name ->
-               mfn <- EE.getFunction ee (AST.Name "main")
-               case mfn of
-                 Nothing -> error "no main"
-                 Just fn -> runReaderT action fn
--}
