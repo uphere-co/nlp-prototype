@@ -6,10 +6,9 @@
 #include <unordered_map>
 #include <chrono>
 
-#include <gsl.h>
-
 #include "parser/basic_type.h"
 
+#include "utils/span.h"
 #include "utils/string.h"
 #include "utils/math.h"
 
@@ -19,10 +18,10 @@ using char_t = rnn::type::char_t;
 using float_t = rnn::type::float_t;
 
 struct Word{
-    Word(gsl::cstring_span<> word) : span{word}, val{span.data()}{}
+    Word(util::cstring_span<> word) : span{word}, val{span.data()}{}
     Word(std::string word) : span{word}, val{word}{}
     bool operator<(const Word &word)  const { return this->span < word.span;}
-    gsl::cstring_span<> span;
+    util::cstring_span<> span;
     std::string val;
 };
 std::ostream& operator<<(std::ostream& os, const Word& obj);
@@ -67,7 +66,7 @@ public:
     Word getWord(data_t::size_type idx) const {
         auto beg=std::cbegin(_val)+idx*max_word_len;
         auto end=std::find(beg, beg+max_word_len, '\0');
-        gsl::cstring_span<> word = span.subspan(idx*max_word_len, end-beg);
+        util::cstring_span<> word = span.subspan(idx*max_word_len, end-beg);
         return Word{word};
     }
     auto size() const {return voca_size;}
@@ -80,7 +79,7 @@ public:
     }
 private:
     const data_t _val;
-    gsl::cstring_span<> span;
+    util::cstring_span<> span;
     const int max_word_len;
     const data_t::size_type voca_size;
 };

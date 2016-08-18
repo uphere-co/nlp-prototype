@@ -1,11 +1,10 @@
 #pragma once
 #include<vector>
 
-#include<gsl.h>
-
 #include "parser/basic_type.h"
 #include "parser/config.h"
 
+#include "utils/span.h"
 #include "utils/string.h"
 #include "utils/linear_algebra.h"
 
@@ -18,8 +17,8 @@ class WordBlock{
 public:
     using float_t    = rnn::type::float_t;
     using data_t     = std::vector<float_t>;
-    using span_t     = gsl::span<float_t>;
-    using wordspan_t = gsl::span<float_t,rnn::config::word_dim>;
+    using span_t     = util::span_dyn<float_t>;
+    using wordspan_t = util::span_1d<float_t,rnn::config::word_dim>;
     using idx_t      = data_t::size_type ;
     WordBlock(int word_dim)
     : _val{},span{_val}, word_dim{word_dim} {}
@@ -37,7 +36,7 @@ public:
     WordVec getWordVec(idx_t idx) const{
         return WordVec{(*this)[idx]};
     }
-    WordBlock getWordVec(gsl::span<idx_t> idxs) const {
+    WordBlock getWordVec(util::span_dyn<idx_t> idxs) const {
         // auto t_start = std::chrono::high_resolution_clock::now();
         // data_t new_block(2*idxs.size()*word_dim);
         data_t new_block;

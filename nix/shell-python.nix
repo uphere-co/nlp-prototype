@@ -31,6 +31,7 @@ stdenv.mkDerivation {
                    boost
                    hdf5 hdf5-cpp liblbfgs zeromq
                    tbb openblas  
+                   linuxPackages_4_6.perf
                  ];
   shellHook = ''
      EDITOR=vim

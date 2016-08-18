@@ -12,6 +12,7 @@ template<typename T, int64_t dim_1>
 struct VecLoop_void{
     template<typename OP, typename... Args>
     void operator()(OP const&fun, Args&&... args) const {
+        #pragma clang loop vectorize(enable)
         for(int64_t i=0; i<dim_1; ++i){
             fun(i, std::forward<Args>(args)...);
         }
@@ -21,7 +22,8 @@ template<typename T, int64_t dim_1>
 struct VecLoop_vec{
     template<typename OP, typename... Args>
     auto operator()(OP const&fun, Args&&... args) const {
-        util::math::Vector<T,dim_1> result{};
+        util::math::Vector<T,dim_1> result{};        
+        #pragma clang loop vectorize(enable)
         for(int64_t i=0; i<dim_1; ++i){
             result.span[i]=fun(i, std::forward<Args>(args)...);
         }
