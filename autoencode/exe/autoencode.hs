@@ -18,6 +18,7 @@ import           System.Environment
 -- 
 import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
+import           NLP.RecursiveNN.NewAutoEncoder
 import           NLP.SyntaxTree.Binarize
 import           NLP.SyntaxTree.Parser
 import           NLP.SyntaxTree.Printer
@@ -41,8 +42,8 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
     btr0  = binarizeR tr
     btr   = regularize btr0
 
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
     args <- getArgs
     let n1 = read (args !! 0) :: Int
         n2 = read (args !! 1) :: Int
@@ -76,3 +77,6 @@ main = do
             let rdec = recDecode autodec (fmap (const ()) enc)
             TIO.putStrLn . bntPrint [] printer (const "") $ rdec
 
+main :: IO ()
+main = do
+  testfib

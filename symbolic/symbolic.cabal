@@ -49,6 +49,7 @@ Library
                         Symbolic.CodeGen.LLVM.Exp
                         Symbolic.CodeGen.LLVM.JIT
                         Symbolic.CodeGen.LLVM.Operation
+                        Symbolic.CodeGen.LLVM.Run
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined

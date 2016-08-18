@@ -26,16 +26,20 @@ source-repository HEAD
   branch:               master
   tag:                  0.0
 
+--
 -- Test harness
--- ------------
+--
 
 Library
   hs-source-dirs:       lib
   Build-depends:        base,
+                        --
                         attoparsec,
                         bytestring,
                         conduit,
                         conduit-extra,
+                        hashable,
+                        MemoTrie,
                         resourcet,
                         text,
                         transformers,
@@ -47,6 +51,7 @@ Library
   Exposed-modules:
                         Data.Vector.Storable.Matrix
                         NLP.RecursiveNN.AutoEncoder
+                        NLP.RecursiveNN.NewAutoEncoder
                         NLP.SyntaxTree.Binarize
                         NLP.SyntaxTree.Parser
                         NLP.SyntaxTree.Printer
@@ -57,8 +62,12 @@ Library
                         Numeric.Kahan
   Other-modules:        
 
-  ghc-options:          -O2 -Wall -funbox-strict-fields -fno-warn-unused-do-bind
-  ghc-prof-options:     -caf-all -auto-all
+  ghc-options:          -O2
+                        -Wall
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+  ghc-prof-options:     -caf-all
+                        -auto-all
 
 --  
 -- autoencoder program. 
@@ -113,30 +122,6 @@ Executable rnnresult
                         --
                         autoencode
 
---
--- symbolic program. 
---
-Executable symbolic
-  Main-is:              symbolic.hs
-  hs-source-dirs:       exe
-
-  other-modules:       
-  ghc-options:          -Wall  -O2
-                        -threaded
-                        -funbox-strict-fields
-
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
-                        
-  build-depends:        base                            >= 4.7 && < 4.9,
-                        --
-                        hashable,
-                        MemoTrie,
-                        symbolic,
-                        unordered-containers,  
-                        --
-                        autoencode
 
 --                        
 -- treebank program. 
