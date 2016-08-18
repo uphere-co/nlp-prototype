@@ -111,7 +111,7 @@ suffix_2 = (<> "_2")
 suffix_n :: Int -> String -> String
 suffix_n n = (<> ("_" ++ show n))
 
-tanh_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => MExp a -> MExp a
+tanh_ :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 tanh_ = fun "tanh"
 
 

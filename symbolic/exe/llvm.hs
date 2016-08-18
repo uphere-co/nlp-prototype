@@ -245,9 +245,6 @@ test8 = do
     putStrLn "======================"
     putStrLn "= interpreter result ="
     putStrLn "======================"
-  -- let xvals = VS.fromList [101,102]
-  --     yvals = VS.fromList [203,204]
-  --     dydxvals = VS.fromList [0,1,1,0]
   let  args = Args (HM.fromList [(mkSym "x",vx)
                                 ,(mkSym "y",vy)
                                 ,(Deriv "y" "x",vdydx)
@@ -258,6 +255,44 @@ test8 = do
         iptk = [("k",k)]
     liftIO $ printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp')
 
+
+test9 :: LLVMRunT IO ()
+test9 = do
+  let idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxI = ("I",1,4)
+  
+  let ?expHash = trie hash
+      ?functionMap = HM.fromList [("temp", (/100.0) . head)]      
+  let exp1 :: MExp Float
+      exp1 = fun "temp" [concat_ idxI [ mul [ x_ [idxi], x_ [idxi] ]  , mul [ y_ [idxj], x_ [idxj] ] ] ]
+  liftIO $ do
+    putStr "f = "
+    prettyPrintR exp1
+  let ast = mkAST exp1 [ V (mkSym "x") [idxi]
+                       , V (mkSym "y") [idxj]
+                       ]
+      vx = VS.fromList [101,102]
+      vy = VS.fromList [203,204] :: VS.Vector Float
+      vr = VS.replicate 4 0    :: VS.Vector Float
+  liftIO $ do
+    putStrLn "====================="
+    putStrLn "=    LLVM result    ="
+    putStrLn "====================="
+  runJITASTPrinter (\r->putStrLn $ "Evaluated to: " ++ show r) ast [vx,vy] vr
+  liftIO $ do
+    putStrLn "======================"
+    putStrLn "= interpreter result ="
+    putStrLn "======================"
+  let  args = Args (HM.fromList [(mkSym "x",vx)
+                                ,(mkSym "y",vy)
+                                ])
+  
+  forM_ [ iI | iI <- [1,2,3,4] ] $ \iI -> do
+    let iptI = [("I",iI)]
+    liftIO $ printf "val(I=%d) = %f \n" iI (seval args iptI exp1)
+
+
 main = withContext $ \context ->
-         flip runReaderT context test8
+         flip runReaderT context test9
 

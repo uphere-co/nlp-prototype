@@ -241,9 +241,8 @@ test18 = do
                                ,(mkSym "y",yvals)
                                ])
   
-  forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
+  forM_ [ iI | iI <- [1,2,3,4] ] $ \iI -> do
     let iptI = [("I",iI)]
-        iptk = [("k",k)]
-    printf "val(I=%d,k=%d) = %f \n" iI k (seval args (iptI++iptk) exp1)
+    printf "val(I=%d) = %f \n" iI (seval args iptI exp1)
   
     

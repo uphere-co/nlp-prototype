@@ -31,6 +31,11 @@ mkAST :: (?expHash :: Exp Float :->: Hash) =>
          MExp Float -> [Variable] -> AST.Module
 mkAST e args =
   runLLVM initModule $ do
+    define float "temp" [(float, AST.Name "x")] $ do
+      let xref = local (AST.Name "x")
+      v <- fdiv xref (fval 100)
+      ret v
+    
     llvmAST "fun1" args e
     define void "main" [ (ptr float, AST.Name "res")
                        , (ptr (ptr float), AST.Name "args")
@@ -46,21 +51,15 @@ unsafeWiths vs = go vs id
 
 
 
-runMain :: [VS.Vector Float] -- -> VS.Vector Float
-           -> ForeignPtr Float
-           -> LLVMRun2T IO ()
+runMain :: [VS.Vector Float] -> ForeignPtr Float -> LLVMRun2T IO ()
 runMain vargs fpr = do
   fn <- ask 
   liftIO  . unsafeWiths vargs $ \ps -> do
     let vps = VS.fromList ps
     VS.MVector _ fparg <- VS.thaw vps
-    -- mv@(VS.MVector _ fpr) <- VS.thaw vres
     withForeignPtr fparg $ \pargs ->
-      withForeignPtr fpr $ \pres -> -- do
+      withForeignPtr fpr $ \pres ->
         run fn pres pargs
-        -- vr' <- VS.freeze mv
-
-
 
 runJITASTPrinter :: (VS.Vector Float -> IO ())
                  -> AST.Module
