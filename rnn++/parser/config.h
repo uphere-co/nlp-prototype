@@ -39,5 +39,7 @@ constexpr auto activation_df = util::math::FunName::d_tanh;
 // constexpr auto activation_df = util::math::FunName::d_test;
 
 constexpr rnn::type::idx_t n_minibatch = 1000;
+constexpr rnn::type::idx_t n_epoch = 10;
 }//namescpae config
 }//namespace rnn
+

@@ -48,7 +48,7 @@ int main(){
         logger.info("Read trainset");
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
-        auto param = randomParam(0.1);
+        auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
         auto get_grad = [&](auto sentence){
             auto nodes = rnn.initialize_tree(sentence);
@@ -62,21 +62,23 @@ int main(){
         std::stringstream ss;
         ss << "model1." << logger.uid_str() <<"."<<i_minibatch;
         write_to_disk(param, ss.str());
-        for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
-            auto beg=it;
-            auto end=beg+n_minibatch;
-            end=end<lines.cend()?end:lines.cend();
-            auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
-            optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
-            optimizer.update();
-            // auto optimizer = optimizer::GradientDescent{0.0001};
-            // optimizer.update(param, grad_sum);            
-            ++i_minibatch;
-            if(i_minibatch%100==0) {
-                logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
-                std::stringstream ss;
-                ss << "model1." << logger.uid_str() <<"."<<i_minibatch;
-                write_to_disk(param, ss.str());
+        for(auto epoch=0; epoch<n_epoch; ++epoch){
+            for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
+                auto beg=it;
+                auto end=beg+n_minibatch;
+                end=end<lines.cend()?end:lines.cend();
+                auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
+                optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
+                optimizer.update();
+                // auto optimizer = optimizer::GradientDescent{0.0001};
+                // optimizer.update(param, grad_sum);            
+                ++i_minibatch;
+                if(i_minibatch%100==0) {
+                    logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
+                    std::stringstream ss;
+                    ss << "model1." << logger.uid_str() <<"."<<i_minibatch;
+                    write_to_disk(param, ss.str());
+                }
             }
         }
         logger.info("Finish one iteration");
