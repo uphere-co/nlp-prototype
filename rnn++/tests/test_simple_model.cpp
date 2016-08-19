@@ -249,10 +249,10 @@ void test_rnn_full_step(){
     // // dParam.w_left.span  *= 0.0000;
     // // dParam.w_right.span *= 0.0000;
     // dParam.bias.span    *= 0.0001;
-    dParam.w_left.span  *= 0.000001;
-    dParam.w_right.span *= 0.000001;
-    dParam.bias.span    *= 0.0000;
-    dParam.u_score.span *= 0.000;
+    dParam.w_left.span  *= rnn_t::float_t{0.000001};
+    dParam.w_right.span *= rnn_t::float_t{0.000001};
+    dParam.bias.span    *= rnn_t::float_t{0.0000};
+    dParam.u_score.span *= rnn_t::float_t{0.000};
     print(norm_L1(param.w_left.span));
     print(norm_L1(param.w_right.span));
     print(norm_L1(param.bias.span));

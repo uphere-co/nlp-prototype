@@ -7,7 +7,6 @@
 #include <chrono>
 
 #include "parser/basic_type.h"
-#include <gsl.h>
 
 #include "utils/print.h"
 #include "utils/span.h"
