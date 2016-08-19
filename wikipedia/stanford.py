@@ -30,12 +30,18 @@ def ToBinaryTreeStr(tree):
     tree.chomsky_normal_form()
     return ToASCIIstring(tree)
 
-if __name__ == '__main__':
-    filename = sys.argv[1]
-    sentences=open(filename, 'r').readlines()    
-    word_lists=[x.decode('utf-8').split() for x in sentences]
+def ProcessLines(lines):
+    word_lists=[x.decode('utf-8').split() for x in lines]
     trees = [list(x)[0] for x in stanford.parse_sents(word_lists)]
     strs = [ToBinaryTreeStr(list(tree)[0]).encode('utf-8') for tree in trees]
-    with open(filename+'.stanford', 'w') as f:
-        for line in strs:
-            f.write(line+'\n')
+    for line in strs:
+        sys.stdout.write(line+'\n')
+
+if __name__ == '__main__':    
+    lines=[]
+    for line in sys.stdin:
+        lines.append(line)
+        if(len(lines)>101):
+            ProcessLines(lines)
+            lines=[]
+    ProcessLines(lines)

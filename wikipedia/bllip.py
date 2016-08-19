@@ -22,11 +22,16 @@ def ToBinaryTreeStr(tree):
     tree.chomsky_normal_form()
     return ToASCIIstring(tree)
 
-if __name__ == '__main__':
-    filename = sys.argv[1]
-    sentences= open(filename, 'r').readlines()
-    strs = [ToBinaryTreeStr(list(tree)[0]) for tree in bllip.parse_sents(sentences)]
-    #strs=[ToBinaryTreeStr(bllip.parse_one(sent)) for sent in sentences]
-    with open(filename+'.bllip', 'w') as f:
-        for line in strs:
-            f.write(line+'\n')
+def ProcessLines(lines):
+    strs = [ToBinaryTreeStr(list(tree)[0]) for tree in bllip.parse_sents(lines)]
+    for line in strs:
+        sys.stdout.write(line+'\n')
+
+if __name__ == '__main__':    
+    lines=[]
+    for line in sys.stdin:
+        lines.append(line)
+        if(len(lines)>1):
+            ProcessLines(lines)
+            lines=[]
+    ProcessLines(lines)
