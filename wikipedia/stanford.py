@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import sys
 import nltk
 from nltk.parse.stanford import StanfordParser
@@ -31,7 +33,9 @@ def ToBinaryTreeStr(tree):
     return ToASCIIstring(tree)
 
 def ProcessLines(lines):
-    word_lists=[x.decode('utf-8').split() for x in lines]
+    word_lists=[x.split() for x in lines]
+    #word_lists=[x.decode('utf-8').split() for x in lines]
+    #word_lists=[x.encode('latin-1').split() for x in lines]
     trees = [list(x)[0] for x in stanford.parse_sents(word_lists)]
     strs = [ToBinaryTreeStr(list(tree)[0]).encode('utf-8') for tree in trees]
     for line in strs:

@@ -27,7 +27,7 @@ main_seq = do
   return ()
 
 fileprocess f = do
-  let mkhead f = shell ("cat " ++ f ++ " | ipython stanford.py > " ++ f ++".stanford" )
+  let mkhead f = shell ("cat " ++ f ++ " | iconv -f UTF-8 -t ascii//TRANSLIT | ipython stanford.py > " ++ f ++".stanford" )
   --let mkhead f = shell ("cat " ++ f ++ " | iconv -f UTF-8 -t ascii//TRANSLIT | ipython stanford.py > " ++ f ++".bllip")
   str <- readCreateProcess (mkhead f) ""
   print str
