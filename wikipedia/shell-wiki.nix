@@ -20,6 +20,13 @@ in stdenv.mkDerivation {
                    toolz.nltk toolz.bllipparser
                  ]) ++  [ hsenv jdk ] ;
      shellHook = ''
-        EDITOR=vim
+         EDITOR=vim
+         CC=clang
+         CXX=clang++
+         MODEL=/data/groups/uphere/corenlp
+         CORENLP=/data/groups/uphere/corenlp/stanford-corenlp-full-2015-12-09
+         PARSER=/data/groups/uphere/corenlp/stanford-parser-full-2015-12-09
+         CLASSPATH=$CLASSPATH:$CORENLP/stanford-corenlp-3.6.0.jar:$PARSER/stanford-parser.jar:$CORENLP/slf4j-simple.jar:$CORENLP/slf4j-api.jar:$MODEL/stanford-english-corenlp-2016-01-10-models.jar:$MODEL/stanford-parser-english-2016-01-10-models.jar:$MODEL/
+
      '';
    }

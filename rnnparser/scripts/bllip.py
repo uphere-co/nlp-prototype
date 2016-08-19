@@ -1,7 +1,8 @@
 import os
 import sys
 from nltk.parse.bllip import BllipParser
-parser_path=sys.argv[1]
+#parser_path='/data/groups/uphere/parsers/bllipparser/SANCL2012-Uniform'
+parser_path='/data/groups/uphere/parsers/bllipparser/WSJ+Gigaword-v2'
 
 bllip = BllipParser.from_unified_model_dir(parser_path)
 
@@ -16,12 +17,16 @@ def ToASCIIstring(node):
         return node[0]
     return '(%s %s)'%(ToASCIIstring(node[0]), ToASCIIstring(node[1]))
 
-def ParseToBinaryTree(sentence):
-    top_parse = bllip.parse_one(sentence.split())
-    top_parse.collapse_unary(collapsePOS=True, collapseRoot=True, joinChar="+")
-    top_parse.chomsky_normal_form()
-    return ToASCIIstring(top_parse)
+def ToBinaryTreeStr(tree):
+    tree.collapse_unary(collapsePOS=True, collapseRoot=True, joinChar="+")
+    tree.chomsky_normal_form()
+    return ToASCIIstring(tree)
 
-for line in sys.stdin:
-    binary_tree = ParseToBinaryTree(line.strip())
-    sys.stdout.write(binary_tree+'\n')
+if __name__ == '__main__':
+    filename = sys.argv[1]
+    sentences= open(filename, 'r').readlines()
+    strs = [ToBinaryTreeStr(list(tree)[0]) for tree in bllip.parse_sents(sentences)]
+    #strs=[ToBinaryTreeStr(bllip.parse_one(sent)) for sent in sentences]
+    with open(filename+'.bllip', 'w') as f:
+        for line in strs:
+            f.write(line+'\n')
