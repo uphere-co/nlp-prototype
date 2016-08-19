@@ -20,7 +20,7 @@ find_package (Threads)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${HOME}/repo/srcc/GSL/include)
 include_directories(${HOME}/repo/srcc/spdlog/include)
-add_executable(app app/simple_parser tests/test_simple_model
+add_executable(app app/parser_model1 tests/test_simple_model
                    parser/compute parser/config parser/node parser/param 
                    parser/parser parser/voca parser/wordvec parser/optimizers
                    utils/string utils/hdf5 utils/math utils/logger)
