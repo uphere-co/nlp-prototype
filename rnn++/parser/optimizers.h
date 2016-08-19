@@ -1,13 +1,20 @@
 #pragma once
+#include <memory>
+#include <vector>
+#include <string>
 
 #include <lbfgs.h>
-
-#include "parser/parser.h"
 
 #include "parser/basic_type.h"
 
 namespace rnn{
 namespace simple_model{
+
+//forward declarations
+struct Param;
+struct VocaInfo;
+struct TokenizedSentences;
+
 namespace optimizer{
 
 struct GradientDescent{
@@ -22,26 +29,21 @@ struct GradientDescent{
 
 class LBFGSoptimizer{
     using lfloat_t = lbfgsfloatval_t;
-    using c_iter   = TokenizedSentences::c_iter;
+    using c_iter   =  std::vector<std::string>::const_iterator;
 public:
     LBFGSoptimizer(int n_dim, Param &param, VocaInfo const &rnn, 
                    TokenizedSentences const &testset, c_iter beg, c_iter end);
-    virtual ~LBFGSoptimizer() {lbfgs_free(m_x);}
-
+    virtual ~LBFGSoptimizer();
     int update();
 protected:
     lfloat_t evaluate(const lfloat_t *x, lfloat_t *g, const int /*n*/, const lfloat_t /*step*/);
 
-    
     int n_dim;
     lfloat_t *m_x;
     lbfgs_parameter_t lbfgs_param;
 
-    Param &param;
-    VocaInfo const &rnn;
-    TokenizedSentences const &testset;
-    c_iter beg;
-    c_iter end;
+    struct impl;
+    std::unique_ptr<impl> pimpl;
 };
 
 

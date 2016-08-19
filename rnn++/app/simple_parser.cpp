@@ -23,8 +23,6 @@ using namespace rnn::simple_model::test;
 using namespace rnn::simple_model;
 namespace rnn_t = rnn::type;
 
-
-
 int main(){
     try {
         // test_init_rnn();
@@ -57,7 +55,7 @@ int main(){
             auto end=beg+n_minibatch;
             end=end<lines.cend()?end:lines.cend();
             auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
-            auto optimizer = optimizer::LBFGSoptimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
+            optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
             optimizer.update();
             // auto optimizer = optimizer::GradientDescent{0.0001};
             // optimizer.update(param, grad_sum);            
