@@ -31,6 +31,7 @@ struct Node{
     value_type score{};
     Node const *left=nullptr;
     Node const *right=nullptr;
+    Node const *parent=nullptr;
 };
 
 void print_all_descents(Node const & node);
