@@ -46,11 +46,29 @@ std::vector<Node> deserialize_binary_tree(std::string tree_str){
     assert(current_node == nullptr);
     return nodes;
 }
+using tree_span_t = std::pair<std::size_t,std::size_t>;
+auto get_left_span = [](auto const &node){
+    auto span=node.left; 
+    while(span->left) span=span->left;
+    return span;
+};
+auto get_right_span = [](auto const &node){
+    auto span=node.right; 
+    while(span->right) span=span->right;
+    return span;
+};
+auto get_span = [](auto const &node){
+    return std::make_pair(get_left_span(node), get_right_span(node));
+};
+
 auto assert_node=[](auto const &parent, auto const &left, auto const &right){
     assert(parent.left == &left);
     assert(parent.right == &right);
     assert(&parent == left.parent);
     assert(&parent == right.parent);
+};
+auto assert_nodes_span=[](auto &nodes, auto i_node, auto i_left_span, auto i_right_span){
+    assert(get_span(nodes[i_node])==std::make_pair(&nodes[i_left_span],&nodes[i_right_span]));
 };
 
 void test_simple(){
@@ -65,6 +83,8 @@ void test_simple(){
         assert_node(nodes[4], nodes[5], nodes[6]);
         assert_node(nodes[5], nodes[0], nodes[1]);
         assert_node(nodes[6], nodes[2], nodes[3]);
+        assert_nodes_span(nodes, 4, 0, 3);
+        assert_nodes_span(nodes, 5, 0, 1);
     }
     {
         auto nodes = deserialize_binary_tree("(((c d) b) ((c (c d)) d))");
@@ -75,6 +95,12 @@ void test_simple(){
         assert_node(nodes[10], nodes[11], nodes[6]);
         assert_node(nodes[11], nodes[3], nodes[12]);
         assert_node(nodes[12], nodes[4], nodes[5]);
+        assert_nodes_span(nodes, 7, 0, 6);
+        assert_nodes_span(nodes, 8, 0, 2);
+        assert_nodes_span(nodes, 9, 0, 1);
+        assert_nodes_span(nodes, 10, 3, 6);
+        assert_nodes_span(nodes, 11, 3, 5);
+        assert_nodes_span(nodes, 12, 4, 5);
     }
     
 }
