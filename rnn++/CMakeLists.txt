@@ -27,7 +27,7 @@ add_executable(app app/parser_model1 tests/test_simple_model
 #https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
 target_link_libraries(app hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
-add_executable(eval app/parser_eval tests/test_tree_spans)
+add_executable(parser_similarity app/parser_eval tests/test_tree_spans utils/string)
 
 add_executable(hdf5io app/hdf5io parser/config parser/param utils/hdf5 utils/string)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )

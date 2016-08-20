@@ -64,19 +64,16 @@ void test_simple(){
         assert(spans[3]==45);
         assert(spans[4]==44);
         assert(spans[5]==57);
-        // assert(spans.find(6)!=spans.cend());
-        // assert(spans.find(2)!=spans.cend());
-        // assert(spans.find(1)!=spans.cend());
-        // assert(spans.find(45)!=spans.cend());
-        // assert(spans.find(44)!=spans.cend());
-        // assert(spans.find(57)!=spans.cend());
     }
     {
         auto tree1 = deserialize_binary_tree<Node>("(((c d) b) ((c (c d)) d))");
         auto tree2 = deserialize_binary_tree<Node>("((c (d b)) ((c (c d)) d))");
+        auto tree3 = deserialize_binary_tree<Node>("((c (d b)) (((c c) d) d))");
         auto spans1=get_span_hashes(tree1);
         auto spans2=get_span_hashes(tree2);
+        auto spans3=get_span_hashes(tree3);
         assert(span_diffs(spans1, spans2)==1);
+        assert(span_diffs(spans1, spans3)==2);
     }
     
 }
