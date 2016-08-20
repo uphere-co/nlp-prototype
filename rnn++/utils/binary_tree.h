@@ -1,4 +1,8 @@
 #pragma once
+#include <vector>
+#include <algorithm>
+#include <cassert>
+#include <iostream>
 
 namespace util{
 
@@ -26,7 +30,7 @@ std::vector<NODE> deserialize_binary_tree(std::string tree_str){
     auto n_composites = std::count_if(tree_str.cbegin(), tree_str.cend(), node_begin);
     std::vector<NODE> nodes(n_composites*2+1);
     auto it=tree_str.cbegin();
-    if(!node_begin(*it)){assert(0);}
+    if(!node_begin(*it)){return nodes;}
 
     NODE *current_leaf = &nodes[0];
     NODE *current_node = &nodes[n_composites+1];
@@ -43,6 +47,10 @@ std::vector<NODE> deserialize_binary_tree(std::string tree_str){
             it = std::find_if_not(it, tree_str.cend(), node_name_field)-1;
             fill_child_node(current_node, current_leaf++);
         }
+    }
+    if(current_node != nullptr){
+        nodes.resize(0);
+        return nodes;
     }
     assert(current_node == nullptr);
     return nodes;
