@@ -56,7 +56,7 @@ void test_init_rnn(){
     */
 
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    Param param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);    
+    Param param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);    
     std::cerr << "Test:   3.248616=="<< sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << "Test: -50.581345=="<< sum(param.bias.span) << std::endl;
     std::cerr << "Test:  -0.190589=="<< sum(param.u_score.span) << std::endl;
@@ -104,12 +104,14 @@ void test_forwad_backward(){
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
-    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
+    auto param = rnn::simple_model::randomParam(0.1);
 
     auto timer=Timer{};
 
-    auto sentence_test = u8"A symbol of British pound is £ .";
+    //auto sentence_test = u8"A symbol of British pound is £ .";
+    auto sentence_test = u8"a symbol of british pound is £ .";
     auto initial_nodes = rnn.initialize_tree(sentence_test);
     auto &nodes = initial_nodes.val;
     auto n_words=nodes.size();
@@ -119,6 +121,8 @@ void test_forwad_backward(){
 
     auto top_nodes = merge_leaf_nodes(param, nodes);
     auto merge_history = foward_path(param, top_nodes);
+    auto score{0.0};
+    for(auto const & node:nodes) score+= node.score;
     timer.here_then_reset("Forward path");
 
     rnn::simple_model::Param grad{};
@@ -139,7 +143,9 @@ void test_forwad_backward(){
 
     rnn_t::float_t ds_grad{};
     auto matloop_void=MatLoop_void<value_type, rnn::config::word_dim, rnn::config::word_dim>{};
-    auto dParam = rnn::simple_model::randomParam(0.001);        
+    auto dParam = rnn::simple_model::randomParam(0.00001);
+    dParam.bias.span    *= rnn_t::float_t{0.0000};
+    dParam.u_score.span *= rnn_t::float_t{0.000};
     matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
     matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
@@ -185,7 +191,9 @@ void test_forwad_backward(){
         for(auto const & node:nodes1) score1+= node.score;
         for(auto const & node:nodes2) score2+= node.score;
         print(0.5*(score1-score2));
-        print(score1);
+        print(score1-score);
+        print(score-score2);
+        print(score);
         print('\n');
         print(ds_grad);
     }
@@ -195,11 +203,11 @@ void test_forwad_backward(){
 void test_parallel_reduce(){
     using namespace rnn::simple_model;
     auto timer=Timer{};
-    auto lines=util::string::readlines(rnn::config::trainset_name);
-    timer.here_then_reset("Read trainset");
+    auto lines=util::string::readlines(rnn::config::testset_name);
+    timer.here_then_reset("Read testset");
 
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
-    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
         return get_gradient(param, nodes);
@@ -234,9 +242,9 @@ void test_rnn_full_step(){
     // auto tmp=util::string::readlines(rnn::config::testset_name);
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
-    auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
-    // auto param = randomParam(0.1);
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
+    auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 
     auto get_grad = [&](auto sentence){

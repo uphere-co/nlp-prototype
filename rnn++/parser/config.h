@@ -2,6 +2,7 @@
 
 #include <string>
 #include "parser/basic_type.h"
+#include "utils/type_param.h"
 #include "utils/math_funname.h"
 
 namespace rnn{
@@ -11,6 +12,7 @@ namespace config{
 extern std::string file_name;
 extern std::string voca_name;
 extern std::string w2vmodel_name;
+constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 // util::io::H5name file_name{"word2vec.h5"};
 // util::io::H5name voca_name{"foo.word"};
 // util::io::H5name w2vmodel_name{"foo.vec"};
@@ -18,6 +20,7 @@ extern std::string w2vmodel_name;
 extern std::string rnn_param_store_name;
 //HDF5 dataset name to use as inital RNN parameter.
 extern std::string rnn_param_name;
+constexpr util::DataType param_f_type = util::DataType::dp;
 
 extern std::string trainset_name;
 extern std::string testset_name;
@@ -29,6 +32,7 @@ constexpr int voca_max_word_len = 74;
 //voca_size, word_dim are easy to get programmatically.
 //For consistencies, however, they are set by runtime configuration.
 constexpr size_t voca_size=552402;
+// constexpr size_t voca_size=400001;
 constexpr int word_dim=100;
 
 // constexpr auto activation = util::math::FunName::ax;
