@@ -13,6 +13,15 @@ struct Node{
     Node* parent=nullptr;
 };
 
+auto find_top_node_it=[](auto const& nodes){
+    return std::find_if(nodes.cbegin(),nodes.cend(),
+                        [](auto x){return x.parent==nullptr;});
+};
+auto find_top_node_ptr=[](auto const& nodes_ptr){
+    return *std::find_if(nodes_ptr.cbegin(),nodes_ptr.cend(),
+                         [](auto x){return x->parent==nullptr;});
+};
+
 template<typename NODE>
 std::vector<NODE> deserialize_binary_tree(std::string tree_str){
     //define some helper functions in function body because it is implementation details.
@@ -67,18 +76,25 @@ auto get_right_span = [](auto const &node){
     while(span->right) span=span->right;
     return span;
 };
+auto get_left_span_idx = [](auto const &node, auto const &nodes){
+    return get_left_span(node)-nodes.data();
+};
+auto get_right_span_idx = [](auto const &node, auto const &nodes){
+    return get_right_span(node)-nodes.data();
+};
 auto get_span = [](auto const &node){
     return std::make_pair(get_left_span(node), get_right_span(node));
 };
-
+auto get_span_hash = [](auto const &node, auto const &nodes){
+    auto left  = get_left_span_idx(node, nodes);
+    auto right = get_right_span_idx(node, nodes);
+    return left*nodes.size() + right;
+};
 auto get_span_hashes = [](auto const &nodes){
-    const auto n_nodes = nodes.size();
     std::vector<std::size_t> span_hashes;
     for(auto const &node: nodes){
         if(!is_composite(node)) continue;
-        auto left = get_left_span(node)-nodes.data();
-        auto right = get_right_span(node)-nodes.data();
-        auto hash = left*n_nodes + right;
+        auto hash = get_span_hash(node, nodes);
         span_hashes.push_back(hash);
     }
     return span_hashes;

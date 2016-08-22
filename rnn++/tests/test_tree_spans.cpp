@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include "utils/binary_tree.h"
+#include "utils/print.h"
 
 using namespace util;
 
@@ -57,7 +58,7 @@ void test_simple(){
         assert_nodes_span(nodes, 11, 3, 5);
         assert_nodes_span(nodes, 12, 4, 5);
         auto spans=get_span_hashes(nodes);
-        assert(spans.size()==6);        
+        assert(spans.size()==6);
         assert(spans[0]==6);
         assert(spans[1]==2);
         assert(spans[2]==1);
@@ -76,6 +77,9 @@ void test_simple(){
         assert(span_diffs(spans1, spans3)==2);
     }
     
+}
+
+void test_reconstruct_merge_history(){    
 }
 
 }//namespace test
