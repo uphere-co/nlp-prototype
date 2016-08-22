@@ -12,6 +12,8 @@ python/parse_arxiv_meta.py
 *.hi
 *.o
 dist/
+.cabal-sandbox
+cabal.sandbox.config
 
 build*/
 boilerplate
