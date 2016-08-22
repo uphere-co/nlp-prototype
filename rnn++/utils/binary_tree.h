@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <memory>
 
 namespace util{
 
@@ -23,7 +24,7 @@ auto find_top_node_ptr=[](auto const& nodes_ptr){
 };
 
 template<typename NODE>
-std::vector<NODE> deserialize_binary_tree(std::string tree_str){
+std::vector<std::unique_ptr<Node>> deserialize_binary_tree(std::string tree_str){
     //define some helper functions in function body because it is implementation details.
     auto node_begin = [](char x){return x=='(';};
     auto node_end   = [](char x){return x==')';};
@@ -37,16 +38,20 @@ std::vector<NODE> deserialize_binary_tree(std::string tree_str){
     };
 
     auto n_composites = std::count_if(tree_str.cbegin(), tree_str.cend(), node_begin);
-    std::vector<NODE> nodes(n_composites*2+1);
+    std::vector<std::unique_ptr<Node>> nodes;
+    for(decltype(n_composites) i=0; i<n_composites*2+1; ++i) 
+        nodes.push_back(std::make_unique<Node>());
     auto it=tree_str.cbegin();
     if(!node_begin(*it)){return nodes;}
-
-    NODE *current_leaf = &nodes[0];
-    NODE *current_node = &nodes[n_composites+1];
-    NODE *new_node = current_node;
+    auto it_current_leaf = nodes.begin();
+    NODE *current_leaf = it_current_leaf->get();
+    auto it_new_node = nodes.begin()+n_composites+1;
+    NODE *new_node = it_new_node->get();
+    NODE *current_node = new_node;
     while(++it!=tree_str.cend()){
         if(node_begin(*it)){
-            ++new_node;
+            ++it_new_node;
+            new_node = it_new_node->get();
             fill_child_node(current_node, new_node);
             current_node = new_node;
         } else if (node_end(*it)){
@@ -54,7 +59,9 @@ std::vector<NODE> deserialize_binary_tree(std::string tree_str){
         } else if (node_sep(*it)){
         } else{
             it = std::find_if_not(it, tree_str.cend(), node_name_field)-1;
-            fill_child_node(current_node, current_leaf++);
+            fill_child_node(current_node, current_leaf);
+            ++it_current_leaf;
+            current_leaf = it_current_leaf->get();
         }
     }
     if(current_node != nullptr){
@@ -64,26 +71,35 @@ std::vector<NODE> deserialize_binary_tree(std::string tree_str){
     assert(current_node == nullptr);
     return nodes;
 }
-auto is_composite = [](auto const &node){return node.left && node.right;};
+auto is_composite = [](auto const &node){return node->left && node->right;};
 
 auto get_left_span = [](auto const &node){
-    auto span=node.left; 
+    auto span=node->left; 
     while(span->left) span=span->left;
     return span;
 };
 auto get_right_span = [](auto const &node){
-    auto span=node.right; 
+    auto span=node->right; 
     while(span->right) span=span->right;
     return span;
 };
-auto get_left_span_idx = [](auto const &node, auto const &nodes){
-    return get_left_span(node)-nodes.data();
-};
-auto get_right_span_idx = [](auto const &node, auto const &nodes){
-    return get_right_span(node)-nodes.data();
-};
 auto get_span = [](auto const &node){
     return std::make_pair(get_left_span(node), get_right_span(node));
+};
+
+auto get_index=[](auto ptr, auto const& ptrs){
+    auto idx = std::find_if(ptrs.cbegin(),ptrs.cend(),[&ptr](auto const&p){
+                    return p.get()==ptr;
+                }) - ptrs.cbegin();
+    return idx;
+};
+auto get_left_span_idx = [](auto const &node, auto const &nodes){
+    auto span=get_left_span(node);    
+    return get_index(span, nodes);
+};
+auto get_right_span_idx = [](auto const &node, auto const &nodes){
+    auto span=get_right_span(node);    
+    return get_index(span, nodes);
 };
 auto get_span_hash = [](auto const &node, auto const &nodes){
     auto left  = get_left_span_idx(node, nodes);
