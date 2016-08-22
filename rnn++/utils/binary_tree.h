@@ -16,11 +16,11 @@ struct Node{
 
 auto find_top_node_it=[](auto const& nodes){
     return std::find_if(nodes.cbegin(),nodes.cend(),
-                        [](auto x){return x.parent==nullptr;});
+                        [](auto const &x){return x->parent==nullptr;});
 };
 auto find_top_node_ptr=[](auto const& nodes_ptr){
     return *std::find_if(nodes_ptr.cbegin(),nodes_ptr.cend(),
-                         [](auto x){return x->parent==nullptr;});
+                         [](auto const &x){return x->parent==nullptr;});
 };
 
 template<typename NODE>
@@ -121,6 +121,84 @@ auto span_diffs= [](auto const &spans1, auto const &spans2){
     std::set_difference(spans1.cbegin(),spans1.cend(), 
                         spans2.cbegin(),spans2.cend(),std::back_inserter(diff));
     return diff.size();
+};
+
+
+auto is_leaf_node = [](auto node){
+    return node->left==nullptr && node->right==nullptr;
+};
+auto is_dangling_node = [](auto node){
+    return node->parent==nullptr&&is_leaf_node(node);
+};
+auto detach_leaf_node = [](auto child){
+    auto parent = child->parent;
+    assert(parent!=nullptr);
+    if(parent->left==child) parent->left=nullptr;
+    else if (parent->right==child) parent->right=nullptr;
+    else {assert(0);}
+    child->parent=nullptr;
+};
+auto is_mergable=[](auto const &node){
+    return is_leaf_node(node->left)&&is_leaf_node(node->right);
+};
+
+auto remove_dangling_nodes = [](auto node_ptrs){
+    auto end = std::stable_partition(node_ptrs.begin(), node_ptrs.end(),[](auto node)
+                                     {return !is_dangling_node(node);});
+    node_ptrs.resize(end-node_ptrs.cbegin());
+    return node_ptrs;
+};
+
+
+template<typename T>
+void nodes_height_helper(T const* node, std::vector<std::unique_ptr<T>> const &nodes, 
+                         std::vector<int64_t> &heights){
+    if(is_leaf_node(node)) {
+        heights[get_index(node,nodes)]=0;
+        return;
+    } 
+    nodes_height_helper(node->left, nodes, heights);    
+    nodes_height_helper(node->right, nodes, heights);
+    auto left=heights[get_index(node->left,nodes)];
+    auto right=heights[get_index(node->right,nodes)];
+    heights[get_index(node,nodes)] = std::max(left,right)+1;
+    return ;
+}
+auto nodes_height=[](auto const &nodes){
+    auto it_top_node = find_top_node_it(nodes);
+    std::vector<int64_t> heights(nodes.size());
+    nodes_height_helper(it_top_node->get(), nodes, heights);
+    return heights;
+};
+
+auto merge_node=[](std::unique_ptr<Node> &node, auto &nodes){
+    auto i_left = get_index(node->left, nodes);
+    auto i_right= get_index(node->right, nodes);
+    auto i_self = get_index(node.get(), nodes);
+    auto self = node.get();
+    node->left=nullptr;
+    node->right=nullptr;
+    assert(i_right-i_left==1);
+    auto beg = nodes.begin();
+    auto end = nodes.end();
+    std::iter_swap(beg+i_left,beg+i_self);
+    std::move(beg+i_right+1, beg+i_self, beg+i_right);
+    std::move(beg+i_self+1, end, beg+i_self-1);
+    nodes.pop_back();
+    nodes.pop_back();
+};
+
+auto reconstruct_merge_history=[](auto &&nodes){
+    std::vector<int64_t> merge_history;
+    auto n_words = (nodes.size()+1)/2;
+    while(n_words>1){
+        auto beg = nodes.begin()+n_words;
+        auto mergable_node=std::find_if(beg, nodes.end(), is_mergable);
+        merge_history.push_back(get_index(mergable_node->get()->left, nodes));
+        --n_words;
+        merge_node(*mergable_node,nodes);
+    }
+    return merge_history;
 };
 
 }//namespace util

@@ -80,7 +80,20 @@ void test_simple(){
     
 }
 
-void test_reconstruct_merge_history(){    
+
+void test_reconstruct_merge_history(){
+    auto tree1 = deserialize_binary_tree<Node>("(((c d) b) ((c (c d)) d))");
+    // auto tree1 = deserialize_binary_tree<Node>("(a (b (c d)))");
+    //auto tree1 = deserialize_binary_tree<Node>("((a (b c)) d)");
+    // auto tree1 = deserialize_binary_tree<Node>("(a ((c (c d)) d))");
+    auto heights = nodes_height(tree1);
+    for(auto x : heights)
+        print(x);
+    print(": height\n");
+    auto merge_history=reconstruct_merge_history(std::move(tree1));
+    for(auto x : merge_history)
+        print(x);
+    print(": merge history\n");    
 }
 
 }//namespace test
