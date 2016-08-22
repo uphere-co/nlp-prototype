@@ -3,6 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 
+import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
+
 import           Control.Monad.IO.Class            ( liftIO )
 import           Control.Monad.Trans.Reader        ( runReaderT )
 import qualified Data.Attoparsec.Text       as A
@@ -38,8 +40,8 @@ prepareData :: IO (Vector Float)
 prepareData = do
     bstr <- B.readFile "/data/groups/uphere/randomtest/randomtest.dat"
     v :: Vector Float <- B.useAsCString bstr $ \cstr -> do
-      nstr <- mallocBytes (4000000)
-      copyBytes nstr cstr (4000000)
+      nstr <- mallocBytes 4000000
+      copyBytes nstr cstr 4000000
       fptr <- castForeignPtr <$> newForeignPtr_ nstr
       return (V.unsafeFromForeignPtr0 fptr 1000000)
     return v
@@ -52,7 +54,8 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
 
 main :: IO ()
 main = do
-    args <- getArgs
+    setLocaleEncoding utf8
+    args <- getArgs 
     let !n1 = read (args !! 0) :: Int
         !n2 = read (args !! 1) :: Int
     v <- V.map (\x -> x - 0.5) <$> prepareData
@@ -72,8 +75,8 @@ main = do
       Left err -> print err
       Right lst -> do
         withContext $ \context ->
-          flip runReaderT context $ do -- test8 >> return ()
-            compileNRun ["encode", "decode"] fullAST $ do
+          flip runReaderT context $ -- test8 >> return ()
+            compileNRun ["encode", "decode"] fullAST $
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
