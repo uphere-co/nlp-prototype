@@ -142,12 +142,6 @@ auto is_mergable=[](auto const &node){
     return is_leaf_node(node->left)&&is_leaf_node(node->right);
 };
 
-auto remove_dangling_nodes = [](auto node_ptrs){
-    auto end = std::stable_partition(node_ptrs.begin(), node_ptrs.end(),[](auto node)
-                                     {return !is_dangling_node(node);});
-    node_ptrs.resize(end-node_ptrs.cbegin());
-    return node_ptrs;
-};
 
 
 template<typename T>
@@ -175,7 +169,6 @@ auto merge_node=[](std::unique_ptr<Node> &node, auto &nodes){
     auto i_left = get_index(node->left, nodes);
     auto i_right= get_index(node->right, nodes);
     auto i_self = get_index(node.get(), nodes);
-    auto self = node.get();
     node->left=nullptr;
     node->right=nullptr;
     assert(i_right-i_left==1);
