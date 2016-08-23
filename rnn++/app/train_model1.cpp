@@ -46,7 +46,7 @@ int main(){
         // auto lines=util::string::readlines(rnn::config::testset_name);
         auto testset=TokenizedSentences{rnn::config::testset_name};
         logger.info("Read trainset");
-        VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim};
+        VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
