@@ -46,6 +46,12 @@ struct TokenizedSentences{
     TokenizedSentences(std::string tokenized_file);
     std::vector<std::string> val;
 };
+struct ParsedSentences{
+    using c_iter = std::vector<std::string>::const_iterator;
+    ParsedSentences(std::string parsed_file);
+    std::vector<std::string> val;
+};
+
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes);
 Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
                                   TokenizedSentences const &dataset);

@@ -9,6 +9,8 @@ namespace simple_model{
 
 TokenizedSentences::TokenizedSentences(std::string tokenized_file)
     : val{util::string::readlines(tokenized_file)} {}
+ParsedSentences::ParsedSentences(std::string parsed_file)
+    : val{util::string::readlines(parsed_file)} {}
 
     
 Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {

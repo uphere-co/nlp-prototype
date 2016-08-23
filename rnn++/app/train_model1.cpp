@@ -40,7 +40,8 @@ int main(){
         // test_forwad_backward();
         // test_parallel_reduce();
         // test_rnn_full_step();
-        // return 0;        
+        test_supervised_rnn_full_step();
+        return 0;        
         logger.info("Process begins.");
         auto lines=util::string::readlines(rnn::config::trainset_name);
         // auto lines=util::string::readlines(rnn::config::testset_name);

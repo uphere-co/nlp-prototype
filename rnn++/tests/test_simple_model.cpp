@@ -1,6 +1,9 @@
+#include <regex>
+
 #include "tests/test_simple_model.h"
 
 #include "utils/hdf5.h"
+#include "utils/binary_tree.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
@@ -278,6 +281,113 @@ void test_rnn_full_step(){
     auto score1 = scoring_dataset(rnn, param+dParam, testset);
     timer.here_then_reset("Scoring testset");
     auto score2 = scoring_dataset(rnn, param-dParam, testset);
+    // auto score2 = scoring_dataset(rnn, param2, testset);
+    timer.here_then_reset("Scoring testset");
+
+    auto &grad =grad_sum;
+    rnn_t::float_t ds_grad{};
+    auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
+    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    ds_grad += dot(grad.bias.span, dParam.bias.span);
+    ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+
+    print(0.5*(score1-score2));
+    print(score1-score);
+    print(score-score2);
+    print(score);
+    print('\n');
+    print(ds_grad);
+    print('\n');
+}
+
+auto to_original_sentence=[](auto sentence){
+    std::regex bracket("[(|)]");
+    return std::regex_replace(sentence, bracket, "");
+};
+
+void test_supervised_rnn_full_step(){
+    using namespace rnn::simple_model;
+    using namespace rnn::simple_model::detail;
+    using namespace util;
+
+    auto timer=Timer{};
+    // auto testset=ParsedSentences{rnn::config::testset_name};
+    // auto testset_orig=TokenizedSentences{rnn::config::testset_name};
+    auto testset=ParsedSentences{"1b.testset.sample.stanford"};
+    auto testset_orig=TokenizedSentences{"1b.testset.sample"};
+    auto &lines = testset.val;
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
+    auto param = randomParam(0.1);
+    timer.here_then_reset("Preparing data");
+
+    auto get_merge_history = [](auto parsed_sentence){        
+        auto tree = deserialize_binary_tree<Node>(parsed_sentence);
+        auto merge_history=reconstruct_merge_history(std::move(tree));
+        return merge_history;
+    };
+    auto get_directed_grad = [&get_merge_history](VocaInfo const &rnn, Param const &param, 
+                                auto const &parsed_sentence,
+                                auto const &original_sentence){
+        auto merge_history = get_merge_history(parsed_sentence);
+        auto nodes = rnn.initialize_tree(original_sentence);
+        auto& all_nodes = nodes.val; 
+        auto n_words=all_nodes.size();
+        auto top_nodes = merge_leaf_nodes(param, all_nodes);
+        directed_merge(param, top_nodes,merge_history);
+        Param grad{};
+        for(auto i=n_words; i<all_nodes.size(); ++i){
+            auto const &node=all_nodes[i];
+            assert(node.is_combined());
+            backward_path(grad, param, node);
+        }
+        return grad;
+    };
+    auto get_grad=[&](auto const &parsed_sentence){
+        // auto sentence2 = to_original_sentence(parsed_sentence);
+        auto original_sentence = testset_orig.val[&parsed_sentence-testset.val.data()];
+        return get_directed_grad(rnn, param, parsed_sentence, original_sentence);
+    };
+    auto scoring_parsed_sentence = [&get_merge_history](VocaInfo const &rnn, Param const &param,
+                                       auto const &parsed_sentence,
+                                       auto const &original_sentence){
+        auto merge_history = get_merge_history(parsed_sentence);
+        auto nodes = rnn.initialize_tree(original_sentence);
+        assert(nodes.val.size()==merge_history.size()+1);
+        auto& all_nodes = nodes.val; 
+        auto n_words=all_nodes.size();
+        auto top_nodes = merge_leaf_nodes(param, all_nodes);
+        directed_merge(param, top_nodes,merge_history);
+        Param::value_type score{};
+        for(auto i=n_words; i<all_nodes.size(); ++i){
+            score+= all_nodes[i].score;
+        }
+        return score;
+    };
+    auto scoring_parsed_dataset=[&](VocaInfo const &rnn, Param const &param, 
+                                            ParsedSentences const &dataset){
+        using rnn::type::float_t;
+        auto &lines = dataset.val;
+        auto get_score=[&](auto const &parsed_sentence){
+            auto original_sentence = testset_orig.val[&parsed_sentence-testset.val.data()];
+            return scoring_parsed_sentence(rnn, param, parsed_sentence, original_sentence);
+        };
+        auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
+        return score_accum;
+    };
+    auto dParam = randomParam(1.0);
+    dParam.w_left.span  *= rnn_t::float_t{0.001};
+    dParam.w_right.span *= rnn_t::float_t{0.001};
+    dParam.bias.span    *= rnn_t::float_t{0.001};
+    dParam.u_score.span *= rnn_t::float_t{0.001};
+    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
+    timer.here_then_reset("Back-propagation for whole testset");
+    auto score = scoring_parsed_dataset(rnn, param, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score1 = scoring_parsed_dataset(rnn, param+dParam, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score2 = scoring_parsed_dataset(rnn, param-dParam, testset);
     // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
