@@ -27,7 +27,7 @@ import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
 --
-import           NLP.SyntaxTree.Type
+import           NLP.SyntaxTree.Type  -- (fromEither, rootElem)
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
@@ -111,15 +111,17 @@ encodeP AENode {..} = do
 encode :: AutoEncoder
        -> BinTree (Vector Float)
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
-encode autoenc btr = go btr
-  where go (BinNode x y) = do x' <- go x
-                              y' <- go y
-                              let vx = fromEither (rootElem x')
-                                  vy = fromEither (rootElem y')
-                                  ae = AENode autoenc vx vy
-                              r <- encodeP ae
-                              return (BNTNode r x' y')
-        go (BinLeaf x) = return (BNTLeaf x)
+encode _ (BinLeaf x) = pure (BNTLeaf x)
+encode autoenc (BinNode x y) = do
+    x' <- encode autoenc x
+    y' <- encode autoenc y
+    r <- node x' y'
+    return (BNTNode r x' y')
+  where
+    node x' y' = let vx = fromEither . rootElem $ x'
+                     vy = fromEither . rootElem $ y'
+                     ae = AENode autoenc vx vy
+                 in encodeP ae
 
 
 decodeP :: ADNode -> LLVMRunT IO (Vector Float, Vector Float)
@@ -143,7 +145,6 @@ decodeP ADNode {..} = do
    
 
 
- 
 decode :: AutoDecoder
        -> BNTree (Vector Float) ()
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
@@ -154,7 +155,7 @@ decode autodec bntr@(BNTNode v _ _) = go v bntr
     go v1 (BNTLeaf ()) = pure (BNTLeaf v1)
 decode _ (BNTLeaf _) = error "shouldn't happen"
 
-
+-- Binary tree with child-tree-valued node !! (sort of)
 recDecode :: AutoDecoder
           -> BNTree (Vector Float) ()
           -> LLVMRunT IO (BNTree (BNTree (Vector Float) (Vector Float)) ())

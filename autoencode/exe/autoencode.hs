@@ -83,16 +83,17 @@ main = do
                 forM_ mvtr $ \vtr -> do
                   enc <- encode autoenc vtr
                   dec <- decode autodec (fmap (const ()) enc)
-                  liftIO $ putStrLn "================"
                   let printer :: BNTree (Vector Float) (Vector Float) -> Text
                       printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
-                  liftIO $ TIO.putStrLn $ printer enc
-                  -----------
-                  rdec <- recDecode autodec (fmap (const ()) enc)
                   liftIO $ do
+                    putStrLn "================"
+                    TIO.putStrLn $ printer enc
                     putStrLn "----------------"
                     TIO.putStrLn $ printer dec
-                    TIO.putStrLn . bntPrint [] printer (const "") $ rdec
+                  rdec <- recDecode autodec (fmap (const ()) enc)
+                  liftIO $ do
+                    putStrLn "****************"
+                    TIO.putStrLn . bntPrint [] printer (\_->"(no leaf)") $ rdec
 
         return ()
 {- 
