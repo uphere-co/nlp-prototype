@@ -32,63 +32,52 @@ void write_to_disk(Param const &param, std::string param_name){
     h5store.writeRawData(H5name{param_name}, param_raw);
 }
 int main(){
-    Logger logger{"rnn_model1", "logs/basic.txt"};
+    Logger logger{"rnn_model0", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){
         std::stringstream ss;
-        ss << "model1." << logger.uid_str() <<"."<<i_minibatch;
+        ss << "model0." << logger.uid_str() <<"."<<i_minibatch;
         write_to_disk(param, ss.str());
     };
     try {
-        // test_supervised_rnn_full_step();
+        // test_init_rnn();
+        // test_read_voca();
+        // test_read_word2vec_output();
+        // test_forwad_backward();
+        // test_parallel_reduce();
+        // test_rnn_full_step();
         // return 0;
         logger.info("Process begins.");
-
-        // auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};
-        // auto testset_orig=TokenizedSentences{"1b.testset.sample"};
-        // auto testset = SentencePairs{testset_parsed,testset_orig};
-        // auto trainset_parsed=ParsedSentences{"1b.testset.stanford"};
-        // auto trainset_orig=TokenizedSentences{"1b.testset"};
-        auto testset_parsed=ParsedSentences{"1b.testset.stanford"};
-        auto testset_orig=TokenizedSentences{"1b.testset"};
-        auto testset = SentencePairs{testset_parsed,testset_orig};
-        auto trainset_parsed=ParsedSentences{"1b.trainset.stanford"};
-        auto trainset_orig=TokenizedSentences{"1b.trainset"};
-        auto trainset = SentencePairs{trainset_parsed,trainset_orig};
-        auto &pairs = trainset.val;
-        
+        auto lines=util::string::readlines(rnn::config::trainset_name);
+        // auto lines=util::string::readlines(rnn::config::testset_name);
+        auto testset=TokenizedSentences{rnn::config::testset_name};
         logger.info("Read trainset");
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
-        auto get_label_grad=[&](auto const &sent_pair){
-            return get_directed_grad(rnn, param, sent_pair);
-        };
-        auto get_greedy_grad=[&](auto const &sent_pair){
-            auto nodes = rnn.initialize_tree(sent_pair.original);
+        auto get_grad = [&](auto sentence){
+            auto nodes = rnn.initialize_tree(sentence);
             return get_gradient(param, nodes);
-        };
+        };                
         logger.info("Prepared data.");
-
+        
         logger.info("Begin training");
         int64_t i_minibatch{};
-        logger.log_testscore(i_minibatch, scoring_parsed_dataset(rnn, param, testset));
+        logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
         write_param(i_minibatch,param);
         for(auto epoch=0; epoch<n_epoch; ++epoch){
-            for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
+            for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
                 auto beg=it;
                 auto end=beg+n_minibatch;
-                end=end<pairs.cend()?end:pairs.cend();
-                // optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
-                // optimizer.update();
-                auto grad_label = parallel_reducer(beg, end, get_label_grad, Param{});
-                auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Param{});
-                auto grad = grad_label-grad_greedy;
-                auto optimizer = optimizer::GradientDescent{0.0001};
-                optimizer.update(param, grad);            
+                end=end<lines.cend()?end:lines.cend();
+                auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
+                optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
+                optimizer.update();
+                // auto optimizer = optimizer::GradientDescent{0.0001};
+                // optimizer.update(param, grad_sum);            
                 ++i_minibatch;
                 if(i_minibatch%100==0) {
-                    logger.log_testscore(i_minibatch,scoring_parsed_dataset(rnn, param, testset));
+                    logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
                     write_param(i_minibatch,param);
                 }
             }

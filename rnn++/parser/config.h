@@ -12,10 +12,10 @@ namespace config{
 extern std::string file_name;
 extern std::string voca_name;
 extern std::string w2vmodel_name;
-constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 // util::io::H5name file_name{"word2vec.h5"};
 // util::io::H5name voca_name{"foo.word"};
 // util::io::H5name w2vmodel_name{"foo.vec"};
+constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
 
 extern std::string rnn_param_store_name;
 //HDF5 dataset name to use as inital RNN parameter.
