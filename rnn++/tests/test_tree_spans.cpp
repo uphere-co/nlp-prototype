@@ -7,18 +7,20 @@
 #include <cassert>
 
 #include "utils/binary_tree.h"
+#include "utils/print.h"
 
 using namespace util;
 
 namespace{
 auto assert_node=[](auto const &parent, auto const &left, auto const &right){
-    assert(parent.left == &left);
-    assert(parent.right == &right);
-    assert(&parent == left.parent);
-    assert(&parent == right.parent);
+    assert(parent->left == left.get());
+    assert(parent->right == right.get());
+    assert(parent.get() == left->parent);
+    assert(parent.get() == right->parent);
 };
 auto assert_nodes_span=[](auto &nodes, auto i_node, auto i_left_span, auto i_right_span){
-    assert(get_span(nodes[i_node])==std::make_pair(&nodes[i_left_span],&nodes[i_right_span]));
+    assert(get_span(nodes[i_node])==std::make_pair(nodes[i_left_span].get(),
+                                                   nodes[i_right_span].get()));
 };
 }//nameless namespace
 
@@ -57,7 +59,7 @@ void test_simple(){
         assert_nodes_span(nodes, 11, 3, 5);
         assert_nodes_span(nodes, 12, 4, 5);
         auto spans=get_span_hashes(nodes);
-        assert(spans.size()==6);        
+        assert(spans.size()==6);
         assert(spans[0]==6);
         assert(spans[1]==2);
         assert(spans[2]==1);
@@ -76,6 +78,22 @@ void test_simple(){
         assert(span_diffs(spans1, spans3)==2);
     }
     
+}
+
+
+void test_reconstruct_merge_history(){
+    auto tree1 = deserialize_binary_tree<Node>("(((c d) b) ((c (c d)) d))");
+    // auto tree1 = deserialize_binary_tree<Node>("(a (b (c d)))");
+    //auto tree1 = deserialize_binary_tree<Node>("((a (b c)) d)");
+    // auto tree1 = deserialize_binary_tree<Node>("(a ((c (c d)) d))");
+    auto heights = nodes_height(tree1);
+    for(auto x : heights)
+        print(x);
+    print(": height\n");
+    auto merge_history=reconstruct_merge_history(std::move(tree1));
+    for(auto x : merge_history)
+        print(x);
+    print(": merge history\n");    
 }
 
 }//namespace test

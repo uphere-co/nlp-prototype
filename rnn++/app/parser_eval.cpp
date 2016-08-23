@@ -5,8 +5,10 @@
 #include "utils/binary_tree.h"
 #include "utils/string.h"
 
-int main(int argc, char** argv){
-    // test::test_simple();
+int main(int /*argc*/, char** argv){
+    test::test_simple();
+    test::test_reconstruct_merge_history();
+    return 0;
     using util::Node;
     using namespace util;
     auto lines1 = util::string::readlines(argv[1]);
