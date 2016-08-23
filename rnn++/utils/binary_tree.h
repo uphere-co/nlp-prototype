@@ -193,5 +193,9 @@ auto reconstruct_merge_history=[](auto &&nodes){
     }
     return merge_history;
 };
-
+auto get_merge_history = [](auto const &parsed_sentence){        
+    auto tree = deserialize_binary_tree<Node>(parsed_sentence);
+    auto merge_history=reconstruct_merge_history(std::move(tree));
+    return merge_history;
+};
 }//namespace util

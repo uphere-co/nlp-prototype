@@ -3,7 +3,6 @@
 #include "tests/test_simple_model.h"
 
 #include "utils/hdf5.h"
-#include "utils/binary_tree.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
@@ -301,11 +300,6 @@ void test_rnn_full_step(){
     print('\n');
 }
 
-auto to_original_sentence=[](auto sentence){
-    std::regex bracket("[(|)]");
-    return std::regex_replace(sentence, bracket, "");
-};
-
 void test_supervised_rnn_full_step(){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
@@ -314,68 +308,19 @@ void test_supervised_rnn_full_step(){
     auto timer=Timer{};
     // auto testset=ParsedSentences{rnn::config::testset_name};
     // auto testset_orig=TokenizedSentences{rnn::config::testset_name};
-    auto testset=ParsedSentences{"1b.testset.sample.stanford"};
+    auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};
     auto testset_orig=TokenizedSentences{"1b.testset.sample"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
     auto &lines = testset.val;
     VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
     // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
 
-    auto get_merge_history = [](auto parsed_sentence){        
-        auto tree = deserialize_binary_tree<Node>(parsed_sentence);
-        auto merge_history=reconstruct_merge_history(std::move(tree));
-        return merge_history;
+    auto get_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
     };
-    auto get_directed_grad = [&get_merge_history](VocaInfo const &rnn, Param const &param, 
-                                auto const &parsed_sentence,
-                                auto const &original_sentence){
-        auto merge_history = get_merge_history(parsed_sentence);
-        auto nodes = rnn.initialize_tree(original_sentence);
-        auto& all_nodes = nodes.val; 
-        auto n_words=all_nodes.size();
-        auto top_nodes = merge_leaf_nodes(param, all_nodes);
-        directed_merge(param, top_nodes,merge_history);
-        Param grad{};
-        for(auto i=n_words; i<all_nodes.size(); ++i){
-            auto const &node=all_nodes[i];
-            assert(node.is_combined());
-            backward_path(grad, param, node);
-        }
-        return grad;
-    };
-    auto get_grad=[&](auto const &parsed_sentence){
-        // auto sentence2 = to_original_sentence(parsed_sentence);
-        auto original_sentence = testset_orig.val[&parsed_sentence-testset.val.data()];
-        return get_directed_grad(rnn, param, parsed_sentence, original_sentence);
-    };
-    auto scoring_parsed_sentence = [&get_merge_history](VocaInfo const &rnn, Param const &param,
-                                       auto const &parsed_sentence,
-                                       auto const &original_sentence){
-        auto merge_history = get_merge_history(parsed_sentence);
-        auto nodes = rnn.initialize_tree(original_sentence);
-        assert(nodes.val.size()==merge_history.size()+1);
-        auto& all_nodes = nodes.val; 
-        auto n_words=all_nodes.size();
-        auto top_nodes = merge_leaf_nodes(param, all_nodes);
-        directed_merge(param, top_nodes,merge_history);
-        Param::value_type score{};
-        for(auto i=n_words; i<all_nodes.size(); ++i){
-            score+= all_nodes[i].score;
-        }
-        return score;
-    };
-    auto scoring_parsed_dataset=[&](VocaInfo const &rnn, Param const &param, 
-                                            ParsedSentences const &dataset){
-        using rnn::type::float_t;
-        auto &lines = dataset.val;
-        auto get_score=[&](auto const &parsed_sentence){
-            auto original_sentence = testset_orig.val[&parsed_sentence-testset.val.data()];
-            return scoring_parsed_sentence(rnn, param, parsed_sentence, original_sentence);
-        };
-        auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
-        return score_accum;
-    };
+
     auto dParam = randomParam(1.0);
     dParam.w_left.span  *= rnn_t::float_t{0.001};
     dParam.w_right.span *= rnn_t::float_t{0.001};
