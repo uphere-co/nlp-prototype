@@ -20,14 +20,20 @@ find_package (Threads)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${HOME}/repo/srcc/GSL/include)
 include_directories(${HOME}/repo/srcc/spdlog/include)
-add_executable(app app/parser_model1 tests/test_simple_model
+add_executable(app app/train_model1 tests/test_simple_model
                    parser/compute parser/config parser/node parser/param 
                    parser/parser parser/voca parser/wordvec parser/optimizers
                    utils/string utils/hdf5 utils/math utils/logger)
 #https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
 target_link_libraries(app hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
-add_executable(eval app/parser_eval tests/test_tree_spans)
+add_executable(model1 app/parser_model1 
+               parser/compute parser/config parser/node parser/param 
+               parser/parser parser/voca parser/wordvec 
+               utils/hdf5 utils/math utils/string)
+target_link_libraries(model1 hdf5_cpp hdf5_hl_cpp tbb)
+
+add_executable(parser_similarity app/parser_eval tests/test_tree_spans utils/string)
 
 add_executable(hdf5io app/hdf5io parser/config parser/param utils/hdf5 utils/string)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )

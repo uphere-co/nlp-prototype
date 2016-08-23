@@ -6,6 +6,7 @@
 #include <lbfgs.h>
 
 #include "parser/basic_type.h"
+#include "utils/loop_gen.h" 
 
 namespace rnn{
 namespace simple_model{
@@ -21,7 +22,7 @@ struct GradientDescent{
     GradientDescent(rnn::type::float_t scale) : scale{scale} {}
     template<typename T, typename TV>
     void update(T &param, T const &grad, TV scale){
-        grad_update(param,grad, scale);
+        grad_update(param,grad, scale); //defined in loop_gen.h
     }
     void update(Param &param, Param &grad_sum);
     rnn::type::float_t scale;

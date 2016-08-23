@@ -36,7 +36,7 @@ void set_node_property(Param const &param,node_type &node) {
 
 node_type merge_node(Param const &param, node_type const &left, node_type const &right)  {
     auto new_node = node_type{node_type::word_type{std::string{}}};
-    new_node.left = &left;
+    new_node.left = &left;    
     new_node.right= &right;
     set_node_property(param, new_node);
     return new_node;
@@ -45,12 +45,13 @@ node_type merge_node(Param const &param, node_type const &left, node_type const 
 //top_node  : a node which has no parent
 //leaf_node : a node which has no children
 std::vector<node_type*> merge_leaf_nodes(Param const &param, std::vector<node_type> &leaves)  {
+    std::vector<node_type*> top_node;
     auto n_leaf = leaves.size();
+    if(n_leaf==1) return top_node;
     auto last_leaf = leaves.cend()-1;
     for(auto it=leaves.cbegin(); it!=last_leaf;)
         leaves.push_back( merge_node(param, *it,*++it ));
 
-    std::vector<node_type*> top_node;
     for(auto it=leaves.data()+n_leaf; it!=leaves.data()+leaves.size(); ++it)
         top_node.push_back(it);
     return top_node;
@@ -68,11 +69,13 @@ auto foward_path(Param const &param, std::vector<node_type*> top_nodes) ->
         if(it_max!=top_nodes.cbegin()){
             auto it_left = *(it_max-1);
             it_left->right=*it_max;
+            (*it_max)->parent = it_left->right;
             set_node_property(param, *it_left);
         }
         if(it_max!=top_nodes.cend()-1){
             auto it_right= *(it_max+1);
             it_right->left=*it_max;
+            (*it_max)->parent = it_right->left;
             set_node_property(param, *it_right);
         }
         std::copy(it_max+1,top_nodes.cend(),
@@ -89,11 +92,13 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
         if(idx_max!=0){
             auto it_left = top_nodes[idx_max-1];
             it_left->right=it_new;
+            it_new->parent = it_left->right;
             set_node_property(param, *it_left);
         }
         if(idx_max!=top_nodes.size()-1){
             auto it_right= top_nodes[idx_max+1];
             it_right->left=it_new;
+            it_new->parent = it_right->left;
             set_node_property(param, *it_right);
         }
         std::copy(top_nodes.cbegin()+idx_max+1,top_nodes.cend(),

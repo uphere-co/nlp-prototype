@@ -1,9 +1,10 @@
 #pragma once
 #include <vector>
-#include<algorithm>
+#include <algorithm>
 
-#include<gsl.h>
+#include <gsl.h>
 
+#include "utils/linear_algebra.h"
 
 namespace util{
 namespace math{

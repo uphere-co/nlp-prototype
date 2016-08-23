@@ -1,6 +1,7 @@
 #include "parser/parser.h"
 
 #include "utils/parallel.h"
+#include "utils/string.h"
 
 namespace rnn{
 namespace simple_model{
