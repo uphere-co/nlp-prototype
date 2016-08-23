@@ -143,8 +143,6 @@ decodeP ADNode {..} = do
     -- c1 = V.slice 0 dim rc
     -- c2 = V.slice dim dim rc
    
-
-
 decode :: AutoDecoder
        -> BNTree (Vector Float) ()
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
@@ -155,7 +153,7 @@ decode autodec bntr@(BNTNode v _ _) = go v bntr
     go v1 (BNTLeaf ()) = pure (BNTLeaf v1)
 decode _ (BNTLeaf _) = error "shouldn't happen"
 
--- Binary tree with child-tree-valued node !! (sort of)
+-- Binary tree with child-tree-valued nodes !! (sort of)
 recDecode :: AutoDecoder
           -> BNTree (Vector Float) ()
           -> LLVMRunT IO (BNTree (BNTree (Vector Float) (Vector Float)) ())
@@ -163,3 +161,78 @@ recDecode _       (BNTLeaf ())      = pure (BNTLeaf ())
 recDecode autodec n@(BNTNode _ x y) = 
   BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
 
+-- cost function for each node
+-- Input BinTree and BNTree should have the same structure
+{-costNode :: BinTree (Vector Float)
+         -> BNTree (Vector Float) ()
+         -> LLVMRunT IO (BNTree Float Float)
+costNoe 
+costTree :: AutoEncoder
+         -> AutoDecoder
+         -> BinTree (Vector Float)
+         -> LLVMRunT IO (BNTree Float Float)
+costTree autoenc autodec (BinLeaf v) = pure (BNTLeaf 0)
+costTree autoenc autodec (BinNode x y) =
+    let xtree = decode autodec x 
+        ytree = decode autodec y
+        venc = 
+        vdec =
+    in BNTNode <$> l2 venc vdec
+               <*> costTree autoenc autodec x
+               <*> costTree autoenc autodec y
+-}
+
+-- Tree manipulation functions
+
+-- zipTree - error occurs when the structures don't match 
+zipTree :: BNTree a1 e1
+          -> BNTree a2 e2
+          -> BNTree (a1,a2) (e1,e2)
+zipTree (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf (n1,n2)
+zipTree (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
+    let tx = zipTree x1 x2
+        ty = zipTree y1 y2
+    in BNTNode (n1,n2) tx ty 
+zipTree _ _ = error "zipTree : invalid input" 
+
+-- zipWithTree - follow the structure of the tree on the left
+zipWithTree :: (a1 -> a2 -> c)
+          -> BNTree a1 a1
+          -> BNTree a2 a2
+          -> BNTree c c
+zipWithTree f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+zipWithTree f (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
+    let xbnt = zipWithTree f x1 x2
+        ybnt = zipWithTree f y1 y2
+    in BNTNode ( f n1 n2 ) xbnt ybnt 
+zipWithTree f (BNTLeaf n1) (BNTNode n2 _ _) = BNTLeaf $ f n1 n2
+zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+
+-- foldTree - ignore leaf values
+foldTree :: (a -> a -> a) -> a -> BNTree a e ->a
+foldTree f a (BNTLeaf e)  = a
+foldTree f a (BNTNode b x y)  = let vx = foldTree f a x
+                                    vy = foldTree f a y
+                                 in f vx vy
+-- mapTree
+mapTree :: (a -> b) -> BNTree a a -> BNTree b b
+mapTree f (BNTLeaf a) = BNTLeaf $ f a
+mapTree f (BNTNode a x y) = let x' = mapTree f x
+                                y' = mapTree f y
+                            in BNTNode (f a) x' y'
+
+-- Compute L^2 norm ( a pseudo code )
+l2fromTree:: AutoEncoder
+          -> AutoDecoder
+          -> BinTree (Vector Float)
+          -> LLVMRunT IO Float
+l2fromTree ae ad bt  = do
+     bte <- encode ae bt
+     btd <- decode ad bte
+     let l2tree = zipWithTree l2 bte btd
+     return $ foldTree (+) l2tree
+  where l2 v1 v2 = let vec_sub = (v1 - v2)
+                   in sum $ vec_sub * vec_sub
+
+
+ 
