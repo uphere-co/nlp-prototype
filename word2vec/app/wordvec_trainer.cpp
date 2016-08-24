@@ -6,6 +6,7 @@
 #include <cmath>
 #include <map>
 #include <utility>
+#include <unordered_map>
 
 //#include <inttypes.h>
 
@@ -33,7 +34,7 @@ using int_t = int64_t;
 using float_t = float;
 using char_t = char;
 
-using hashmap_t = std::map<std::string, int_t>;
+using hashmap_t = std::unordered_map<std::string, int_t>;
 }//namespace word2vec::type
 }//namespace word2vec
 
@@ -70,6 +71,14 @@ void VocabLearn(TokenizedFile & file, hashmap_t &word_count, std::vector<std::pa
             }
         }
     }
+    /*
+    hashmap_t word_count_temp;
+    word_count_temp = word_count;
+    for(auto x : word_count_temp) {
+        if(x.second < 5) {
+            word_count.erase(x.first);
+        }
+        }*/
     pos--; // to have last index of pos as pos_max
 }
 
@@ -124,6 +133,7 @@ auto ToStrings(std::vector<char> const &concat_words){
 
 ///// Data Structure
 
+bool VCompare(int64_t i, int64_t j) { return (i>j); }
 
 // main function arguments
 
@@ -131,27 +141,27 @@ using namespace word2vec;
 
 class Word2Vec {
 private:
-    unsigned int layer1_size;
-    unsigned int window;
-    unsigned int num_threads;
-    unsigned int iter;
+    int layer1_size;
+    int window;
+    int num_threads;
+    int iter;
     int hs, negative;
     int cbow;
 
-    unsigned int min_reduce;
-    unsigned int min_count;
-    unsigned int vocab_size;
+    int min_reduce;
+    int min_count;
+    int64_t vocab_size;
     int64_t train_words;
     int64_t word_count_actual;
     int64_t pos_max;
 
-    double sample;
-    double alpha, starting_alpha;
+    float sample;
+    float alpha, starting_alpha;
     
     std::string train_file, output_file;
     std::string save_vocab_file, read_vocab_file;
 
-    std::array<double,(exp_table_size + 1)> expTable;
+    std::array<float, exp_table_size> expTable;
     std::array<int, table_size> table;
 
     clock_t start;
@@ -163,7 +173,7 @@ private:
     std::vector<std::pair<int64_t,std::string>> word_pos;
     hashmap_t word_idx;
     
-    std::vector<double> syn0, syn1, syn1neg;
+    std::vector<float> syn0, syn1, syn1neg;
 
 public:
     Word2Vec (             
@@ -172,14 +182,14 @@ public:
         unsigned int min_count, //This will discard words that appear less than <int> times; default is 5
         std::string save_vocab_file, //The vocabulary will be saved to <file>
         std::string read_vocab_file, //The vocabulary will be read from <file>, not constructed from the training data
-        unsigned int layer1_size, //Set size of word vectors; default is 100
-        unsigned int window, //Set max skip length between words; default is 5
-        double sample, //Set threshold for occurrence of words. default is 1e-3, useful range is (0, 1e-5) 
+        int layer1_size, //Set size of word vectors; default is 100
+        int window, //Set max skip length between words; default is 5
+        float sample, //Set threshold for occurrence of words. default is 1e-3, useful range is (0, 1e-5) 
         int hs, //Use Hierarchical Softmax; default is 0 (not used)
         int negative, //Number of negative examples; default is 5, common values are 3 - 10 (0 = not used)
-        unsigned int num_threads, //Use <int> threads (default 12)
+        int num_threads, //Use <int> threads (default 12)
         int iter, //Run more training iterations (default 5)
-        double alpha, //Set the starting learning rate; default is 0.025 for skip-gram and 0.05 for CBOW
+        float alpha, //Set the starting learning rate; default is 0.025 for skip-gram and 0.05 for CBOW
         int cbow = 0 //Use the continuous bag of words model; default is 1 (use 0 for skip-gram model)
         ):
         train_file (train_file),
@@ -222,11 +232,25 @@ public:
 void Word2Vec::LearnVocab(){  
     TokenizedFile infile{train_file};
     VocabLearn(infile, word_cn, word_pos, pos_max);
+
+    hashmap_t::iterator it = word_cn.begin();
+    while(it != word_cn.end()){
+        if(it -> second < 5){
+            it = word_cn.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
     std::cout << "Vocab Learning is complete.\n";
-    vocab = MapKeys(word_cn);
     vocabcn = MapValues(word_cn);
-    std::cout << "Mapping is complete.\n";
-    vocab_size = vocab.size();
+
+    std::sort(vocabcn.begin(), vocabcn.end(), VCompare);
+    std::cout << vocabcn[0] << " " << vocabcn[1] << " " << vocabcn[2] << std::endl;
+
+    
+    vocab_size = vocabcn.size();
+
     int64_t idx = 0;
     for(auto x : word_cn){
         word_idx[x.first] = idx;
@@ -237,22 +261,23 @@ void Word2Vec::LearnVocab(){
 
 void Word2Vec::InitUnigramTable() {
     unsigned int i;
-    double train_words_pow = 0;
-    double d1;
-    double power = 0.75;
-    
+    float train_words_pow = 0;
+    float d1;
+    float power = 0.75;
+
     for(auto w : vocabcn) train_words_pow += pow(w, power);
     i = 0;
     d1 = pow(vocabcn[0], power)/train_words_pow;
     for(unsigned int a = 0; a < table_size; a++){
         table[a] = i;
-        if(a / (double)table_size > d1){
+        if(a / (float)table_size > d1){
             i++;
             d1 += pow(vocabcn[i],power)/train_words_pow;
         }
         if(i >= vocab_size) i = vocab_size -1;
     }
-}
+
+}  
 
 void Word2Vec::testFunction(){
     //    for(auto x : vocab) std::cout << x << std::endl;
@@ -267,13 +292,17 @@ void Word2Vec::InitNet() {
     boost::mt19937 rand_engine_double;  // rand engine
     boost::uniform_real<> rand_double(0.0, 1.0);
     boost::variate_generator<boost::mt19937, boost::uniform_real<>> rand_gen_double(rand_engine_double, rand_double);
-    
-    for (int i = 0; i < exp_table_size; i++) {
+
+    for (int i = 0; i <= exp_table_size; i++) {
         expTable[i] = exp((i / (double)exp_table_size * 2 - 1) * max_exp);
         expTable[i] = expTable[i] / (expTable[i] + 1);
     }
-
+    
     syn0.resize((int64_t)vocab_size * layer1_size);
+    for(a = 0; a < vocab_size; a++)
+        for(b = 0; b < layer1_size; b++)
+            syn0[a * layer1_size + b] = (rand_gen_double() - 0.5) / layer1_size;
+    
     if(hs) {
         syn1.resize((int64_t)vocab_size * layer1_size);
         for(a = 0; a < vocab_size; a++)
@@ -287,46 +316,45 @@ void Word2Vec::InitNet() {
                 syn1neg[a * layer1_size + b] = 0;
     }
 
-    for(a = 0; a < vocab_size; a++)
-        for(b = 0; b < layer1_size; b++)
-            syn0[a * layer1_size + b] = (rand_gen_double() - 0.5) / layer1_size;
-
-    
     //CreateBinaryTree();
 }
 
 
 void Word2Vec::TrainModelThread(int tid){
     int64_t a, b, d, word, last_word, sentence_length = 0, sentence_position = 0;
-    int64_t word_count = 0, last_word_count = 0, sen[max_sentence_length + 1];
+    int64_t word_count = 0, last_word_count = 0;
+    std::vector<int64_t> sen(max_sentence_length+1,int64_t{0});//[max_sentence_length + 1];
     int64_t l1, l2, c, target, label, local_iter = iter;
-    uint64_t next_random;
-    double f, g;
+    int64_t next_random;
+    float f, g;
     clock_t now;
-    int pos = 0; // Should be reset.
-    int starting_pos;
+    int64_t pos= 0; // Should be reset.
+    int64_t starting_pos;
     int64_t cnt;
-    
-    boost::mt19937 rand_engine_int;    // rand engine
-    boost::uniform_int<> rand_int(0, window);    // set range.
-    boost::variate_generator<boost::mt19937, boost::uniform_int<>> rand_gen_int(rand_engine_int, rand_int);
 
-    boost::uniform_int<> rand_int2(0,table_size);
-    boost::variate_generator<boost::mt19937, boost::uniform_int<>> rand_gen_int2(rand_engine_int, rand_int2);
+
+    next_random = 1;
+    //sen.resize(max_sentence_length+1);
+    //std::cout << "sen = " << sen.at(max_sentence_length+3) << std::endl;
+    boost::mt19937 rand_engine_int;    // rand engine
+    boost::uniform_int<> rand_int(0,200000000);
+    boost::variate_generator<boost::mt19937, boost::uniform_int<>> rand_gen_int(rand_engine_int, rand_int);
 
     
     boost::mt19937 rand_engine_double;  // rand engine
     boost::uniform_real<> rand_double(0.0, 1.0);
     boost::variate_generator<boost::mt19937, boost::uniform_real<>> rand_gen_double(rand_engine_double, rand_double);
     
-    std::vector<double> neu1;
-    std::vector<double> neu1e;
+    std::vector<float> neu1;
+    std::vector<float> neu1e;
 
     neu1.resize(layer1_size);
     neu1e.resize(layer1_size);
 
     //inFile.seekg(file_size / (int64_t)num_threads * (int64_t)tid);
     starting_pos = pos_max / (int64_t)num_threads * (int64_t)tid;
+    pos = starting_pos;
+    std::cout << pos << std::endl;fflush(stdout);
     while(1) {
         
         if(word_count - last_word_count > 10000) {
@@ -345,17 +373,24 @@ void Word2Vec::TrainModelThread(int tid){
         
         if(sentence_length == 0) { 
             while(1) {
-                if(pos>pos_max) break;
-                //if(word == -1) continue;
+                if(pos>=pos_max) break;
+
+                if(word_idx.find(word_pos[pos].second) == word_idx.end()){
+                    pos++;
+                    continue;
+                }
                 word_count++;
                 //if(word == 0) break;
                 cnt = word_cn.find(word_pos[pos].second) -> second; // log(n)
-                //w o r d --> ### O(1)
                  // The subsampling randomly discards frequent words while keeping the ranking same
                 if(sample > 0) {
                     double ran = (sqrt(cnt / (sample * pos_max)) + 1) * (sample * pos_max) / cnt;
-                    if(ran < rand_gen_double()) continue;
+                    if(ran < rand_gen_double()) {
+                        pos++;
+                        continue;
+                    }
                 }
+                    
                 sen[sentence_length] = word_idx.find(word_pos[pos].second) -> second;//word_cn.find(word_pos[pos].second);
                 pos++;
                 sentence_length++;
@@ -367,7 +402,7 @@ void Word2Vec::TrainModelThread(int tid){
     
     
         
-        if((pos>pos_max) || (word_count > pos_max / num_threads )) {
+        if((pos>=pos_max) || (word_count > pos_max / (int64_t)num_threads )) {
             word_count_actual += word_count - last_word_count;
             local_iter--;
             if(local_iter == 0) break;
@@ -383,11 +418,9 @@ void Word2Vec::TrainModelThread(int tid){
         // Network Initialization
         for(c = 0; c < layer1_size; c++) neu1[c] = 0;
         for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
-        
-        b = rand_gen_int() % window;
-        // Skip-gram
-        {
-            for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
+
+        b = rand_gen_int() % (int64_t)window;//rand_gen_int() % window;
+        for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
                 c = sentence_position - window + a;
                 if(c < 0) continue;
                 if(c >= sentence_length) continue;
@@ -416,32 +449,35 @@ void Word2Vec::TrainModelThread(int tid){
                             target = word;
                             label = 1;
                         } else {
-                            next_random = rand_gen_int2();
+                            next_random = rand_gen_int();
                             target = table[next_random % table_size];
                             if(target == 0) target = next_random % (vocab_size - 1) + 1;
                             if(target == word) continue;
                             label = 0;
                         }
+
                         l2 = target * layer1_size;
                         f = 0;
+
                         for(c = 0; c < layer1_size; c++) f += syn0[c + l1] * syn1neg[c + l2];
+                        
                         if(f > max_exp) g = (label - 1) * alpha;
                         else if(f < - max_exp) g = (label - 0) * alpha;
                         else g = (label - expTable[(int)((f + max_exp) * (exp_table_size / max_exp / 2))]) * alpha;
+
                         for (c = 0; c < layer1_size; c++) neu1e[c] += g * syn1neg[c + l2];
                         for (c = 0; c < layer1_size; c++) syn1neg[c + l2] += g * syn0[c + l1];
                     }
                 // Learn weights input -> hidden
                 for(c = 0; c < layer1_size; c++) syn0[c + l1] += neu1e[c];
-                }
-        }
+            }
         sentence_position++;
         if(sentence_position >= sentence_length) {
             sentence_length = 0;
             continue;
         }
+        
     }
-    
 }
 
 
@@ -550,10 +586,10 @@ Word2Vec *arg_to_w2v(int argc, char **argv) {
     int layer1_size = 100;
     std::string train_file ="", save_vocab_file = "", read_vocab_file = "";
     int debug_mode =2, binary = 0, cbow = 0;
-    double alpha = 0.05;
+    float alpha = 0.05;
     std::string output_file = "";
     int window = 5;
-    double sample = 1e-3;
+    float sample = 1e-3;
     int hs = 0, negative = 5, num_threads = 12;
     int64_t iter = 5;
     int min_count = 5;
