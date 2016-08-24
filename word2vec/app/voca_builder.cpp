@@ -115,9 +115,9 @@ int main(){
     
     //PrintWordCount(word_count);
 
-    H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
-    file.writeRawData(H5name{"bar.word_count"},word_count_values);
-    file.writeRawData(H5name{"bar.word_key"},concat_words);
+    H5file file{H5name{"data.h5"}, hdf5::FileMode::rw_exist};
+    file.writeRawData(H5name{"1b.short_sents.word_count"},word_count_values);
+    file.writeRawData(H5name{"1b.short_sents.bar.word_key"},concat_words);
     
     //concat_read = file.readRawData(H5name{"bar.word_key"},concat_words); 
     //auto words = ToStrings(concat_read);
