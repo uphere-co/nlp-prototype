@@ -2,8 +2,11 @@
 #include <random>
 
 #include "parser/parser.h"
+#include "parser/wordvec.h"
 #include "utils/print.h"
 #include "utils/hdf5.h"
+#include "utils/math.h"
+#include "utils/profiling.h"
 
 /*
 -UNKNOWN-
@@ -15,7 +18,7 @@ namespace sent2vec  {
 using char_t = char;
 using wcount_t = int32_t;
 using idx_t = std::size_t;
-using float_t = double;
+using val_t = double;
 
 auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
 auto occurence_cutoff = [](auto x){return x>5;};
@@ -51,11 +54,13 @@ struct UnigramDist{
 };
 
 template<typename T>
-struct Sampler{
+class Sampler{
+public:
     Sampler(T beg, T end)
     : rd{}, gen{rd()}, dist{beg, end} {}
     auto operator() () {return dist(gen);}
 
+private:
     std::random_device rd;
     std::mt19937 gen;
     std::discrete_distribution<> dist;
@@ -69,8 +74,9 @@ ran = (sqrt(x) + 1) / x;
 if(ran < rand_gen_double()) continue;
 */
 
-struct SubSampler{
-    SubSampler(float_t rate)
+class SubSampler{
+public:
+    SubSampler(val_t rate)
     : rd{}, gen{rd()}, uni01{0.0,1.0}, rate_inv{1.0/rate} {}
     template<typename TW, typename TP>
     auto operator() (TW const &widxs, TP const &probs) {
@@ -85,12 +91,12 @@ struct SubSampler{
         }
         return widxs_subsampled;
     }
+private:    
     std::random_device rd;
     std::mt19937 gen;
     std::uniform_real_distribution<> uni01;
-    float_t rate_inv;
+    val_t rate_inv;
 };
-
 
 
 struct WordVecContext{
@@ -113,6 +119,18 @@ struct SentVecContext{
     std::vector<idx_t> right_widxs;    
 };
 
+/*
+class NegativeSampler{
+public:
+    NegativeSampler(idx_t left, idx_t right)
+    :left{left}, right{right} {}
+    SentVecContext operator() (idx_t sidx, idx_t widx){
+    }
+private:
+    idx_t left;
+    idx_t right;
+};
+*/
 
 }//namespace sent2vec
 
@@ -121,6 +139,7 @@ struct SentVecContext{
 
 using namespace rnn::simple_model;
 using namespace rnn::wordrep;
+using namespace util::math;
 using namespace util::io;
 using namespace util;
 using namespace sent2vec;
@@ -159,8 +178,8 @@ void test_context_words(){
     VocaIndexMap word2idx = word_dist.voca.indexing();
     
     TokenizedSentences dataset{"testset"};
-    SubSampler sub_sampler{0.0001};
     auto& lines = dataset.val;
+    SubSampler sub_sampler{0.0001};
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
         auto& sent = lines[sidx];
         auto widxs_orig = word2idx.getIndex(sent);
@@ -182,9 +201,56 @@ void test_context_words(){
 
 }
 
+WordBlock random_WordBlock(idx_t voca_size, int word_dim){
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::uniform_real_distribution<val_t> uni01{0.0,1.0};
+    std::vector<val_t> wvec_init(voca_size*word_dim);
+    for(auto &x : wvec_init) x= uni01(gen)-0.5;
+    print(voca_size*word_dim);
+    return WordBlock{wvec_init, word_dim};    
+}
+void test_voca_update(){
+    Timer timer{};
+    constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
+    constexpr int word_dim=100;
+
+    H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
+    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};    
+    VocaIndexMap word2idx = word_dist.voca.indexing();
+    auto voca_size = word_dist.voca.size();
+
+    timer.here_then_reset("UnigramDist constructed");
+    WordBlock voca_vecs=random_WordBlock(voca_size, word_dim);
+    std::cerr << "Sum: "<<sum(voca_vecs[10]) << std::endl;
+    timer.here_then_reset("Initial WordBlock constructed");
+
+    auto sent = "the cat on a hat";
+    auto idxs = word2idx.getIndex(sent);
+    // auto word_block = voca_vecs.getWordVec(idxs);
+    print(voca_size);
+    print(": voca_size\n");
+    for(auto x :idxs) 
+        std::cerr << "Sum: "<<x<< " : " <<sum(voca_vecs[x]) << std::endl;
+    print("\n");
+    TokenizedSentences dataset{"testset"};
+    auto& lines = dataset.val;
+    for(size_t sidx=0; sidx<lines.size(); ++sidx){
+        auto& sent = lines[sidx];
+        auto idxs = word2idx.getIndex(sent);
+        auto word_block = voca_vecs.getWordVec(idxs);
+        std::cerr << "Sum: "<<sum(word_block.span) << std::endl;
+    }
+    //auto vocafile = "wordvec.h5";
+    //auto w2vmodel_dataset = "1b.model.voca";
+    timer.here_then_reset("test_voca_update() is finished.");
+    //WordBlock voca_vecs{load_voca_vecs(vocafile,w2vmodel_dataset,word_dim,w2vmodel_f_type)}
+}
+
 int main(){
     // test_unigram_sampling();
-    test_context_words();
+    // test_context_words();
+    test_voca_update();
 
     return 0;
 }
