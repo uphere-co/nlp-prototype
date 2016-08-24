@@ -5,6 +5,7 @@
 #include <map>
 #include <unordered_map>
 #include <chrono>
+#include <limits>
 
 #include "parser/basic_type.h"
 
@@ -41,7 +42,11 @@ public:
     // typedef std::unordered_map<char const *, size_t, cmp_str> data_t;
     VocaIndexMap(data_t const &word2idxs) : val{word2idxs}{}
     //auto getIndex(Word word) const {return val.find(word.span.data())->second;}//return val[word];}
-    auto getIndex(Word word) const {return val.find(word.val)->second;}
+    auto getIndex(Word word) const {
+        auto it = val.find(word.val);
+        if(it==val.cend()) return  std::numeric_limits<idx_t>::max();
+        return it->second;
+    }
     auto getIndex(std::string sentence) const {
         auto tokens = util::string::split(sentence);
         std::vector<idx_t> idxs;
