@@ -182,7 +182,7 @@ auto merge_node=[](std::unique_ptr<Node> &node, auto &nodes){
 };
 
 auto reconstruct_merge_history=[](auto &&nodes){
-    std::vector<int64_t> merge_history;
+    std::vector<decltype(nodes.size())> merge_history;
     auto n_words = (nodes.size()+1)/2;
     while(n_words>1){
         auto beg = nodes.begin()+n_words;
@@ -193,5 +193,9 @@ auto reconstruct_merge_history=[](auto &&nodes){
     }
     return merge_history;
 };
-
+auto get_merge_history = [](auto const &parsed_sentence){        
+    auto tree = deserialize_binary_tree<Node>(parsed_sentence);
+    auto merge_history=reconstruct_merge_history(std::move(tree));
+    return merge_history;
+};
 }//namespace util

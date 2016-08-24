@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "parser/param.h"
 #include "parser/compute.h"
 #include "parser/node.h"
@@ -46,6 +48,31 @@ struct TokenizedSentences{
     TokenizedSentences(std::string tokenized_file);
     std::vector<std::string> val;
 };
+struct ParsedSentences{
+    using c_iter = std::vector<std::string>::const_iterator;
+    ParsedSentences(std::string parsed_file);
+    std::vector<std::string> val;
+};
+
+struct SentencePair{
+    SentencePair(std::string const &parsed, std::string const &original)
+    :parsed{parsed},original{original} {}
+    std::string parsed=parsed;
+    std::string original=original;
+};
+struct SentencePairs{
+    using val_t = std::vector<SentencePair>;
+    using c_iter = val_t::const_iterator;
+    SentencePairs(ParsedSentences const & sentences1, TokenizedSentences const &sentences2){
+        auto n = sentences1.val.size();
+        assert(n==sentences2.val.size());
+        for(decltype(n)i=0; i<n; ++i){
+            val.push_back(SentencePair{sentences1.val[i],sentences2.val[i]});
+        }
+    }
+    val_t val;
+};
+
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes);
 Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
                                   TokenizedSentences const &dataset);
@@ -62,6 +89,12 @@ Param::value_type scoring_minibatch(VocaInfo const &rnn, Param const &param,
     return score_accum;
 }
 
+Param::value_type scoring_parsed_sentence(VocaInfo const &rnn, Param const &param,
+                                          SentencePair const &sent_pair);
+
+Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param, 
+                                         SentencePairs const &dataset);
+
 // score(W_left, W_right, bias, u)= score_1(W_left, W_right, bias, u) 
 //                                  + score_2(W_left, W_right, bias, u)
 //                                  + .. 
@@ -69,6 +102,9 @@ Param::value_type scoring_minibatch(VocaInfo const &rnn, Param const &param,
 // score_1 = f(A*f(A*f(...)+b)+b)
 Param get_gradient(Param const &param, InializedLeafNodes &nodes );
 
+Param get_directed_grad(VocaInfo const &rnn, Param const &param, 
+                        SentencePair const &sent_pair);
+    
 
 }//namespace rnn::simple_model
 }//namespace rnn

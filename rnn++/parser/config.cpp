@@ -4,12 +4,12 @@
 namespace rnn{
 namespace config{
 
-// std::string file_name{"data.h5"};
-// std::string voca_name{"1b.model.voca"}; 
-// std::string w2vmodel_name{"1b.model"};
-std::string file_name{"glove.h5"};
-std::string voca_name{"glove.6B.100.voca"}; 
-std::string w2vmodel_name{"glove.6B.100"};
+std::string file_name{"data.h5"};
+std::string voca_name{"1b.model.voca"}; 
+std::string w2vmodel_name{"1b.model"};
+// std::string file_name{"glove.h5"};
+// std::string voca_name{"glove.6B.100.voca"}; 
+// std::string w2vmodel_name{"glove.6B.100"};
 // std::string file_name{"word2vec.h5"};
 // std::string voca_name{"foo.word"};
 // std::string w2vmodel_name{"foo.vec"};

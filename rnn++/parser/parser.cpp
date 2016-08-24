@@ -2,6 +2,7 @@
 
 #include "utils/parallel.h"
 #include "utils/string.h"
+#include "utils/binary_tree.h"
 
 namespace rnn{
 namespace simple_model{
@@ -9,28 +10,9 @@ namespace simple_model{
 
 TokenizedSentences::TokenizedSentences(std::string tokenized_file)
     : val{util::string::readlines(tokenized_file)} {}
+ParsedSentences::ParsedSentences(std::string parsed_file)
+    : val{util::string::readlines(parsed_file)} {}
 
-    
-Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
-    using namespace detail;
-
-    // auto timer=Timer{};
-    auto& all_nodes = nodes.val; 
-    auto n_words=all_nodes.size();
-    // timer.here_then_reset("setup");
-    auto top_nodes = merge_leaf_nodes(param, all_nodes);
-    auto merge_history = foward_path(param, top_nodes);
-    // timer.here_then_reset("forward path");
-    rnn::simple_model::Param grad{};
-    for(auto i=n_words; i<all_nodes.size(); ++i){
-        auto const &node=all_nodes[i];
-        assert(node.is_combined());
-        // print_all_descents(node);
-        backward_path(grad, param, node);
-    }
-    // timer.here_then_reset("backward path");
-    return grad;
-}
 
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes ) {
     using namespace rnn::simple_model::detail;
@@ -57,6 +39,78 @@ Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param,
     // for(auto sentence : lines) score_accum += get_score(sentence);
     auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
     return score_accum;
+}
+
+Param::value_type scoring_parsed_sentence(VocaInfo const &rnn, Param const &param,
+                                          SentencePair const &sent_pair){
+    using namespace util;
+    using namespace detail;
+    auto parsed_sentence=sent_pair.parsed;
+    auto original_sentence=sent_pair.original;
+    auto merge_history = get_merge_history(parsed_sentence);
+    auto nodes = rnn.initialize_tree(original_sentence);
+    assert(nodes.val.size()==merge_history.size()+1);
+    auto& all_nodes = nodes.val; 
+    auto n_words=all_nodes.size();
+    auto top_nodes = merge_leaf_nodes(param, all_nodes);
+    directed_merge(param, top_nodes,merge_history);
+    Param::value_type score{};
+    for(auto i=n_words; i<all_nodes.size(); ++i){
+        score+= all_nodes[i].score;
+    }
+    return score;
+}
+Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param, 
+                                         SentencePairs const &dataset){
+    using rnn::type::float_t;
+    auto &lines = dataset.val;
+    auto get_score=[&](auto const &sent_pair){
+        return scoring_parsed_sentence(rnn, param, sent_pair);
+    };
+    auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, float_t{});
+    return score_accum;
+}
+
+Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
+    using namespace detail;
+
+    // auto timer=Timer{};
+    auto& all_nodes = nodes.val; 
+    auto n_words=all_nodes.size();
+    // timer.here_then_reset("setup");
+    auto top_nodes = merge_leaf_nodes(param, all_nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    // timer.here_then_reset("forward path");
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<all_nodes.size(); ++i){
+        auto const &node=all_nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }
+    // timer.here_then_reset("backward path");
+    return grad;
+}
+
+Param get_directed_grad(VocaInfo const &rnn, Param const &param, 
+                        SentencePair const &sent_pair){
+    using namespace util;
+    using namespace detail;
+    auto parsed_sentence=sent_pair.parsed;
+    auto original_sentence=sent_pair.original;
+    auto merge_history = get_merge_history(parsed_sentence);
+    auto nodes = rnn.initialize_tree(original_sentence);
+    auto& all_nodes = nodes.val; 
+    auto n_words=all_nodes.size();
+    auto top_nodes = merge_leaf_nodes(param, all_nodes);
+    directed_merge(param, top_nodes,merge_history);
+    Param grad{};
+    for(auto i=n_words; i<all_nodes.size(); ++i){
+        auto const &node=all_nodes[i];
+        assert(node.is_combined());
+        backward_path(grad, param, node);
+    }
+    return grad;
 }
 
 }//namespace rnn::simple_model

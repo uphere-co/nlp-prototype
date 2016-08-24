@@ -10,6 +10,7 @@ void test_read_word2vec_output();
 void test_forwad_backward();
 void test_parallel_reduce();
 void test_rnn_full_step();
+void test_supervised_rnn_full_step();
 
 }//namespace rnn::simple_model::test
 }//namespace rnn::simple_model

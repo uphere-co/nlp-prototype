@@ -1,3 +1,5 @@
+#include <regex>
+
 #include "tests/test_simple_model.h"
 
 #include "utils/hdf5.h"
@@ -278,6 +280,59 @@ void test_rnn_full_step(){
     auto score1 = scoring_dataset(rnn, param+dParam, testset);
     timer.here_then_reset("Scoring testset");
     auto score2 = scoring_dataset(rnn, param-dParam, testset);
+    // auto score2 = scoring_dataset(rnn, param2, testset);
+    timer.here_then_reset("Scoring testset");
+
+    auto &grad =grad_sum;
+    rnn_t::float_t ds_grad{};
+    auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
+    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    ds_grad += dot(grad.bias.span, dParam.bias.span);
+    ds_grad += dot(grad.u_score.span, dParam.u_score.span);
+
+    print(0.5*(score1-score2));
+    print(score1-score);
+    print(score-score2);
+    print(score);
+    print('\n');
+    print(ds_grad);
+    print('\n');
+}
+
+void test_supervised_rnn_full_step(){
+    using namespace rnn::simple_model;
+    using namespace rnn::simple_model::detail;
+    using namespace util;
+
+    auto timer=Timer{};
+    // auto testset=ParsedSentences{rnn::config::testset_name};
+    // auto testset_orig=TokenizedSentences{rnn::config::testset_name};
+    auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};
+    auto testset_orig=TokenizedSentences{"1b.testset.sample"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
+    auto &lines = testset.val;
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
+    auto param = randomParam(0.1);
+    timer.here_then_reset("Preparing data");
+
+    auto get_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+
+    auto dParam = randomParam(1.0);
+    dParam.w_left.span  *= rnn_t::float_t{0.001};
+    dParam.w_right.span *= rnn_t::float_t{0.001};
+    dParam.bias.span    *= rnn_t::float_t{0.001};
+    dParam.u_score.span *= rnn_t::float_t{0.001};
+    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
+    timer.here_then_reset("Back-propagation for whole testset");
+    auto score = scoring_parsed_dataset(rnn, param, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score1 = scoring_parsed_dataset(rnn, param+dParam, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score2 = scoring_parsed_dataset(rnn, param-dParam, testset);
     // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
