@@ -15,11 +15,17 @@ namespace sent2vec  {
 using char_t = char;
 using wcount_t = int32_t;
 using idx_t = std::size_t;
+using float_t = double;
+
+auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
+auto occurence_cutoff = [](auto x){return x>5;};
+
 
 struct UnigramDist{
     using char_t =  sent2vec::char_t;
     using count_t = sent2vec::wcount_t;
-    using iter_t = std::vector<double>::const_iterator; 
+    using prob_t = std::vector<double>;
+    using iter_t = prob_t::const_iterator; 
 
     UnigramDist(util::io::H5file const &h5store, std::string voca_file, std::string count_file)
     : voca{h5store.getRawData<char_t>(util::io::H5name{voca_file})},
@@ -27,11 +33,21 @@ struct UnigramDist{
       prob(count.size()) 
     {
         auto norm = 1.0 / std::accumulate(count.cbegin(), count.cend(), count_t{0});
-        for(size_t i=0; i<count.size(); ++i) prob[i]=count[i]*norm;
+        for(size_t i=0; i<count.size(); ++i) {
+            prob[i]=count[i]*norm;
+        }
     }
+    prob_t get_probs(std::vector<idx_t> idxs){
+        prob_t ps;
+        for(auto idx:idxs) {
+            if(is_unknown_widx(idx)) ps.push_back(-1.0);
+            else ps.push_back(prob[idx]);
+        }
+        return ps;
+    } 
     rnn::wordrep::Voca voca;
     std::vector<count_t> count;
-    std::vector<double> prob;
+    prob_t prob;
 };
 
 template<typename T>
@@ -44,6 +60,37 @@ struct Sampler{
     std::mt19937 gen;
     std::discrete_distribution<> dist;
 };
+/*
+pw = cnt / pos_max < 1
+x = pw/sample 
+x>1 : typical 
+x<1 : rare
+ran = (sqrt(x) + 1) / x;
+if(ran < rand_gen_double()) continue;
+*/
+
+struct SubSampler{
+    SubSampler(float_t rate)
+    : rd{}, gen{rd()}, uni01{0.0,1.0}, rate_inv{1.0/rate} {}
+    template<typename TW, typename TP>
+    auto operator() (TW const &widxs, TP const &probs) {
+        TW widxs_subsampled;
+        for(decltype(probs.size()) i=0; i<probs.size(); ++i){
+            auto p_word = probs[i];
+            if(p_word<0.0) continue;
+            auto x = p_word*rate_inv;
+            auto p = (std::sqrt(x)+1)/x;
+            if(p < uni01(gen)) continue;
+            widxs_subsampled.push_back(widxs[i]);
+        }
+        return widxs_subsampled;
+    }
+    std::random_device rd;
+    std::mt19937 gen;
+    std::uniform_real_distribution<> uni01;
+    float_t rate_inv;
+};
+
 
 
 struct WordVecContext{
@@ -91,9 +138,6 @@ void test_unigram_sampling(){
     }
 }
 
-auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
-auto occurence_cutoff = [](auto x){return x>5;};
-
 auto print_context=[](auto const &context, auto const &word_dist){
     for(auto idx: context.left_widxs){
         if(is_unknown_widx(idx)) {print("-UNKNOWN-"); continue;}
@@ -115,11 +159,14 @@ void test_context_words(){
     VocaIndexMap word2idx = word_dist.voca.indexing();
     
     TokenizedSentences dataset{"testset"};
+    SubSampler sub_sampler{0.0001};
     auto& lines = dataset.val;
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
         auto& sent = lines[sidx];
-        auto widxs = word2idx.getIndex(sent);
-        SentVecContext context{sidx, 2, widxs, 5,5};
+        auto widxs_orig = word2idx.getIndex(sent);
+        auto pws = word_dist.get_probs(widxs_orig);
+        auto widxs = sub_sampler(widxs_orig, pws);
+        // SentVecContext context{sidx, 2, widxs, 5,5};
         // print_context(context, word_dist);
         if(widxs.size()<5) continue;
         print_context(SentVecContext{sidx, 4, widxs, 5,5}, word_dist);
