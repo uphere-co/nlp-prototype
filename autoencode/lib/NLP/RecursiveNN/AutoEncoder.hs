@@ -5,26 +5,26 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
-import           Control.Applicative             ( (<$>), (<*>), pure )
+-- import           Control.Applicative             ( (<$>), (<*>), pure )
 import           Control.Monad.IO.Class          ( liftIO )
-import           Data.Foldable
-import           Data.Hashable
-import qualified Data.HashMap.Strict       as HM
+-- import           Data.Foldable
+-- import           Data.Hashable
+-- import qualified Data.HashMap.Strict       as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
-import           Text.Printf
+-- import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
-import           Symbolic.Differential           ( sdiff )
-import           Symbolic.Eval                   ( seval )
+-- import           Symbolic.Differential           ( sdiff )
+-- import           Symbolic.Eval                   ( seval )
 import           Symbolic.Predefined
-import           Symbolic.Print
+-- import           Symbolic.Print
 import           Symbolic.Type
 --
 import           NLP.SyntaxTree.Type  -- (fromEither, rootElem)
@@ -210,8 +210,8 @@ zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
 
 -- foldTree - ignore leaf values
 foldTree :: (a -> a -> a) -> a -> BNTree a e ->a
-foldTree f a (BNTLeaf e)  = a
-foldTree f a (BNTNode b x y)  = let vx = foldTree f a x
+foldTree _ a (BNTLeaf _)  = a
+foldTree f a (BNTNode _ x y)  = let vx = foldTree f a x
                                     vy = foldTree f a y
                                  in f vx vy
 -- mapTree
@@ -228,11 +228,14 @@ l2fromTree:: AutoEncoder
           -> LLVMRunT IO Float
 l2fromTree ae ad bt  = do
      bte <- encode ae bt
-     btd <- decode ad bte
-     let l2tree = zipWithTree l2 bte btd
-     return $ foldTree (+) l2tree
-  where l2 v1 v2 = let vec_sub = (v1 - v2)
-                   in sum $ vec_sub * vec_sub
+     btd <- decode ad (fmap (const ()) bte)
+     let l2tree::BNTree Float Float
+         l2tree = zipWithTree l2 bte btd
+     return $ foldTree (+) 0 l2tree
+  where
+    l2 :: (Vector Float) -> (Vector Float) -> Float 
+    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
 
  
