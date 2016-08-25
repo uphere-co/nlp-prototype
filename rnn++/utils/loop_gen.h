@@ -61,23 +61,23 @@ struct MatLoop_void{
 
 namespace gsl{
 
-auto add_assign_vec=[](int64_t i, auto const & out, auto const & x) {
+auto add_assign_vec=[](int64_t i, auto &out, auto const & x) {
     out[i]+=x[i];
 };
-auto sub_assign_vec=[](int64_t i, auto const & out, auto const & x) {
+auto sub_assign_vec=[](int64_t i, auto &out, auto const & x) {
     out[i]-=x[i];
 };
-auto mul_assign_vec=[](int64_t i, auto const & out, auto x) {
+auto mul_assign_vec=[](int64_t i, auto &out, auto x) {
     out[i]*=x;
 };
 
-auto add_assign_mat=[](int64_t i,int64_t j, auto const & out, auto const & x) {
+auto add_assign_mat=[](int64_t i,int64_t j, auto &out, auto const & x) {
     out[i][j]+=x[i][j];
 };
-auto sub_assign_mat=[](int64_t i,int64_t j, auto const & out, auto const & x) {
+auto sub_assign_mat=[](int64_t i,int64_t j, auto &out, auto const & x) {
     out[i][j]-=x[i][j];
 };
-auto mul_assign_mat=[](int64_t i,int64_t j, auto const & out, auto x) {
+auto mul_assign_mat=[](int64_t i,int64_t j, auto &out, auto x) {
     out[i][j]*=x;
 };
 

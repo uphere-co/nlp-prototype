@@ -154,8 +154,10 @@ void test_unigram_sampling(){
     for(int n=0; n<10000; ++n) {
         ++m[negative_sampler()];
     }
-    for(auto p : m) {
-        std::cout << p.first << " " <<word_dist.voca.getWord(p.first).val <<" generated " << p.second << " times\n";
+    std::map<int, int, std::greater<int>> m_inv;
+    for(auto const x:m) m_inv[x.second]=x.first;
+    for(auto p : m_inv) {
+        std::cout << p.second << " " <<word_dist.voca.getWord(p.second).val <<" generated " << p.first << " times\n";
     }
 }
 
