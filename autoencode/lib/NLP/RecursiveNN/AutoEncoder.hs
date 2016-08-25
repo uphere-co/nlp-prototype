@@ -196,7 +196,7 @@ zipTree (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
     in BNTNode (n1,n2) tx ty 
 zipTree _ _ = error "zipTree : invalid input" 
 
--- zipWithTree - follow the structure of the tree on the left
+-- zipWithTree
 zipWithTree :: (a1 -> a2 -> c)
           -> BNTree a1 a1
           -> BNTree a2 a2
@@ -209,12 +209,30 @@ zipWithTree f (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
 zipWithTree f (BNTLeaf n1) (BNTNode n2 _ _) = BNTLeaf $ f n1 n2
 zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
 
--- foldTree - ignore leaf values
-foldTree :: (a -> a -> a) -> a -> BNTree a e ->a
-foldTree _ a (BNTLeaf _)  = a
-foldTree f a (BNTNode _ x y)  = let vx = foldTree f a x
-                                    vy = foldTree f a y
+-- zipWithLeaf - works only for the same structures, otherwise raises an error
+zipWithLeaf :: (e1 -> e2 -> c)
+          -> BNTree a1 e1
+          -> BNTree a2 e2
+          -> BNTree () c
+zipWithLeaf f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+zipWithLeaf f (BNTNode _ x1 y1) (BNTNode _ x2 y2) =
+    let xbnt = zipWithLeaf f x1 x2
+        ybnt = zipWithLeaf f y1 y2
+    in BNTNode () xbnt ybnt 
+zipWithLeaf _ _ _ = error "shouldn't happen"
+
+-- foldNode - ignore leaf values
+foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
+foldNode _ a (BNTLeaf _)  = a
+foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
+                                    vy = foldNode f a y
                                  in f vx vy
+
+-- foldLeaf - fold only on leaves
+foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
+foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
+foldLeaf f e (BNTLeaf d)  = f e d
+
 -- mapTree
 mapTree :: (a -> b) -> BNTree a a -> BNTree b b
 mapTree f (BNTLeaf a) = BNTLeaf $ f a
@@ -223,19 +241,33 @@ mapTree f (BNTNode a x y) = let x' = mapTree f x
                             in BNTNode (f a) x' y'
 
 -- Compute L^2 norm
-l2fromTree:: AutoEncoder
+l2RAE:: AutoEncoder
           -> AutoDecoder
           -> BinTree (Vector Float)
           -> LLVMRunT IO Float
-l2fromTree ae ad bt  = do
+l2RAE ae ad bt  = do
      bte <- encode ae bt
      btd <- decode ad bte
      let l2tree::BNTree Float Float
          l2tree = zipWithTree l2 bte btd
-     return $ foldTree (+) 0 l2tree
+     return $ foldNode (+) 0 l2tree
   where
-    l2 :: (Vector Float) -> (Vector Float) -> Float 
+    l2 :: Vector Float -> Vector Float -> Float 
     l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
- 
+-- unfolding RAE L^2 norm 
+l2unfoldingRAE:: AutoEncoder
+          -> AutoDecoder
+          -> BinTree (Vector Float)
+          -> LLVMRunT IO Float
+l2unfoldingRAE ae ad bt  = do
+     bte <- encode ae bt
+     btd <- decode ad bte
+     let l2tree::BNTree () Float
+         l2tree = zipWithLeaf l2 bte btd
+     return $ foldLeaf (+) 0 l2tree
+  where
+    l2 :: Vector Float -> Vector Float -> Float 
+    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
