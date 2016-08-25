@@ -77,7 +77,7 @@ struct H5file {
         }
     };
     template<typename T_RAW_ELM>
-    std::vector<T_RAW_ELM> getRawData(H5name dataset){
+    std::vector<T_RAW_ELM> getRawData(H5name dataset) const {
         H5dataset data{val, dataset};
         //TODO: should use getStorageSize instead of getInMemDataSize?
         std::vector<T_RAW_ELM> data_raw(data.pimpl->val.getInMemDataSize()/sizeof(T_RAW_ELM));

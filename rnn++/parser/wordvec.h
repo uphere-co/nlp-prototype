@@ -53,6 +53,7 @@ public:
         // std::cerr << "WordBlock::getWordVec : "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
         return WordBlock{new_block, word_dim};
    }
+   
    void push_back(span_t word_vec){
        std::copy_n(std::cbegin(word_vec), word_dim, std::back_inserter(_val));
        span=span_t{_val};
