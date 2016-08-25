@@ -207,10 +207,33 @@ WordBlock random_WordBlock(idx_t voca_size, int word_dim){
     std::uniform_real_distribution<val_t> uni01{0.0,1.0};
     std::vector<val_t> wvec_init(voca_size*word_dim);
     for(auto &x : wvec_init) x= uni01(gen)-0.5;
-    print(voca_size*word_dim);
     return WordBlock{wvec_init, word_dim};    
 }
 void test_voca_update(){
+    Timer timer{};
+    constexpr int word_dim=100;
+    auto voca_size = 100;
+
+    WordBlock voca_vecs=random_WordBlock(voca_size, word_dim);
+    span_1d<val_t,word_dim> vec = voca_vecs[0];
+    span_1d<val_t,word_dim> vec2 = voca_vecs[1];
+    
+    print(sum(voca_vecs[0]));
+    for(auto &x:vec)x=1.0;
+    print(sum(voca_vecs[0]));
+    print(":sum\n");
+    print(dot(vec, vec2));
+    for(auto &x:vec2)x=2.0;
+    print(dot(vec, vec2));
+    voca_vecs.push_back(vec);
+    span_1d<val_t,word_dim> vec3 = voca_vecs[100]; //vec3==1
+    vec+=vec2; //vec==3
+    print(dot(vec, vec2));
+    print(dot(vec3, vec2));
+    print(":dot\n");
+}
+
+void test_grad_update(){
     Timer timer{};
     constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
     constexpr int word_dim=100;
@@ -225,14 +248,8 @@ void test_voca_update(){
     std::cerr << "Sum: "<<sum(voca_vecs[10]) << std::endl;
     timer.here_then_reset("Initial WordBlock constructed");
 
-    auto sent = "the cat on a hat";
-    auto idxs = word2idx.getIndex(sent);
-    // auto word_block = voca_vecs.getWordVec(idxs);
     print(voca_size);
     print(": voca_size\n");
-    for(auto x :idxs) 
-        std::cerr << "Sum: "<<x<< " : " <<sum(voca_vecs[x]) << std::endl;
-    print("\n");
     TokenizedSentences dataset{"testset"};
     auto& lines = dataset.val;
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
