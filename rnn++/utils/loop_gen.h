@@ -86,7 +86,7 @@ span<T,M>& operator +=(span<T,M>& out, const span<T,M>& x){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};
     vecloop_void(add_assign_vec, out, x);
     return out;
-};
+};    
 template<typename T, int64_t M>
 span<T,M>& operator -=(span<T,M>& out, const span<T,M>& x){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};

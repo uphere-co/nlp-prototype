@@ -69,7 +69,7 @@ void test_init_rnn(){
 void test_read_voca(){
     H5file file{file_name, hdf5::FileMode::read_exist};
     Voca voca =load_voca("data.h5", "1b.model.voca");
-    WordBlock voca_vecs = load_voca_vecs("data.h5", "1b.model", 100, util::DataType::sp);
+    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
     std::cerr << voca_vecs.size() << " " << voca.size() <<" "<< voca_size <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
@@ -84,7 +84,7 @@ void test_read_voca(){
 void test_read_word2vec_output(){
     H5file file{file_name, hdf5::FileMode::read_exist};
     Voca voca =load_voca("word2vec.h5", "foo.word");
-    WordBlock voca_vecs = load_voca_vecs("word2vec.h5", "foo.vec", 200, util::DataType::dp); 
+    auto voca_vecs = load_voca_vecs<200>("word2vec.h5", "foo.vec", util::DataType::dp); 
     std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
@@ -106,7 +106,7 @@ void test_forwad_backward(){
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
     
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
     // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto param = rnn::simple_model::randomParam(0.1);
 
@@ -208,7 +208,7 @@ void test_parallel_reduce(){
     auto lines=util::string::readlines(rnn::config::testset_name);
     timer.here_then_reset("Read testset");
 
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
     auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
@@ -244,7 +244,7 @@ void test_rnn_full_step(){
     // auto tmp=util::string::readlines(rnn::config::testset_name);
     // std::vector<std::string> lines={ u8"A symbol of British pound is £ .", u8"A symbol of British pound is £ ."};
     timer.here_then_reset("Read trainset");
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
     // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");
@@ -312,7 +312,7 @@ void test_supervised_rnn_full_step(){
     auto testset_orig=TokenizedSentences{"1b.testset.sample"};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto &lines = testset.val;
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
     // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");

@@ -201,22 +201,25 @@ void test_context_words(){
 
 }
 
-WordBlock random_WordBlock(idx_t voca_size, int word_dim){
+
+WordBlock random_WordBlock(idx_t voca_size){
+    constexpr int word_dim = 100;
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::uniform_real_distribution<val_t> uni01{0.0,1.0};
     std::vector<val_t> wvec_init(voca_size*word_dim);
     for(auto &x : wvec_init) x= uni01(gen)-0.5;
-    return WordBlock{wvec_init, word_dim};    
+    return WordBlock{wvec_init};    
 }
 void test_voca_update(){
     Timer timer{};
     constexpr int word_dim=100;
     auto voca_size = 100;
 
-    WordBlock voca_vecs=random_WordBlock(voca_size, word_dim);
-    span_1d<val_t,word_dim> vec = voca_vecs[0];
-    span_1d<val_t,word_dim> vec2 = voca_vecs[1];
+    using WordBlock = WordBlock_base<word_dim>;
+    WordBlock voca_vecs=random_WordBlock(voca_size);
+    auto vec = voca_vecs[0];
+    auto vec2 = voca_vecs[1];
     
     print(sum(voca_vecs[0]));
     for(auto &x:vec)x=1.0;
@@ -244,7 +247,7 @@ void test_grad_update(){
     auto voca_size = word_dist.voca.size();
 
     timer.here_then_reset("UnigramDist constructed");
-    WordBlock voca_vecs=random_WordBlock(voca_size, word_dim);
+    WordBlock voca_vecs=random_WordBlock(voca_size);
     std::cerr << "Sum: "<<sum(voca_vecs[10]) << std::endl;
     timer.here_then_reset("Initial WordBlock constructed");
 
