@@ -102,12 +102,14 @@ private:
 struct WordVecContext{
 };
 struct SentVecContext{
-    //assert(idx_self<=widxs.size())
-    SentVecContext(idx_t sidx, idx_t idx_self, std::vector<idx_t> widxs, idx_t left, idx_t right)
-    : sidx{sidx}, widx{widxs[idx_self]} {
+    using widxs_t = std::vector<idx_t> ;
+    using iter_t = widxs_t::const_iterator; 
+    SentVecContext(idx_t sidx, iter_t self, widxs_t const &widxs, 
+                   idx_t left, idx_t right)
+    : sidx{sidx}, widx{*self} {
         auto beg=widxs.cbegin();
         auto end=widxs.cend();
-        auto self=beg+idx_self;
+        assert(self<end);
         auto left_beg = self-left<beg? beg : self-left;
         auto right_end= self+1+right>end? end : self+1+right;
         std::copy(left_beg, self, std::back_inserter(left_widxs));
@@ -115,8 +117,8 @@ struct SentVecContext{
     }
     idx_t sidx;
     idx_t widx;
-    std::vector<idx_t> left_widxs;
-    std::vector<idx_t> right_widxs;    
+    widxs_t left_widxs;
+    widxs_t right_widxs;    
 };
 
 /*
@@ -185,10 +187,9 @@ void test_context_words(){
         auto widxs_orig = word2idx.getIndex(sent);
         auto pws = word_dist.get_probs(widxs_orig);
         auto widxs = sub_sampler(widxs_orig, pws);
-        // SentVecContext context{sidx, 2, widxs, 5,5};
-        // print_context(context, word_dist);
-        if(widxs.size()<5) continue;
-        print_context(SentVecContext{sidx, 4, widxs, 5,5}, word_dist);
+        for(auto widx:widxs) assert(!is_unknown_widx(widx));
+        for(auto self=widxs.cbegin(); self!=widxs.end(); ++self)
+            print_context(SentVecContext{sidx, self, widxs, 5,5}, word_dist);
         // for(auto idx : idxs) {            
         //     if(is_unknown_widx(idx)) continue;
         //     if(!occurence_cutoff(word_dist.count[idx])) continue; 
@@ -202,14 +203,15 @@ void test_context_words(){
 }
 
 
-WordBlock random_WordBlock(idx_t voca_size){
-    constexpr int word_dim = 100;
+template<int word_dim>
+WordBlock_base<word_dim> random_WordBlock(idx_t voca_size){
+    //constexpr int word_dim = 100;
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::uniform_real_distribution<val_t> uni01{0.0,1.0};
     std::vector<val_t> wvec_init(voca_size*word_dim);
     for(auto &x : wvec_init) x= uni01(gen)-0.5;
-    return WordBlock{wvec_init};    
+    return WordBlock_base<word_dim>{wvec_init};    
 }
 void test_voca_update(){
     Timer timer{};
@@ -217,12 +219,15 @@ void test_voca_update(){
     auto voca_size = 100;
 
     using WordBlock = WordBlock_base<word_dim>;
-    WordBlock voca_vecs=random_WordBlock(voca_size);
+    WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
     auto vec = voca_vecs[0];
     auto vec2 = voca_vecs[1];
     
     print(sum(voca_vecs[0]));
     for(auto &x:vec)x=1.0;
+    // for(int i=0; i<100; ++i)voca_vecs[0][i]=2.5;
+    print(sum(voca_vecs[0]));
+    for(int i=0; i<100; ++i) vec[i]+=2.5; //vec==3.5
     print(sum(voca_vecs[0]));
     print(":sum\n");
     print(dot(vec, vec2));
@@ -230,11 +235,59 @@ void test_voca_update(){
     print(dot(vec, vec2));
     voca_vecs.push_back(vec);
     span_1d<val_t,word_dim> vec3 = voca_vecs[100]; //vec3==1
-    vec+=vec2; //vec==3
+    // vec+=vec2; //vec==3
+    for(int i=0; i<100; ++i) vec[i]=2.5; //vec==2.5
+    // assert(voca_vecs[0]==vec);
+    // voca_vecs[0]+=voca_vecs[1];
     print(dot(vec, vec2));
+    print(dot(voca_vecs[0], vec2));
     print(dot(vec3, vec2));
     print(":dot\n");
 }
+
+auto sigmoid=[](auto const &x, auto const &y){
+    auto xy = util::math::dot(x,y);
+    return  1/(1+std::exp(-xy));
+};
+auto sigmoid_plus=[](auto const &x, auto const &y){
+    auto xy = util::math::dot(x,y);
+    return  1/(1+std::exp(xy));
+};
+
+struct SparseGrad{
+    SparseGrad(val_t f_wc, val_t f_wcn,
+               idx_t idx_w, idx_t idx_c, idx_t idx_cn)
+    : f_wc{f_wc}, f_wcn{f_wcn},
+      idx_w{idx_w},idx_c{idx_c}, idx_cn{idx_cn} {}
+    val_t f_wc, f_wcn;
+    idx_t idx_w, idx_c, idx_cn;
+};
+//vocavecs_gradient_descent=[]
+auto vocavecs_gradient=[](auto const &voca_vecs, 
+                     auto idx_w, auto idx_c, auto idx_cn){
+    auto w=voca_vecs[idx_w];
+    auto c=voca_vecs[idx_c];
+    auto cn=voca_vecs[idx_cn];
+    //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+    //grad_c : (1-sigmoid(w,c)) * w 
+    //grad_cn : (sigmoid_plus(w,c)-1) *w
+    return SparseGrad{1-sigmoid(w,c), sigmoid_plus(w,c)-1, idx_w, idx_c, idx_cn};
+};
+
+struct VocavecsGradientDescent{
+    VocavecsGradientDescent(val_t alpha)
+    :alpha{alpha} {}
+    template<typename T>
+    void operator() (T &voca_vecs, SparseGrad const & grad){
+        auto w=voca_vecs[grad.idx_w];
+        auto c=voca_vecs[grad.idx_c];
+        auto cn=voca_vecs[grad.idx_cn];
+        // w += alpha * grad.f_wc * c + alpha * grad.f_wcn * cn;
+        // c += alpha * grad.f_wc * w;
+        // cn+= alpha * grad.f_wcn* w;
+    }
+    val_t alpha;
+};
 
 void test_grad_update(){
     Timer timer{};
@@ -247,7 +300,7 @@ void test_grad_update(){
     auto voca_size = word_dist.voca.size();
 
     timer.here_then_reset("UnigramDist constructed");
-    WordBlock voca_vecs=random_WordBlock(voca_size);
+    WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
     std::cerr << "Sum: "<<sum(voca_vecs[10]) << std::endl;
     timer.here_then_reset("Initial WordBlock constructed");
 
@@ -258,6 +311,9 @@ void test_grad_update(){
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
         auto& sent = lines[sidx];
         auto idxs = word2idx.getIndex(sent);
+        //auto gradient=get_gradient(voca_vecs, idx_w, idx_c, idx_cn);
+        //voca_vecs += alpha*gradient - lambda*param;
+        //voca_vecs ++ adagrad(gradient);
         auto word_block = voca_vecs.getWordVec(idxs);
         std::cerr << "Sum: "<<sum(word_block.span) << std::endl;
     }
@@ -269,7 +325,7 @@ void test_grad_update(){
 
 int main(){
     // test_unigram_sampling();
-    // test_context_words();
+    test_context_words();
     test_voca_update();
 
     return 0;
