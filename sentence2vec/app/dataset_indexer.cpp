@@ -20,6 +20,8 @@ using wcount_t = int32_t;
 using idx_t = std::size_t;
 using val_t = double;
 
+constexpr int word_dim=100;
+
 auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
 auto occurence_cutoff = [](auto x){return x>5;};
 
@@ -58,12 +60,14 @@ class Sampler{
 public:
     Sampler(T beg, T end)
     : rd{}, gen{rd()}, dist{beg, end} {}
+    Sampler (Sampler const &sampler)
+    : rd{}, gen{rd()}, dist{sampler.dist} {}
     auto operator() () {return dist(gen);}
 
 private:
     std::random_device rd;
     std::mt19937 gen;
-    std::discrete_distribution<> dist;
+    std::discrete_distribution<idx_t> dist;
 };
 /*
 pw = cnt / pos_max < 1
@@ -112,27 +116,30 @@ struct SentVecContext{
         assert(self<end);
         auto left_beg = self-left<beg? beg : self-left;
         auto right_end= self+1+right>end? end : self+1+right;
-        std::copy(left_beg, self, std::back_inserter(left_widxs));
-        std::copy(self+1, right_end, std::back_inserter(right_widxs));
+        std::copy(left_beg, self, std::back_inserter(cidxs));
+        std::copy(self+1, right_end, std::back_inserter(cidxs));
     }
     idx_t sidx;
     idx_t widx;
-    widxs_t left_widxs;
-    widxs_t right_widxs;    
+    widxs_t cidxs;    
 };
 
-/*
-class NegativeSampler{
+
+class NegativeSampleDist{
 public:
-    NegativeSampler(idx_t left, idx_t right)
-    :left{left}, right{right} {}
-    SentVecContext operator() (idx_t sidx, idx_t widx){
+    using dist_t = std::vector<val_t>;
+    using iter_t = dist_t::const_iterator; 
+    NegativeSampleDist(dist_t const &wc_pdf, val_t power)
+    :dist{wc_pdf}, power{power} {
+        for(auto &x : dist) x=std::pow(x, power);
+    }
+    Sampler<iter_t> get_sampler() const {        
+        return Sampler<iter_t>{dist.cbegin(), dist.cend()};
     }
 private:
-    idx_t left;
-    idx_t right;
+    dist_t dist;
+    val_t power;
 };
-*/
 
 }//namespace sent2vec
 
@@ -145,33 +152,35 @@ using namespace util::math;
 using namespace util::io;
 using namespace util;
 using namespace sent2vec;
-void test_unigram_sampling(){
+void test_negative_sampling(){
     H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
-    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};    
-    Sampler<UnigramDist::iter_t> negative_sampler{word_dist.prob.cbegin(), word_dist.prob.cend()};
+    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
+    // Sampler<UnigramDist::iter_t> sampler{word_dist.prob.cbegin(),word_dist.prob.cend()};
+    // NegativeSampleDist neg_sample_dist{word_dist.prob, 0.0};    
+    NegativeSampleDist neg_sample_dist{word_dist.prob, 0.75};
+    auto sampler=neg_sample_dist.get_sampler();
     
     std::map<int, int> m;
-    for(int n=0; n<10000; ++n) {
-        ++m[negative_sampler()];
+    for(int n=0; n<100000; ++n) {
+        ++m[sampler()];
     }
     std::map<int, int, std::greater<int>> m_inv;
     for(auto const x:m) m_inv[x.second]=x.first;
     for(auto p : m_inv) {
         std::cout << p.second << " " <<word_dist.voca.getWord(p.second).val <<" generated " << p.first << " times\n";
     }
+    std::cerr<<"Voca size: "<<word_dist.prob.size()<<std::endl;
 }
 
+auto print_word=[](auto widx, auto const &word_dist){
+    print(word_dist.voca.getWord(widx).val);
+};
 auto print_context=[](auto const &context, auto const &word_dist){
-    for(auto idx: context.left_widxs){
-        if(is_unknown_widx(idx)) {print("-UNKNOWN-"); continue;}
-        print(word_dist.voca.getWord(idx).val);
-    }
-    print("__");
     print(word_dist.voca.getWord(context.widx).val);
-    print("__");
-    for(auto idx: context.right_widxs){
+    print(": ");
+    for(auto idx: context.cidxs){
         if(is_unknown_widx(idx))  {print("-UNKNOWN-"); continue;}
-        print(word_dist.voca.getWord(idx).val);
+        print_word(idx, word_dist);
     }
     print('\n');
 };
@@ -190,16 +199,9 @@ void test_context_words(){
         auto pws = word_dist.get_probs(widxs_orig);
         auto widxs = sub_sampler(widxs_orig, pws);
         for(auto widx:widxs) assert(!is_unknown_widx(widx));
-        for(auto self=widxs.cbegin(); self!=widxs.end(); ++self)
+        for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             print_context(SentVecContext{sidx, self, widxs, 5,5}, word_dist);
-        // for(auto idx : idxs) {            
-        //     if(is_unknown_widx(idx)) continue;
-        //     if(!occurence_cutoff(word_dist.count[idx])) continue; 
-        //     print(idx);
-        //     print(" : ");
-        //     print(word_dist.count[idx]);
-        // }
-        // print('\n');
+        }
     }
 
 }
@@ -270,10 +272,17 @@ auto vocavecs_gradient=[](auto const &voca_vecs,
     auto w=voca_vecs[idx_w];
     auto c=voca_vecs[idx_c];
     auto cn=voca_vecs[idx_cn];
-    //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+    // grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
     //grad_c : (1-sigmoid(w,c)) * w 
     //grad_cn : (sigmoid_plus(w,c)-1) *w
     return SparseGrad{1-sigmoid(w,c), sigmoid_plus(w,c)-1, idx_w, idx_c, idx_cn};
+};
+
+auto word2vec_grad_w = [](int64_t i, auto x_c, auto x_cn, auto &w, auto const &c, auto const &cn){
+    w[i] += x_c * c[i] + x_cn*cn[i];
+};
+auto word2vec_grad_c = [](int64_t i, auto x, auto &c, auto const &w){
+    c[i] += x * w[i];
 };
 
 struct VocavecsGradientDescent{
@@ -284,20 +293,29 @@ struct VocavecsGradientDescent{
         auto w=voca_vecs[grad.idx_w];
         auto c=voca_vecs[grad.idx_c];
         auto cn=voca_vecs[grad.idx_cn];
-        // w += alpha * grad.f_wc * c + alpha * grad.f_wcn * cn;
-        // c += alpha * grad.f_wc * w;
-        // cn+= alpha * grad.f_wcn* w;
+        auto x_wc = grad.f_wc *alpha;
+        auto x_wcn = grad.f_wcn *alpha;
+        vecloop_void(word2vec_grad_w, x_wc, x_wcn, w, c, cn);
+        vecloop_void(word2vec_grad_c, x_wc, c, w);
+        vecloop_void(word2vec_grad_c, x_wcn, cn, w);
     }
     val_t alpha;
+    VecLoop_void<val_t,word_dim> vecloop_void{};
 };
 
-void test_grad_update(){
+void test_word2vec_grad_update(){
     Timer timer{};
     constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
     constexpr int word_dim=100;
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
-    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};    
+    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
+    NegativeSampleDist neg_sample_dist{word_dist.prob, 0.75};    
+    auto negative_sampler=neg_sample_dist.get_sampler();
+    SubSampler sub_sampler{0.0001};
+
+    VocavecsGradientDescent optimizer{0.025};
+
     VocaIndexMap word2idx = word_dist.voca.indexing();
     auto voca_size = word_dist.voca.size();
 
@@ -312,12 +330,25 @@ void test_grad_update(){
     auto& lines = dataset.val;
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
         auto& sent = lines[sidx];
-        auto idxs = word2idx.getIndex(sent);
+        auto widxs_orig = word2idx.getIndex(sent);
+        auto pws = word_dist.get_probs(widxs_orig);
+        auto widxs = sub_sampler(widxs_orig, pws);
+        for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
+            auto widx = *self;
+            SentVecContext c_words{sidx, self, widxs, 5,5};
+            for(auto cidx: c_words.cidxs) {
+                auto cnidx = negative_sampler();
+                auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
+                optimizer(voca_vecs, grad);
+                print_word(widx, word_dist);
+                print_word(cidx, word_dist);
+                print_word(cnidx,word_dist);
+                print("\n");
+            }
+        }        
         //auto gradient=get_gradient(voca_vecs, idx_w, idx_c, idx_cn);
         //voca_vecs += alpha*gradient - lambda*param;
         //voca_vecs ++ adagrad(gradient);
-        auto word_block = voca_vecs.getWordVec(idxs);
-        std::cerr << "Sum: "<<sum(word_block.span) << std::endl;
     }
     //auto vocafile = "wordvec.h5";
     //auto w2vmodel_dataset = "1b.model.voca";
@@ -326,9 +357,10 @@ void test_grad_update(){
 }
 
 int main(){
-    // test_unigram_sampling();
-    test_context_words();
-    test_voca_update();
+    // test_negative_sampling();
+    // test_context_words();
+    // test_voca_update();
+    test_word2vec_grad_update();
 
     return 0;
 }
