@@ -51,7 +51,19 @@ struct UnigramDist{
     std::vector<val_t> prob;
 };
 
-
+struct OccurrenceFilter{
+    OccurrenceFilter(wcount_t cutoff, UnigramDist const &unigram)
+    : unigram{unigram}, cutoff{cutoff} {}
+    std::vector<idx_t> operator() (std::vector<idx_t> idxs){
+        std::vector<idx_t> filtered;
+        for(auto idx:idxs) 
+            if(unigram.get_count(idx>cutoff))
+                filtered.push_back(idx);
+        return filtered;
+    }
+    UnigramDist const &unigram;
+    wcount_t cutoff;
+};
 
 template<typename T>
 class Sampler{
@@ -321,6 +333,7 @@ void test_word2vec_grad_update(){
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
     SubSampler sub_sampler{0.0001, unigram};
+    OccurrenceFilter freq_filter{5000, unigram};
 
     VocavecsGradientDescent optimizer{0.025};
 
@@ -339,7 +352,8 @@ void test_word2vec_grad_update(){
     auto& lines = dataset.val;
     for(auto const &sent:lines){
         auto widxs_orig = word2idx.getIndex(sent);
-        auto widxs = sub_sampler(widxs_orig);
+        auto widxs_filtered = freq_filter(widxs_orig);
+        auto widxs = sub_sampler(widxs_filtered);
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             auto widx = *self;
             WordVecContext c_words{self, widxs, 5,5};
