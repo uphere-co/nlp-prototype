@@ -355,7 +355,10 @@ void test_word2vec_grad_update(){
         return widxs;
     };
     auto& lines = dataset.val;    
-    for(auto const &sent:lines){
+    // for(auto const &sent:lines){
+    auto n=lines.size();
+    tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
+        auto &sent=lines[i];
         auto widxs = filtered_words(sent);
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             auto widx = *self;
@@ -370,7 +373,8 @@ void test_word2vec_grad_update(){
                 print("\n");
             }
         }
-    }
+    });
+    //}
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
     h5store.overwriteRawData(H5name{"testset"}, voca_vecs._val );
@@ -409,9 +413,12 @@ int main(){
     };
     timer.here_then_reset("Training begins");
     TokenizedSentences dataset{"1b.trainset"};
-    auto& lines = dataset.val;    
-    for(int i=0; i<1; ++i){
-    for(auto const &sent:lines){
+    auto& lines = dataset.val;
+    auto n=lines.size();
+    for(int i=0; i<1; ++i){  
+    // for(auto const &sent:lines){
+    tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
+        auto &sent=lines[i];    
         auto widxs = filtered_words(sent);
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             auto widx = *self;
@@ -424,11 +431,11 @@ int main(){
                 }
             }
         }
-    }
+    });
     }
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
-    h5store.writeRawData(H5name{"1b.training"}, voca_vecs._val );
+    h5store.overwriteRawData(H5name{"1b.training"}, voca_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
 
     return 0;
