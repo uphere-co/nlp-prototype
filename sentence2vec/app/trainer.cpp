@@ -23,7 +23,6 @@ using val_t = double;
 constexpr int word_dim=100;
 
 auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
-auto occurrence_cutoff = [](auto x){return x>5;};
 
 struct UnigramDist{
     using char_t =  sent2vec::char_t;
@@ -333,7 +332,7 @@ void test_word2vec_grad_update(){
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
     SubSampler sub_sampler{0.0001, unigram};
-    OccurrenceFilter freq_filter{5000, unigram};
+    OccurrenceFilter freq_filter{5, unigram};
 
     VocavecsGradientDescent optimizer{0.025};
 
@@ -349,11 +348,15 @@ void test_word2vec_grad_update(){
     print(": voca_size\n");
     timer.here_then_reset("Training begins");
     TokenizedSentences dataset{"testset"};
-    auto& lines = dataset.val;
-    for(auto const &sent:lines){
+    auto filtered_words=[&word2idx,&freq_filter,&sub_sampler](auto const &sent){
         auto widxs_orig = word2idx.getIndex(sent);
         auto widxs_filtered = freq_filter(widxs_orig);
         auto widxs = sub_sampler(widxs_filtered);
+        return widxs;
+    };
+    auto& lines = dataset.val;    
+    for(auto const &sent:lines){
+        auto widxs = filtered_words(sent);
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             auto widx = *self;
             WordVecContext c_words{self, widxs, 5,5};
@@ -369,13 +372,64 @@ void test_word2vec_grad_update(){
         }
     }
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
+    H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
+    h5store.overwriteRawData(H5name{"testset"}, voca_vecs._val );
+    timer.here_then_reset("Wrote word2vecs to disk.");
 }
 
 int main(){
     // test_negative_sampling();
     // test_context_words();
     // test_voca_update();
-    test_word2vec_grad_update();
+    // test_word2vec_grad_update();
+    // return 0;
+
+
+    Timer timer{};
+    // constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
+    constexpr int word_dim=100;
+
+    H5file file{H5name{"wordvec.h5"}, hdf5::FileMode::read_exist};
+    UnigramDist unigram{file, "1b.training.word_key", "1b.training.word_count"};
+    NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
+    auto negative_sampler=neg_sample_dist.get_sampler();
+    SubSampler sub_sampler{0.0001, unigram};
+    OccurrenceFilter freq_filter{5, unigram};
+    VocavecsGradientDescent optimizer{0.025};
+    VocaIndexMap word2idx = unigram.voca.indexing();
+    auto voca_size = unigram.voca.size();
+    WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
+    timer.here_then_reset("Initial WordBlock constructed");
+
+    auto filtered_words=[&word2idx,&freq_filter,&sub_sampler](auto const &sent){
+        auto widxs_orig = word2idx.getIndex(sent);
+        auto widxs_filtered = freq_filter(widxs_orig);
+        auto widxs = sub_sampler(widxs_filtered);
+        return widxs;
+    };
+    timer.here_then_reset("Training begins");
+    TokenizedSentences dataset{"1b.trainset"};
+    auto& lines = dataset.val;    
+    for(int i=0; i<1; ++i){
+    for(auto const &sent:lines){
+        auto widxs = filtered_words(sent);
+        for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
+            auto widx = *self;
+            WordVecContext c_words{self, widxs, 5,5};
+            for(auto cidx: c_words.cidxs) {
+                for(int j=0; j<5; ++j){
+                auto cnidx = negative_sampler();
+                auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
+                optimizer(voca_vecs, grad);
+                }
+            }
+        }
+    }
+    }
+    timer.here_then_reset("test_word2vec_grad_update() is finished.");
+    H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
+    h5store.writeRawData(H5name{"1b.training"}, voca_vecs._val );
+    timer.here_then_reset("Wrote word2vecs to disk.");
 
     return 0;
 }
