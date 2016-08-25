@@ -1,6 +1,9 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedStrings #-} 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
+
+import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
 
 import           Control.Monad.IO.Class            ( liftIO )
 import           Control.Monad.Trans.Reader        ( runReaderT )
@@ -35,10 +38,10 @@ import           NLP.WordVector.Vectorize
 
 prepareData :: IO (Vector Float)
 prepareData = do
-    bstr <- B.readFile "/home/wavewave/repo/srcp/nlp-data/paraphrase_test/randomtest.dat"
+    bstr <- B.readFile "/data/groups/uphere/randomtest/randomtest.dat"
     v :: Vector Float <- B.useAsCString bstr $ \cstr -> do
-      nstr <- mallocBytes (4000000)
-      copyBytes nstr cstr (4000000)
+      nstr <- mallocBytes 4000000
+      copyBytes nstr cstr 4000000
       fptr <- castForeignPtr <$> newForeignPtr_ nstr
       return (V.unsafeFromForeignPtr0 fptr 1000000)
     return v
@@ -51,9 +54,10 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
 
 main :: IO ()
 main = do
-    args <- getArgs
-    let n1 = read (args !! 0) :: Int
-        n2 = read (args !! 1) :: Int
+    setLocaleEncoding utf8
+    args <- getArgs 
+    let !n1 = read (args !! 0) :: Int
+        !n2 = read (args !! 1) :: Int
     v <- V.map (\x -> x - 0.5) <$> prepareData
     putStrLn "data prepared"
     let we = Mat (100,200) . V.slice 0 20000 . V.map (/100.0) $ v
@@ -63,32 +67,33 @@ main = do
     let ?expHash = trie hash        
     let autoenc = AutoEncoder 100 we be
         autodec = AutoDecoder 100 wd bd
-    txt <- TIO.readFile "/home/wavewave/repo/srcp/nlp-data/LDC2003T05_parsed/LDC2003T05_parsed1.pos" -- "parsed.txt"
-    (_,wvm) <- createWordVectorMap "/home/wavewave/repo/srcp/nlp-data/word2vec-result-20150501/vectors100statmt.bin" -- "vectors100t8.bin"
+    txt <- TIO.readFile "/data/groups/uphere/LDC2003T05_POS/LDC2003T05_parsed1.pos" -- "parsed.txt"
+    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin" -- "vectors100t8.bin"
     let p' = penntree <* A.skipSpace 
         r = A.parseOnly (A.many1 p') txt
     case r of
       Left err -> print err
       Right lst -> do
         withContext $ \context ->
-          flip runReaderT context $ do -- test8 >> return ()
-            compileNRun ["encodeWrapper", "decodeWrapper"] fullAST $ do
+          flip runReaderT context $ -- test8 >> return ()
+            compileNRun ["encode", "decode"] fullAST $
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
                 forM_ mvtr $ \vtr -> do
                   enc <- encode autoenc vtr
-                  dec <- decode autodec (fmap (const ()) enc)
-                  liftIO $ putStrLn "================"
+                  dec <- decode autodec enc
                   let printer :: BNTree (Vector Float) (Vector Float) -> Text
                       printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
-                  liftIO $ TIO.putStrLn $ printer enc
-                  -----------
-                  rdec <- recDecode autodec (fmap (const ()) enc)
                   liftIO $ do
+                    putStrLn "================"
+                    TIO.putStrLn $ printer enc
                     putStrLn "----------------"
                     TIO.putStrLn $ printer dec
-                    TIO.putStrLn . bntPrint [] printer (const "") $ rdec
+                  rdec <- recDecode autodec enc 
+                  liftIO $ do
+                    putStrLn "****************"
+                    TIO.putStrLn . bntPrint [] printer (\_->"(no leaf)") $ rdec
 
         return ()
 {- 

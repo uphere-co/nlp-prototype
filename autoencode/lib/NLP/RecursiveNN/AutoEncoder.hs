@@ -5,29 +5,29 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
-import           Control.Applicative             ( (<$>), (<*>), pure )
+-- import           Control.Applicative             ( (<$>), (<*>), pure )
 import           Control.Monad.IO.Class          ( liftIO )
-import           Data.Foldable
-import           Data.Hashable
-import qualified Data.HashMap.Strict       as HM
+-- import           Data.Foldable
+-- import           Data.Hashable
+-- import qualified Data.HashMap.Strict       as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
-import           Text.Printf
+-- import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
-import           Symbolic.Differential           ( sdiff )
-import           Symbolic.Eval                   ( seval )
+-- import           Symbolic.Differential           ( sdiff )
+-- import           Symbolic.Eval                   ( seval )
 import           Symbolic.Predefined
-import           Symbolic.Print
+-- import           Symbolic.Print
 import           Symbolic.Type
 --
-import           NLP.SyntaxTree.Type
+import           NLP.SyntaxTree.Type  -- (fromEither, rootElem)
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
@@ -111,15 +111,17 @@ encodeP AENode {..} = do
 encode :: AutoEncoder
        -> BinTree (Vector Float)
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
-encode autoenc btr = go btr
-  where go (BinNode x y) = do x' <- go x
-                              y' <- go y
-                              let vx = fromEither (rootElem x')
-                                  vy = fromEither (rootElem y')
-                                  ae = AENode autoenc vx vy
-                              r <- encodeP ae
-                              return (BNTNode r x' y')
-        go (BinLeaf x) = return (BNTLeaf x)
+encode _ (BinLeaf x) = pure (BNTLeaf x)
+encode autoenc (BinNode x y) = do
+    x' <- encode autoenc x
+    y' <- encode autoenc y
+    r <- node x' y'
+    return (BNTNode r x' y')
+  where
+    node x' y' = let vx = fromEither . rootElem $ x'
+                     vy = fromEither . rootElem $ y'
+                     ae = AENode autoenc vx vy
+                 in encodeP ae
 
 
 decodeP :: ADNode -> LLVMRunT IO (Vector Float, Vector Float)
@@ -141,24 +143,131 @@ decodeP ADNode {..} = do
     -- c1 = V.slice 0 dim rc
     -- c2 = V.slice dim dim rc
    
-
-
- 
 decode :: AutoDecoder
-       -> BNTree (Vector Float) ()
+       -> BNTree (Vector Float) e
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
 decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
-    go v1 (BNTNode _ x y) = do (c1,c2) <- decodeP (ADNode autodec v1)
-                               BNTNode v1 <$> go c1 x <*> go c2 y --  (go c1 x) (go c1 y)
-    go v1 (BNTLeaf ()) = pure (BNTLeaf v1)
+    go v1 (BNTNode _ x y) = do
+       (c1,c2) <- decodeP (ADNode autodec v1)
+       BNTNode v1 <$> go c1 x <*> go c2 y
+    go v1 (BNTLeaf _) = pure (BNTLeaf v1)
 decode _ (BNTLeaf _) = error "shouldn't happen"
 
-
+-- Binary tree with child-tree-valued nodes !! (sort of)
 recDecode :: AutoDecoder
-          -> BNTree (Vector Float) ()
+          -> BNTree (Vector Float) e
           -> LLVMRunT IO (BNTree (BNTree (Vector Float) (Vector Float)) ())
-recDecode _       (BNTLeaf ())      = pure (BNTLeaf ())
+recDecode _       (BNTLeaf _)      = pure (BNTLeaf ())
 recDecode autodec n@(BNTNode _ x y) = 
   BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
 
+-- cost function for each node
+-- Input BinTree and BNTree should have the same structure
+{-costNode :: BinTree (Vector Float)
+         -> BNTree (Vector Float) ()
+         -> LLVMRunT IO (BNTree Float Float)
+costNoe 
+costTree :: AutoEncoder
+         -> AutoDecoder
+         -> BinTree (Vector Float)
+         -> LLVMRunT IO (BNTree Float Float)
+costTree autoenc autodec (BinLeaf v) = pure (BNTLeaf 0)
+costTree autoenc autodec (BinNode x y) =
+    let xtree = decode autodec x 
+        ytree = decode autodec y
+        venc = 
+        vdec =
+    in BNTNode <$> l2 venc vdec
+               <*> costTree autoenc autodec x
+               <*> costTree autoenc autodec y
+-}
+
+-- Tree manipulation functions
+
+-- zipTree - error occurs when the structures don't match 
+zipTree :: BNTree a1 e1
+          -> BNTree a2 e2
+          -> BNTree (a1,a2) (e1,e2)
+zipTree (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf (n1,n2)
+zipTree (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
+    let tx = zipTree x1 x2
+        ty = zipTree y1 y2
+    in BNTNode (n1,n2) tx ty 
+zipTree _ _ = error "zipTree : invalid input" 
+
+-- zipWithTree
+zipWithTree :: (a1 -> a2 -> c)
+          -> BNTree a1 a1
+          -> BNTree a2 a2
+          -> BNTree c c
+zipWithTree f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+zipWithTree f (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
+    let xbnt = zipWithTree f x1 x2
+        ybnt = zipWithTree f y1 y2
+    in BNTNode ( f n1 n2 ) xbnt ybnt 
+zipWithTree f (BNTLeaf n1) (BNTNode n2 _ _) = BNTLeaf $ f n1 n2
+zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+
+-- zipWithLeaf - works only for the same structures, otherwise raises an error
+zipWithLeaf :: (e1 -> e2 -> c)
+          -> BNTree a1 e1
+          -> BNTree a2 e2
+          -> BNTree () c
+zipWithLeaf f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
+zipWithLeaf f (BNTNode _ x1 y1) (BNTNode _ x2 y2) =
+    let xbnt = zipWithLeaf f x1 x2
+        ybnt = zipWithLeaf f y1 y2
+    in BNTNode () xbnt ybnt 
+zipWithLeaf _ _ _ = error "shouldn't happen"
+
+-- foldNode - ignore leaf values
+foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
+foldNode _ a (BNTLeaf _)  = a
+foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
+                                    vy = foldNode f a y
+                                 in f vx vy
+
+-- foldLeaf - fold only on leaves
+foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
+foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
+foldLeaf f e (BNTLeaf d)  = f e d
+
+-- mapTree
+mapTree :: (a -> b) -> BNTree a a -> BNTree b b
+mapTree f (BNTLeaf a) = BNTLeaf $ f a
+mapTree f (BNTNode a x y) = let x' = mapTree f x
+                                y' = mapTree f y
+                            in BNTNode (f a) x' y'
+
+-- Compute L^2 norm
+l2RAE:: AutoEncoder
+          -> AutoDecoder
+          -> BinTree (Vector Float)
+          -> LLVMRunT IO Float
+l2RAE ae ad bt  = do
+     bte <- encode ae bt
+     btd <- decode ad bte
+     let l2tree::BNTree Float Float
+         l2tree = zipWithTree l2 bte btd
+     return $ foldNode (+) 0 l2tree
+  where
+    l2 :: Vector Float -> Vector Float -> Float 
+    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
+
+-- unfolding RAE L^2 norm 
+l2unfoldingRAE:: AutoEncoder
+          -> AutoDecoder
+          -> BinTree (Vector Float)
+          -> LLVMRunT IO Float
+l2unfoldingRAE ae ad bt  = do
+     bte <- encode ae bt
+     btd <- decode ad bte
+     let l2tree::BNTree () Float
+         l2tree = zipWithLeaf l2 bte btd
+     return $ foldLeaf (+) 0 l2tree
+  where
+    l2 :: Vector Float -> Vector Float -> Float 
+    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
