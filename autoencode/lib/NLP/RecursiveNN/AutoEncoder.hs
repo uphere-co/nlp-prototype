@@ -144,20 +144,21 @@ decodeP ADNode {..} = do
     -- c2 = V.slice dim dim rc
    
 decode :: AutoDecoder
-       -> BNTree (Vector Float) ()
+       -> BNTree (Vector Float) e
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
 decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
-    go v1 (BNTNode _ x y) = do (c1,c2) <- decodeP (ADNode autodec v1)
-                               BNTNode v1 <$> go c1 x <*> go c2 y --  (go c1 x) (go c1 y)
-    go v1 (BNTLeaf ()) = pure (BNTLeaf v1)
+    go v1 (BNTNode _ x y) = do
+       (c1,c2) <- decodeP (ADNode autodec v1)
+       BNTNode v1 <$> go c1 x <*> go c2 y
+    go v1 (BNTLeaf _) = pure (BNTLeaf v1)
 decode _ (BNTLeaf _) = error "shouldn't happen"
 
 -- Binary tree with child-tree-valued nodes !! (sort of)
 recDecode :: AutoDecoder
-          -> BNTree (Vector Float) ()
+          -> BNTree (Vector Float) e
           -> LLVMRunT IO (BNTree (BNTree (Vector Float) (Vector Float)) ())
-recDecode _       (BNTLeaf ())      = pure (BNTLeaf ())
+recDecode _       (BNTLeaf _)      = pure (BNTLeaf ())
 recDecode autodec n@(BNTNode _ x y) = 
   BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
 
@@ -221,14 +222,14 @@ mapTree f (BNTNode a x y) = let x' = mapTree f x
                                 y' = mapTree f y
                             in BNTNode (f a) x' y'
 
--- Compute L^2 norm ( a pseudo code )
+-- Compute L^2 norm
 l2fromTree:: AutoEncoder
           -> AutoDecoder
           -> BinTree (Vector Float)
           -> LLVMRunT IO Float
 l2fromTree ae ad bt  = do
      bte <- encode ae bt
-     btd <- decode ad (fmap (const ()) bte)
+     btd <- decode ad bte
      let l2tree::BNTree Float Float
          l2tree = zipWithTree l2 bte btd
      return $ foldTree (+) 0 l2tree
@@ -236,6 +237,5 @@ l2fromTree ae ad bt  = do
     l2 :: (Vector Float) -> (Vector Float) -> Float 
     l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
-
 
  

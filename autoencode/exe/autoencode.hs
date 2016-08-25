@@ -82,7 +82,7 @@ main = do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
                 forM_ mvtr $ \vtr -> do
                   enc <- encode autoenc vtr
-                  dec <- decode autodec (fmap (const ()) enc)
+                  dec <- decode autodec enc
                   let printer :: BNTree (Vector Float) (Vector Float) -> Text
                       printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
                   liftIO $ do
@@ -90,7 +90,7 @@ main = do
                     TIO.putStrLn $ printer enc
                     putStrLn "----------------"
                     TIO.putStrLn $ printer dec
-                  rdec <- recDecode autodec (fmap (const ()) enc)
+                  rdec <- recDecode autodec enc 
                   liftIO $ do
                     putStrLn "****************"
                     TIO.putStrLn . bntPrint [] printer (\_->"(no leaf)") $ rdec
