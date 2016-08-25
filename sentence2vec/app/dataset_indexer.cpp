@@ -23,37 +23,35 @@ using val_t = double;
 constexpr int word_dim=100;
 
 auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
-auto occurence_cutoff = [](auto x){return x>5;};
-
+auto occurrence_cutoff = [](auto x){return x>5;};
 
 struct UnigramDist{
     using char_t =  sent2vec::char_t;
-    using count_t = sent2vec::wcount_t;
-    using prob_t = std::vector<double>;
-    using iter_t = prob_t::const_iterator; 
+    using count_t = sent2vec::wcount_t; 
 
     UnigramDist(util::io::H5file const &h5store, std::string voca_file, std::string count_file)
     : voca{h5store.getRawData<char_t>(util::io::H5name{voca_file})},
       count{h5store.getRawData<count_t>(util::io::H5name{count_file})},
-      prob(count.size()) 
-    {
+      prob(count.size()) {
         auto norm = 1.0 / std::accumulate(count.cbegin(), count.cend(), count_t{0});
         for(size_t i=0; i<count.size(); ++i) {
             prob[i]=count[i]*norm;
         }
     }
-    prob_t get_probs(std::vector<idx_t> idxs){
-        prob_t ps;
-        for(auto idx:idxs) {
-            if(is_unknown_widx(idx)) ps.push_back(-1.0);
-            else ps.push_back(prob[idx]);
-        }
-        return ps;
+    val_t get_prob(idx_t idx) const {
+        if(is_unknown_widx(idx)) return -1.0;
+        return prob[idx];
     } 
+    wcount_t get_count(idx_t idx) const{
+        if(is_unknown_widx(idx)) return 0;
+        return count[idx];
+    }
     rnn::wordrep::Voca voca;
     std::vector<count_t> count;
-    prob_t prob;
+    std::vector<val_t> prob;
 };
+
+
 
 template<typename T>
 class Sampler{
@@ -69,33 +67,30 @@ private:
     std::mt19937 gen;
     std::discrete_distribution<idx_t> dist;
 };
-/*
-pw = cnt / pos_max < 1
-x = pw/sample 
-x>1 : typical 
-x<1 : rare
-ran = (sqrt(x) + 1) / x;
-if(ran < rand_gen_double()) continue;
-*/
 
 class SubSampler{
 public:
-    SubSampler(val_t rate)
-    : rd{}, gen{rd()}, uni01{0.0,1.0}, rate_inv{1.0/rate} {}
-    template<typename TW, typename TP>
-    auto operator() (TW const &widxs, TP const &probs) {
+    SubSampler(val_t rate, UnigramDist const &unigram)
+    : unigram{unigram}, rd{}, gen{rd()}, uni01{0.0,1.0}, rate_inv{1.0/rate} {}
+    template<typename TW>
+    auto operator() (TW const &widxs) {
         TW widxs_subsampled;
-        for(decltype(probs.size()) i=0; i<probs.size(); ++i){
-            auto p_word = probs[i];
-            if(p_word<0.0) continue;
+        auto is_sampled=[this](auto p_word){
+            if(p_word<0.0) return false;
+            //x>1 : typical word
+            //x<1 : rare word
             auto x = p_word*rate_inv;
             auto p = (std::sqrt(x)+1)/x;
-            if(p < uni01(gen)) continue;
-            widxs_subsampled.push_back(widxs[i]);
-        }
+            if(p < this->uni01(gen)) return false;
+            return true;
+        };
+        for(auto widx : widxs)
+            if(is_sampled(unigram.get_prob(widx)))
+                widxs_subsampled.push_back(widx);
         return widxs_subsampled;
     }
-private:    
+private:
+    UnigramDist const &unigram;
     std::random_device rd;
     std::mt19937 gen;
     std::uniform_real_distribution<> uni01;
@@ -104,6 +99,21 @@ private:
 
 
 struct WordVecContext{
+    using widxs_t = std::vector<idx_t> ;
+    using iter_t = widxs_t::const_iterator; 
+    WordVecContext(iter_t self, widxs_t const &widxs, 
+                   idx_t left, idx_t right)
+    : widx{*self} {
+        auto beg=widxs.cbegin();
+        auto end=widxs.cend();
+        assert(self<end);
+        auto left_beg = self-left<beg? beg : self-left;
+        auto right_end= self+1+right>end? end : self+1+right;
+        std::copy(left_beg, self, std::back_inserter(cidxs));
+        std::copy(self+1, right_end, std::back_inserter(cidxs));
+    }
+    idx_t widx;
+    widxs_t cidxs;    
 };
 struct SentVecContext{
     using widxs_t = std::vector<idx_t> ;
@@ -130,7 +140,7 @@ public:
     using dist_t = std::vector<val_t>;
     using iter_t = dist_t::const_iterator; 
     NegativeSampleDist(dist_t const &wc_pdf, val_t power)
-    :dist{wc_pdf}, power{power} {
+    :dist{wc_pdf} {
         for(auto &x : dist) x=std::pow(x, power);
     }
     Sampler<iter_t> get_sampler() const {        
@@ -138,7 +148,6 @@ public:
     }
 private:
     dist_t dist;
-    val_t power;
 };
 
 }//namespace sent2vec
@@ -187,20 +196,19 @@ auto print_context=[](auto const &context, auto const &word_dist){
 
 void test_context_words(){
     H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
-    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};    
-    VocaIndexMap word2idx = word_dist.voca.indexing();
+    UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};    
+    VocaIndexMap word2idx = unigram.voca.indexing();
     
     TokenizedSentences dataset{"testset"};
     auto& lines = dataset.val;
-    SubSampler sub_sampler{0.0001};
+    SubSampler sub_sampler{0.0001, unigram};
     for(size_t sidx=0; sidx<lines.size(); ++sidx){
         auto& sent = lines[sidx];
         auto widxs_orig = word2idx.getIndex(sent);
-        auto pws = word_dist.get_probs(widxs_orig);
-        auto widxs = sub_sampler(widxs_orig, pws);
+        auto widxs = sub_sampler(widxs_orig);
         for(auto widx:widxs) assert(!is_unknown_widx(widx));
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
-            print_context(SentVecContext{sidx, self, widxs, 5,5}, word_dist);
+            print_context(SentVecContext{sidx, self, widxs, 5,5}, unigram);
         }
     }
 
@@ -275,7 +283,7 @@ auto vocavecs_gradient=[](auto const &voca_vecs,
     // grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
     //grad_c : (1-sigmoid(w,c)) * w 
     //grad_cn : (sigmoid_plus(w,c)-1) *w
-    return SparseGrad{1-sigmoid(w,c), sigmoid_plus(w,c)-1, idx_w, idx_c, idx_cn};
+    return SparseGrad{1-sigmoid(w,c), sigmoid_plus(w,cn)-1, idx_w, idx_c, idx_cn};
 };
 
 auto word2vec_grad_w = [](int64_t i, auto x_c, auto x_cn, auto &w, auto const &c, auto const &cn){
@@ -305,19 +313,19 @@ struct VocavecsGradientDescent{
 
 void test_word2vec_grad_update(){
     Timer timer{};
-    constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
+    // constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
     constexpr int word_dim=100;
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::read_exist};
-    UnigramDist word_dist{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
-    NegativeSampleDist neg_sample_dist{word_dist.prob, 0.75};    
+    UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
+    NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
-    SubSampler sub_sampler{0.0001};
+    SubSampler sub_sampler{0.0001, unigram};
 
     VocavecsGradientDescent optimizer{0.025};
 
-    VocaIndexMap word2idx = word_dist.voca.indexing();
-    auto voca_size = word_dist.voca.size();
+    VocaIndexMap word2idx = unigram.voca.indexing();
+    auto voca_size = unigram.voca.size();
 
     timer.here_then_reset("UnigramDist constructed");
     WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
@@ -326,34 +334,27 @@ void test_word2vec_grad_update(){
 
     print(voca_size);
     print(": voca_size\n");
+    timer.here_then_reset("Training begins");
     TokenizedSentences dataset{"testset"};
     auto& lines = dataset.val;
-    for(size_t sidx=0; sidx<lines.size(); ++sidx){
-        auto& sent = lines[sidx];
+    for(auto const &sent:lines){
         auto widxs_orig = word2idx.getIndex(sent);
-        auto pws = word_dist.get_probs(widxs_orig);
-        auto widxs = sub_sampler(widxs_orig, pws);
+        auto widxs = sub_sampler(widxs_orig);
         for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
             auto widx = *self;
-            SentVecContext c_words{sidx, self, widxs, 5,5};
+            WordVecContext c_words{self, widxs, 5,5};
             for(auto cidx: c_words.cidxs) {
                 auto cnidx = negative_sampler();
                 auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
                 optimizer(voca_vecs, grad);
-                print_word(widx, word_dist);
-                print_word(cidx, word_dist);
-                print_word(cnidx,word_dist);
+                print_word(widx, unigram);
+                print_word(cidx, unigram);
+                print_word(cnidx,unigram);
                 print("\n");
             }
-        }        
-        //auto gradient=get_gradient(voca_vecs, idx_w, idx_c, idx_cn);
-        //voca_vecs += alpha*gradient - lambda*param;
-        //voca_vecs ++ adagrad(gradient);
+        }
     }
-    //auto vocafile = "wordvec.h5";
-    //auto w2vmodel_dataset = "1b.model.voca";
-    timer.here_then_reset("test_voca_update() is finished.");
-    //WordBlock voca_vecs{load_voca_vecs(vocafile,w2vmodel_dataset,word_dim,w2vmodel_f_type)}
+    timer.here_then_reset("test_word2vec_grad_update() is finished.");
 }
 
 int main(){
