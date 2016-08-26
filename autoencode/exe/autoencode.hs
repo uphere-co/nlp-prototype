@@ -93,7 +93,7 @@ main = do
                   rdec <- recDecode autodec enc 
                   liftIO $ do
                     putStrLn "****************"
-                    TIO.putStrLn . bntPrint [] printer (\_->"(no leaf)") $ rdec
+                    TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
 
         return ()
 {- 
