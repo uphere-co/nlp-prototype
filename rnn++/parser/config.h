@@ -25,12 +25,10 @@ constexpr util::DataType param_f_type = util::DataType::dp;
 extern std::string trainset_name;
 extern std::string testset_name;
 
-//voca_max_word_len can be read using `h5dump -H` command.
+//voca_size can be read using `h5dump -H` command.
 //It can be directly read from a H5File,
 //but it needs knowledge of low level details of HDF5.
-constexpr int voca_max_word_len = 74;
-//voca_size, word_dim are easy to get programmatically.
-//For consistencies, however, they are set by runtime configuration.
+//So they are set by runtime configuration for now.
 constexpr size_t voca_size=552402;
 // constexpr size_t voca_size=400001;
 constexpr int word_dim=100;

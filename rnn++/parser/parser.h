@@ -14,10 +14,10 @@
 
 namespace rnn{
 namespace simple_model{
-
+using WordBlock = wordrep::WordBlock_base<rnn::config::word_dim>;
 struct InializedLeafNodes{
     InializedLeafNodes(UninializedLeafNodes &&nodes,
-                       rnn::wordrep::WordBlock const &word_block) : val{std::move(nodes.val)} {
+                       WordBlock const &word_block) : val{std::move(nodes.val)} {
         //TODO: following is inefficient. Make a separated class, LeafNode?? Or reuse word_block        
         for(decltype(val.size())i=0; i<val.size(); ++i){
             val[i].vec=Param::vec_type{word_block[i]};
@@ -28,9 +28,9 @@ struct InializedLeafNodes{
 
 struct VocaInfo{
     VocaInfo(std::string vocafile, std::string voca_dataset, 
-             std::string w2vmodel_dataset, int word_dim, util::DataType float_type)
+             std::string w2vmodel_dataset, util::DataType float_type)
     : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
-      voca_vecs{rnn::wordrep::load_voca_vecs(vocafile,w2vmodel_dataset,word_dim,float_type)} {}
+      voca_vecs{rnn::wordrep::load_voca_vecs<rnn::config::word_dim>(vocafile,w2vmodel_dataset,float_type)} {}
     InializedLeafNodes initialize_tree(std::string sentence) const {
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
@@ -40,7 +40,7 @@ struct VocaInfo{
     }
     rnn::wordrep::Voca voca;
     rnn::wordrep::VocaIndexMap word2idx;
-    rnn::wordrep::WordBlock voca_vecs;
+    WordBlock voca_vecs;
 };
 
 struct TokenizedSentences{

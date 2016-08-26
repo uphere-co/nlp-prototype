@@ -8,7 +8,7 @@ using namespace rnn::simple_model::detail;
 int main(int /*argc*/, char** argv){
     auto param = load_param("rnn_params.h5", argv[1], util::DataType::dp);    
     // auto param = randomParam(0.05);
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
     auto testset=TokenizedSentences{argv[2]};
     for(auto line : testset.val){
         auto initial_nodes = rnn.initialize_tree(line);

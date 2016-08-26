@@ -57,7 +57,7 @@ int main(){
         auto &pairs = trainset.val;
         
         logger.info("Read trainset");
-        VocaInfo rnn{file_name, voca_name, w2vmodel_name, word_dim, w2vmodel_f_type};
+        VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
