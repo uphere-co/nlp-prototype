@@ -56,7 +56,7 @@ struct OccurrenceFilter{
     std::vector<idx_t> operator() (std::vector<idx_t> idxs){
         std::vector<idx_t> filtered;
         for(auto idx:idxs) 
-            if(unigram.get_count(idx>cutoff))
+            if(unigram.get_count(idx)>cutoff)
                 filtered.push_back(idx);
         return filtered;
     }
@@ -76,6 +76,44 @@ public:
 
 private:
     std::discrete_distribution<idx_t> dist;
+};
+
+class Sampler2{
+public:
+    using dist_t = std::vector<val_t>;
+    using iter_t = std::vector<val_t>::const_iterator;
+    Sampler2(dist_t const &dist0, idx_t n_cell)
+    : dist{dist0}, cdf(dist.size()), idxs(dist.size()), cell(n_cell+1) {
+        idx_t i=0;
+        for(auto &idx:idxs) idx=i++;
+        std::sort(idxs.begin(), idxs.end(), [this](auto x, auto y){return dist[x]>dist[y];});
+        std::sort(dist.begin(), dist.end(), std::greater<val_t>{});
+        std::partial_sum(dist.cbegin(), dist.cend(), cdf.begin());
+        auto sum=cdf.back();
+        resolution=sum/n_cell;        
+        for(idx_t i=0; i<cell.size(); ++i){
+            cell[i]=std::upper_bound(cdf.cbegin(),cdf.cend(), i*resolution);
+            // std::cout << cell[i]-cdf.cbegin()<< " "<<i*resolution<<" " << cdf[cell[i]-cdf.cbegin()]<<std::endl;
+        }
+        cell[n_cell]=cdf.cend();
+        ur=std::uniform_real_distribution<val_t>(0,cdf.back());
+    }
+    auto operator() (val_t ran) const {
+        idx_t i_cell = ran/resolution;
+        auto i=std::upper_bound(cell[i_cell],cell[i_cell+1], ran)-cdf.cbegin();
+        // auto i2=std::upper_bound(cdf.cbegin(), cdf.cend(), ran)-cdf.cbegin();
+        // assert(i==i2);
+        return idxs[i];
+    }
+    auto get_pdf() const {return ur;}
+
+private:
+    dist_t dist;
+    dist_t cdf;
+    std::vector<idx_t> idxs;
+    std::vector<iter_t> cell;
+    std::uniform_real_distribution<val_t> ur;
+    val_t resolution;
 };
 
 class SubSampler{
@@ -101,11 +139,11 @@ public:
     }
 private:
     UnigramDist const &unigram;
-    std::uniform_real_distribution<> uni01;
+    std::uniform_real_distribution<val_t> uni01;
     val_t rate_inv;
 };
 
-class NegativeSampleDist{
+struct NegativeSampleDist{
 public:
     using dist_t = std::vector<val_t>;
     using iter_t = dist_t::const_iterator; 
@@ -116,7 +154,6 @@ public:
     Sampler<iter_t> get_sampler() const {        
         return Sampler<iter_t>{dist.cbegin(), dist.cend()};
     }
-private:
     dist_t dist;
 };
 
@@ -237,8 +274,7 @@ WordBlock_base<word_dim> random_WordBlock(idx_t voca_size){
     // tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n), 
     [&](tbb::blocked_range<decltype(n)> const &r){
-        std::random_device rd{};
-        std::mt19937 gen{rd()};
+        std::mt19937 gen{seed+r.begin()};
         for(decltype(n) i=r.begin(); i!=r.end(); ++i)
             wvec_init[i]= uni01(gen)-0.5;
     });
@@ -246,7 +282,6 @@ WordBlock_base<word_dim> random_WordBlock(idx_t voca_size){
     return WordBlock_base<word_dim>{wvec_init};    
 }
 void test_voca_update(){
-    Timer timer{};
     constexpr int word_dim=100;
     auto voca_size = 100;
 
@@ -399,12 +434,40 @@ void test_word2vec_grad_update(){
     timer.here_then_reset("Wrote word2vecs to disk.");
 }
 
+void test_sampler(){
+    Timer timer{};
+    H5file file{H5name{"wordvec.h5"}, hdf5::FileMode::read_exist};
+    UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
+    timer.here_then_reset("Voca loaded.");
+    NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
+    auto negative_sampler=neg_sample_dist.get_sampler();
+    Sampler2 negative_sampler2{neg_sample_dist.dist, 1000000};
+    val_t sum_dist{};
+    for(auto x:neg_sample_dist.dist) sum_dist+=x;
+    std::cout<<sum_dist<<std::endl;
+    std::random_device rd;
+    std::mt19937 gen{rd()};
+    std::uniform_real_distribution<val_t> ur=negative_sampler2.get_pdf();
+    timer.here_then_reset("Loop begins.");
+    auto sum=0.0;
+    auto n=1000000;
+    for(int i=0; i<n; ++i){
+        // auto widx = negative_sampler(gen);
+        auto widx = negative_sampler2(ur(gen));
+        sum += widx;
+        // sum += ur(gen);
+        // std::cout<<unigram.voca.getWord(widx).val<<std::endl;
+    }
+    std::cout<<sum/n<<std::endl;
+    timer.here_then_reset("Loop ends.");
+}
 int main(){
     // test_negative_sampling();
     // test_context_words();
     // test_voca_update();
     // test_word2vec_grad_update();
-    // return 0;
+    test_sampler();
+    return 0;
 
 
     Timer timer{};
@@ -417,6 +480,7 @@ int main(){
     timer.here_then_reset("Voca loaded.");
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
+    const Sampler2 negative_sampler2{neg_sample_dist.dist, 100};
     SubSampler sub_sampler{0.0001, unigram};
     OccurrenceFilter freq_filter{5, unigram};
     VocavecsGradientDescent optimizer{0.025};
@@ -443,7 +507,7 @@ int main(){
     //tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){    
         // sent_widxs[i]=word2idx.getIndex(lines[i]);
     // });
-    for(int i=0; i<n; ++i) sent_widxs[i]=word2idx.getIndex(lines[i]);
+    for(decltype(n) i=0; i<n; ++i) sent_widxs[i]=word2idx.getIndex(lines[i]);
     
     timer.here_then_reset("Training begins");
     for(int epoch=0; epoch<5; ++epoch){
@@ -454,14 +518,16 @@ int main(){
         // for(auto const &sent:lines){
         tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
         // Profiling showed that blocked_range doesn't make remarkable speedup.
-        // tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n), 
+        // tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,1000), 
         // [&](tbb::blocked_range<decltype(n)> const &r){
             // for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             // auto &sent=lines[i];
             // auto widxs_orig= word2idx.getIndex(lines[i]);
             VecLoop_void<val_t,word_dim> vecloop_void{};
+            auto ur=negative_sampler2.get_pdf();
+
             auto &widxs_orig=sent_widxs[i];            
-            std::mt19937 gen{seed+i};            
+            std::mt19937 gen{seed+i};
             auto widxs = filtered_words(widxs_orig, gen);      
             for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
                 auto widx = *self;
@@ -475,8 +541,9 @@ int main(){
                     // vecloop_void(word2vec_grad_c, x_wc, c, w);
                     vecloop_void(symm_fma_vec, x_wc, w, c);
                     for(int j=0; j<5; ++j){
-                        // auto cnidx = i%voca_size;
-                        auto cnidx = negative_sampler(gen);
+                        // auto cnidx = ((int)ur(gen)+i)%voca_size;
+                        auto cnidx = negative_sampler2(ur(gen));
+                        // auto cnidx = negative_sampler(gen);
                         // auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
                         auto cn=voca_vecs[cnidx];
                         // grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
@@ -503,3 +570,4 @@ int main(){
 
     return 0;
 }
+
