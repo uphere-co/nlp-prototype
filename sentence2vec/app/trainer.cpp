@@ -93,7 +93,6 @@ public:
         resolution=sum/n_cell;        
         for(idx_t i=0; i<cell.size(); ++i){
             cell[i]=std::upper_bound(cdf.cbegin(),cdf.cend(), i*resolution);
-            // std::cout << cell[i]-cdf.cbegin()<< " "<<i*resolution<<" " << cdf[cell[i]-cdf.cbegin()]<<std::endl;
         }
         cell[n_cell]=cdf.cend();
         ur=std::uniform_real_distribution<val_t>(0,cdf.back());
@@ -466,8 +465,8 @@ int main(){
     // test_context_words();
     // test_voca_update();
     // test_word2vec_grad_update();
-    test_sampler();
-    return 0;
+    // test_sampler();
+    // return 0;
 
 
     Timer timer{};
@@ -475,8 +474,8 @@ int main(){
     constexpr int word_dim=100;
 
     H5file file{H5name{"wordvec.h5"}, hdf5::FileMode::read_exist};
-    // UnigramDist unigram{file, "1b.training.word_key", "1b.training.word_count"};
-    UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
+    UnigramDist unigram{file, "1b.training.word_key", "1b.training.word_count"};
+    // UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
     timer.here_then_reset("Voca loaded.");
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
@@ -487,30 +486,27 @@ int main(){
     VocaIndexMap word2idx = unigram.voca.indexing();
     timer.here_then_reset("Voca indexed.");
     auto voca_size = unigram.voca.size();
-    std::cerr<<voca_size<<std::endl;
     WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
     timer.here_then_reset("Initial WordBlock constructed");
 
     auto filtered_words=[&word2idx,&freq_filter,&sub_sampler](auto const &widxs_orig, auto &gen){
-        //auto widxs_orig = word2idx.getIndex(sent);
         auto widxs_filtered = freq_filter(widxs_orig);
         auto widxs = sub_sampler(widxs_filtered, gen);
         return widxs;
     };
-    TokenizedSentences dataset{"1b.trainset.100k"};
-    // TokenizedSentences dataset{"1b.trainset"};
+    // TokenizedSentences dataset{"1b.trainset.100k"};
+    TokenizedSentences dataset{"1b.trainset"};
     timer.here_then_reset("Train dataset loaded.");
 
     auto& lines = dataset.val;
     auto n=lines.size();
     std::vector<std::vector<idx_t>> sent_widxs(lines.size());
-    //tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){    
-        // sent_widxs[i]=word2idx.getIndex(lines[i]);
-    // });
-    for(decltype(n) i=0; i<n; ++i) sent_widxs[i]=word2idx.getIndex(lines[i]);
+    tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){    
+        sent_widxs[i]=word2idx.getIndex(lines[i]);
+    });
     
     timer.here_then_reset("Training begins");
-    for(int epoch=0; epoch<5; ++epoch){
+    for(int epoch=0; epoch<15; ++epoch){
         std::random_device rd;
         auto seed = rd();
 
@@ -521,7 +517,6 @@ int main(){
         // tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,1000), 
         // [&](tbb::blocked_range<decltype(n)> const &r){
             // for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-            // auto &sent=lines[i];
             // auto widxs_orig= word2idx.getIndex(lines[i]);
             VecLoop_void<val_t,word_dim> vecloop_void{};
             auto ur=negative_sampler2.get_pdf();
@@ -532,28 +527,21 @@ int main(){
             for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
                 auto widx = *self;
                 WordVecContext c_words{self, widxs, 5,5};
-                auto w=voca_vecs[widx];            
+                auto w=voca_vecs[widx];
                 for(auto cidx: c_words.cidxs) {
                     auto c=voca_vecs[cidx];
                     auto x_wc = 1-sigmoid(w,c);
 
-                    // vecloop_void(word2vec_grad_c, x_wc, w, c);
-                    // vecloop_void(word2vec_grad_c, x_wc, c, w);
                     vecloop_void(symm_fma_vec, x_wc, w, c);
                     for(int j=0; j<5; ++j){
                         // auto cnidx = ((int)ur(gen)+i)%voca_size;
-                        auto cnidx = negative_sampler2(ur(gen));
+                        auto cnidx=negative_sampler2(ur(gen));
                         // auto cnidx = negative_sampler(gen);
-                        // auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
                         auto cn=voca_vecs[cnidx];
-                        // grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+                        //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
                         //grad_c : (1-sigmoid(w,c)) * w 
                         //grad_cn : (sigmoid_plus(w,c)-1) *w
                         auto x_wcn = sigmoid_plus(w,cn)-1;
-
-                        //vecloop_void(word2vec_grad_w, x_wc, x_wcn, w, c, cn);
-                        // vecloop_void(word2vec_grad_c, x_wcn, w, cn);
-                        // vecloop_void(word2vec_grad_c, x_wcn, cn, w);
                         vecloop_void(symm_fma_vec, x_wcn, w, cn);
                     }
                 }
@@ -564,8 +552,8 @@ int main(){
     }
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
-    // h5store.overwriteRawData(H5name{"1b.training"}, voca_vecs._val );
-    h5store.overwriteRawData(H5name{"1b.training.100k"}, voca_vecs._val );
+    h5store.overwriteRawData(H5name{"1b.training"}, voca_vecs._val );
+    // h5store.overwriteRawData(H5name{"1b.training.100k"}, voca_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
 
     return 0;
