@@ -105,6 +105,20 @@ private:
     val_t rate_inv;
 };
 
+class NegativeSampleDist{
+public:
+    using dist_t = std::vector<val_t>;
+    using iter_t = dist_t::const_iterator; 
+    NegativeSampleDist(dist_t const &wc_pdf, val_t power)
+    :dist{wc_pdf} {
+        for(auto &x : dist) x=std::pow(x, power);
+    }
+    Sampler<iter_t> get_sampler() const {        
+        return Sampler<iter_t>{dist.cbegin(), dist.cend()};
+    }
+private:
+    dist_t dist;
+};
 
 struct WordVecContext{
     using widxs_t = std::vector<idx_t> ;
@@ -140,22 +154,6 @@ struct SentVecContext{
     idx_t sidx;
     idx_t widx;
     widxs_t cidxs;    
-};
-
-
-class NegativeSampleDist{
-public:
-    using dist_t = std::vector<val_t>;
-    using iter_t = dist_t::const_iterator; 
-    NegativeSampleDist(dist_t const &wc_pdf, val_t power)
-    :dist{wc_pdf} {
-        for(auto &x : dist) x=std::pow(x, power);
-    }
-    Sampler<iter_t> get_sampler() const {        
-        return Sampler<iter_t>{dist.cbegin(), dist.cend()};
-    }
-private:
-    dist_t dist;
 };
 
 }//namespace sent2vec
@@ -314,6 +312,13 @@ auto word2vec_grad_w = [](int64_t i, auto x_c, auto x_cn, auto &w, auto const &c
 auto word2vec_grad_c = [](int64_t i, auto x, auto &c, auto const &w){
     c[i] += x * w[i];
 };
+auto fma_vec = [](int64_t i, auto &out, auto x, auto const &vec){
+    out[i] += x * vec[i];
+};
+auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
+    vec2[i] += x*vec1[i];
+    vec1[i] += x*vec2[i];
+};
 
 struct VocavecsGradientDescent{
     VocavecsGradientDescent(val_t alpha)
@@ -452,23 +457,41 @@ int main(){
         // tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n), 
         // [&](tbb::blocked_range<decltype(n)> const &r){
             // for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-                // auto &sent=lines[i];
-                // auto widxs_orig= word2idx.getIndex(lines[i]);
-                auto &widxs_orig=sent_widxs[i];
-                std::mt19937 gen{seed+i};
-                auto widxs = filtered_words(widxs_orig, gen);
-                for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
-                    auto widx = *self;
-                    WordVecContext c_words{self, widxs, 5,5};
-                    for(auto cidx: c_words.cidxs) {
-                        for(int j=0; j<5; ++j){
-                            auto cnidx = negative_sampler(gen);
-                            auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
-                            optimizer(voca_vecs, grad);
-                        }
+            // auto &sent=lines[i];
+            // auto widxs_orig= word2idx.getIndex(lines[i]);
+            VecLoop_void<val_t,word_dim> vecloop_void{};
+            auto &widxs_orig=sent_widxs[i];            
+            std::mt19937 gen{seed+i};            
+            auto widxs = filtered_words(widxs_orig, gen);      
+            for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
+                auto widx = *self;
+                WordVecContext c_words{self, widxs, 5,5};
+                auto w=voca_vecs[widx];            
+                for(auto cidx: c_words.cidxs) {
+                    auto c=voca_vecs[cidx];
+                    auto x_wc = 1-sigmoid(w,c);
+
+                    // vecloop_void(word2vec_grad_c, x_wc, w, c);
+                    // vecloop_void(word2vec_grad_c, x_wc, c, w);
+                    vecloop_void(symm_fma_vec, x_wc, w, c);
+                    for(int j=0; j<5; ++j){
+                        // auto cnidx = i%voca_size;
+                        auto cnidx = negative_sampler(gen);
+                        // auto grad = vocavecs_gradient(voca_vecs, widx, cidx, cnidx);
+                        auto cn=voca_vecs[cnidx];
+                        // grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+                        //grad_c : (1-sigmoid(w,c)) * w 
+                        //grad_cn : (sigmoid_plus(w,c)-1) *w
+                        auto x_wcn = sigmoid_plus(w,cn)-1;
+
+                        //vecloop_void(word2vec_grad_w, x_wc, x_wcn, w, c, cn);
+                        // vecloop_void(word2vec_grad_c, x_wcn, w, cn);
+                        // vecloop_void(word2vec_grad_c, x_wcn, cn, w);
+                        vecloop_void(symm_fma_vec, x_wcn, w, cn);
                     }
                 }
-            // }
+            }
+        // }
         // }
         });
     }
