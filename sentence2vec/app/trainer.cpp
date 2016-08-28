@@ -463,6 +463,28 @@ void test_sampler(){
     std::cout<<sum/n<<std::endl;
     timer.here_then_reset("Loop ends.");
 }
+
+using WordBlock = WordBlock_base<word_dim>;
+val_t scoring_context(WordVecContext const &context, 
+                     WordBlock const &voca_vecs){
+    auto w=voca_vecs[context.widx];
+    val_t score{0};
+    for(auto cidx: context.cidxs) {
+        auto c=voca_vecs[cidx];
+        score+=std::log(sigmoid(w,c));
+    }
+    return score;
+}
+val_t scoring_words(std::vector<idx_t> const &widxs,
+                    WordBlock const &voca_vecs){
+    val_t score{0};
+    for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
+        WordVecContext context{self, widxs, 5,5};
+        score+=scoring_context(context, voca_vecs);
+    }
+    return score;
+}
+
 int main(){
     // test_negative_sampling();
     // test_context_words();
@@ -475,10 +497,10 @@ int main(){
     Timer timer{};
     // constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
     constexpr int word_dim=100;
-    constexpr val_t alpha=0.025;
+    val_t alpha=0.025;
 
-    H5file file{H5name{"wordvec.h5"}, hdf5::FileMode::read_exist};
-    UnigramDist unigram{file, "1b.training.word_key", "1b.training.word_count"};
+    H5file file{H5name{"data.1M.h5"}, hdf5::FileMode::read_exist};
+    UnigramDist unigram{file, "1b.training.1M.word", "1b.training.1M.count"};
     // UnigramDist unigram{file, "1b.short_sents.bar.word_key", "1b.short_sents.word_count"};
     timer.here_then_reset("Voca loaded.");
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
@@ -498,8 +520,9 @@ int main(){
         auto widxs = sub_sampler(widxs_filtered, gen);
         return widxs;
     };
-    // TokenizedSentences dataset{"1b.trainset.100k"};
-    TokenizedSentences dataset{"1b.trainset"};
+    
+    TokenizedSentences dataset{"1b.trainset.1M"};
+    // TokenizedSentences dataset{"1b.trainset"};
     timer.here_then_reset("Train dataset loaded.");
 
     auto& lines = dataset.val;
@@ -508,9 +531,21 @@ int main(){
     tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){    
         sent_widxs[i]=word2idx.getIndex(lines[i]);
     });
-    
+    auto scoring_sentence=[&](auto const &widxs_orig){
+        std::random_device rd{};        
+        std::mt19937 gen{rd()};     
+        auto widxs = filtered_words(widxs_orig, gen);
+        return scoring_words(widxs, voca_vecs);
+    };
+    auto scoring_dataset=[&](){return parallel_reducer(sent_widxs.cbegin(),sent_widxs.cend(),
+                                                       scoring_sentence, val_t{0});};
+    timer.here_then_reset("Initial score");
     timer.here_then_reset("Training begins");
-    for(int epoch=0; epoch<15; ++epoch){
+    for(int epoch=0; epoch<10; ++epoch){
+        print("Score: ");
+        print(scoring_dataset());
+        print("\n");
+
         std::random_device rd;
         auto seed = rd();
 
@@ -542,7 +577,7 @@ int main(){
                     assert(w[0]==w[0]);
                     assert(c[0]==c[0]);
                     // std::cout<<lines[i]<<std::endl;
-                    for(int j=0; j<5; ++j){
+                    for(int j=0; j<1; ++j){
                         // auto cnidx = ((int)ur(gen)+i)%voca_size;
                         auto cnidx=negative_sampler2(ur(gen));
                         // auto cnidx = negative_sampler(gen);
@@ -565,10 +600,11 @@ int main(){
         // }
         // }
         });
+        alpha *= 0.8;
     }
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
-    h5store.overwriteRawData(H5name{"1b.training"}, voca_vecs._val );
+    h5store.overwriteRawData(H5name{"1b.training.1M"}, voca_vecs._val );
     // h5store.overwriteRawData(H5name{"1b.training.100k"}, voca_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
 
