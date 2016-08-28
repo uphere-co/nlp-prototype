@@ -350,8 +350,11 @@ auto fma_vec = [](int64_t i, auto &out, auto x, auto const &vec){
     out[i] += x * vec[i];
 };
 auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
+    auto tmp = vec2[i];
     vec2[i] += x*vec1[i];
-    vec1[i] += x*vec2[i];
+    vec1[i] += x*tmp;
+    // vec2[i] += x*vec1[i];
+    // vec1[i] += x*vec2[i];
 };
 
 struct VocavecsGradientDescent{
@@ -472,6 +475,7 @@ int main(){
     Timer timer{};
     // constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
     constexpr int word_dim=100;
+    constexpr val_t alpha=0.025;
 
     H5file file{H5name{"wordvec.h5"}, hdf5::FileMode::read_exist};
     UnigramDist unigram{file, "1b.training.word_key", "1b.training.word_count"};
@@ -482,7 +486,7 @@ int main(){
     const Sampler2 negative_sampler2{neg_sample_dist.dist, 100};
     SubSampler sub_sampler{0.0001, unigram};
     OccurrenceFilter freq_filter{5, unigram};
-    VocavecsGradientDescent optimizer{0.025};
+    VocavecsGradientDescent optimizer{alpha};
     VocaIndexMap word2idx = unigram.voca.indexing();
     timer.here_then_reset("Voca indexed.");
     auto voca_size = unigram.voca.size();
@@ -530,9 +534,14 @@ int main(){
                 auto w=voca_vecs[widx];
                 for(auto cidx: c_words.cidxs) {
                     auto c=voca_vecs[cidx];
-                    auto x_wc = 1-sigmoid(w,c);
-
+                    auto x_wc = alpha*(1-sigmoid(w,c));
                     vecloop_void(symm_fma_vec, x_wc, w, c);
+                    // vecloop_void(fma_vec, c, x_wc, w);
+                    // vecloop_void(fma_vec, w, x_wc, c);
+                    assert(x_wc==x_wc);
+                    assert(w[0]==w[0]);
+                    assert(c[0]==c[0]);
+                    // std::cout<<lines[i]<<std::endl;
                     for(int j=0; j<5; ++j){
                         // auto cnidx = ((int)ur(gen)+i)%voca_size;
                         auto cnidx=negative_sampler2(ur(gen));
@@ -541,8 +550,15 @@ int main(){
                         //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
                         //grad_c : (1-sigmoid(w,c)) * w 
                         //grad_cn : (sigmoid_plus(w,c)-1) *w
-                        auto x_wcn = sigmoid_plus(w,cn)-1;
+                        auto x_wcn = alpha*(sigmoid_plus(w,cn)-1);
+                        assert(x_wcn==x_wcn);
                         vecloop_void(symm_fma_vec, x_wcn, w, cn);
+                        // vecloop_void(fma_vec, w, x_wcn, cn);
+                        // vecloop_void(fma_vec, cn, x_wcn, w);
+                        // print_word(cnidx, unigram);
+                        assert(!is_unknown_widx(cnidx));
+                        assert(!is_unknown_widx(widx));
+                        assert(cn[0]==cn[0]);
                     }
                 }
             }
