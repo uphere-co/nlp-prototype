@@ -27,3 +27,9 @@ add_executable(trainer app/trainer
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
+
+add_executable(similarity app/similarity
+               ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
+               ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
+target_link_libraries(similarity hdf5_cpp hdf5_hl_cpp tbb)
