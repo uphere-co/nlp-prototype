@@ -1,3 +1,5 @@
+#include "wordrep/sentence2vec.h"
+
 #include "parser/parser.h"
 #include "parser/wordvec.h"
 #include "utils/profiling.h"
@@ -5,24 +7,31 @@
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
 
+using namespace sent2vec;
 using namespace rnn::wordrep;
 using namespace util;
 using namespace util::math;
+using namespace util::io;
+
 
 int main(){
     using val_t = double;
+    using idx_t = std::size_t;
     constexpr int word_dim=100;
     constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 
+    H5file file{H5name{"data.1M.h5"}, hdf5::FileMode::read_exist};
+    UnigramDist unigram{file, "1b.training.1M.word", "1b.training.1M.count"};
+
     Timer timer{};
-    Voca voca = load_voca("wordvec.h5", "1b.training.word_key");
+    Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
     VocaIndexMap word2idx = voca.indexing();
     auto voca_size = voca.size();
-    auto voca_vecs = load_voca_vecs<word_dim>("trained.h5", "1b.training", w2vmodel_f_type);
+    auto voca_vecs = load_voca_vecs<word_dim>("trained.h5", "1b.training.1M", w2vmodel_f_type);
     timer.here_then_reset("Data loaded.");
 
-    std::string query="The";
-    std::string query2="the";
+    std::string query="Physics";
+    std::string query2="physics";
     auto idx=word2idx.getIndex(Word{query});
     auto idx2=word2idx.getIndex(Word{query2});
     timer.here_then_reset("Got index.");
@@ -40,20 +49,32 @@ int main(){
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-            auto const& v=voca_vecs[i]; 
-            distances[i]=dot(q, v);
-            distances2[i]=dot(q2, v);
+            auto const& v=voca_vecs[i];
+            distances[i] =sigmoid(v,q);
+            distances2[i]=sigmoid(v,q2);
+            if(unigram.count[i]<5) {
+                distances[i] -= 1000000.0;
+                distances2[i]-= 1000000.0;
+            }
         }
     });
     //}
     timer.here_then_reset("Calculate distances.");
     //std::sort(distances.begin(),distances.end());
-    std::partial_sort(distances.begin(),distances.begin()+20,distances.end());
-    auto idx_best_match=std::min_element(distances.cbegin(),distances.cend())-distances.cbegin();
-    auto idx2_best_match=std::min_element(distances2.cbegin(),distances2.cend())-distances2.cbegin();
+    std::vector<idx_t> idxs(voca_size);
+    idx_t i{0};
+    for(auto &x:idxs) x=i++;
+    std::partial_sort(idxs.begin(),idxs.begin()+20,idxs.end(),
+                      [&](auto i, auto j){return distances[i]<distances[j];});
+    for(auto it=idxs.begin(); it!=idxs.begin()+20; ++it)
+        print(voca.getWord(*it).val);
+    print("\n");
+    std::partial_sort(idxs.begin(),idxs.begin()+20,idxs.end(),
+                      [&](auto i, auto j){return distances2[i]<distances2[j];});
+    for(auto it=idxs.begin(); it!=idxs.begin()+20; ++it)
+        print(voca.getWord(*it).val);
+    print("\n");
     timer.here_then_reset("Query answered.");
-    print(voca.getWord(idx_best_match).val);
-    print(voca.getWord(idx2_best_match).val);
-
+    
     return 0;
 }

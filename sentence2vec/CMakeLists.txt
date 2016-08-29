@@ -17,19 +17,26 @@ message(${CMAKE_CXX_FLAGS})
 
 find_package (Threads)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../word2vec/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 include_directories(${HOME}/repo/srcc/GSL/include)
 include_directories(${HOME}/repo/srcc/spdlog/include)
 
-add_executable(trainer app/trainer 
+add_executable(trainer app/trainer wordrep/sentence2vec
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
-add_executable(similarity app/similarity
+add_executable(similarity app/similarity wordrep/sentence2vec
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(similarity hdf5_cpp hdf5_hl_cpp tbb)
+
+add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
+               ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
+               ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
+target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)

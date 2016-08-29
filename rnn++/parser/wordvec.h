@@ -1,6 +1,5 @@
 #pragma once
-#include<vector>
-
+#include <vector>
 #include "parser/basic_type.h"
 
 #include "utils/span.h"
@@ -82,6 +81,7 @@ WordBlock_base<word_dim> load_voca_vecs(std::string filename, std::string datase
     }
     return WordBlock_base<word_dim>{vocavec};
 }
+
 
 }//namespace rnn::wordrep
 }//namespace rnn
