@@ -104,5 +104,45 @@ rec {
       
       };
     };
+
+    msgsl = stdenv.mkDerivation rec {
+      name = "GSL";
+      version = "1.0";
+      src = fetchgit {
+        url = "https://github.com/Microsoft/GSL.git";
+	rev = "0535138459d0f78e39a2e558bc239f5727eaa13c";
+	sha256 = "0gvkdswa7hivw2as8g1zda79fbs4akd19j4dddkzdd31d8riz5jj";
+      };
+      buildInputs = [ ];
+      patches = [ ];
+      buildPhase = ''
+      '';
+
+      installPhase = ''
+        mkdir -p $out/GSL
+        cp -a * $out/GSL
+      '';
+    };
+
+
+    spdlog = stdenv.mkDerivation rec {
+      name = "spdlog";
+      version = "1.0";
+      src = fetchgit {
+        url = "https://github.com/gabime/spdlog.git";
+	rev = "f310cc460f043990fe03d2e5c018cbc1779057dc";
+	sha256 = "0c0kv5mrwd0gyvl9jgg8b0rym1x9x7c8vaha0bcajlp6akhhgwfv";
+      };
+      buildInputs = [ ];
+      patches = [ ];
+      buildPhase = ''
+      '';
+
+      installPhase = ''
+        mkdir -p $out/spdlog
+        cp -a * $out/spdlog
+      '';
+    };
+    
       
 }

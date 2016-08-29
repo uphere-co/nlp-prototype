@@ -10,6 +10,8 @@ stdenv.mkDerivation {
                   toolz.openblas_static
                   #liblapack
                   toolz.armadillo toolz.libpca
+		  toolz.msgsl
+		  toolz.spdlog
                   gdb
 		  pkgconfig
 		  gfortran #stdenv.cc.libc
@@ -22,5 +24,7 @@ stdenv.mkDerivation {
                   #openblas
                 ];
   shellHook = ''
+    export MS_GSL=${toolz.msgsl}
+    export SPDLOG=${toolz.spdlog}
   '';
 }
