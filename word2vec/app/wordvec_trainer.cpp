@@ -243,16 +243,27 @@ void Word2Vec::LearnVocab(){
     }
     
     std::cout << "Vocab Learning is complete.\n";
+    vocab = MapKeys(word_cn);
     vocabcn = MapValues(word_cn);
 
-    std::sort(vocabcn.begin(), vocabcn.end(), VCompare);
-    std::cout << vocabcn[0] << " " << vocabcn[1] << " " << vocabcn[2] << std::endl;
+    std::vector<std::pair<std::string,int64_t>> v;
+    for(int i = 0; i < vocab.size(); i++){
+        v.push_back(std::make_pair(vocab[i],vocabcn[i]));
+    }
+    //std::sort(vocabcn.begin(), vocabcn.end(), VCompare);
+    //std::cout << vocabcn[0] << " " << vocabcn[1] << " " << vocabcn[2] << std::endl;
 
-    
     vocab_size = vocabcn.size();
 
+    std::sort(v.begin(), v.end(), [](auto &left, auto &right) {
+    return left.second > right.second;
+    });
+
+    std::cout << v[0].first << std::endl;
+    std::cout << v[0].second << std::endl;
+    
     int64_t idx = 0;
-    for(auto x : word_cn){
+    for(auto x : v){
         word_idx[x.first] = idx;
         idx++;
     }
@@ -298,22 +309,16 @@ void Word2Vec::InitNet() {
         expTable[i] = expTable[i] / (expTable[i] + 1);
     }
     
-    syn0.resize((int64_t)vocab_size * layer1_size);
-    for(a = 0; a < vocab_size; a++)
-        for(b = 0; b < layer1_size; b++)
-            syn0[a * layer1_size + b] = (rand_gen_double() - 0.5) / layer1_size;
-    
+    syn0.resize(vocab_size * layer1_size);
+    for(auto &x : syn0) x= (rand_gen_double() - 0.5) / layer1_size;
+
     if(hs) {
-        syn1.resize((int64_t)vocab_size * layer1_size);
-        for(a = 0; a < vocab_size; a++)
-            for(b = 0; b < layer1_size; b++)
-                syn1[a * layer1_size + b] = 0;
+        syn1.resize(vocab_size * layer1_size);
+        for(auto &x : syn1) x=0;
     }
     if(negative > 0) {
-        syn1neg.resize((int64_t)vocab_size * layer1_size);
-        for(a = 0; a < vocab_size; a++)
-            for(b = 0; b < layer1_size; b++)
-                syn1neg[a * layer1_size + b] = 0;
+        syn1neg.resize(vocab_size * layer1_size);
+        for(auto &x : syn1neg) x=0;
     }
 
     //CreateBinaryTree();
@@ -337,8 +342,15 @@ void Word2Vec::TrainModelThread(int tid){
     //sen.resize(max_sentence_length+1);
     //std::cout << "sen = " << sen.at(max_sentence_length+3) << std::endl;
     boost::mt19937 rand_engine_int;    // rand engine
-    boost::uniform_int<> rand_int(0,200000000);
-    boost::variate_generator<boost::mt19937, boost::uniform_int<>> rand_gen_int(rand_engine_int, rand_int);
+    //boost::uniform_int : min,max is inclusive
+    boost::uniform_int<> rand_int_in_vocab(1,vocab_size-1);
+    boost::variate_generator<boost::mt19937, boost::uniform_int<>> sample_in_vocab(rand_engine_int, rand_int_in_vocab);
+    boost::uniform_int<> rand_int_in_table(0,table_size-1);
+    boost::variate_generator<boost::mt19937, boost::uniform_int<>> sample_in_table(rand_engine_int, rand_int_in_table);
+    boost::uniform_int<> rand_int_in_window(0,window-1);
+    boost::variate_generator<boost::mt19937, boost::uniform_int<>> sample_in_window(rand_engine_int, rand_int_in_window);
+
+    
 
     
     boost::mt19937 rand_engine_double;  // rand engine
@@ -416,10 +428,10 @@ void Word2Vec::TrainModelThread(int tid){
         word = sen[sentence_position];
         //if(word == -1) continue;
         // Network Initialization
-        for(c = 0; c < layer1_size; c++) neu1[c] = 0;
-        for(c = 0; c < layer1_size; c++) neu1e[c] = 0;
+        for(auto &x:neu1) x = 0;
+        for(auto &x:neu1e) x = 0;
 
-        b = rand_gen_int() % (int64_t)window;//rand_gen_int() % window;
+        b = sample_in_window();
         for(a = b; a < window * 2 + 1 - b; a++) if(a != window) {
                 c = sentence_position - window + a;
                 if(c < 0) continue;
@@ -449,9 +461,8 @@ void Word2Vec::TrainModelThread(int tid){
                             target = word;
                             label = 1;
                         } else {
-                            next_random = rand_gen_int();
-                            target = table[next_random % table_size];
-                            if(target == 0) target = next_random % (vocab_size - 1) + 1;
+                            target = table[sample_in_table()];
+                            if(target == 0) target = sample_in_vocab();
                             if(target == word) continue;
                             label = 0;
                         }
