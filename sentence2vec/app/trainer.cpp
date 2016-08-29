@@ -203,7 +203,19 @@ void test_sampler(){
     timer.here_then_reset("Loop ends.");
 }
 
+/*
+delta <- vector
 
+ada_grad <- matrix(with voca_vecs shape)
+
+
+plain gradient descent : voca_vecs[i] += alpha*grad[i];
+AdaGrad:
+ada_grad=0
+ada_grad[i] += grad[i]*grad[i];
+voca_vecs[i] = alpha*grad[i]/std::sqrt(ada_grad[i]);
+
+*/
 
 int main(){
     // test_negative_sampling();
@@ -228,6 +240,7 @@ int main(){
     timer.here_then_reset("Voca indexed.");
     auto voca_size = unigram.voca.size();
     WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
+    auto adagrad_factor=init_WordBlock<word_dim>(voca_size, val_t{1.0});
     timer.here_then_reset("Initial WordBlock constructed");
     
     TokenizedSentences dataset{"1b.trainset.1M"};
@@ -249,15 +262,11 @@ int main(){
     };
     auto scoring_dataset=[&](){return parallel_reducer(sent_widxs.cbegin(),sent_widxs.cend(),
                                                        scoring_sentence, val_t{0});};
-    timer.here_then_reset("Initial score");
+    timer.here_then_reset("Getting initial score");
+    print(scoring_dataset());
+    print("\n");
     timer.here_then_reset("Training begins");
     for(int epoch=0; epoch<25; ++epoch){
-        print("Epoch");
-        print(epoch);
-        print("Score: ");
-        print(scoring_dataset());
-        print("\n");
-
         std::random_device rd;
         auto seed = rd();
 
@@ -277,8 +286,17 @@ int main(){
                 auto w=voca_vecs[widx];
                 for(auto cidx: c_words.cidxs) {
                     auto c=voca_vecs[cidx];
-                    auto x_wc = alpha*(1-sigmoid(w,c));
-                    vecloop_void(symm_fma_vec, x_wc, w, c);
+                    auto x_wc = 1-sigmoid(w,c);
+                    //plain gradient descent:
+                    // vecloop_void(symm_fma_vec, alpha*x_wc, w, c);
+                    //AdaGrad optimizer:
+                    auto adagrad_w = adagrad_factor[widx];
+                    auto adagrad_c = adagrad_factor[cidx];
+                    //adagrad_w += (x_wc*c)*(x_wc*c);
+                    vecloop_void(accum_adagrad_factor, adagrad_w, x_wc*x_wc, c);
+                    vecloop_void(accum_adagrad_factor, adagrad_c, x_wc*x_wc, w);
+                    vecloop_void(adagrad_update, w, alpha*x_wc, c, adagrad_w);
+                    vecloop_void(adagrad_update, c ,alpha*x_wc, w, adagrad_c);
                     // vecloop_void(fma_vec, c, x_wc, w);
                     // vecloop_void(fma_vec, w, x_wc, c);
                     for(int j=0; j<1; ++j){
@@ -289,8 +307,15 @@ int main(){
                         //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
                         //grad_c : (1-sigmoid(w,c)) * w 
                         //grad_cn : (sigmoid_plus(w,c)-1) *w
-                        auto x_wcn = alpha*(sigmoid_plus(w,cn)-1);
-                        vecloop_void(symm_fma_vec, x_wcn, w, cn);
+                        auto x_wcn = sigmoid_plus(w,cn)-1;
+                        //plain gradient descent:
+                        //vecloop_void(symm_fma_vec, alpha*x_wcn, w, cn);
+
+                        auto adagrad_cn = adagrad_factor[cnidx];
+                        vecloop_void(accum_adagrad_factor, adagrad_w, x_wcn*x_wcn, cn);
+                        vecloop_void(accum_adagrad_factor, adagrad_cn, x_wcn*x_wcn, w);
+                        vecloop_void(adagrad_update, w, alpha*x_wcn, cn, adagrad_w);
+                        vecloop_void(adagrad_update, cn,alpha*x_wcn, w, adagrad_cn);
                         // vecloop_void(fma_vec, w, x_wcn, cn);
                         // vecloop_void(fma_vec, cn, x_wcn, w);
                         // print_word(cnidx, unigram);
@@ -300,6 +325,12 @@ int main(){
         });
         alpha *= 0.95;
         // alpha *= 0.8;
+
+        print("Epoch");
+        print(epoch);
+        print("Score: ");
+        print(scoring_dataset());
+        print("\n");
     }
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     //H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};

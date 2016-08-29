@@ -159,7 +159,7 @@ rnn::wordrep::WordBlock_base<word_dim> random_WordBlock(idx_t voca_size){
     //constexpr int word_dim = 100;
     std::random_device rd{};
     auto seed = rd();
-    std::uniform_real_distribution<val_t> uni01{0.0,1.0};
+    std::uniform_real_distribution<val_t> uni{-0.5,0.5};
     std::vector<val_t> wvec_init(voca_size*word_dim);
     auto n=wvec_init.size();
     // tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
@@ -167,9 +167,13 @@ rnn::wordrep::WordBlock_base<word_dim> random_WordBlock(idx_t voca_size){
     [&](tbb::blocked_range<decltype(n)> const &r){
         std::mt19937 gen{seed+r.begin()};
         for(decltype(n) i=r.begin(); i!=r.end(); ++i)
-            wvec_init[i]= uni01(gen)-0.5;
+            wvec_init[i]= uni(gen);
     });
-    // for(auto &x : wvec_init) x= uni01(gen)-0.5;
+    return rnn::wordrep::WordBlock_base<word_dim>{wvec_init};    
+}
+template<int word_dim>
+rnn::wordrep::WordBlock_base<word_dim> init_WordBlock(idx_t voca_size, val_t val){
+    std::vector<val_t> wvec_init(voca_size*word_dim, val);
     return rnn::wordrep::WordBlock_base<word_dim>{wvec_init};    
 }
 
@@ -220,6 +224,13 @@ auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
     vec1[i] += x*tmp;
     // vec2[i] += x*vec1[i];
     // vec1[i] += x*vec2[i];
+};
+
+auto accum_adagrad_factor = [](int64_t i, auto &out, auto x, auto const &vec){
+    out[i] += x * vec[i]*vec[i];
+};
+auto adagrad_update = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+    out[i] += x *grad[i]/std::sqrt(adagrad_factor[i]);
 };
 
 struct VocavecsGradientDescent{
