@@ -1,6 +1,7 @@
 #For Python devel.
 *.pyc
 .ipynb_checkpoints
+notebooks/
 __pycache__
 python/venv/
 python/.ipynb_checkpoints/

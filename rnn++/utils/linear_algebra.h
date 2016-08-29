@@ -125,7 +125,13 @@ auto transpose(gsl::span<T,M,N> mat){
 
 template<typename T, int64_t M>
 T dot(gsl::span<T,M> const x, gsl::span<T,M> const y){
-    return std::inner_product(x.cbegin(), x.cend(), y.cbegin(), T{});
+    // return std::inner_product(x.cbegin(), x.cend(), y.cbegin(), T{});
+    T sum{};
+    #pragma clang loop vectorize(enable)
+    for(decltype(M) i=0; i!=M; ++i){
+        sum+=x[i]*y[i];
+    }
+    return sum;
 }
 //Following also works, without template, but less safe:
 // auto dot = [](auto const &x, auto const &y){
