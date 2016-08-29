@@ -243,16 +243,27 @@ void Word2Vec::LearnVocab(){
     }
     
     std::cout << "Vocab Learning is complete.\n";
+    vocab = MapKeys(word_cn);
     vocabcn = MapValues(word_cn);
 
-    std::sort(vocabcn.begin(), vocabcn.end(), VCompare);
-    std::cout << vocabcn[0] << " " << vocabcn[1] << " " << vocabcn[2] << std::endl;
+    std::vector<std::pair<std::string,int64_t>> v;
+    for(int i = 0; i < vocab.size(); i++){
+        v.push_back(std::make_pair(vocab[i],vocabcn[i]));
+    }
+    //std::sort(vocabcn.begin(), vocabcn.end(), VCompare);
+    //std::cout << vocabcn[0] << " " << vocabcn[1] << " " << vocabcn[2] << std::endl;
 
-    
     vocab_size = vocabcn.size();
 
+    std::sort(v.begin(), v.end(), [](auto &left, auto &right) {
+    return left.second > right.second;
+    });
+
+    std::cout << v[0].first << std::endl;
+    std::cout << v[0].second << std::endl;
+    
     int64_t idx = 0;
-    for(auto x : word_cn){
+    for(auto x : v){
         word_idx[x.first] = idx;
         idx++;
     }

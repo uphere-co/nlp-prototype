@@ -15,25 +15,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra")
 message(${CMAKE_CXX_FLAGS})
 
 find_package (Threads)
-#find_library(GFORTRAN_LIBRARY NAMES gfortran)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 
 #include_directories(${HOME}/repo/srcc/GSL/include)
-
-add_executable(bh_tsne tsne utils sptree)
-add_executable(grassmannian grassmannian)
-target_link_libraries(grassmannian m pca armadillo openblas boost_iostreams boost_system boost_filesystem)
-
-add_executable(distance distance utils.cpp)
-target_link_libraries(distance m pca armadillo openblas boost_iostreams boost_system boost_filesystem)
-
-add_executable(word2vec word2vec utils.cpp WordEmbed)
-target_link_libraries(word2vec m pca armadillo ${GFORTRAN_LIBRARY} openblas boost_iostreams boost_system boost_filesystem)
-
-add_executable(app_pca pca.cpp utils.cpp)
-target_link_libraries(app_pca m pca armadillo ${GFORTRAN_LIBRARY} openblas boost_iostreams boost_system boost_filesystem)
 
 add_executable(voca_builder app/voca_builder  ../rnn++/utils/string ../rnn++/utils/hdf5)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
