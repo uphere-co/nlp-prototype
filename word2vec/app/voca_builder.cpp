@@ -65,19 +65,27 @@ void InsertSpecialTag(hashmap_t &word_count){
     word_count[word2vec_sentence_delim]=1;
 }
 
-auto MapValues(hashmap_t const &map){
+auto FilteredMapValues(hashmap_t const &map, hashmap_t::mapped_type cutoff){
     std::vector<hashmap_t::mapped_type> values;
     for(auto x : map){
+        if(x.second<cutoff) continue;
         values.push_back(x.second);
     }
     return values;
 }
-auto MapKeys(hashmap_t const &map){
+auto FilteredMapKeys(hashmap_t const &map, hashmap_t::mapped_type cutoff){
     std::vector<hashmap_t::key_type> values;
     for(auto x : map){
+        if(x.second<cutoff) continue;
         values.push_back(x.first);
     }
     return values;
+}
+auto MapValues(hashmap_t const &map){
+    return FilteredMapValues(map, 0);
+}
+auto MapKeys(hashmap_t const &map){
+    return FilteredMapKeys(map, 0);
 }
 
 auto Concat(std::vector<std::string> const &words){
@@ -105,19 +113,19 @@ auto ToStrings(std::vector<char> const &concat_words){
 int main(){
     using namespace word2vec;
     //std::vector<std::vector<double>> wordvector;
-    std::string infile_name = "data.sample.txt";
+    std::string infile_name = "data.txt";
     TokenizedFile infile{infile_name};
     auto word_count = WordCount(infile);
     //InsertSpecialTag(word_count);
-    auto word_count_values = MapValues(word_count);
-    auto word_count_keys = MapKeys(word_count);
+    auto word_count_values = FilteredMapValues(word_count,5);
+    auto word_count_keys = FilteredMapKeys(word_count,5);
     std::vector<char> concat_words = Concat(word_count_keys);
     
     //PrintWordCount(word_count);
 
-    H5file file{H5name{"data.h5"}, hdf5::FileMode::rw_exist};
-    file.writeRawData(H5name{"1b.short_sents.word_count"},word_count_values);
-    file.writeRawData(H5name{"1b.short_sents.bar.word_key"},concat_words);
+    H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
+    file.writeRawData(H5name{"1b.training.1M.count"},word_count_values);
+    file.writeRawData(H5name{"1b.training.1M.word"},concat_words);
     
     //concat_read = file.readRawData(H5name{"bar.word_key"},concat_words); 
     //auto words = ToStrings(concat_read);
