@@ -106,21 +106,24 @@ rec {
     };
 
     msgsl = stdenv.mkDerivation rec {
-      name = "GSL";
-      version = "1.0";
+      name = "GSL-${version}";
+      version = "r0535138";
       src = fetchgit {
         url = "https://github.com/Microsoft/GSL.git";
 	rev = "0535138459d0f78e39a2e558bc239f5727eaa13c";
 	sha256 = "0gvkdswa7hivw2as8g1zda79fbs4akd19j4dddkzdd31d8riz5jj";
       };
-      buildInputs = [ ];
+      buildInputs = [ cmake ];
       patches = [ ];
-      buildPhase = ''
-      '';
+      #cmakeConfigure = "";
+
+      # buildPhase = ''
+      #'';
 
       installPhase = ''
-        mkdir -p $out/GSL
-        cp -a * $out/GSL
+        make install 
+        mkdir -p $out/include/gsl
+        cp -a ../include/* $out/include/gsl/
       '';
     };
 
