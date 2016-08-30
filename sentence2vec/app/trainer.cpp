@@ -253,6 +253,9 @@ int main(){
     tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){    
         sent_widxs[i]=word2idx.getIndex(lines[i]);
     });
+    WordBlock sent_vecs=random_WordBlock<word_dim>(lines.size());
+    timer.here_then_reset("Train dataset is ready to be processed.");
+
     auto scoring_sentence=[&](auto const &widxs_orig){
         std::random_device rd{};        
         std::mt19937 gen{rd()};
@@ -266,18 +269,18 @@ int main(){
     print(scoring_dataset());
     print("\n");
     timer.here_then_reset("Training begins");
-    for(int epoch=0; epoch<25; ++epoch){
+    for(int epoch=0; epoch<5; ++epoch){
         std::random_device rd;
         auto seed = rd();
 
         // std::mt19937 gen{seed};
         // for(auto const &sent:lines){
-        tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) i){
+        tbb::parallel_for(decltype(n){0}, n, [&](decltype(n) sidx){
             VecLoop_void<val_t,word_dim> vecloop_void{};
             auto ur=negative_sampler2.get_pdf();
 
-            auto &widxs_orig=sent_widxs[i];            
-            std::mt19937 gen{seed+i};
+            auto &widxs_orig=sent_widxs[sidx];            
+            std::mt19937 gen{seed+sidx};
             std::uniform_real_distribution<val_t> uni01{0.0,1.0};
             auto widxs = sub_sampler(widxs_orig, uni01(gen));
             for(auto self=widxs.cbegin(); self!=widxs.end(); ++self){
@@ -288,17 +291,17 @@ int main(){
                     auto c=voca_vecs[cidx];
                     auto x_wc = 1-sigmoid(w,c);
                     //plain gradient descent:
-                    // vecloop_void(symm_fma_vec, alpha*x_wc, w, c);
-                    //AdaGrad optimizer:
-                    auto adagrad_w = adagrad_factor[widx];
-                    auto adagrad_c = adagrad_factor[cidx];
-                    //adagrad_w += (x_wc*c)*(x_wc*c);
-                    vecloop_void(accum_adagrad_factor, adagrad_w, x_wc*x_wc, c);
-                    vecloop_void(accum_adagrad_factor, adagrad_c, x_wc*x_wc, w);
-                    vecloop_void(adagrad_update, w, alpha*x_wc, c, adagrad_w);
-                    vecloop_void(adagrad_update, c ,alpha*x_wc, w, adagrad_c);
+                    vecloop_void(symm_fma_vec, alpha*x_wc, w, c);
                     // vecloop_void(fma_vec, c, x_wc, w);
                     // vecloop_void(fma_vec, w, x_wc, c);
+                    //AdaGrad optimizer:
+                    // auto adagrad_w = adagrad_factor[widx];
+                    // auto adagrad_c = adagrad_factor[cidx];
+                    // //adagrad_w += (x_wc*c)*(x_wc*c);
+                    // vecloop_void(accum_adagrad_factor, adagrad_w, x_wc*x_wc, c);
+                    // vecloop_void(accum_adagrad_factor, adagrad_c, x_wc*x_wc, w);
+                    // vecloop_void(adagrad_update, w, alpha*x_wc, c, adagrad_w);
+                    // vecloop_void(adagrad_update, c ,alpha*x_wc, w, adagrad_c);
                     for(int j=0; j<1; ++j){
                         // auto cnidx = ((int)ur(gen)+i)%voca_size;
                         auto cnidx=negative_sampler2(ur(gen));
@@ -309,16 +312,28 @@ int main(){
                         //grad_cn : (sigmoid_plus(w,c)-1) *w
                         auto x_wcn = sigmoid_plus(w,cn)-1;
                         //plain gradient descent:
-                        //vecloop_void(symm_fma_vec, alpha*x_wcn, w, cn);
-
-                        auto adagrad_cn = adagrad_factor[cnidx];
-                        vecloop_void(accum_adagrad_factor, adagrad_w, x_wcn*x_wcn, cn);
-                        vecloop_void(accum_adagrad_factor, adagrad_cn, x_wcn*x_wcn, w);
-                        vecloop_void(adagrad_update, w, alpha*x_wcn, cn, adagrad_w);
-                        vecloop_void(adagrad_update, cn,alpha*x_wcn, w, adagrad_cn);
+                        vecloop_void(symm_fma_vec, alpha*x_wcn, w, cn);
                         // vecloop_void(fma_vec, w, x_wcn, cn);
                         // vecloop_void(fma_vec, cn, x_wcn, w);
+
+                        // auto adagrad_cn = adagrad_factor[cnidx];
+                        // vecloop_void(accum_adagrad_factor, adagrad_w, x_wcn*x_wcn, cn);
+                        // vecloop_void(accum_adagrad_factor, adagrad_cn, x_wcn*x_wcn, w);
+                        // vecloop_void(adagrad_update, w, alpha*x_wcn, cn, adagrad_w);
+                        // vecloop_void(adagrad_update, cn,alpha*x_wcn, w, adagrad_cn);
                         // print_word(cnidx, unigram);
+                    }
+                }
+                {
+                    auto s=sent_vecs[sidx];
+                    auto x_wc = 1-sigmoid(w,s);
+                    vecloop_void(symm_fma_vec, alpha*x_wc, w, s);
+                    for(int j=0; j<1; ++j){
+                        auto cnidx=negative_sampler2(ur(gen));
+                        // auto cnidx = negative_sampler(gen);
+                        auto cn=voca_vecs[cnidx];
+                        auto x_wcn = sigmoid_plus(w,cn)-1;
+                        vecloop_void(symm_fma_vec, alpha*x_wcn, w, cn);
                     }
                 }
             }
@@ -335,6 +350,7 @@ int main(){
     timer.here_then_reset("test_word2vec_grad_update() is finished.");
     //H5file h5store{H5name{"trained.h5"}, hdf5::FileMode::rw_exist};
     file.overwriteRawData(H5name{"1b.training.1M"}, voca_vecs._val );
+    file.writeRawData(H5name{"1b.training.1M.sentvec"}, sent_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
 
     return 0;

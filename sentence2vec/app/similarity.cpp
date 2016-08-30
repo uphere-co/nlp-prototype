@@ -25,6 +25,9 @@ struct Query{
     Query(std::string word, Voca const &voca, VocaIndexMap const &word2idx)
     :word{word}, distances(voca.size()),
      idx{word2idx.getIndex(Word{word})} {}    
+    Query(std::string word, idx_t idx, idx_t voca_size)
+    :word{word}, distances(voca_size), idx{idx}{}
+
     std::string word;
     std::vector<val_t> distances;
     idx_t idx;
@@ -59,6 +62,18 @@ auto process_queries=[](std::vector<Query> &queries, auto const& voca_vecs){
         }
     });
 };
+void display_query(Query const &query, std::vector<std::string> const &sents){
+    std::vector<idx_t> idxs(query.distances.size());
+    idx_t i{0};
+    for(auto &x:idxs) x=i++;
+    std::partial_sort(idxs.begin(),idxs.begin()+10,idxs.end(),
+                      [&](auto i, auto j){return query.distances[i]>query.distances[j];});
+    print("------------------\n");
+    for(auto it=idxs.begin(); it!=idxs.begin()+10; ++it){
+        print(sents[*it]);
+        print("\n");
+    }
+}
 void display_query(Query const &query, Voca const &voca){
     std::vector<idx_t> idxs(query.distances.size());
     idx_t i{0};
@@ -83,6 +98,11 @@ void KLdistance(){
 
 int main(){
     Timer timer{};
+    rnn::simple_model::TokenizedSentences dataset{"1b.trainset.1M"};
+    auto& sents = dataset.val;
+    auto n_sent=sents.size();    
+    auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
+
     auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
     Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
     // auto voca_vecs = load_voca_vecs<word_dim>("gensim.h5", "1b.training.1M.gensim", w2vmodel_f_type);
@@ -108,8 +128,13 @@ int main(){
     process_queries(queries, voca_vecs);
     timer.here_then_reset("Calculate distances.");
     //std::sort(distances.begin(),distances.end());
-    display_queries(queries, voca);    
-    timer.here_then_reset("Query answered.");
+    display_queries(queries, voca);
+    timer.here_then_reset("Queries answered.");
+
+    Query sent_query{sents[0],0, n_sent};
+    process_query(sent_query, sent_vecs);
+    display_query(sent_query, sents);
+    timer.here_then_reset("Sentence query answered.");
     
     return 0;
 }
