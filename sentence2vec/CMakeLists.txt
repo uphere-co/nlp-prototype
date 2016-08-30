@@ -20,8 +20,8 @@ find_package (Threads)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../word2vec/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
-include_directories(${HOME}/repo/srcc/GSL/include)
-include_directories(${HOME}/repo/srcc/spdlog/include)
+include_directories($ENV{MS_GSL}/GSL/include)
+include_directories($ENV{SPDLOG}/spdlog/include)
 
 add_executable(trainer app/trainer wordrep/sentence2vec
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
