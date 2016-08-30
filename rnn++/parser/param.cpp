@@ -1,6 +1,6 @@
 #include "parser/param.h"
 
-#include <gsl.h>
+#include <gsl/gsl.h>
 #include "utils/span.h"
 
 #include "utils/hdf5.h" 

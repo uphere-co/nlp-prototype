@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include <gsl.h>
+#include <gsl/gsl.h>
 
 namespace util{
 template<typename T>
