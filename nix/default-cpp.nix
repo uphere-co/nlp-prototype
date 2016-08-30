@@ -115,10 +115,6 @@ rec {
       };
       buildInputs = [ cmake ];
       patches = [ ];
-      #cmakeConfigure = "";
-
-      # buildPhase = ''
-      #'';
 
       installPhase = ''
         make install 
@@ -136,15 +132,12 @@ rec {
 	rev = "f310cc460f043990fe03d2e5c018cbc1779057dc";
 	sha256 = "0c0kv5mrwd0gyvl9jgg8b0rym1x9x7c8vaha0bcajlp6akhhgwfv";
       };
-      buildInputs = [ ];
+      buildInputs = [ cmake ];
       patches = [ ];
-      buildPhase = ''
-      '';
-
-      installPhase = ''
-        mkdir -p $out/spdlog
-        cp -a * $out/spdlog
-      '';
+      #installPhase = ''
+      #  #mkdir -p $out/spdlog
+      #  #cp -a * $out/spdlog
+      #'';
     };
     
       
