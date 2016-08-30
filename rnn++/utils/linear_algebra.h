@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <cassert>
 
-#include<gsl.h>
+#include <gsl/gsl.h>
 
 #include"utils/math.h"
 

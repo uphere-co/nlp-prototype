@@ -1,6 +1,6 @@
 #pragma once
 #include <cstddef>
-#include <gsl.h>
+#include <gsl/gsl.h>
 
 namespace util{
 

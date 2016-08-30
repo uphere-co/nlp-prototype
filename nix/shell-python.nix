@@ -2,10 +2,11 @@
 
 with pkgs;
 
-let toolz = callPackage ./default-python.nix {
-              pkgs=pkgs;
-              buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
-            };
+let toolz     = callPackage ./default-python.nix {
+                  inherit pkgs;
+                  buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
+                };
+    toolz_cpp = callPackage ./default-cpp.nix { };
 in
 stdenv.mkDerivation {
   name = "python-env";
@@ -18,7 +19,8 @@ stdenv.mkDerivation {
                    cython
                    numba
                    toolz.gensim toolz.untangle
-                   Theano Keras h5py
+                   #Theano Keras
+		   h5py
                    pytest toolz.pytest-mock
                    toolz.guppy
                    toolz.nltk toolz.bllipparser
@@ -32,6 +34,9 @@ stdenv.mkDerivation {
                    hdf5 hdf5-cpp liblbfgs zeromq
                    tbb openblas  
                    linuxPackages_4_6.perf
+                   toolz_cpp.msgsl
+                   toolz_cpp.spdlog
+                   
                  ];
   shellHook = ''
      EDITOR=vim

@@ -2,7 +2,7 @@
 #include <vector>
 #include <algorithm>
 
-#include <gsl.h>
+#include <gsl/gsl.h>
 
 #include "utils/linear_algebra.h"
 
