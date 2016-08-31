@@ -196,6 +196,63 @@ decode autodec bntr@(BNTNode v _ _) = go v bntr
 decode _ (BNTLeaf v) = pure (BNTLeaf (v,v)) -- logically trivial encode-decoded. 
 
 
+l2norm :: WVector -> WVector -> WVal WVector
+l2norm v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
+
+
+{-
+-- unfolding RAE L^2 norm for a node
+l2unfoldingRAE_node:: (WVector,WVector) -> WVal WVector
+l2unfoldingRAE_node v1, v2bt1 bt2  = 
+    let l2tree::BNTree () (WVal WVector)
+        l2tree = zipWithLeaf l2norm bt1 bt2
+    in foldLeaf (+) 0 l2tree
+-}
+
+{-
+-- foldNode - ignore leaf values
+foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
+foldNode _ a (BNTLeaf _)  = a
+foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
+                                    vy = foldNode f a y
+                                 in f vx vy
+-}
+
+
+-- foldLeaf - fold only on leaves
+foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
+foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
+foldLeaf f e (BNTLeaf d)  = f e d
+
+
+
+-- unfolding RAE L^2 norm
+l2unfoldingRAE:: AutoEncoder -> AutoDecoder -> BinTree WVector
+              -> LLVMRunT IO (BNTree (WVal WVector) ())
+l2unfoldingRAE ae ad bt  = do
+  bte <- encode ae bt
+  bted <- traverse (fmap Join . decode ad . runJoin) (duplicate (Join bte))
+  return . bimap (bifoldl' const (+) 0 . bimap id (uncurry l2norm) . runJoin) (const ())
+         . runJoin $ bted
+
+
+{- 
+
+       -- decode ad bte
+     return $ go bte btd
+  where
+    go x@(BNTNode _ xa xb) y@(BNTNode _ ya yb) =
+        let l = l2unfoldingRAE_node x y
+            la = go xa ya
+            lb = go xb yb
+        in l+la+lb
+    go (BNTLeaf _) (BNTLeaf _) = 0
+    go _ _ = error "l2unfoldingRAE : Different tree structures (something went wrong)"
+
+-}
+
+
 {- 
 -- Binary tree with child-tree-valued nodes !! (sort of)
 recDecode :: AutoDecoder
@@ -281,34 +338,4 @@ l2RAE ae ad bt  = do
     l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
--- unfolding RAE L^2 norm for a node
-l2unfoldingRAE_node:: BNTree a WVector
-                   -> BNTree b WVector
-                   -> WVal WVector
-l2unfoldingRAE_node bt1 bt2  = 
-    let l2tree::BNTree () (WVal WVector)
-        l2tree = zipWithLeaf l2 bt1 bt2
-    in foldLeaf (+) 0 l2tree
-  where
-    l2 :: WVector -> WVector -> WVal WVector
-    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
-               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
-
--- unfolding RAE L^2 norm
-l2unfoldingRAE:: AutoEncoder
-          -> AutoDecoder
-          -> BinTree WVector
-          -> LLVMRunT IO (WVal WVector)
-l2unfoldingRAE ae ad bt  = do
-     bte <- encode ae bt
-     btd <- decode ad bte
-     return $ go bte btd
-  where
-    go x@(BNTNode _ xa xb) y@(BNTNode _ ya yb) =
-        let l = l2unfoldingRAE_node x y
-            la = go xa ya
-            lb = go xb yb
-        in l+la+lb
-    go (BNTLeaf _) (BNTLeaf _) = 0
-    go _ _ = error "l2unfoldingRAE : Different tree structures (something went wrong)"
 -}

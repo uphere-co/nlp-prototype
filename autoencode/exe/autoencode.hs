@@ -8,6 +8,7 @@ import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
 import           Control.Monad.IO.Class            ( liftIO )
 import           Control.Monad.Trans.Reader        ( runReaderT )
 import qualified Data.Attoparsec.Text       as A
+import           Data.Bifoldable
 import           Data.Bifunctor.Join
 import qualified Data.ByteString.Char8      as B
 import           Data.Foldable
@@ -57,9 +58,16 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
 -- let p (v0,v1) = "ab"
 -- printer :: BNTree (WVector,WVector) (WVector,WVector) -> Text
 
+{-
 printer1 = bntPrint [] p p where p = T.pack . show . V.take 4
 
 printer2 = bntPrint [] p p where p (v0,v1) = "ab"
+-}
+
+printer3 :: BNTree Float () -> Text
+printer3 = bntPrint [] p q
+  where p n = T.pack (show n)
+        q _ = "leaf"
 
 main :: IO ()
 main = do
@@ -90,6 +98,11 @@ main = do
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
                 forM_ mvtr $ \vtr -> do
+                  r <- l2unfoldingRAE autoenc autodec vtr
+                  liftIO $ TIO.putStrLn (printer3 r)
+                  -- liftIO $ print r
+                  liftIO $ print (bifoldl' (+) const 0 r)
+                  {-
                   enc <- encode autoenc vtr
                   dec <- decode autodec enc
                   liftIO $ do
@@ -99,7 +112,8 @@ main = do
                     TIO.putStrLn $ printer2 dec
                   rdec <- traverse (fmap Join . decode autodec . runJoin) (duplicate (Join enc))
                   liftIO $ print rdec
-                  return ()
+                  return () -}
+                  
                   -- liftIO $ do
                   --   putStrLn "****************"
                   --   print rdec
