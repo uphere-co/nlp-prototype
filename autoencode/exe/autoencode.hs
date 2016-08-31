@@ -68,14 +68,14 @@ main = do
     let autoenc = AutoEncoder 100 we be
         autodec = AutoDecoder 100 wd bd
     txt <- TIO.readFile "/data/groups/uphere/LDC2003T05_POS/LDC2003T05_parsed1.pos" -- "parsed.txt"
-    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin" -- "vectors100t8.bin"
+    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin"
     let p' = penntree <* A.skipSpace 
         r = A.parseOnly (A.many1 p') txt
     case r of
       Left err -> print err
       Right lst -> do
         withContext $ \context ->
-          flip runReaderT context $ -- test8 >> return ()
+          flip runReaderT context $
             compileNRun ["encode", "decode"] fullAST $
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do

@@ -80,6 +80,7 @@ Executable autoencode
   ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
 
   ghc-prof-options:     -auto-all
   extra-libraries:     
@@ -111,6 +112,7 @@ Executable rnnresult
   ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
 
   ghc-prof-options:     -auto-all
   extra-libraries:     
@@ -139,6 +141,7 @@ Executable treebank
   ghc-options:          -Wall  -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
 
   ghc-prof-options:     -auto-all
   extra-libraries:     
@@ -167,6 +170,8 @@ Executable wordvecparser
                         -threaded
                         -funbox-strict-fields
                         -fno-warn-orphans
+                        -fno-warn-unused-do-bind
+                                                
   ghc-prof-options:     -auto-all
   extra-libraries:     
   c-sources:            
@@ -195,6 +200,7 @@ Executable lbfgs
   ghc-options:          -Wall -O2
                         -threaded
                         -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
 
   ghc-prof-options:     -auto-all
   extra-libraries:     
