@@ -8,6 +8,7 @@ import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
 import           Control.Monad.IO.Class            ( liftIO )
 import           Control.Monad.Trans.Reader        ( runReaderT )
 import qualified Data.Attoparsec.Text       as A
+import           Data.Bifunctor.Join
 import qualified Data.ByteString.Char8      as B
 import           Data.Foldable
 import           Data.Hashable                     ( hash )
@@ -52,6 +53,14 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
     btr0  = binarizeR tr
     btr   = regularize btr0
 
+
+-- let p (v0,v1) = "ab"
+-- printer :: BNTree (WVector,WVector) (WVector,WVector) -> Text
+
+printer1 = bntPrint [] p p where p = T.pack . show . V.take 4
+
+printer2 = bntPrint [] p p where p (v0,v1) = "ab"
+
 main :: IO ()
 main = do
     setLocaleEncoding utf8
@@ -83,17 +92,18 @@ main = do
                 forM_ mvtr $ \vtr -> do
                   enc <- encode autoenc vtr
                   dec <- decode autodec enc
-                  let printer :: BNTree (Vector Float) (Vector Float) -> Text
-                      printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
                   liftIO $ do
                     putStrLn "================"
-                    TIO.putStrLn $ printer enc
+                    TIO.putStrLn $ printer1 enc
                     putStrLn "----------------"
-                    TIO.putStrLn $ printer dec
-                  rdec <- recDecode autodec enc 
-                  liftIO $ do
-                    putStrLn "****************"
-                    TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
+                    TIO.putStrLn $ printer2 dec
+                  rdec <- traverse (fmap Join . decode autodec . runJoin) (duplicate (Join enc))
+                  liftIO $ print rdec
+                  return ()
+                  -- liftIO $ do
+                  --   putStrLn "****************"
+                  --   print rdec
+                    -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
 
         return ()
 {- 

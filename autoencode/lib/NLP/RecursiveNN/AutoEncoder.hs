@@ -3,14 +3,21 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module NLP.RecursiveNN.AutoEncoder where
 
 import           Control.Monad.IO.Class          ( liftIO )
+import           Data.Bifoldable
+import           Data.Bifunctor
+import           Data.Bifunctor.Join
+import           Data.Bitraversable
 import           Data.MemoTrie
+import           Data.Monoid
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
+import           Data.Void
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
 --
@@ -29,6 +36,55 @@ type instance WVal WVector = Float
 type WMatrix = Matrix Float
 type WExp = Exp Float
 type WMExp = MExp Float
+
+type NTree a = BNTree a ()
+
+
+instance Bifunctor BNTree where
+  bimap f g (BNTNode k l r) = BNTNode (f k) (bimap f g l) (bimap f g r)
+  bimap f g (BNTLeaf x) = BNTLeaf (g x)
+
+instance Bifoldable BNTree where
+  bifoldMap f g (BNTNode k l r) = f k <> bifoldMap f g l <> bifoldMap f g r
+  bifoldMap f g (BNTLeaf x) = g x
+
+instance Bitraversable BNTree where
+  bitraverse f g (BNTNode k l r) = BNTNode <$> f k <*> bitraverse f g l <*> bitraverse f g r
+  bitraverse f g (BNTLeaf x) = BNTLeaf <$> g x
+
+-- | this should be a member of Comonad instance.
+
+duplicate :: Join BNTree a -> Join BNTree (Join BNTree a)
+duplicate x@(Join y) =
+  case y of
+    BNTNode k l r -> Join (BNTNode x (runJoin (duplicate (Join l))) (runJoin (duplicate (Join r))))
+    BNTLeaf _ -> Join (BNTLeaf x)
+
+
+
+{-
+newtype SBNTree a = SBNTree { unSBNTree :: BNTree a a }
+
+instance Functor SBNTree where
+  fmap f SBNTree {..} =
+    case unSBNTree of
+      BNTLeaf x -> SBNTree (BNTLeaf (f x))
+      BNTNode k l r -> SBNTree (BNTNode (f k) (fmap f l) (fmap f r))
+-}
+
+
+{-
+instance Traversable SBNTree where
+  traverse f SBNTree {..} =
+    case unSBNTree of
+      BNTLeaf x     -> SBNTree . BNTLeaf <$> f x
+      BNTNode k l r -> SBNTree <$> ( BNTNode <$> f k
+                                         <*> undefined -- traverse f (SBNTree l)
+                                         <*> undefined ) -- traverse f (SBNTree r) )
+-}
+
+-- type AEDTree = SBNTree (WVector,WVector)
+
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: WVector
@@ -130,25 +186,28 @@ decodeP ADNode {..} = do
   return (c1,c2)
 
 decode :: AutoDecoder
-       -> BNTree WVector e
-       -> LLVMRunT IO (BNTree WVector WVector)
+       -> BNTree WVector WVector
+       -> LLVMRunT IO (BNTree (WVector,WVector) (WVector,WVector))
 decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
-    go v1 (BNTNode _ x y) = do
-       (c1,c2) <- decodeP (ADNode autodec v1)
-       BNTNode v1 <$> go c1 x <*> go c2 y
-    go v1 (BNTLeaf _) = pure (BNTLeaf v1)
-decode _ (BNTLeaf _) = error "shouldn't happen"
+    go v1 (BNTNode v0 x y) = do (c1,c2) <- decodeP (ADNode autodec v1)
+                                BNTNode (v0,v1) <$> go c1 x <*> go c2 y
+    go v1 (BNTLeaf v0) = pure (BNTLeaf (v0,v1))
+decode _ (BNTLeaf v) = pure (BNTLeaf (v,v)) -- logically trivial encode-decoded. 
 
+
+{- 
 -- Binary tree with child-tree-valued nodes !! (sort of)
 recDecode :: AutoDecoder
-          -> BNTree WVector e
-          -> LLVMRunT IO (BNTree (BNTree WVector WVector) ())
-recDecode _       (BNTLeaf _)      = pure (BNTLeaf ())
-recDecode autodec n@(BNTNode _ x y) = 
+          -> BNTree WVector WVector
+          -> LLVMRunT IO (NTree AEDTree)
+recDecode _       (BNTLeaf _)       = pure (BNTLeaf ())
+recDecode autodec n@(BNTNode _ x y) =
+  traverse decode 
   BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
 
-
+-}
+{-
 -- Tree manipulation functions
 
 -- zipTree - error occurs when the structures don't match 
@@ -252,3 +311,4 @@ l2unfoldingRAE ae ad bt  = do
         in l+la+lb
     go (BNTLeaf _) (BNTLeaf _) = 0
     go _ _ = error "l2unfoldingRAE : Different tree structures (something went wrong)"
+-}

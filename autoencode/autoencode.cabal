@@ -35,6 +35,7 @@ Library
   Build-depends:        base,
                         --
                         attoparsec,
+                        bifunctors,
                         bytestring,
                         conduit,
                         conduit-extra,
@@ -89,6 +90,7 @@ Executable autoencode
   build-depends:        base,
                         --
                         attoparsec,
+                        bifunctors,
                         bytestring,
                         hashable,
                         llvm-general,
