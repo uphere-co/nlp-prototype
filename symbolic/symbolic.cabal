@@ -100,7 +100,7 @@ Executable eval
   ghc-prof-options:     -auto-all
   extra-libraries:     
   c-sources:            
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         hashable,
                         MemoTrie,
@@ -127,7 +127,7 @@ Executable llvm
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         containers,
                         hashable,
