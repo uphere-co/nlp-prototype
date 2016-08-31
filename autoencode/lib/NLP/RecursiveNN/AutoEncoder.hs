@@ -19,7 +19,7 @@ import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Predefined
 import           Symbolic.Type
 --
-import           NLP.SyntaxTree.Type
+import           NLP.SyntaxTree.Type  -- (fromEither, rootElem)
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
@@ -233,7 +233,20 @@ l2RAE ae ad bt  = do
     l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
--- unfolding RAE L^2 norm 
+-- unfolding RAE L^2 norm for a node
+l2unfoldingRAE_node:: BNTree a (Vector Float)
+                   -> BNTree b (Vector Float)
+                   -> Float
+l2unfoldingRAE_node bt1 bt2  = 
+    let l2tree::BNTree () Float
+        l2tree = zipWithLeaf l2 bt1 bt2
+    in foldLeaf (+) 0 l2tree
+  where
+    l2 :: Vector Float -> Vector Float -> Float 
+    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
+
+-- unfolding RAE L^2 norm
 l2unfoldingRAE:: AutoEncoder
           -> AutoDecoder
           -> BinTree (Vector Float)
@@ -241,10 +254,12 @@ l2unfoldingRAE:: AutoEncoder
 l2unfoldingRAE ae ad bt  = do
      bte <- encode ae bt
      btd <- decode ad bte
-     let l2tree::BNTree () Float
-         l2tree = zipWithLeaf l2 bte btd
-     return $ foldLeaf (+) 0 l2tree
+     return $ go bte btd
   where
-    l2 :: Vector Float -> Vector Float -> Float 
-    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
-               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
+    go x@(BNTNode _ xa xb) y@(BNTNode _ ya yb) =
+        let l = l2unfoldingRAE_node x y
+            la = go xa ya
+            lb = go xb yb
+        in l+la+lb
+    go (BNTLeaf _) (BNTLeaf _) = 0
+    go _ _ = error "l2unfoldingRAE : Different tree structures (something went wrong)"

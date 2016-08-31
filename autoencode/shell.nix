@@ -26,8 +26,6 @@ let hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix
               zenc              
             ]);
 
-    #llvm_35_debug = llvm_35.override { debugVersion = true; }; 
-
 in stdenv.mkDerivation {
      name = "ghc-shell";
      buildInputs = [ hsenv graphviz #llvm_38
