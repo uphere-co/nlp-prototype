@@ -77,6 +77,14 @@ Param& operator -=(Param& out, const Param& x){
     out.u_score.span -= x.u_score.span;
     return out;
 };
+Param& operator *=(Param& out, Param::value_type scale){
+    out.w_left.span  *= scale;
+    out.w_right.span *= scale;
+    out.bias.span    *= scale;
+    out.u_score.span *= scale;
+    return out;
+};
+
 Param operator +(const Param& x, const Param& y){
     Param out{x};
     out += y;

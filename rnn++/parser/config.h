@@ -15,7 +15,8 @@ extern std::string w2vmodel_name;
 // util::io::H5name file_name{"word2vec.h5"};
 // util::io::H5name voca_name{"foo.word"};
 // util::io::H5name w2vmodel_name{"foo.vec"};
-constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
+//constexpr util::DataType w2vmodel_f_type = util::DataType::sp;
+constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 
 extern std::string rnn_param_store_name;
 //HDF5 dataset name to use as inital RNN parameter.
@@ -29,7 +30,8 @@ extern std::string testset_name;
 //It can be directly read from a H5File,
 //but it needs knowledge of low level details of HDF5.
 //So they are set by runtime configuration for now.
-constexpr size_t voca_size=552402;
+// constexpr size_t voca_size=552402;
+constexpr size_t voca_size=50002;
 // constexpr size_t voca_size=400001;
 constexpr int word_dim=100;
 

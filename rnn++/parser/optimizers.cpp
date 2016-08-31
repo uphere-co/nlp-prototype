@@ -45,7 +45,7 @@ namespace rnn{
 namespace simple_model{
 namespace optimizer{
 
-void GradientDescent::update(Param &param, Param &grad_sum){
+void GradientDescent::update(Param &param, Param const &grad_sum){
     update(param.w_left.span, grad_sum.w_left.span, scale);
     update(param.w_right.span, grad_sum.w_right.span, scale);
     update(param.bias.span, grad_sum.bias.span, scale);

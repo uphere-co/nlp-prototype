@@ -43,6 +43,7 @@ struct Param{
 };
 Param& operator +=(Param& out, const Param& x);
 Param& operator -=(Param& out, const Param& x);
+Param& operator *=(Param& out, Param::value_type scale);
 Param operator +(const Param& x, const Param& y);
 Param operator -(const Param& x, const Param& y);
 // Param operator *(Param::value_type x, const Param& y);

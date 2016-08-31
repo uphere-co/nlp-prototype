@@ -24,7 +24,7 @@ struct GradientDescent{
     void update(T &param, T const &grad, TV scale){
         grad_update(param,grad, scale); //defined in loop_gen.h
     }
-    void update(Param &param, Param &grad_sum);
+    void update(Param &param, Param const &grad_sum);
     rnn::type::float_t scale;
 };
 
