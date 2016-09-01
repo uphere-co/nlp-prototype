@@ -5,29 +5,21 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
--- import           Control.Applicative             ( (<$>), (<*>), pure )
 import           Control.Monad.IO.Class          ( liftIO )
--- import           Data.Foldable
--- import           Data.Hashable
--- import qualified Data.HashMap.Strict       as HM
 import           Data.MemoTrie
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
--- import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
 import           Symbolic.CodeGen.LLVM.Run
--- import           Symbolic.Differential           ( sdiff )
--- import           Symbolic.Eval                   ( seval )
 import           Symbolic.Predefined
--- import           Symbolic.Print
 import           Symbolic.Type
 --
-import           NLP.SyntaxTree.Type  -- (fromEither, rootElem)
+import           NLP.SyntaxTree.Type
 
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: Vector Float
@@ -98,16 +90,6 @@ encodeP AENode {..} = do
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
-{- 
-  VS.map tanh $ VS.zipWith (+) r b
-  where
-    we = autoenc_We aenode_autoenc
-    b = autoenc_b aenode_autoenc
-    c = aenode_c1 VS.++ aenode_c2  
-    r = mulMV we c
--}
-
-
 encode :: AutoEncoder
        -> BinTree (Vector Float)
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
@@ -138,11 +120,6 @@ decodeP ADNode {..} = do
       c2 = VS.slice dim dim vr'
   return (c1,c2)
 
-    -- r = mulMV wd adnode_y
-    -- rc = V.map tanh $ V.zipWith (+) r b 
-    -- c1 = V.slice 0 dim rc
-    -- c2 = V.slice dim dim rc
-   
 decode :: AutoDecoder
        -> BNTree (Vector Float) e
        -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))

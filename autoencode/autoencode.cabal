@@ -85,7 +85,7 @@ Executable autoencode
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         attoparsec,
                         bytestring,
@@ -116,7 +116,7 @@ Executable rnnresult
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         attoparsec,
                         bytestring,
@@ -144,7 +144,7 @@ Executable treebank
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         attoparsec,
                         bytestring,
@@ -171,7 +171,7 @@ Executable wordvecparser
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         bytestring,
                         text,
@@ -200,7 +200,7 @@ Executable lbfgs
   extra-libraries:     
   c-sources:            
                         
-  build-depends:        base                            >= 4.7 && < 4.9,
+  build-depends:        base,
                         --
                         array,
                         lbfgs,
