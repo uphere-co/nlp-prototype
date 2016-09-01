@@ -52,16 +52,16 @@ auto accum_rmsprop_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &
     out[i][j] *= 0.9;
     out[i][j] += 0.1*vec[i][j]*vec[i][j];
 };
-class RMSprop{
+class AdaGrad{
 public:
     AdaGrad(rnn_t::float_t scale)
     : ada_scale{scale} {}
 
     void update(Param &param, Param const &grad){
-        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_left.span, grad.w_left.span);
-        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_right.span,grad.w_right.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor.bias.span ,  grad.bias.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor.u_score.span,grad.u_score.span);
+        matloop_void(accum_adagrad_factor_mat, ada_factor.w_left.span, grad.w_left.span);
+        matloop_void(accum_adagrad_factor_mat, ada_factor.w_right.span,grad.w_right.span);
+        vecloop_void(accum_adagrad_factor_vec, ada_factor.bias.span ,  grad.bias.span);
+        vecloop_void(accum_adagrad_factor_vec, ada_factor.u_score.span,grad.u_score.span);
         matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
         matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
         vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
@@ -74,16 +74,16 @@ private:
     rnn_t::float_t ada_scale;
 };
 
-class AdaDelta{
+class RMSprop{
 public:
-    AdaDelta(rnn_t::float_t scale)
+    RMSprop(rnn_t::float_t scale)
     : ada_scale{scale} {}
 
     void update(Param &param, Param const &grad){
-        matloop_void(accum_adadelta_factor_mat, ada_factor.w_left.span, grad.w_left.span);
-        matloop_void(accum_adadelta_factor_mat, ada_factor.w_right.span,grad.w_right.span);
-        vecloop_void(accum_adadelta_factor_vec, ada_factor.bias.span ,  grad.bias.span);
-        vecloop_void(accum_adadelta_factor_vec, ada_factor.u_score.span,grad.u_score.span);
+        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_left.span, grad.w_left.span);
+        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_right.span,grad.w_right.span);
+        vecloop_void(accum_rmsprop_factor_vec, ada_factor.bias.span ,  grad.bias.span);
+        vecloop_void(accum_rmsprop_factor_vec, ada_factor.u_score.span,grad.u_score.span);
         matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
         matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
         vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
@@ -160,7 +160,7 @@ int main(){
                 // optimizer.update(param, grad);
 
                 // AdaGrad optimizer{0.001};
-                AdaDelta optimizer{0.001};
+                RMSprop optimizer{0.001};
                 // optimizer::GradientDescent optimizer{0.0001};
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Param{});
                 grad_label *= 0.2;
