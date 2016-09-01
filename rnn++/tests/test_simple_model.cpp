@@ -81,6 +81,20 @@ void test_read_voca(){
     std::cerr << "Test:  -148.346 =="<<sum(word_block.span) << std::endl;
 }
 
+void test_read_voca_config(){
+    Voca voca =load_voca(file_name, voca_name);
+    auto voca_vecs = load_voca_vecs<100>(file_name, w2vmodel_name, w2vmodel_f_type);
+    std::cerr << voca_vecs.size() << " " << voca.size() <<" "<< voca_size <<std::endl;
+    VocaIndexMap word2idx = voca.indexing();
+
+    test_voca_index(voca, word2idx);
+    auto sentence = u8"The cat on a hat .";
+    auto idxs = word2idx.getIndex(sentence);
+    auto word_block = voca_vecs.getWordVec(idxs);
+
+    std::cerr <<sum(word_block.span) << std::endl;
+}
+
 void test_read_word2vec_output(){
     H5file file{file_name, hdf5::FileMode::read_exist};
     Voca voca =load_voca("word2vec.h5", "foo.word");
