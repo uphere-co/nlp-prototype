@@ -240,7 +240,7 @@ int main(){
     timer.here_then_reset("Voca indexed.");
     auto voca_size = unigram.voca.size();
     WordBlock voca_vecs=random_WordBlock<word_dim>(voca_size);
-    auto adagrad_factor=init_WordBlock<word_dim>(voca_size, val_t{1.0});
+    auto adagrad_factor=init_WordBlock<word_dim>(voca_size, val_t{0.000001});
     timer.here_then_reset("Initial WordBlock constructed");
     
     TokenizedSentences dataset{"1b.trainset.1M"};
