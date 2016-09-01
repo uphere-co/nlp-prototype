@@ -120,7 +120,3 @@ main = do
                     -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
 
         return ()
-{- 
-main :: IO ()
-main = test8
--}

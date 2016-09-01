@@ -60,32 +60,6 @@ duplicate x@(Join y) =
     BNTNode k l r -> Join (BNTNode x (runJoin (duplicate (Join l))) (runJoin (duplicate (Join r))))
     BNTLeaf _ -> Join (BNTLeaf x)
 
-
-
-{-
-newtype SBNTree a = SBNTree { unSBNTree :: BNTree a a }
-
-instance Functor SBNTree where
-  fmap f SBNTree {..} =
-    case unSBNTree of
-      BNTLeaf x -> SBNTree (BNTLeaf (f x))
-      BNTNode k l r -> SBNTree (BNTNode (f k) (fmap f l) (fmap f r))
--}
-
-
-{-
-instance Traversable SBNTree where
-  traverse f SBNTree {..} =
-    case unSBNTree of
-      BNTLeaf x     -> SBNTree . BNTLeaf <$> f x
-      BNTNode k l r -> SBNTree <$> ( BNTNode <$> f k
-                                         <*> undefined -- traverse f (SBNTree l)
-                                         <*> undefined ) -- traverse f (SBNTree r) )
--}
-
--- type AEDTree = SBNTree (WVector,WVector)
-
-
 data AENode = AENode { aenode_autoenc :: AutoEncoder
                      , aenode_c1  :: WVector
                      , aenode_c2  :: WVector
@@ -200,33 +174,6 @@ l2norm :: WVector -> WVector -> WVal WVector
 l2norm v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
-
-{-
--- unfolding RAE L^2 norm for a node
-l2unfoldingRAE_node:: (WVector,WVector) -> WVal WVector
-l2unfoldingRAE_node v1, v2bt1 bt2  = 
-    let l2tree::BNTree () (WVal WVector)
-        l2tree = zipWithLeaf l2norm bt1 bt2
-    in foldLeaf (+) 0 l2tree
--}
-
-{-
--- foldNode - ignore leaf values
-foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
-foldNode _ a (BNTLeaf _)  = a
-foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
-                                    vy = foldNode f a y
-                                 in f vx vy
--}
-
-
--- foldLeaf - fold only on leaves
-foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
-foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
-foldLeaf f e (BNTLeaf d)  = f e d
-
-
-
 -- unfolding RAE L^2 norm
 l2unfoldingRAE:: AutoEncoder -> AutoDecoder -> BinTree WVector
               -> LLVMRunT IO (BNTree (WVal WVector) ())
@@ -236,92 +183,7 @@ l2unfoldingRAE ae ad bt  = do
   return . bimap (bifoldl' const (+) 0 . bimap id (uncurry l2norm) . runJoin) (const ())
          . runJoin $ bted
 
-
 {- 
-
-       -- decode ad bte
-     return $ go bte btd
-  where
-    go x@(BNTNode _ xa xb) y@(BNTNode _ ya yb) =
-        let l = l2unfoldingRAE_node x y
-            la = go xa ya
-            lb = go xb yb
-        in l+la+lb
-    go (BNTLeaf _) (BNTLeaf _) = 0
-    go _ _ = error "l2unfoldingRAE : Different tree structures (something went wrong)"
-
--}
-
-
-{- 
--- Binary tree with child-tree-valued nodes !! (sort of)
-recDecode :: AutoDecoder
-          -> BNTree WVector WVector
-          -> LLVMRunT IO (NTree AEDTree)
-recDecode _       (BNTLeaf _)       = pure (BNTLeaf ())
-recDecode autodec n@(BNTNode _ x y) =
-  traverse decode 
-  BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
-
--}
-{-
--- Tree manipulation functions
-
--- zipTree - error occurs when the structures don't match 
-zipTree :: BNTree a1 e1
-          -> BNTree a2 e2
-          -> BNTree (a1,a2) (e1,e2)
-zipTree (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf (n1,n2)
-zipTree (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
-    let tx = zipTree x1 x2
-        ty = zipTree y1 y2
-    in BNTNode (n1,n2) tx ty 
-zipTree _ _ = error "zipTree : invalid input" 
-
--- zipWithTree
-zipWithTree :: (a1 -> a2 -> c)
-          -> BNTree a1 a1
-          -> BNTree a2 a2
-          -> BNTree c c
-zipWithTree f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-zipWithTree f (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
-    let xbnt = zipWithTree f x1 x2
-        ybnt = zipWithTree f y1 y2
-    in BNTNode ( f n1 n2 ) xbnt ybnt 
-zipWithTree f (BNTLeaf n1) (BNTNode n2 _ _) = BNTLeaf $ f n1 n2
-zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-
--- zipWithLeaf - works only for the same structures, otherwise raises an error
-zipWithLeaf :: (e1 -> e2 -> c)
-          -> BNTree a1 e1
-          -> BNTree a2 e2
-          -> BNTree () c
-zipWithLeaf f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-zipWithLeaf f (BNTNode _ x1 y1) (BNTNode _ x2 y2) =
-    let xbnt = zipWithLeaf f x1 x2
-        ybnt = zipWithLeaf f y1 y2
-    in BNTNode () xbnt ybnt 
-zipWithLeaf _ _ _ = error "shouldn't happen"
-
--- foldNode - ignore leaf values
-foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
-foldNode _ a (BNTLeaf _)  = a
-foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
-                                    vy = foldNode f a y
-                                 in f vx vy
-
--- foldLeaf - fold only on leaves
-foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
-foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
-foldLeaf f e (BNTLeaf d)  = f e d
-
--- mapTree
-mapTree :: (a -> b) -> BNTree a a -> BNTree b b
-mapTree f (BNTLeaf a) = BNTLeaf $ f a
-mapTree f (BNTNode a x y) = let x' = mapTree f x
-                                y' = mapTree f y
-                            in BNTNode (f a) x' y'
-
 -- Compute L^2 norm
 l2RAE:: AutoEncoder
           -> AutoDecoder
