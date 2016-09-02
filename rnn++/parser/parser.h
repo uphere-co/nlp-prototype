@@ -44,7 +44,9 @@ struct VocaInfo{
 };
 
 struct SparseGrad{
-    std::unordered_map<WordBlock::idx_t,Param::vec_type> val;
+    using key_t = WordBlock::idx_t;
+    using val_t = Param::vec_type;
+    std::unordered_map<key_t,val_t> val;
 };
 SparseGrad& operator +=(SparseGrad& out, const SparseGrad& x);
 SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x);

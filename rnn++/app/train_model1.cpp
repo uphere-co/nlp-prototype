@@ -92,13 +92,17 @@ public:
 
     void update(WordBlock &voca_vecs, SparseGrad const &grad){
         assert(ada_factor_voca.size()==552402);
-        for(auto const &x:grad.val){
-            assert(x.first<552402);
-            auto v=ada_factor_voca[x.first];
-            vecloop_void(accum_rmsprop_factor_vec, v ,  x.second.span);
-            auto wordvec=voca_vecs[x.first];
-            vecloop_void(adagrad_update_vec, wordvec, ada_scale, x.second.span , v);
-        }
+        std::vector<SparseGrad::key_t> idxs;
+        for(auto const &x:grad.val) idxs.push_back(x.first);
+        auto n=idxs.size();
+        tbb::parallel_for(decltype(n){0},n,[&](auto i){
+            auto idx=idxs[i];
+            auto g = grad.val.find(idx);
+            auto v=ada_factor_voca[idx];
+            vecloop_void(accum_rmsprop_factor_vec, v ,  g->second.span);
+            auto wordvec=voca_vecs[idx];
+            vecloop_void(adagrad_update_vec, wordvec, ada_scale, g->second.span , v);
+        });
     }
 private:
     WordBlock ada_factor_voca;
@@ -181,14 +185,14 @@ int main(){
                 // auto grad = grad_label;
                 // auto optimizer = optimizer::GradientDescent{0.00001};
                 // optimizer.update(param, grad);
-
                 // AdaGrad optimizer{0.001};
                 RMSprop optimizer{0.001, rnn.voca_vecs.size()};
+
                 // optimizer::GradientDescent optimizer{0.0001};
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
                 grad_label.param *= 0.2;
-                grad_label.words *= 0.02;
                 optimizer.update(param, grad_label.param);
+                grad_label.words *= 0.02;
                 optimizer.update(rnn.voca_vecs, grad_label.words);
                 // auto delta_label=grad_label.words*0.00001*0.2;
                 // for(auto const &x:delta_label.val){
@@ -197,8 +201,8 @@ int main(){
                 // }
                 auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Gradient{});
                 grad_greedy.param *=-1.0;
-                grad_greedy.words *=-0.1;
                 optimizer.update(param, grad_greedy.param);
+                grad_greedy.words *=-0.1;
                 optimizer.update(rnn.voca_vecs, grad_label.words);
                 // auto delta_greedy=grad_greedy.words*0.00001;
                 // for(auto const &x:delta_greedy.val){
