@@ -1,16 +1,40 @@
 #include "parser/compute.h"
 #include "utils/print.h"
 
-namespace rnn{
-namespace simple_model{
-namespace detail{
-//Cannot do string comparison at compile time.
-// constexpr auto activation_factory(const char name[]){
-//     if(name=="tanh") return Activation::tanh;
-//     else if(name=="sig") return Activation::sig;
-// }
 
+//TODO: move these from this header to .cpp body.
+using rnn::simple_model::Param; 
+using value_type= Param::value_type;
+using vec_type  = Param::vec_type;
+using mat_type  = Param::mat_type;
+using node_type = rnn::simple_model::detail::node_type;
 
+namespace{
+auto weighted_sum=[](int64_t i,
+                    auto const &w_left, auto const &w_right,
+                    auto const &bias,
+                    auto const &word_left, auto const &word_right) {
+    using util::math::dot;
+    return dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
+};
+auto activation_fun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation>(x[i]);
+};
+auto activation_dfun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation_df>(x[i]);
+};
+
+auto update_mesg_common_part=[](int64_t i, auto &mesg, auto const &weighted_sum) {
+    mesg[i]*=activation_dfun(i, weighted_sum);
+};
+auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out, 
+                             auto const &mesg, auto const &w)  {
+    out[j]+=mesg[i]*w[i][j];
+};
+auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad, 
+                         auto const &mesg, auto const &weighted_sum)  {
+    grad[i][j]+=mesg[i]*weighted_sum[j];
+};
 
 //TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
@@ -20,7 +44,45 @@ vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
     return vecloop_vec(weighted_sum, param.w_left.span, param.w_right.span, 
                         param.bias.span, word_left.span,word_right.span);
 }
- 
+
+void backward_path_full(Param const &param,
+                   mat_type &gradsum_left, mat_type &gradsum_right,
+                   vec_type &gradsum_bias,  
+                   node_type const &phrase, vec_type mesg) {
+    constexpr auto dim = Param::dim;
+    using val_t =Param::value_type;
+    using namespace util::math;
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    auto matloop_void = MatLoop_void<val_t,dim,dim>{};
+    vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
+    gradsum_bias.span    += mesg.span;        
+    matloop_void(back_prop_grad_W,
+                 gradsum_left.span, mesg.span, phrase.left->vec.span);                             
+    matloop_void(back_prop_grad_W,
+                 gradsum_right.span, mesg.span, phrase.right->vec.span);
+    Param::vec_type left_mesg;
+    matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
+    if(phrase.left->is_combined()){
+        backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
+                           *phrase.left, left_mesg);
+    } 
+    Param::vec_type right_mesg;
+    matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
+    if(phrase.right->is_combined()){
+        backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
+                           *phrase.right, right_mesg);
+    } 
+}
+
+}
+namespace rnn{
+namespace simple_model{
+namespace detail{
+//Cannot do string comparison at compile time.
+// constexpr auto activation_factory(const char name[]){
+//     if(name=="tanh") return Activation::tanh;
+//     else if(name=="sig") return Activation::sig;
+// } 
 value_type scoring_node(Param const &param, node_type const &node) {
     using namespace util::math;    
     return dot(param.u_score.span, node.vec.span) / norm_L2(param.u_score.span);
@@ -107,34 +169,6 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
     }
 }
 
-void backward_path(Param const &param,
-                   mat_type &gradsum_left, mat_type &gradsum_right,
-                   vec_type &gradsum_bias,  
-                   node_type const &phrase, vec_type mesg) {
-    constexpr auto dim = Param::dim;
-    using val_t =Param::value_type;
-    using namespace util::math;
-    auto vecloop_void = VecLoop_void<val_t,dim>{};
-    auto matloop_void = MatLoop_void<val_t,dim,dim>{};
-    vecloop_void(update_mesg_common_part, mesg.span, phrase.vec_wsum.span);
-    gradsum_bias.span    += mesg.span;        
-    matloop_void(back_prop_grad_W,
-                 gradsum_left.span, mesg.span, phrase.left->vec.span);                             
-    matloop_void(back_prop_grad_W,
-                 gradsum_right.span, mesg.span, phrase.right->vec.span);
-    if(phrase.left->is_combined()){
-        Param::vec_type left_mesg;
-        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
-        backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
-                      *phrase.left, left_mesg);
-    }
-    if(phrase.right->is_combined()){
-        Param::vec_type right_mesg;
-        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
-        backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
-                      *phrase.right, right_mesg);
-    }
-}
 
 auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
                             auto factor_p, auto const &phrase)  {
@@ -157,7 +191,7 @@ auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phras
     //              1, phrase);
 };
 
-void backward_path(Param const &param,
+void backward_path_for_param(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias, vec_type &gradsum_u_score,
                    node_type const &phrase) {
@@ -166,14 +200,14 @@ void backward_path(Param const &param,
     auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
     auto mesg{param.u_score};
     mesg.span *=factor;
-    backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
+    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path(Param &grad, Param const &param,
+void backward_path_for_param(Param &grad, Param const &param,
                    node_type const &phrase) {
-    backward_path(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
+    backward_path_for_param(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
 }//namespace rnn::simple_model::detail

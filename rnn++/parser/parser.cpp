@@ -7,6 +7,25 @@
 namespace rnn{
 namespace simple_model{
 
+Gradient& operator +=(Gradient& out, const Gradient& x){
+    out.param += x.param;
+    return out;
+}
+Gradient& operator -=(Gradient& out, const Gradient& x){
+    out.param -= x.param;
+    return out;
+}
+Gradient operator +(const Gradient& x, const Gradient& y){
+    Gradient out{x};
+    out+=y;
+    return out;
+}
+Gradient operator -(const Gradient& x, const Gradient& y){
+    Gradient out{x};
+    out-=y;
+    return out;
+}
+
 
 TokenizedSentences::TokenizedSentences(std::string tokenized_file)
     : val{util::string::readlines(tokenized_file)} {}
@@ -71,7 +90,7 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
     return score_accum;
 }
 
-Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
+Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     using namespace detail;
 
     // auto timer=Timer{};
@@ -81,18 +100,19 @@ Param get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     auto top_nodes = merge_leaf_nodes(param, all_nodes);
     auto merge_history = foward_path(param, top_nodes);
     // timer.here_then_reset("forward path");
-    rnn::simple_model::Param grad{};
+    Gradient grad{};
+
     for(auto i=n_words; i<all_nodes.size(); ++i){
         auto const &node=all_nodes[i];
         assert(node.is_combined());
         // print_all_descents(node);
-        backward_path(grad, param, node);
+        backward_path_for_param(grad.param, param, node);
     }
     // timer.here_then_reset("backward path");
     return grad;
 }
 
-Param get_directed_grad(VocaInfo const &rnn, Param const &param, 
+Gradient get_directed_grad(VocaInfo const &rnn, Param const &param, 
                         SentencePair const &sent_pair){
     using namespace util;
     using namespace detail;
@@ -104,11 +124,11 @@ Param get_directed_grad(VocaInfo const &rnn, Param const &param,
     auto n_words=all_nodes.size();
     auto top_nodes = merge_leaf_nodes(param, all_nodes);
     directed_merge(param, top_nodes,merge_history);
-    Param grad{};
+    Gradient grad{};
     for(auto i=n_words; i<all_nodes.size(); ++i){
         auto const &node=all_nodes[i];
         assert(node.is_combined());
-        backward_path(grad, param, node);
+        backward_path_for_param(grad.param, param, node);
     }
     return grad;
 }

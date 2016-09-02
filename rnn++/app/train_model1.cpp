@@ -96,6 +96,14 @@ private:
     rnn_t::float_t ada_scale;
 };
 
+void l2_normalize(WordBlock &voca_vecs){
+    auto n=voca_vecs.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        auto v=voca_vecs[i];
+        auto factor=1/norm_L2(v);
+        v*=factor;
+    }
+}
 int main(){
     Logger logger{"rnn_model1", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){
@@ -129,6 +137,7 @@ int main(){
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         // auto param = load_param(rnn_param_store_name, "model1.563109e7.400", DataType::dp);
+        // l2_normalize(rnn.voca_vecs);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
         auto get_label_grad=[&](auto const &sent_pair){
@@ -162,12 +171,12 @@ int main(){
                 // AdaGrad optimizer{0.001};
                 RMSprop optimizer{0.001};
                 // optimizer::GradientDescent optimizer{0.0001};
-                auto grad_label = parallel_reducer(beg, end, get_label_grad, Param{});
-                grad_label *= 0.2;
-                optimizer.update(param, grad_label);
-                auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Param{});
-                grad_greedy *=-1.0;
-                optimizer.update(param, grad_greedy);
+                auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
+                grad_label.param *= 0.2;
+                optimizer.update(param, grad_label.param);
+                auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Gradient{});
+                grad_greedy.param *=-1.0;
+                optimizer.update(param, grad_greedy.param);
 
                 
 

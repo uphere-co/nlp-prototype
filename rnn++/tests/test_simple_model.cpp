@@ -58,7 +58,7 @@ void test_init_rnn(){
     */
 
     // auto span = gsl::span<rnn_t::float_t>{param_raw};
-    Param param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);    
+    Param param = load_param("rnnparser.h5", "rnn.Parser#447cc3c8.18800", util::DataType::sp);    
     std::cerr << "Test:   3.248616=="<< sum(param.w_left.span)+sum(param.w_right.span) << std::endl;
     std::cerr << "Test: -50.581345=="<< sum(param.bias.span) << std::endl;
     std::cerr << "Test:  -0.190589=="<< sum(param.u_score.span) << std::endl;
@@ -92,13 +92,13 @@ void test_read_voca_config(){
     auto idxs = word2idx.getIndex(sentence);
     auto word_block = voca_vecs.getWordVec(idxs);
 
-    std::cerr <<sum(word_block.span) << std::endl;
+    std::cerr <<"Sum of word block: "<< sum(word_block.span) << std::endl;
 }
 
 void test_read_word2vec_output(){
     H5file file{file_name, hdf5::FileMode::read_exist};
-    Voca voca =load_voca("word2vec.h5", "foo.word");
-    auto voca_vecs = load_voca_vecs<200>("word2vec.h5", "foo.vec", util::DataType::dp); 
+    Voca voca =load_voca("word2vec.test.h5", "foo.word");
+    auto voca_vecs = load_voca_vecs<200>("word2vec.test.h5", "foo.vec", util::DataType::sp); 
     std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
@@ -111,7 +111,7 @@ void test_read_word2vec_output(){
     print(": voca_vec.size()\n");
     auto word_block = voca_vecs.getWordVec(idxs);
 
-    std::cerr << "Test: -82.7994 =="<<sum(word_block.span) << std::endl;
+    std::cerr << "Test: 5.46774 =="<<sum(word_block.span) << std::endl;
 }
 
 
@@ -146,7 +146,7 @@ void test_forwad_backward(){
         auto const &node=nodes[i];
         assert(node.is_combined());
         // print_all_descents(node);
-        backward_path(grad, param, node);
+        backward_path_for_param(grad, param, node);
     }       
 
     timer.here_then_reset("Backward path");
@@ -162,8 +162,8 @@ void test_forwad_backward(){
     auto dParam = rnn::simple_model::randomParam(0.00001);
     dParam.bias.span    *= rnn_t::float_t{0.0000};
     dParam.u_score.span *= rnn_t::float_t{0.000};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
@@ -231,20 +231,20 @@ void test_parallel_reduce(){
     using rnn::config::n_minibatch;
     using rnn::simple_model::Param;
     timer.here_then_reset("Setup");
-    Param grad_serial{};
+    Gradient grad_serial{};
     for(auto i=0; i<n_minibatch; ++i){
         grad_serial += get_grad(lines[i]); 
     }
     timer.here_then_reset("Serial reduce");
 
     auto beg=lines.cbegin();
-    auto grad_parallel=parallel_reducer(beg, beg+n_minibatch, get_grad, Param{});
+    auto grad_parallel=parallel_reducer(beg, beg+n_minibatch, get_grad, Gradient{});
     timer.here_then_reset("Parallel reduce");
-    print(grad_serial.bias.span[0]);
-    print(grad_parallel.bias.span[0]);
+    print(grad_serial.param.bias.span[0]);
+    print(grad_parallel.param.bias.span[0]);
     print('\n');
-    print(grad_serial.w_left.span[0][0]);
-    print(grad_parallel.w_left.span[0][0]);
+    print(grad_serial.param.w_left.span[0][0]);
+    print(grad_parallel.param.w_left.span[0][0]);
     print('\n');
 }
 
@@ -282,7 +282,7 @@ void test_rnn_full_step(){
     print(norm_L1(param.bias.span));
     print(norm_L1(param.u_score.span));
     print(": L1-norm\n");
-    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
+    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Gradient{});
     timer.here_then_reset("Back-propagation for whole testset");
     auto score = scoring_dataset(rnn, param, testset);
     timer.here_then_reset("Scoring testset");
@@ -297,11 +297,11 @@ void test_rnn_full_step(){
     // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
-    auto &grad =grad_sum;
+    auto &grad =grad_sum.param;
     rnn_t::float_t ds_grad{};
     auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
@@ -340,7 +340,7 @@ void test_supervised_rnn_full_step(){
     dParam.w_right.span *= rnn_t::float_t{0.001};
     dParam.bias.span    *= rnn_t::float_t{0.001};
     dParam.u_score.span *= rnn_t::float_t{0.001};
-    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Param{});
+    auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Gradient{});
     timer.here_then_reset("Back-propagation for whole testset");
     auto score = scoring_parsed_dataset(rnn, param, testset);
     timer.here_then_reset("Scoring testset");
@@ -350,11 +350,11 @@ void test_supervised_rnn_full_step(){
     // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
-    auto &grad =grad_sum;
+    auto &grad =grad_sum.param;
     rnn_t::float_t ds_grad{};
     auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 

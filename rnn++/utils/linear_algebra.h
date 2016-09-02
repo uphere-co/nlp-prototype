@@ -150,5 +150,14 @@ auto dotdot(Vector<T,M> &x, Matrix<T,M,N> &m, Vector<T,N> &y){
     return sum;
 }
 
+auto mul_sum_vec=[](int64_t i, auto &out, 
+                auto const &a, auto const &b) {
+    out+=a[i]*b[i];
+};
+auto mul_sum_mat=[](int64_t i,int64_t j, auto &out, 
+                auto const &a, auto const &b) {
+    out+=a[i][j]*b[i][j];
+};
+
 }//namespace util::math
 }//namespace util

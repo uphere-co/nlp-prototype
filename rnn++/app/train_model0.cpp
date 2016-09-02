@@ -71,11 +71,11 @@ int main(){
                 auto beg=it;
                 auto end=beg+n_minibatch;
                 end=end<lines.cend()?end:lines.cend();
-                auto grad_sum = parallel_reducer(beg, end, get_grad, Param{});
                 optimizer::LBFGSoptimizer optimizer{word_dim*(2*word_dim+2), param,rnn,testset, beg,end};
                 optimizer.update();
+                // auto grad_sum = parallel_reducer(beg, end, get_grad, Gradient{});
                 // auto optimizer = optimizer::GradientDescent{0.0001};
-                // optimizer.update(param, grad_sum);            
+                // optimizer.update(param, grad_sum.param);            
                 ++i_minibatch;
                 if(i_minibatch%100==0) {
                     logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
