@@ -14,6 +14,10 @@ SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x){
     for(auto const &p : x.val) out.val[p.first] -= p.second;
     return out;
 }
+SparseGrad& operator *=(SparseGrad& out, Param::value_type x){
+    for(auto &p : out.val) p.second*=x;
+    return out;
+}
 SparseGrad operator +(const SparseGrad& x, const SparseGrad& y){
     SparseGrad out{x};
     out+=y;
@@ -24,13 +28,19 @@ SparseGrad operator -(const SparseGrad& x, const SparseGrad& y){
     out-=y;
     return out;
 }
-
+SparseGrad operator *(const SparseGrad& x, Param::value_type v){
+    SparseGrad out{x};
+    out*=v;
+    return out;
+}
 Gradient& operator +=(Gradient& out, const Gradient& x){
     out.param += x.param;
+    out.words += x.words;
     return out;
 }
 Gradient& operator -=(Gradient& out, const Gradient& x){
     out.param -= x.param;
+    out.words -= x.words;
     return out;
 }
 Gradient operator +(const Gradient& x, const Gradient& y){

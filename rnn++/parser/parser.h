@@ -48,8 +48,10 @@ struct SparseGrad{
 };
 SparseGrad& operator +=(SparseGrad& out, const SparseGrad& x);
 SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x);
+SparseGrad& operator *=(SparseGrad& out, Param::value_type x);
 SparseGrad operator +(const SparseGrad& x, const SparseGrad& y);
 SparseGrad operator -(const SparseGrad& x, const SparseGrad& y);
+SparseGrad operator *(const SparseGrad& x, Param::value_type v);
 
 struct Gradient{
     Param param{};

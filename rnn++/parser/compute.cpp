@@ -62,27 +62,27 @@ void backward_path_full(Param const &param,
                  gradsum_left.span, mesg.span, phrase.left->vec.span);                             
     matloop_void(back_prop_grad_W,
                  gradsum_right.span, mesg.span, phrase.right->vec.span);
-    Param::vec_type left_mesg;
-    matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
     if(phrase.left->is_combined()){
+        Param::vec_type left_mesg;
+        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.left, left_mesg);
     } else if(phrase.left->is_leaf()){
         //update word_vec of leaf node
         matloop_void(back_prop_grad_word, phrase.left->vec_update.span,
-                     left_mesg.span, param.w_left.span);
+                     mesg.span, param.w_left.span);
     } else{
         assert(0);//it cannot happen on shape of tree constructed RNN. 
     }
-    Param::vec_type right_mesg;
-    matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
     if(phrase.right->is_combined()){
+        Param::vec_type right_mesg;
+        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.right, right_mesg);
     } else if(phrase.right->is_leaf()){
         //update word_vec of leaf node
         matloop_void(back_prop_grad_word, phrase.right->vec_update.span,
-                     right_mesg.span, param.w_right.span);
+                     mesg.span, param.w_right.span);
     } else{
         assert(0);//it cannot happen on shape of tree constructed RNN. 
     }
