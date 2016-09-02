@@ -7,6 +7,7 @@
 #include <map>
 #include <iterator>
 #include <unordered_set>
+#include <utility>
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
@@ -27,8 +28,8 @@ using char_t = char;
 
 using namespace tfkld::type;
 
-using hashmap_t = std::map<std::string, int_t>;
-using vocab_t = std::set<std::string>;
+using hashmap_t = std::map<int64_t, int_t>;
+using vocab_t = std::map<std::string, int64_t>;
 //using vocab_t = std::unordered_set<std::string>;
 using doc_t = std::vector<hashmap_t>;
 
@@ -62,13 +63,21 @@ vocab_t LearnVocab(TokenizedFile &file) {
   while(std::getline(file.val, line)){
     std::istringstream iss{line};
     auto words = util::string::split(line);
-    for(auto x : words) vocab.insert(x);
-  }
+    for(auto x : words) {
+        auto isin = vocab.find(x);
+        if(isin != vocab.end()) {
+                continue;
+            } else {
+                vocab[x] = word_idx;
+                word_idx++;
+            }
+        }
+    }
   // return sorted vocabulary with ascending order
   return vocab;
 }
 
-doc_t LearnDoc(TokenizedFile &file) {
+doc_t LearnDoc(vocab_t &vocab, TokenizedFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
@@ -76,11 +85,12 @@ doc_t LearnDoc(TokenizedFile &file) {
         std::istringstream iss{line};
         auto words = util::string::split(line);
         for(auto x : words) {
-            auto isin = doc.find(x);
+            auto word_idx = vocab.find(x) -> second;
+            auto isin = doc.find(word_idx);
             if(isin != doc.end()) {
-                doc[x] += 1;
+                doc[word_idx] += 1;
             } else {
-                doc[x] = 1;
+                doc[word_idx] = 1;
             }
         }
         docs.push_back(doc);
@@ -91,22 +101,42 @@ doc_t LearnDoc(TokenizedFile &file) {
 }
 
 
-void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_fmat &mat) {
+void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
     int64_t row, col;
+    int64_t count = 0;
+    
+    std::vector<int64_t> locations_row;
+    std::vector<int64_t> locations_col;
+    std::vector<float_t> values;
+        
     for(auto it = docs.begin(); it != docs.end(); ++it) {
         for(auto itt = it -> begin(); itt != it -> end(); ++itt) {
-            row = std::distance(vocab.begin(), vocab.find((*itt).first));
+            row = (*itt).first;
             col = std::distance(docs.begin(),it);
-            mat(row,col) = (*itt).second;
+            locations_row.push_back(row);
+            locations_col.push_back(col);
+            values.push_back((*itt).second);
+            count++;
         }
     }
+
+    arma::umat location(2,count);
+    arma::vec value(count);
+
+    for(int64_t a = 0; a < count; a++) {
+        location(0,a) = locations_row[a];
+        location(1,a) = locations_col[a];
+        value(a) = values[a];
+    }
+
+    mat = std::move( arma::sp_mat(location, value) );
 }
 
 
         
 void PrintVocab(vocab_t &vocab){
     for(auto x : vocab){
-        std::cout << x << std::endl;
+        std::cout << x.first << std::endl;
     }
 }
 
@@ -144,11 +174,11 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string train_file = "1M.training";
+    std::string train_file = "1b.training";
     TokenizedFile infile{train_file};
     auto vocab = LearnVocab(infile);
     infile.setBegin();
-    auto docs = LearnDoc(infile);
+    auto docs = LearnDoc(vocab, infile);
 
     timer.here_then_reset("Constructed Vocabulary and Documents.\n");
     
@@ -156,17 +186,21 @@ int main(){
     n_rows = vocab.size();
     n_cols = docs.size();
     //(n_rows, n_cols)
-    sp_fmat inMat(n_rows,n_cols);
+    sp_mat inMat(n_rows,n_cols);
 
     //int64_t pos = std::distance(vocab.begin(), vocab.find("that"));
     //std::cout << pos << std::endl;
     
-    //fillMat(vocab, docs, inMat);
+    fillMat(vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
     
     //inMat.print("inMat = ");
     std::cout << "Finished!" << std::endl;
+
+
+
+
     
     //arma::mat inMat = arma::randu<arma::mat>(5,5);
 
