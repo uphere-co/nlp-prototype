@@ -1,15 +1,23 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module NLP.RecursiveNN.AutoEncoder where
 
 import           Control.Monad.IO.Class          ( liftIO )
+import           Data.Bifoldable
+import           Data.Bifunctor
+import           Data.Bifunctor.Join
+import           Data.Bitraversable
 import           Data.MemoTrie
+import           Data.Monoid
 import qualified Data.Vector.Storable      as VS
 import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
+import           Data.Void
 import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( double )
 --
@@ -21,26 +29,57 @@ import           Symbolic.Type
 --
 import           NLP.SyntaxTree.Type
 
+type WVector = Vector Float
+type family WVal a :: *
+type instance WVal WVector = Float
+
+type WMatrix = Matrix Float
+type WExp = Exp Float
+type WMExp = MExp Float
+
+type NTree a = BNTree a ()
+
+
+instance Bifunctor BNTree where
+  bimap f g (BNTNode k l r) = BNTNode (f k) (bimap f g l) (bimap f g r)
+  bimap f g (BNTLeaf x) = BNTLeaf (g x)
+
+instance Bifoldable BNTree where
+  bifoldMap f g (BNTNode k l r) = f k <> bifoldMap f g l <> bifoldMap f g r
+  bifoldMap f g (BNTLeaf x) = g x
+
+instance Bitraversable BNTree where
+  bitraverse f g (BNTNode k l r) = BNTNode <$> f k <*> bitraverse f g l <*> bitraverse f g r
+  bitraverse f g (BNTLeaf x) = BNTLeaf <$> g x
+
+-- | this should be a member of Comonad instance.
+
+duplicate :: Join BNTree a -> Join BNTree (Join BNTree a)
+duplicate x@(Join y) =
+  case y of
+    BNTNode k l r -> Join (BNTNode x (runJoin (duplicate (Join l))) (runJoin (duplicate (Join r))))
+    BNTLeaf _ -> Join (BNTLeaf x)
+
 data AENode = AENode { aenode_autoenc :: AutoEncoder
-                     , aenode_c1  :: Vector Float
-                     , aenode_c2  :: Vector Float
+                     , aenode_c1  :: WVector
+                     , aenode_c2  :: WVector
                      }
               
 data AutoEncoder = AutoEncoder { autoenc_dim :: Int
-                               , autoenc_We  :: Matrix Float
-                               , autoenc_b   :: Vector Float
+                               , autoenc_We  :: WMatrix
+                               , autoenc_b   :: WVector
                                } 
 
 data ADNode = ADNode { adnode_autodec :: AutoDecoder
-                     , adnode_y  :: Vector Float
+                     , adnode_y  :: WVector
                      }
 
 data AutoDecoder = AutoDecoder { autodec_dim :: Int
-                               , autodec_Wd  :: Matrix Float
-                               , autodec_b   :: Vector Float
+                               , autodec_Wd  :: WMatrix
+                               , autodec_b   :: WVector
                                }
 
-encodeExp :: (?expHash :: Exp Float :->: Hash) => (MExp Float, [Variable]) -- AST.Module
+encodeExp :: (?expHash :: WExp :->: Hash) => (WMExp, [Variable])
 encodeExp =
   let idxi = ("i",1,100)
       idxj = ("j",1,100)
@@ -59,7 +98,7 @@ encodeExp =
               , V (mkSym "we")  [idxk,idxI]
               , V (mkSym "be")  [idxk] ] )
 
-decodeExp :: (?expHash :: Exp Float :->: Hash) => (MExp Float, [Variable]) -- AST.Module
+decodeExp :: (?expHash :: WExp :->: Hash) => (WMExp, [Variable])
 decodeExp =
   let idxk = ("k",1,100)
       idxI = ("I",1,200)
@@ -73,26 +112,26 @@ decodeExp =
               , V (mkSym "bd") [idxI] ] )
 
 
-fullAST :: (?expHash :: Exp Float :->: Hash) => AST.Module
+fullAST :: (?expHash :: WExp :->: Hash) => AST.Module
 fullAST = mkASTWithExt ext [("encode",encodeExp), ("decode",decodeExp)]
   where ext = external double "tanh" [(double, AST.Name "x")] 
  
                    
-encodeP :: AENode -> LLVMRunT IO (Vector Float)
+encodeP :: AENode -> LLVMRunT IO WVector
 encodeP AENode {..} = do
   let vc1 = aenode_c1
       vc2 = aenode_c2
       vwe = mat_content (autoenc_We aenode_autoenc)
       vb  = autoenc_b aenode_autoenc
-      vr = VS.replicate 100 0    :: VS.Vector Float
+      vr = VS.replicate 100 0    :: WVector
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
   callFn "encode" [vc1,vc2,vwe,vb] fpr
   vr' <- liftIO $ VS.freeze mv
   return vr'
   
 encode :: AutoEncoder
-       -> BinTree (Vector Float)
-       -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
+       -> BinTree WVector
+       -> LLVMRunT IO (BNTree WVector WVector)
 encode _ (BinLeaf x) = pure (BNTLeaf x)
 encode autoenc (BinNode x y) = do
     x' <- encode autoenc x
@@ -106,13 +145,13 @@ encode autoenc (BinNode x y) = do
                  in encodeP ae
 
 
-decodeP :: ADNode -> LLVMRunT IO (Vector Float, Vector Float)
+decodeP :: ADNode -> LLVMRunT IO (WVector, WVector)
 decodeP ADNode {..} = do
   let dim = 100 --  autodec_dim adnode_autodec
       vy  = adnode_y
       vwd = mat_content (autodec_Wd adnode_autodec)
       vbd = autodec_b adnode_autodec
-      vr = VS.replicate 200 0 :: VS.Vector Float
+      vr = VS.replicate 200 0 :: WVector
   mv@(VS.MVector _ fpr) <- liftIO $ VS.thaw vr
   callFn "decode" [vy,vwd,vbd] fpr
   vr' <- liftIO $ VS.freeze mv
@@ -121,130 +160,44 @@ decodeP ADNode {..} = do
   return (c1,c2)
 
 decode :: AutoDecoder
-       -> BNTree (Vector Float) e
-       -> LLVMRunT IO (BNTree (Vector Float) (Vector Float))
+       -> BNTree WVector WVector
+       -> LLVMRunT IO (BNTree (WVector,WVector) (WVector,WVector))
 decode autodec bntr@(BNTNode v _ _) = go v bntr
   where 
-    go v1 (BNTNode _ x y) = do
-       (c1,c2) <- decodeP (ADNode autodec v1)
-       BNTNode v1 <$> go c1 x <*> go c2 y
-    go v1 (BNTLeaf _) = pure (BNTLeaf v1)
-decode _ (BNTLeaf _) = error "shouldn't happen"
+    go v1 (BNTNode v0 x y) = do (c1,c2) <- decodeP (ADNode autodec v1)
+                                BNTNode (v0,v1) <$> go c1 x <*> go c2 y
+    go v1 (BNTLeaf v0) = pure (BNTLeaf (v0,v1))
+decode _ (BNTLeaf v) = pure (BNTLeaf (v,v)) -- logically trivial encode-decoded. 
 
--- Binary tree with child-tree-valued nodes !! (sort of)
-recDecode :: AutoDecoder
-          -> BNTree (Vector Float) e
-          -> LLVMRunT IO (BNTree (BNTree (Vector Float) (Vector Float)) ())
-recDecode _       (BNTLeaf _)      = pure (BNTLeaf ())
-recDecode autodec n@(BNTNode _ x y) = 
-  BNTNode <$> decode autodec n <*> recDecode autodec x <*> recDecode autodec y
 
--- cost function for each node
--- Input BinTree and BNTree should have the same structure
-{-costNode :: BinTree (Vector Float)
-         -> BNTree (Vector Float) ()
-         -> LLVMRunT IO (BNTree Float Float)
-costNoe 
-costTree :: AutoEncoder
-         -> AutoDecoder
-         -> BinTree (Vector Float)
-         -> LLVMRunT IO (BNTree Float Float)
-costTree autoenc autodec (BinLeaf v) = pure (BNTLeaf 0)
-costTree autoenc autodec (BinNode x y) =
-    let xtree = decode autodec x 
-        ytree = decode autodec y
-        venc = 
-        vdec =
-    in BNTNode <$> l2 venc vdec
-               <*> costTree autoenc autodec x
-               <*> costTree autoenc autodec y
--}
+l2norm :: WVector -> WVector -> WVal WVector
+l2norm v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
+               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
--- Tree manipulation functions
+-- unfolding RAE L^2 norm
+l2unfoldingRAE:: AutoEncoder -> AutoDecoder -> BinTree WVector
+              -> LLVMRunT IO (BNTree (WVal WVector) ())
+l2unfoldingRAE ae ad bt  = do
+  bte <- encode ae bt
+  bted <- traverse (fmap Join . decode ad . runJoin) (duplicate (Join bte))
+  return . bimap (bifoldl' const (+) 0 . bimap id (uncurry l2norm) . runJoin) (const ())
+         . runJoin $ bted
 
--- zipTree - error occurs when the structures don't match 
-zipTree :: BNTree a1 e1
-          -> BNTree a2 e2
-          -> BNTree (a1,a2) (e1,e2)
-zipTree (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf (n1,n2)
-zipTree (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
-    let tx = zipTree x1 x2
-        ty = zipTree y1 y2
-    in BNTNode (n1,n2) tx ty 
-zipTree _ _ = error "zipTree : invalid input" 
-
--- zipWithTree
-zipWithTree :: (a1 -> a2 -> c)
-          -> BNTree a1 a1
-          -> BNTree a2 a2
-          -> BNTree c c
-zipWithTree f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-zipWithTree f (BNTNode n1 x1 y1) (BNTNode n2 x2 y2) =
-    let xbnt = zipWithTree f x1 x2
-        ybnt = zipWithTree f y1 y2
-    in BNTNode ( f n1 n2 ) xbnt ybnt 
-zipWithTree f (BNTLeaf n1) (BNTNode n2 _ _) = BNTLeaf $ f n1 n2
-zipWithTree f (BNTNode n1 _ _) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-
--- zipWithLeaf - works only for the same structures, otherwise raises an error
-zipWithLeaf :: (e1 -> e2 -> c)
-          -> BNTree a1 e1
-          -> BNTree a2 e2
-          -> BNTree () c
-zipWithLeaf f (BNTLeaf n1) (BNTLeaf n2) = BNTLeaf $ f n1 n2
-zipWithLeaf f (BNTNode _ x1 y1) (BNTNode _ x2 y2) =
-    let xbnt = zipWithLeaf f x1 x2
-        ybnt = zipWithLeaf f y1 y2
-    in BNTNode () xbnt ybnt 
-zipWithLeaf _ _ _ = error "shouldn't happen"
-
--- foldNode - ignore leaf values
-foldNode :: (a -> a -> a) -> a -> BNTree a e -> a
-foldNode _ a (BNTLeaf _)  = a
-foldNode f a (BNTNode _ x y)  = let vx = foldNode f a x
-                                    vy = foldNode f a y
-                                 in f vx vy
-
--- foldLeaf - fold only on leaves
-foldLeaf :: (e -> e -> e) -> e -> BNTree a e -> e
-foldLeaf f e (BNTNode _ x y)  = f (foldLeaf f e x) (foldLeaf f e y)
-foldLeaf f e (BNTLeaf d)  = f e d
-
--- mapTree
-mapTree :: (a -> b) -> BNTree a a -> BNTree b b
-mapTree f (BNTLeaf a) = BNTLeaf $ f a
-mapTree f (BNTNode a x y) = let x' = mapTree f x
-                                y' = mapTree f y
-                            in BNTNode (f a) x' y'
-
+{- 
 -- Compute L^2 norm
 l2RAE:: AutoEncoder
           -> AutoDecoder
-          -> BinTree (Vector Float)
-          -> LLVMRunT IO Float
+          -> BinTree WVector
+          -> LLVMRunT IO (WVal WVector)
 l2RAE ae ad bt  = do
      bte <- encode ae bt
      btd <- decode ad bte
-     let l2tree::BNTree Float Float
+     let l2tree::BNTree (WVal WVector) (WVal WVector)
          l2tree = zipWithTree l2 bte btd
      return $ foldNode (+) 0 l2tree
   where
-    l2 :: Vector Float -> Vector Float -> Float 
+    l2 :: WVector -> WVector -> WVal WVector
     l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
                in VS.sum $ VS.zipWith (*) vec_sub vec_sub
 
--- unfolding RAE L^2 norm 
-l2unfoldingRAE:: AutoEncoder
-          -> AutoDecoder
-          -> BinTree (Vector Float)
-          -> LLVMRunT IO Float
-l2unfoldingRAE ae ad bt  = do
-     bte <- encode ae bt
-     btd <- decode ad bte
-     let l2tree::BNTree () Float
-         l2tree = zipWithLeaf l2 bte btd
-     return $ foldLeaf (+) 0 l2tree
-  where
-    l2 :: Vector Float -> Vector Float -> Float 
-    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
-               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
+-}

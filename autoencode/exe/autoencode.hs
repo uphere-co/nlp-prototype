@@ -8,6 +8,8 @@ import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
 import           Control.Monad.IO.Class            ( liftIO )
 import           Control.Monad.Trans.Reader        ( runReaderT )
 import qualified Data.Attoparsec.Text       as A
+import           Data.Bifoldable
+import           Data.Bifunctor.Join
 import qualified Data.ByteString.Char8      as B
 import           Data.Foldable
 import           Data.Hashable                     ( hash )
@@ -52,6 +54,21 @@ getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap
     btr0  = binarizeR tr
     btr   = regularize btr0
 
+
+-- let p (v0,v1) = "ab"
+-- printer :: BNTree (WVector,WVector) (WVector,WVector) -> Text
+
+{-
+printer1 = bntPrint [] p p where p = T.pack . show . V.take 4
+
+printer2 = bntPrint [] p p where p (v0,v1) = "ab"
+-}
+
+printer3 :: BNTree Float () -> Text
+printer3 = bntPrint [] p q
+  where p n = T.pack (show n)
+        q _ = "leaf"
+
 main :: IO ()
 main = do
     setLocaleEncoding utf8
@@ -68,35 +85,38 @@ main = do
     let autoenc = AutoEncoder 100 we be
         autodec = AutoDecoder 100 wd bd
     txt <- TIO.readFile "/data/groups/uphere/LDC2003T05_POS/LDC2003T05_parsed1.pos" -- "parsed.txt"
-    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin" -- "vectors100t8.bin"
+    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin"
     let p' = penntree <* A.skipSpace 
         r = A.parseOnly (A.many1 p') txt
     case r of
       Left err -> print err
       Right lst -> do
         withContext $ \context ->
-          flip runReaderT context $ -- test8 >> return ()
+          flip runReaderT context $
             compileNRun ["encode", "decode"] fullAST $
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
                 forM_ mvtr $ \vtr -> do
+                  r <- l2unfoldingRAE autoenc autodec vtr
+                  liftIO $ TIO.putStrLn (printer3 r)
+                  -- liftIO $ print r
+                  liftIO $ print (bifoldl' (+) const 0 r)
+                  {-
                   enc <- encode autoenc vtr
                   dec <- decode autodec enc
-                  let printer :: BNTree (Vector Float) (Vector Float) -> Text
-                      printer = bntPrint [] (T.pack . show . V.take 4) (T.pack . show . V.take 4)
                   liftIO $ do
                     putStrLn "================"
-                    TIO.putStrLn $ printer enc
+                    TIO.putStrLn $ printer1 enc
                     putStrLn "----------------"
-                    TIO.putStrLn $ printer dec
-                  rdec <- recDecode autodec enc 
-                  liftIO $ do
-                    putStrLn "****************"
-                    TIO.putStrLn . bntPrint [] printer (\_->"(no leaf)") $ rdec
+                    TIO.putStrLn $ printer2 dec
+                  rdec <- traverse (fmap Join . decode autodec . runJoin) (duplicate (Join enc))
+                  liftIO $ print rdec
+                  return () -}
+                  
+                  -- liftIO $ do
+                  --   putStrLn "****************"
+                  --   print rdec
+                    -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
 
         return ()
-{- 
-main :: IO ()
-main = test8
--}
