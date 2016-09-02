@@ -6,6 +6,24 @@
 
 namespace rnn{
 namespace simple_model{
+SparseGrad& operator +=(SparseGrad& out, const SparseGrad& x){
+    for(auto const &p : x.val) out.val[p.first] += p.second;
+    return out; 
+}
+SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x){
+    for(auto const &p : x.val) out.val[p.first] -= p.second;
+    return out;
+}
+SparseGrad operator +(const SparseGrad& x, const SparseGrad& y){
+    SparseGrad out{x};
+    out+=y;
+    return out;
+}
+SparseGrad operator -(const SparseGrad& x, const SparseGrad& y){
+    SparseGrad out{x};
+    out-=y;
+    return out;
+}
 
 Gradient& operator +=(Gradient& out, const Gradient& x){
     out.param += x.param;
@@ -111,7 +129,7 @@ Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
     for(decltype(n_words)i=0; i<n_words;++i){
         auto const &node=all_nodes[i];
         assert(node.is_leaf());
-        //collecting word_update
+        grad.words.val[node.name.idx]+=node.vec_update;//collecting word_update
     }
     // timer.here_then_reset("backward path");
     return grad;
@@ -134,6 +152,11 @@ Gradient get_directed_grad(VocaInfo const &rnn, Param const &param,
         auto const &node=all_nodes[i];
         assert(node.is_combined());
         backward_path_for_param(grad.param, param, node);
+    }
+    for(decltype(n_words)i=0; i<n_words;++i){
+        auto const &node=all_nodes[i];
+        assert(node.is_leaf());
+        grad.words.val[node.name.idx]+=node.vec_update;//collecting word_update
     }
     return grad;
 }

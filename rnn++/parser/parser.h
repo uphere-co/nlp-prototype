@@ -1,7 +1,7 @@
 #pragma once
 
 #include <utility>
-
+#include <unordered_map>
 #include "parser/param.h"
 #include "parser/compute.h"
 #include "parser/node.h"
@@ -43,8 +43,17 @@ struct VocaInfo{
     WordBlock voca_vecs;
 };
 
+struct SparseGrad{
+    std::unordered_map<WordBlock::idx_t,Param::vec_type> val;
+};
+SparseGrad& operator +=(SparseGrad& out, const SparseGrad& x);
+SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x);
+SparseGrad operator +(const SparseGrad& x, const SparseGrad& y);
+SparseGrad operator -(const SparseGrad& x, const SparseGrad& y);
+
 struct Gradient{
     Param param{};
+    SparseGrad words{};
 };
 Gradient& operator +=(Gradient& out, const Gradient& x);
 Gradient& operator -=(Gradient& out, const Gradient& x);

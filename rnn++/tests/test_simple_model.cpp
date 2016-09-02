@@ -115,7 +115,7 @@ void test_read_word2vec_output(){
 }
 
 
-void test_forwad_backward(){
+void test_forward_backward(){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
@@ -367,6 +367,20 @@ void test_supervised_rnn_full_step(){
     print('\n');
 }
 
+void test_backward_wordvec(){
+
+    auto timer=Timer{};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+    timer.here_then_reset("Preparing data");
+    SparseGrad grad{};
+
+    auto sentence = u8"this is a typical sentence";
+    auto idxs = rnn.word2idx.getIndex(sentence);
+    for(auto i:idxs) {
+        grad.val[i] += rnn.voca_vecs[i];
+    }
+    
+}
 }//namespace rnn::simple_model::test
 }//namespace rnn::simple_model
 }//namespace rnn

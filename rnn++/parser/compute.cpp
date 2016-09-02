@@ -1,6 +1,4 @@
 #include "parser/compute.h"
-#include "utils/print.h"
-
 
 //TODO: move these from this header to .cpp body.
 using rnn::simple_model::Param; 

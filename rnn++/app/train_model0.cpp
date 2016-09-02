@@ -42,10 +42,11 @@ int main(){
         // test_init_rnn();
         // test_read_voca();
         // test_read_word2vec_output();
-        // test_forwad_backward();
+        // test_forward_backward();
         // test_parallel_reduce();
         test_rnn_full_step();
         // test_read_voca_config();
+        test_backward_wordvec();
         return 0;
         logger.info("Process begins.");
         auto lines=util::string::readlines(rnn::config::trainset_name);
