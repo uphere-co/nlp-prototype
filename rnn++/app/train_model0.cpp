@@ -44,9 +44,9 @@ int main(){
         // test_read_word2vec_output();
         // test_forwad_backward();
         // test_parallel_reduce();
-        // test_rnn_full_step();
+        test_rnn_full_step();
         // test_read_voca_config();
-        // return 0;
+        return 0;
         logger.info("Process begins.");
         auto lines=util::string::readlines(rnn::config::trainset_name);
         // auto lines=util::string::readlines(rnn::config::testset_name);

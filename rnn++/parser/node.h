@@ -29,6 +29,7 @@ struct Node{
     word_type name;
     vec_type  vec_wsum{};
     vec_type  vec{};
+    vec_type  vec_update{};
     value_type score{};
     Node const *left=nullptr;
     Node const *right=nullptr;

@@ -31,11 +31,15 @@ auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
                              auto const &mesg, auto const &w)  {
     out[j]+=mesg[i]*w[i][j];
 };
+
 auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad, 
                          auto const &mesg, auto const &weighted_sum)  {
     grad[i][j]+=mesg[i]*weighted_sum[j];
 };
-
+auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad, 
+                         auto const &mesg, auto const &w)  {
+    grad[j]+=mesg[i]*w[i][j];
+};
 //TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
                                 vec_type const &word_right) {
@@ -65,13 +69,25 @@ void backward_path_full(Param const &param,
     if(phrase.left->is_combined()){
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.left, left_mesg);
-    } 
+    } else if(phrase.left->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.left->vec_update.span,
+                     left_mesg.span, param.w_left.span);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN. 
+    }
     Param::vec_type right_mesg;
     matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
     if(phrase.right->is_combined()){
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.right, right_mesg);
-    } 
+    } else if(phrase.right->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.right->vec_update.span,
+                     right_mesg.span, param.w_right.span);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN. 
+    }
 }
 
 }

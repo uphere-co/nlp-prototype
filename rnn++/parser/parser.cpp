@@ -108,6 +108,9 @@ Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
         // print_all_descents(node);
         backward_path_for_param(grad.param, param, node);
     }
+    for(decltype(n_words)i=0; i<n_words;++i){
+        //collecting word_update
+    }
     // timer.here_then_reset("backward path");
     return grad;
 }
