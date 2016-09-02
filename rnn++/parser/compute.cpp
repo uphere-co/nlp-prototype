@@ -112,8 +112,8 @@ void set_node_property(Param const &param,node_type &node) {
     node.set_name();
 }
 
-node_type merge_node(Param const &param, node_type const &left, node_type const &right)  {
-    auto new_node = node_type{node_type::word_type{std::string{}}};
+node_type merge_node(Param const &param, node_type const &left, node_type const &right)  {    
+    auto new_node = node_type::blank_node();
     new_node.left = &left;    
     new_node.right= &right;
     set_node_property(param, new_node);

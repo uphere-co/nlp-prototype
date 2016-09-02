@@ -34,8 +34,8 @@ struct VocaInfo{
     InializedLeafNodes initialize_tree(std::string sentence) const {
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
-        auto words = util::string::split(sentence);    
-        auto nodes = construct_nodes_with_reserve(words);
+        auto words = util::string::split(sentence);
+        auto nodes = construct_nodes_with_reserve(words, idxs);
         return InializedLeafNodes{std::move(nodes), word_block};
     }
     rnn::wordrep::Voca voca;

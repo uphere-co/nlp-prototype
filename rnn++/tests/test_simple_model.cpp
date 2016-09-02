@@ -30,10 +30,10 @@ void test_voca_index(Voca const &voca, VocaIndexMap const &word2idx){
         //     print(word2idx.getIndex(voca.getWord(i)));
         //     print(":conflict!\n");
         // }
-        assert(word2idx.getIndex(voca.getWord(i)) == i);
+        assert(word2idx.getIndex(Word{voca.getWord(i).val}) == i);
     }
     for(size_t i=0; i<voca.size(); ++i){
-        std::cout << voca.getWord(i) <<std::endl;
+        std::cout << voca.getWord(i).val <<std::endl;
     }
 }
 }//nameless namespace
