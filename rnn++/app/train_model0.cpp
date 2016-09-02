@@ -44,8 +44,9 @@ int main(){
         // test_read_word2vec_output();
         // test_forward_backward();
         // test_parallel_reduce();
-        test_rnn_full_step();
+        // test_rnn_full_step();
         // test_read_voca_config();
+        test_SparseGrad();
         test_backward_wordvec();
         return 0;
         logger.info("Process begins.");

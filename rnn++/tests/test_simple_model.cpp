@@ -367,7 +367,7 @@ void test_supervised_rnn_full_step(){
     print('\n');
 }
 
-void test_backward_wordvec(){
+void test_SparseGrad(){
 
     auto timer=Timer{};
     VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
@@ -375,12 +375,28 @@ void test_backward_wordvec(){
     SparseGrad grad{};
 
     auto sentence = u8"this is a typical sentence";
+    auto sentence2 = u8"this is another typical sentence";
     auto idxs = rnn.word2idx.getIndex(sentence);
-    for(auto i:idxs) {
-        grad.val[i] += rnn.voca_vecs[i];
-    }
+    for(auto i:idxs) grad.val[i] += rnn.voca_vecs[i];
+    auto idxs2 = rnn.word2idx.getIndex(sentence2);
+    for(auto i:idxs2) grad.val[i] += rnn.voca_vecs[i];
+    
+    auto grad2{grad};
+    grad2 += grad;
+    print(sum(grad2.val[idxs[0]].span));
+    print("+");
+    print(sum(rnn.voca_vecs[idxs[0]]));
+    auto v=rnn.voca_vecs[idxs[0]];
+    v+=grad2.val[idxs[0]].span;
+    print("==?");
+    print(sum(rnn.voca_vecs[idxs[0]]));
+    print("\n");
     
 }
+void test_backward_wordvec(){
+
+}
+
 }//namespace rnn::simple_model::test
 }//namespace rnn::simple_model
 }//namespace rnn
