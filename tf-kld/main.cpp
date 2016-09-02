@@ -6,9 +6,13 @@
 #include <algorithm>
 #include <map>
 #include <iterator>
+#include <unordered_set>
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+#include "utils/profiling.h"
+
+using namespace util;
 using namespace util::io;
 
 namespace tfkld{
@@ -25,6 +29,7 @@ using namespace tfkld::type;
 
 using hashmap_t = std::map<std::string, int_t>;
 using vocab_t = std::set<std::string>;
+//using vocab_t = std::unordered_set<std::string>;
 using doc_t = std::vector<hashmap_t>;
 
 namespace tfkld{
@@ -53,6 +58,7 @@ struct docs{
 vocab_t LearnVocab(TokenizedFile &file) {
   std::string line;
   vocab_t vocab;
+  int64_t word_idx = 0;
   while(std::getline(file.val, line)){
     std::istringstream iss{line};
     auto words = util::string::split(line);
@@ -88,8 +94,8 @@ doc_t LearnDoc(TokenizedFile &file) {
 void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_fmat &mat) {
     int64_t row, col;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
-        for(auto itt = (*it).begin(); itt != (*it).end(); ++itt) {
-            row = std::distance(vocab.begin(),vocab.find((*itt).first));
+        for(auto itt = it -> begin(); itt != it -> end(); ++itt) {
+            row = std::distance(vocab.begin(), vocab.find((*itt).first));
             col = std::distance(docs.begin(),it);
             mat(row,col) = (*itt).second;
         }
@@ -135,6 +141,8 @@ void testKLD() {
 int main(){
     using namespace tfkld;
     using namespace arma;
+
+    auto timer = Timer{};
     
     std::string train_file = "1M.training";
     TokenizedFile infile{train_file};
@@ -142,6 +150,8 @@ int main(){
     infile.setBegin();
     auto docs = LearnDoc(infile);
 
+    timer.here_then_reset("Constructed Vocabulary and Documents.\n");
+    
     int64_t n_rows, n_cols;
     n_rows = vocab.size();
     n_cols = docs.size();
@@ -150,7 +160,10 @@ int main(){
 
     //int64_t pos = std::distance(vocab.begin(), vocab.find("that"));
     //std::cout << pos << std::endl;
-    fillMat(vocab, docs, inMat);
+    
+    //fillMat(vocab, docs, inMat);
+
+    timer.here_then_reset("Filled the Matrix.\n");
     
     //inMat.print("inMat = ");
     std::cout << "Finished!" << std::endl;
