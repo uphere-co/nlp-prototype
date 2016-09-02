@@ -24,6 +24,7 @@ struct Node{
     }
     void set_name() { name = word_type{merged_name(*left,*right)}; }
     bool is_combined() const {return (left!=nullptr)&(right!=nullptr);}
+    bool is_leaf() const {return (left==nullptr)&(right==nullptr);}
 
     word_type name;
     vec_type  vec_wsum{};

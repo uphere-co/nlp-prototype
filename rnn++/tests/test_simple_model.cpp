@@ -92,7 +92,7 @@ void test_read_voca_config(){
     auto idxs = word2idx.getIndex(sentence);
     auto word_block = voca_vecs.getWordVec(idxs);
 
-    std::cerr <<sum(word_block.span) << std::endl;
+    std::cerr <<"Sum of word block: "<< sum(word_block.span) << std::endl;
 }
 
 void test_read_word2vec_output(){
@@ -162,8 +162,8 @@ void test_forwad_backward(){
     auto dParam = rnn::simple_model::randomParam(0.00001);
     dParam.bias.span    *= rnn_t::float_t{0.0000};
     dParam.u_score.span *= rnn_t::float_t{0.000};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
@@ -300,8 +300,8 @@ void test_rnn_full_step(){
     auto &grad =grad_sum.param;
     rnn_t::float_t ds_grad{};
     auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
@@ -353,8 +353,8 @@ void test_supervised_rnn_full_step(){
     auto &grad =grad_sum.param;
     rnn_t::float_t ds_grad{};
     auto matloop_void=util::math::MatLoop_void<rnn::type::float_t, rnn::config::word_dim, rnn::config::word_dim>{};
-    matloop_void(mul_sum, ds_grad, grad.w_left.span, dParam.w_left.span);
-    matloop_void(mul_sum, ds_grad, grad.w_right.span, dParam.w_right.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, dParam.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, dParam.w_right.span);
     ds_grad += dot(grad.bias.span, dParam.bias.span);
     ds_grad += dot(grad.u_score.span, dParam.u_score.span);
 
