@@ -6,5 +6,6 @@ in
 {
   hello = pkgs.hello;
 
+  which = pkgs.which;
 
 }
