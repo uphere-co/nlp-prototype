@@ -171,12 +171,12 @@ int main(){
                 // AdaGrad optimizer{0.001};
                 RMSprop optimizer{0.001};
                 // optimizer::GradientDescent optimizer{0.0001};
-                auto grad_label = parallel_reducer(beg, end, get_label_grad, Param{});
-                grad_label *= 0.2;
-                optimizer.update(param, grad_label);
-                auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Param{});
-                grad_greedy *=-1.0;
-                optimizer.update(param, grad_greedy);
+                auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
+                grad_label.param *= 0.2;
+                optimizer.update(param, grad_label.param);
+                auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Gradient{});
+                grad_greedy.param *=-1.0;
+                optimizer.update(param, grad_greedy.param);
 
                 
 

@@ -43,6 +43,15 @@ struct VocaInfo{
     WordBlock voca_vecs;
 };
 
+struct Gradient{
+    Param param{};
+};
+Gradient& operator +=(Gradient& out, const Gradient& x);
+Gradient& operator -=(Gradient& out, const Gradient& x);
+Gradient operator +(const Gradient& x, const Gradient& y);
+Gradient operator -(const Gradient& x, const Gradient& y);
+
+
 struct TokenizedSentences{
     using c_iter = std::vector<std::string>::const_iterator;
     TokenizedSentences(std::string tokenized_file);
@@ -100,9 +109,9 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
 //                                  + .. 
 //                                  + score_(n-1)
 // score_1 = f(A*f(A*f(...)+b)+b)
-Param get_gradient(Param const &param, InializedLeafNodes &nodes );
+Gradient get_gradient(Param const &param, InializedLeafNodes &nodes );
 
-Param get_directed_grad(VocaInfo const &rnn, Param const &param, 
+Gradient get_directed_grad(VocaInfo const &rnn, Param const &param, 
                         SentencePair const &sent_pair);
     
 
