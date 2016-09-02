@@ -67,12 +67,7 @@ auto foward_path(Param const &param, std::vector<node_type*> top_nodes) ->
 void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
                     std::vector<size_t> const &merge_history);
 
-void backward_path(Param const &param,
-                   mat_type &gradsum_left, mat_type &gradsum_right,
-                   vec_type &gradsum_bias,  
-                   node_type const &phrase, vec_type mesg);
-
-void backward_path(Param const &param,
+void backward_path_for_param(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias, vec_type &gradsum_u_score,
                    node_type const &phrase);
@@ -80,7 +75,7 @@ void backward_path(Param const &param,
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path(Param &grad, Param const &param,
+void backward_path_for_param(Param &grad, Param const &param,
                    node_type const &phrase);
 
 }//namespace rnn::simple_model::detail

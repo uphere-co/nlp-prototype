@@ -106,7 +106,7 @@ Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
         auto const &node=all_nodes[i];
         assert(node.is_combined());
         // print_all_descents(node);
-        backward_path(grad.param, param, node);
+        backward_path_for_param(grad.param, param, node);
     }
     // timer.here_then_reset("backward path");
     return grad;
@@ -128,7 +128,7 @@ Gradient get_directed_grad(VocaInfo const &rnn, Param const &param,
     for(auto i=n_words; i<all_nodes.size(); ++i){
         auto const &node=all_nodes[i];
         assert(node.is_combined());
-        backward_path(grad.param, param, node);
+        backward_path_for_param(grad.param, param, node);
     }
     return grad;
 }

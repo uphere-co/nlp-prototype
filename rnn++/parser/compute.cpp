@@ -107,7 +107,7 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
     }
 }
 
-void backward_path(Param const &param,
+void backward_path_full(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias,  
                    node_type const &phrase, vec_type mesg) {
@@ -125,13 +125,13 @@ void backward_path(Param const &param,
     if(phrase.left->is_combined()){
         Param::vec_type left_mesg;
         matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
-        backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
+        backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                       *phrase.left, left_mesg);
     }
     if(phrase.right->is_combined()){
         Param::vec_type right_mesg;
         matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
-        backward_path(param, gradsum_left, gradsum_right, gradsum_bias, 
+        backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                       *phrase.right, right_mesg);
     }
 }
@@ -157,7 +157,7 @@ auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phras
     //              1, phrase);
 };
 
-void backward_path(Param const &param,
+void backward_path_for_param(Param const &param,
                    mat_type &gradsum_left, mat_type &gradsum_right,
                    vec_type &gradsum_bias, vec_type &gradsum_u_score,
                    node_type const &phrase) {
@@ -166,14 +166,14 @@ void backward_path(Param const &param,
     auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
     auto mesg{param.u_score};
     mesg.span *=factor;
-    backward_path(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
+    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path(Param &grad, Param const &param,
+void backward_path_for_param(Param &grad, Param const &param,
                    node_type const &phrase) {
-    backward_path(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
+    backward_path_for_param(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
 }//namespace rnn::simple_model::detail
