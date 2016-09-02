@@ -24,6 +24,8 @@ public:
     // using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;
     WordBlock_base()
     : _val{},span{_val} {}
+    WordBlock_base(idx_t voca_size)
+    : _val(voca_size*word_dim),span{_val} {}
     WordBlock_base(data_t const &raw_data)
     : _val{raw_data},span{_val} {}
     WordBlock_base(WordBlock_base&& )= default;

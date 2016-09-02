@@ -76,23 +76,35 @@ private:
 
 class RMSprop{
 public:
-    RMSprop(rnn_t::float_t scale)
-    : ada_scale{scale} {}
+    RMSprop(rnn_t::float_t scale, WordBlock::idx_t voca_size)
+    : ada_factor_voca{voca_size}, ada_scale{scale} {}
 
     void update(Param &param, Param const &grad){
-        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_left.span, grad.w_left.span);
-        matloop_void(accum_rmsprop_factor_mat, ada_factor.w_right.span,grad.w_right.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor.bias.span ,  grad.bias.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor.u_score.span,grad.u_score.span);
-        matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
-        matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
-        vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
-        vecloop_void(adagrad_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor.u_score.span);
+        matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_left.span, grad.w_left.span);
+        matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_right.span,grad.w_right.span);
+        vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.bias.span ,  grad.bias.span);
+        vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.u_score.span,grad.u_score.span);
+        matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor_param.w_left.span);
+        matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor_param.w_right.span);
+        vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor_param.bias.span);
+        vecloop_void(adagrad_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor_param.u_score.span);
+    }
+
+    void update(WordBlock &voca_vecs, SparseGrad const &grad){
+        assert(ada_factor_voca.size()==552402);
+        for(auto const &x:grad.val){
+            assert(x.first<552402);
+            auto v=ada_factor_voca[x.first];
+            vecloop_void(accum_rmsprop_factor_vec, v ,  x.second.span);
+            auto wordvec=voca_vecs[x.first];
+            vecloop_void(adagrad_update_vec, wordvec, ada_scale, x.second.span , v);
+        }
     }
 private:
+    WordBlock ada_factor_voca;
+    Param ada_factor_param{};
     util::math::VecLoop_void<rnn_t::float_t,word_dim> vecloop_void{};
     util::math::MatLoop_void<rnn_t::float_t,word_dim,word_dim> matloop_void{};
-    Param ada_factor{};
     rnn_t::float_t ada_scale;
 };
 
@@ -153,6 +165,8 @@ int main(){
         int64_t i_minibatch{};
         logger.log_testscore(i_minibatch, scoring_parsed_dataset(rnn, param, testset));
         write_param(i_minibatch,param);
+        print(rnn.voca_vecs.size());
+        print(":voca size.\n");
         for(auto epoch=0; epoch<n_epoch; ++epoch){
             for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
                 auto beg=it;
@@ -169,24 +183,28 @@ int main(){
                 // optimizer.update(param, grad);
 
                 // AdaGrad optimizer{0.001};
-                RMSprop optimizer{0.001};
+                RMSprop optimizer{0.001, rnn.voca_vecs.size()};
                 // optimizer::GradientDescent optimizer{0.0001};
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
                 grad_label.param *= 0.2;
+                grad_label.words *= 0.02;
                 optimizer.update(param, grad_label.param);
-                auto delta_label=grad_label.words*0.00001*0.2;
-                for(auto const &x:delta_label.val){
-                    auto v=rnn.voca_vecs[x.first];
-                    v+=x.second.span;
-                }
+                optimizer.update(rnn.voca_vecs, grad_label.words);
+                // auto delta_label=grad_label.words*0.00001*0.2;
+                // for(auto const &x:delta_label.val){
+                //     auto v=rnn.voca_vecs[x.first];
+                //     v-=x.second.span;
+                // }
                 auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Gradient{});
                 grad_greedy.param *=-1.0;
+                grad_greedy.words *=-0.1;
                 optimizer.update(param, grad_greedy.param);
-                auto delta_greedy=grad_greedy.words*0.00001;
-                for(auto const &x:delta_greedy.val){
-                    auto v=rnn.voca_vecs[x.first];
-                    v-=x.second.span;
-                }
+                optimizer.update(rnn.voca_vecs, grad_label.words);
+                // auto delta_greedy=grad_greedy.words*0.00001;
+                // for(auto const &x:delta_greedy.val){
+                //     auto v=rnn.voca_vecs[x.first];
+                //     v+=x.second.span;
+                // }
 
                 
 
