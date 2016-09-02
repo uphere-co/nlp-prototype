@@ -21,6 +21,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 
 #include_directories(${HOME}/repo/srcc/GSL/include)
 
+add_executable(distance distance utils.cpp)
+target_link_libraries(distance m pca armadillo openblas boost_iostreams boost_system boost_filesystem)
+
 add_executable(voca_builder app/voca_builder  ../rnn++/utils/string ../rnn++/utils/hdf5)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
 
