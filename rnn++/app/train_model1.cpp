@@ -174,9 +174,19 @@ int main(){
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
                 grad_label.param *= 0.2;
                 optimizer.update(param, grad_label.param);
+                auto delta_label=grad_label.words*0.00001*0.2;
+                for(auto const &x:delta_label.val){
+                    auto v=rnn.voca_vecs[x.first];
+                    v+=x.second.span;
+                }
                 auto grad_greedy = parallel_reducer(beg, end, get_greedy_grad, Gradient{});
                 grad_greedy.param *=-1.0;
                 optimizer.update(param, grad_greedy.param);
+                auto delta_greedy=grad_greedy.words*0.00001;
+                for(auto const &x:delta_greedy.val){
+                    auto v=rnn.voca_vecs[x.first];
+                    v-=x.second.span;
+                }
 
                 
 

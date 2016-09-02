@@ -14,6 +14,7 @@ void test_rnn_full_step();
 void test_supervised_rnn_full_step();
 void test_SparseGrad();
 void test_backward_wordvec();
+void test_fullstep_including_wordvec();
 
 }//namespace rnn::simple_model::test
 }//namespace rnn::simple_model

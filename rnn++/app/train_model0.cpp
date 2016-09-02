@@ -48,7 +48,8 @@ int main(){
         // test_supervised_rnn_full_step();
         // test_read_voca_config();
         // test_SparseGrad();
-        test_backward_wordvec();
+        // test_backward_wordvec();
+        test_fullstep_including_wordvec();
         return 0;
         logger.info("Process begins.");
         auto lines=util::string::readlines(rnn::config::trainset_name);

@@ -452,7 +452,7 @@ void test_fullstep_including_wordvec(){
         return get_directed_grad(rnn, param, sent_pair);
     };
     auto grad = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Gradient{});
-    auto delta=grad.words*0.00001;
+    auto delta=grad.words*0.000001;
     for(auto const &x:delta.val){
         auto v=rnn1.voca_vecs[x.first];
         v+=x.second.span;
