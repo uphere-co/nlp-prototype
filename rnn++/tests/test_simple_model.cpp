@@ -146,7 +146,7 @@ void test_forward_backward(){
         auto const &node=nodes[i];
         assert(node.is_combined());
         // print_all_descents(node);
-        backward_path_for_param(grad, param, node);
+        backward_path(grad, param, node);
     }       
 
     timer.here_then_reset("Backward path");

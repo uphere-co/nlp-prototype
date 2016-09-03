@@ -87,8 +87,41 @@ void backward_path_full(Param const &param,
         assert(0);//it cannot happen on shape of tree constructed RNN. 
     }
 }
+auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
+                            auto factor_p, auto const &phrase)  {
+    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
+};
 
+auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
+    using namespace util::math;
+    constexpr auto dim = Param::dim;
+    using val_t = Param::value_type;
+    auto norm = norm_L2(u_score);
+    auto score = dot(u_score, phrase);
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    
+    vecloop_void(grad_u_score_L2norm_i, grad, 
+                 -score/(norm*norm*norm), u_score, 
+                 val_t{1}/norm, phrase);
+    // //Original scoring function without L2-norm factor
+    // vecloop_void(grad_u_score_L2norm_i, grad, 0, u_score, 
+    //              1, phrase);
+};
+
+void backward_path_detail(Param const &param,
+                          mat_type &gradsum_left, mat_type &gradsum_right,
+                          vec_type &gradsum_bias, vec_type &gradsum_u_score,
+                          node_type const &phrase) {
+    grad_u_score_L2norm(gradsum_u_score.span, param.u_score.span, phrase.vec.span);
+    // gradsum_u_score.span += phrase.vec.span;
+    auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
+    auto mesg{param.u_score};
+    mesg.span *=factor;
+    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
+
+}//nameless namespace
+
 namespace rnn{
 namespace simple_model{
 namespace detail{
@@ -183,45 +216,12 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
     }
 }
 
-
-auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
-                            auto factor_p, auto const &phrase)  {
-    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
-};
-
-auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
-    using namespace util::math;
-    constexpr auto dim = Param::dim;
-    using val_t = Param::value_type;
-    auto norm = norm_L2(u_score);
-    auto score = dot(u_score, phrase);
-    auto vecloop_void = VecLoop_void<val_t,dim>{};
-    
-    vecloop_void(grad_u_score_L2norm_i, grad, 
-                 -score/(norm*norm*norm), u_score, 
-                 val_t{1}/norm, phrase);
-    // //Original scoring function without L2-norm factor
-    // vecloop_void(grad_u_score_L2norm_i, grad, 0, u_score, 
-    //              1, phrase);
-};
-
-void backward_path_for_param(Param const &param,
-                   mat_type &gradsum_left, mat_type &gradsum_right,
-                   vec_type &gradsum_bias, vec_type &gradsum_u_score,
-                   node_type const &phrase) {
-    grad_u_score_L2norm(gradsum_u_score.span, param.u_score.span, phrase.vec.span);
-    // gradsum_u_score.span += phrase.vec.span;
-    auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
-    auto mesg{param.u_score};
-    mesg.span *=factor;
-    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
-}
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path_for_param(Param &grad, Param const &param,
+void backward_path(Param &grad, Param const &param,
                    node_type const &phrase) {
-    backward_path_for_param(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
+    backward_path_detail(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
 }//namespace rnn::simple_model::detail

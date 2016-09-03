@@ -38,10 +38,10 @@ auto accum_adagrad_factor_vec = [](int64_t i, auto &out, auto const &vec){
 auto accum_adagrad_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
     out[i][j] += vec[i][j]*vec[i][j];
 };
-auto adagrad_update_vec = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+auto adaptive_update_vec = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
     out[i] += x *grad[i]/std::sqrt(adagrad_factor[i]+0.0000001);
 };
-auto adagrad_update_mat = [](int64_t i, int64_t j, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+auto adaptive_update_mat = [](int64_t i, int64_t j, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
     out[i][j] += x *grad[i][j]/std::sqrt(adagrad_factor[i][j]+0.0000001);
 };
 auto accum_rmsprop_factor_vec = [](int64_t i, auto &out, auto const &vec){
@@ -62,10 +62,10 @@ public:
         matloop_void(accum_adagrad_factor_mat, ada_factor.w_right.span,grad.w_right.span);
         vecloop_void(accum_adagrad_factor_vec, ada_factor.bias.span ,  grad.bias.span);
         vecloop_void(accum_adagrad_factor_vec, ada_factor.u_score.span,grad.u_score.span);
-        matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
-        matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
-        vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
-        vecloop_void(adagrad_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor.u_score.span);
+        matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
+        matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
+        vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
+        vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor.u_score.span);
     }
 private:
     util::math::VecLoop_void<rnn_t::float_t,word_dim> vecloop_void{};
@@ -84,10 +84,10 @@ public:
         matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_right.span,grad.w_right.span);
         vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.bias.span ,  grad.bias.span);
         vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.u_score.span,grad.u_score.span);
-        matloop_void(adagrad_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor_param.w_left.span);
-        matloop_void(adagrad_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor_param.w_right.span);
-        vecloop_void(adagrad_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor_param.bias.span);
-        vecloop_void(adagrad_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor_param.u_score.span);
+        matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor_param.w_left.span);
+        matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor_param.w_right.span);
+        vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor_param.bias.span);
+        vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor_param.u_score.span);
     }
 
     void update(WordBlock &voca_vecs, SparseGrad const &grad){
@@ -101,7 +101,7 @@ public:
             auto v=ada_factor_voca[idx];
             vecloop_void(accum_rmsprop_factor_vec, v ,  g->second.span);
             auto wordvec=voca_vecs[idx];
-            vecloop_void(adagrad_update_vec, wordvec, ada_scale, g->second.span , v);
+            vecloop_void(adaptive_update_vec, wordvec, ada_scale, g->second.span , v);
         });
     }
 private:
@@ -180,6 +180,12 @@ int main(){
                 auto end=beg+n_minibatch;
                 end=end<pairs.cend()?end:pairs.cend();
                 
+                //J_original = s_label - s_greedy
+                //J = 0.2*s_label - s_greedy
+                // grad.words = dJ/dWord
+                // grad.param = dJ/dParam
+                // param <- param + grad.param*rate_param
+                // words <- words + grad.words*rate_words
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
                 grad_label.param *= 0.2;
                 optimizer.update(param, grad_label.param);
