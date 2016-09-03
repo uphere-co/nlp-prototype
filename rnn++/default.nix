@@ -31,16 +31,15 @@ stdenv.mkDerivation rec {
                    ++ 
                  [
                    wget zip unzip
-                   cmake pkgconfig clang_38 clang-analyzer
+                   cmake pkgconfig clang_38 
                    boost
-                   hdf5 hdf5-cpp liblbfgs zeromq
+                   hdf5 hdf5-cpp liblbfgs 
                    tbb openblas  
-                   linuxPackages_4_6.perf
                    toolz_cpp.msgsl
                    toolz_cpp.spdlog
                  ];
-  installPhase = ''
-    mkdir -p $out/bin
-    cp hdf5io model1 parser_similarity train_model0 train_model1 $out/bin 
-  '';
+  #installPhase = ''
+  #  mkdir -p $out/bin
+  #  cp hdf5io model1 parser_similarity train_model0 train_model1 $out/bin 
+  #'';
 }

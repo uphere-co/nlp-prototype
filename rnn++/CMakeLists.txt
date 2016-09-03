@@ -52,3 +52,10 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
 #add_executable(bfgs boilerplate/lbfgs)
 #add_executable(regex boilerplate/regex)
 #target_link_libraries(bfgs lbfgs)
+
+
+
+install(TARGETS train_model0 train_model1 model1 parser_similarity hdf5io RUNTIME DESTINATION bin)
+
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/parser" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
