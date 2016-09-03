@@ -27,5 +27,7 @@ stdenv.mkDerivation rec {
                 ];
   cmakeFlags = "-DRNNPP_PATH=${rnnppsrc}";
   installPhase = ''
+    mkdir -p $out/bin
+    cp voca_builder wordvec_trainer $out/bin
   '';
 }
