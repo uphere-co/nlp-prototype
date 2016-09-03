@@ -17,12 +17,13 @@ message(${CMAKE_CXX_FLAGS})
 find_package (Threads)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
+include_directories(${RNNPP_PATH})
 
 #include_directories(${HOME}/repo/srcc/GSL/include)
 
-add_executable(voca_builder app/voca_builder  ../rnn++/utils/string ../rnn++/utils/hdf5)
+add_executable(voca_builder app/voca_builder  ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
 
-add_executable(wordvec_trainer app/wordvec_trainer  ../rnn++/utils/string ../rnn++/utils/hdf5)
+add_executable(wordvec_trainer app/wordvec_trainer  ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp)
 target_link_libraries(wordvec_trainer ${CMAKE_THREAD_LIBS_INIT} hdf5_cpp hdf5_hl_cpp)
