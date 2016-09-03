@@ -33,7 +33,9 @@ let
 	   ];
 	   homepage = "https://github.com/uphere-co/nlp-prototype";
 	   description = "Symbolic computation";
-	   license = stdenv.lib.licenses.bsd3;
+	   license = "unknown";
+	   doCheck = false;
+	   
 	 }) {};
     };
     hsconfig = self: super: (hsconfig1 self super // hsconfig2 self super); 
