@@ -215,7 +215,7 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string train_file = "1M.training";
+    std::string train_file = "1K.training";
     TokenizedFile infile{train_file};
 
     auto vocab = LearnVocab(infile);
@@ -244,6 +244,14 @@ int main(){
     
     //inMat.print("inMat = ");
 
+    mat U;
+    vec s;
+    mat V;
+
+    svds(U, s, V, inMat, 100);
+
+    timer.here_then_reset("Completed SVD calculation!\n");
+    
     std::cout << "Finished!" << std::endl;
 
     //sp_mat tfidf = MakeTFIDF(inMat);
