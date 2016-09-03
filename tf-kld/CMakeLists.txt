@@ -28,3 +28,9 @@ add_executable(main main
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(main hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
+
+add_executable(pair_paraphrase pair_paraphrase
+               ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
+               ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
+target_link_libraries(pair_paraphrase hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
