@@ -13,12 +13,7 @@ in self: super: {
         ({ mkDerivation, array, base, stdenv, vector }:
          mkDerivation {
            pname = "lbfgs";
-           version = "0.0.999";
-           src = fetchgit {
-             url = "git://github.com/wavewave/lbfgs-hs.git";
-             rev = "13414397880fa35ddc5eeb87d3b7720e4023f8fa";
-             sha256 = "00zv90vn1krva7jzjszjlbqypf4dzhrnvgbw6d1l071zxxipad8v";
-           };
+           version = "0.1";
            libraryHaskellDepends = [ array base vector ];
            description = "L-BFGS optimization";
            license = "unknown";

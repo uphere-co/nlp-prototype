@@ -4,6 +4,8 @@ let pkgs = import nixpkgs {};
 
 in
 {
-  symbolic = import ../symbolic/default.nix {};
-  #hello = pkgs.hello;
+  "autoencode" = import ../autoencode/release.nix { inherit pkgs; };
+  "symbolic"   = import ../symbolic/release.nix { inherit pkgs; };
+  "rnn++"      = import ../rnn++    { inherit pkgs; };
+  "word2vec"   = import ../word2vec { inherit pkgs; };
 }
