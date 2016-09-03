@@ -4,8 +4,6 @@ let pkgs = import nixpkgs {};
 
 in
 {
-  hello = pkgs.hello;
-
-  which = pkgs.which;
-
+  symbolic = import ../symbolic/default.nix {};
+  #hello = pkgs.hello;
 }
