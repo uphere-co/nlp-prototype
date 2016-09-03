@@ -8,7 +8,8 @@ rec {
     bz2file = buildPythonPackage rec {
       name = "bz2file-0.98";
       src = pkgs.fetchurl {
-        url = "${mirror_url}/bz2file/${name}.tar.gz";
+        #url = "${mirror_url}/bz2file/${name}.tar.gz";
+        url = "https://pypi.python.org/packages/61/39/122222b5e85cd41c391b68a99ee296584b2a2d1d233e7ee32b4532384f2d/bz2file-0.98.tar.gz";
 	sha256 = "126s53fkpx04f33a829yqqk8fj4png3qwg4m66cvlmhmwc8zihb4";
       };
       propagatedBuildInputs = [ ];
@@ -95,8 +96,8 @@ rec {
    bllipparser = buildPythonPackage rec {
      name = "bllipparser-2015.12.3";
      src = pkgs.fetchurl {
-       #url = "https://pypi.python.org/packages/50/e1/39852026449d1ae146d3e7a26a531b5b4fc6c3bcdc0b3951d9ee41ed44fd/${name}.tar.gz";
-       url = "${mirror_url}/bllipparser/${name}.tar.gz";
+       url = "https://pypi.python.org/packages/50/e1/39852026449d1ae146d3e7a26a531b5b4fc6c3bcdc0b3951d9ee41ed44fd/${name}.tar.gz";
+       #url = "${mirror_url}/bllipparser/${name}.tar.gz";
        sha256 = "00ddz0ckyxc1ks6i8xsja8n0jsrx149nmfm0324b3jmhg2yj1ppr";
      };
      buildInputs = [];

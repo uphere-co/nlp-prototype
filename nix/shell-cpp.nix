@@ -12,6 +12,9 @@ stdenv.mkDerivation {
                   toolz.armadillo toolz.libpca
 		  toolz.msgsl
 		  toolz.spdlog
+          toolz.libsvm
+          toolz.liblinear
+          #libsvm
                   gdb
 		  pkgconfig
 		  gfortran #stdenv.cc.libc
@@ -26,5 +29,8 @@ stdenv.mkDerivation {
   shellHook = ''
     export MS_GSL=${toolz.msgsl}
     export SPDLOG=${toolz.spdlog}
+    export LIBSVM=${toolz.libsvm}
+    export LIBLINEAR=${toolz.liblinear}
+    export PATH=$LIBLINEAR/liblinear:$LIBSVM/libsvm:$PATH
   '';
 }

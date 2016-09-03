@@ -139,6 +139,46 @@ rec {
       #  #cp -a * $out/spdlog
       #'';
     };
+
+    libsvm = stdenv.mkDerivation rec {
+      name = "libsvm-${version}";
+      version = "3.21";
+      src = fetchgit {
+        url = "https://github.com/cjlin1/libsvm.git";
+        rev = "2fdc614c1526970b4412ba1db0cfcf772023ab61";
+        sha256 = "0fp43iwi37iyp2fx7crs8l9xc21rbv7znn31mhjss8kmyv9nr0js";
+      };
+
+      buildPhase = ''
+      make
+      make lib
+      '';
+      installPhase = ''
+      mkdir -p $out/libsvm
+      cp -a * $out/libsvm
+      '';
+
+    };
+
+liblinear = stdenv.mkDerivation rec {
+      name = "liblinear-${version}";
+      version = "2.1";
+      src = fetchgit {
+        url = "https://github.com/cjlin1/liblinear.git";
+        rev = "993963e43c6162c1d016ce77e7205ac24c1548de";
+        sha256 = "1kv4nzzjd0qh7cik1ilry87ypg4dxlcqq5c28ckga3j7l0ky98l7";
+      };
+
+      buildPhase = ''
+      make
+      make lib
+      '';
+      installPhase = ''
+      mkdir -p $out/liblinear
+      cp -a * $out/liblinear
+      '';
+
+    };
     
       
 }
