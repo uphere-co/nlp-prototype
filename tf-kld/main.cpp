@@ -53,6 +53,18 @@ struct TokenizedFile{
 };
 
 struct SpValue{
+    SpValue() {
+        row = 0;
+        col = 0;
+        val = 0.0;
+    }
+
+    void reset() {
+        row = 0;
+        col = 0;
+        val = 0.0;
+    }
+    
     int64_t row;
     int64_t col;
     float_t val;
@@ -62,19 +74,21 @@ vocab_t LearnVocab(TokenizedFile &file) {
   std::string line;
   vocab_t vocab;
   int64_t word_idx = 0;
+  int64_t count = 0;
   while(std::getline(file.val, line)){
+    count++;
+    if(count % 1000 == 0) std::cout << count << " lines.\n";
+
     std::istringstream iss{line};
     auto words = util::string::split(line);
     for(auto x : words) {
         auto isin = vocab.find(x);
-        if(isin != vocab.end()) {
-                continue;
-            } else {
-                vocab[x] = word_idx;
-                word_idx++;
-            }
+        if(isin == vocab.end()) {
+            vocab[x] = word_idx;
+            word_idx++;
         }
     }
+  }
   // return sorted vocabulary with ascending order
   return vocab;
 }
@@ -83,7 +97,11 @@ doc_t LearnDoc(vocab_t &vocab, TokenizedFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
+    int64_t count = 0;
     while (std::getline(file.val, line)) {
+        count++;
+        if(count % 1000 == 0) std::cout << count << " lines.\n";
+        
         std::istringstream iss{line};
         auto words = util::string::split(line);
         for(auto x : words) {
@@ -102,60 +120,59 @@ doc_t LearnDoc(vocab_t &vocab, TokenizedFile &file) {
     return docs;
 }
 
-void fillValue(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
-    
-    int64_t row, col;
+void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {    
     SpValue value;
-    std::vector<SpValue> values;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
+        value.reset();
         for(auto itt = it -> begin(); itt != it -> end(); ++itt) {
-            row = (*itt).first;
-            col = std::distance(docs.begin(),it);
-            
-            locations_row.push_back(row);
-            locations_col.push_back(col);
-            values.push_back((*itt).second);
+            value.row = (*itt).first;
+            value.col = std::distance(docs.begin(),it);
+            value.val = (*itt).second;
+            values.push_back(value);
             count++;
+        }
+    }   
+}
+
+void MakeTFIDF(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+    hashmap_t df;
+    int64_t D = docs.size();
+    
+    for(auto x : values) {
+        auto isin = df.find(x.row);
+        if(isin != df.end()) {
+            df[x.row] += 1;
+        } else {
+            df[x.row] = 1;
         }
     }
 
-    
+    std::vector<float_t> idf;
+    for(auto x : df) {
+        idf.push_back(log(D/(float)(x.second)));
+    }
+
+    for(auto &x : values) {
+        x.val *= idf[x.row];
+    }
+
 }
 
-void fillMat(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
+void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
 
     
     arma::umat location(2,count);
     arma::vec value(count);
 
     for(int64_t a = 0; a < count; a++) {
-        location(0,a) = locations_row[a];
-        location(1,a) = locations_col[a];
-        value(a) = values[a];
+        location(0,a) = values[a].row;
+        location(1,a) = values[a].col;
+        value(a) = values[a].val;
     }
 
     mat = std::move( arma::sp_mat(location, value) );
 }
-
-arma::sp_mat MakeTFIDF(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
-    std::vector<float_t> idf;
-    int64_t Dt;
-    for(int64_t a = 0; a<locations_row.size(); a++) {
-        Dt = 0;
-        for(int64_t b = 0; b<locations_col.size(); b++) {
-            values[
-        }
-
-        idf.push_back(log(D/Dt));
-    }
-
-    for(int64_t a = 0; a<mat.n_rows; a++) {
-        mat.row(a) *= idf[a];
-    }
-
-    return mat;
-}
-        
+    
 void PrintVocab(vocab_t &vocab){
     for(auto x : vocab){
         std::cout << x.first << std::endl;
@@ -194,14 +211,14 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string train_file = "1M.training";
+    std::string train_file = "1b.training";
     TokenizedFile infile{train_file};
 
     auto vocab = LearnVocab(infile);
+    timer.here_then_reset("Constructed Vocabulary.\n");
     infile.setBegin();
     auto docs = LearnDoc(vocab, infile);
-
-    timer.here_then_reset("Constructed Vocabulary and Documents.\n");
+    timer.here_then_reset("Constructed Documents.\n");
     
     int64_t n_rows, n_cols;
     n_rows = vocab.size();
@@ -212,17 +229,17 @@ int main(){
     //int64_t pos = std::distance(vocab.begin(), vocab.find("that"));
     //std::cout << pos << std::endl;
     
-    std::vector<int64_t> locations_row;
-    std::vector<int64_t> locations_col;
-    std::vector<float_t> values;
-    int64_t count = 0;
+    std::vector<SpValue> values;
     
-    fillValue(locations_row, locations_col, values, count, vocab, docs);
-    fillMat(locations_row, locations_col, values, count, vocab, docs, inMat);
+    int64_t count = 0;    
+    fillValue(values, count, vocab, docs);
+    MakeTFIDF(values, count, vocab, docs);
+    fillMat(values, count, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
     
     //inMat.print("inMat = ");
+
     std::cout << "Finished!" << std::endl;
 
     //sp_mat tfidf = MakeTFIDF(inMat);
@@ -233,7 +250,7 @@ int main(){
     //std::cout << a << std::endl;
     //for(auto x : v ) std::cout << x << std::endl;
     
-    timer.here_then_reset("Testing vectorising.\n");
+    //timer.here_then_reset("Testing vectorising.\n");
 
     //arma::mat inMat = arma::randu<arma::mat>(5,5);
 
