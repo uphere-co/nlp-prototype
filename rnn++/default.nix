@@ -8,7 +8,7 @@ let toolz     = callPackage ../nix/default-python.nix {
                 };
     toolz_cpp = callPackage ../nix/default-cpp.nix { };
 in
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   version = "0.0";
   name = "rnn++-${version}";
   src = ./.;
