@@ -30,7 +30,7 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path_for_param(Param &grad, Param const &param,
+void backward_path(Param &grad, Param const &param,
                    node_type const &phrase);
 
 }//namespace rnn::simple_model::detail

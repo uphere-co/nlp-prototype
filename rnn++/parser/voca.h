@@ -17,11 +17,22 @@
 namespace rnn{
 namespace wordrep{
 struct Word{
+    typedef size_t idx_t;
     Word(util::cstring_span<> word) : span{word}, val{span.data()}{}
-    Word(std::string word) : span{word}, val{word}{}
+    Word(std::string word) : span{word}, val{word} {}
     bool operator<(const Word &word)  const { return this->span < word.span;}
     util::cstring_span<> span;
     std::string val;
+};
+struct IndexedWord{
+    typedef size_t idx_t;
+    IndexedWord(std::string word, idx_t idx) : span{word}, val{word}, idx{idx} {}
+    IndexedWord(util::cstring_span<> word, idx_t idx) : span{word}, val{span.data()}, idx{idx} {}
+    static auto blank_word() {return IndexedWord{std::string{}, std::numeric_limits<idx_t>::max()};}
+    bool operator<(const IndexedWord &word)  const { return this->span < word.span;}
+    util::cstring_span<> span;
+    std::string val;
+    idx_t idx;
 };
 std::ostream& operator<<(std::ostream& os, const Word& obj);
 
@@ -51,7 +62,9 @@ public:
         auto tokens = util::string::split(sentence);
         std::vector<idx_t> idxs;
         for(auto const &word : tokens){
-            if(word==std::string{"-LRB-"}) idxs.push_back(getIndex(Word{std::string{"("}}));
+            if(word==std::string{"-LRB-"}) {
+                idxs.push_back(getIndex(Word{std::string{"("}}));
+            }
             else if(word==std::string{"-RRB-"}) idxs.push_back(getIndex(Word{std::string{")"}}));
             else idxs.push_back(getIndex(Word{word}));
         }
@@ -67,9 +80,9 @@ public:
     Voca(data_t raw_data)
     : _val{raw_data}, span{_val},word_views{util::string::unpack_word_views(_val)},
       voca_size{word_views.size()} {}
-    Word getWord(data_t::size_type idx) const {
+    IndexedWord getWord(data_t::size_type idx) const {
         util::cstring_span<> word = gsl::ensure_z(word_views[idx]);
-        return Word{word};
+        return IndexedWord{word,idx};
     }
     auto size() const {return voca_size;}
     VocaIndexMap indexing() const{

@@ -30,10 +30,10 @@ void test_voca_index(Voca const &voca, VocaIndexMap const &word2idx){
         //     print(word2idx.getIndex(voca.getWord(i)));
         //     print(":conflict!\n");
         // }
-        assert(word2idx.getIndex(voca.getWord(i)) == i);
+        assert(word2idx.getIndex(Word{voca.getWord(i).val}) == i);
     }
     for(size_t i=0; i<voca.size(); ++i){
-        std::cout << voca.getWord(i) <<std::endl;
+        std::cout << voca.getWord(i).val <<std::endl;
     }
 }
 }//nameless namespace
@@ -115,7 +115,7 @@ void test_read_word2vec_output(){
 }
 
 
-void test_forwad_backward(){
+void test_forward_backward(){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     using value_type = rnn::simple_model::Param::value_type;
@@ -146,7 +146,7 @@ void test_forwad_backward(){
         auto const &node=nodes[i];
         assert(node.is_combined());
         // print_all_descents(node);
-        backward_path_for_param(grad, param, node);
+        backward_path(grad, param, node);
     }       
 
     timer.here_then_reset("Backward path");
@@ -322,8 +322,8 @@ void test_supervised_rnn_full_step(){
     auto timer=Timer{};
     // auto testset=ParsedSentences{rnn::config::testset_name};
     // auto testset_orig=TokenizedSentences{rnn::config::testset_name};
-    auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};
-    auto testset_orig=TokenizedSentences{"1b.testset.sample"};
+    auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
+    auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto &lines = testset.val;
     VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
@@ -364,6 +364,114 @@ void test_supervised_rnn_full_step(){
     print(score);
     print('\n');
     print(ds_grad);
+    print('\n');
+}
+
+void test_SparseGrad(){
+
+    auto timer=Timer{};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+    timer.here_then_reset("Preparing data");
+    SparseGrad grad{};
+
+    auto sentence = u8"this is a typical sentence";
+    auto sentence2 = u8"this is another typical sentence";
+    auto idxs = rnn.word2idx.getIndex(sentence);
+    for(auto i:idxs) grad.val[i] += rnn.voca_vecs[i];
+    auto idxs2 = rnn.word2idx.getIndex(sentence2);
+    for(auto i:idxs2) grad.val[i] += rnn.voca_vecs[i];
+    
+    auto grad2{grad};
+    grad2 += grad;
+    print(sum(grad2.val[idxs[0]].span));
+    print("+");
+    print(sum(rnn.voca_vecs[idxs[0]]));
+    auto v=rnn.voca_vecs[idxs[0]];
+    v+=grad2.val[idxs[0]].span;
+    print("==?");
+    print(sum(rnn.voca_vecs[idxs[0]]));
+    print("\n");
+    
+}
+void test_backward_wordvec(){
+    auto timer=Timer{};
+    
+    SentencePair sent_pair{"(This word)", "This word"};
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+    VocaInfo rnn1{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+
+    auto param = randomParam(0.1);
+    timer.here_then_reset("Preparing data");
+
+    auto get_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+    print(sent_pair.original);
+    print("\n");
+    auto grad = get_grad(sent_pair);
+    auto delta=grad.words*0.001;
+    for(auto const &x:delta.val){
+        auto v=rnn1.voca_vecs[x.first];
+        v+=x.second.span;
+        print(rnn1.voca.getWord(x.first).val);
+    }
+    print("\n");
+    auto delta_grad=0.0;
+    for(auto const &x:delta.val){
+        delta_grad+=dot(x.second.span, grad.words.val[x.first].span);
+    }
+    timer.here_then_reset("Back-propagation for whole testset");
+    auto score = scoring_parsed_sentence(rnn, param, sent_pair);
+    timer.here_then_reset("Scoring testset");
+    auto score1 = scoring_parsed_sentence(rnn1, param, sent_pair);
+    timer.here_then_reset("Scoring testset");
+    
+    print(score1-score);
+    print(score1);
+    print(score);
+    print('\n');
+    print(delta_grad);
+    print('\n');
+
+}
+
+void test_fullstep_including_wordvec(){
+    auto timer=Timer{};
+    auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
+    auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
+    auto &lines = testset.val;
+
+    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+    VocaInfo rnn1{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+
+    auto param = randomParam(0.1);
+    timer.here_then_reset("Preparing data");
+
+    auto get_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+    auto grad = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Gradient{});
+    auto delta=grad.words*0.000001;
+    for(auto const &x:delta.val){
+        auto v=rnn1.voca_vecs[x.first];
+        v+=x.second.span;
+    }
+    auto delta_grad=0.0;
+    for(auto const &x:delta.val){
+        delta_grad+=dot(x.second.span, grad.words.val[x.first].span);
+    }
+    timer.here_then_reset("Back-propagation for whole testset");
+    auto score = scoring_parsed_dataset(rnn, param, testset);
+    timer.here_then_reset("Scoring testset");
+    auto score1 = scoring_parsed_dataset(rnn1, param, testset);
+    timer.here_then_reset("Scoring testset");
+    
+    print(score1-score);
+    print(score1);
+    print(score);
+    print('\n');
+    print(delta_grad);
     print('\n');
 }
 

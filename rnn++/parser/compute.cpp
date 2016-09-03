@@ -1,6 +1,4 @@
 #include "parser/compute.h"
-#include "utils/print.h"
-
 
 //TODO: move these from this header to .cpp body.
 using rnn::simple_model::Param; 
@@ -31,11 +29,15 @@ auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
                              auto const &mesg, auto const &w)  {
     out[j]+=mesg[i]*w[i][j];
 };
+
 auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad, 
                          auto const &mesg, auto const &weighted_sum)  {
     grad[i][j]+=mesg[i]*weighted_sum[j];
 };
-
+auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad, 
+                         auto const &mesg, auto const &w)  {
+    grad[j]+=mesg[i]*w[i][j];
+};
 //TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
                                 vec_type const &word_right) {
@@ -60,21 +62,66 @@ void backward_path_full(Param const &param,
                  gradsum_left.span, mesg.span, phrase.left->vec.span);                             
     matloop_void(back_prop_grad_W,
                  gradsum_right.span, mesg.span, phrase.right->vec.span);
-    Param::vec_type left_mesg;
-    matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
     if(phrase.left->is_combined()){
+        Param::vec_type left_mesg;
+        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left.span);
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.left, left_mesg);
-    } 
-    Param::vec_type right_mesg;
-    matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
+    } else if(phrase.left->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.left->vec_update.span,
+                     mesg.span, param.w_left.span);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN. 
+    }
     if(phrase.right->is_combined()){
+        Param::vec_type right_mesg;
+        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right.span);
         backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, 
                            *phrase.right, right_mesg);
-    } 
+    } else if(phrase.right->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.right->vec_update.span,
+                     mesg.span, param.w_right.span);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN. 
+    }
+}
+auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
+                            auto factor_p, auto const &phrase)  {
+    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
+};
+
+auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
+    using namespace util::math;
+    constexpr auto dim = Param::dim;
+    using val_t = Param::value_type;
+    auto norm = norm_L2(u_score);
+    auto score = dot(u_score, phrase);
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    
+    vecloop_void(grad_u_score_L2norm_i, grad, 
+                 -score/(norm*norm*norm), u_score, 
+                 val_t{1}/norm, phrase);
+    // //Original scoring function without L2-norm factor
+    // vecloop_void(grad_u_score_L2norm_i, grad, 0, u_score, 
+    //              1, phrase);
+};
+
+void backward_path_detail(Param const &param,
+                          mat_type &gradsum_left, mat_type &gradsum_right,
+                          vec_type &gradsum_bias, vec_type &gradsum_u_score,
+                          node_type const &phrase) {
+    grad_u_score_L2norm(gradsum_u_score.span, param.u_score.span, phrase.vec.span);
+    // gradsum_u_score.span += phrase.vec.span;
+    auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
+    auto mesg{param.u_score};
+    mesg.span *=factor;
+    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
 }
 
-}
+}//nameless namespace
+
 namespace rnn{
 namespace simple_model{
 namespace detail{
@@ -96,8 +143,8 @@ void set_node_property(Param const &param,node_type &node) {
     node.set_name();
 }
 
-node_type merge_node(Param const &param, node_type const &left, node_type const &right)  {
-    auto new_node = node_type{node_type::word_type{std::string{}}};
+node_type merge_node(Param const &param, node_type const &left, node_type const &right)  {    
+    auto new_node = node_type::blank_node();
     new_node.left = &left;    
     new_node.right= &right;
     set_node_property(param, new_node);
@@ -169,45 +216,12 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
     }
 }
 
-
-auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score, 
-                            auto factor_p, auto const &phrase)  {
-    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
-};
-
-auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
-    using namespace util::math;
-    constexpr auto dim = Param::dim;
-    using val_t = Param::value_type;
-    auto norm = norm_L2(u_score);
-    auto score = dot(u_score, phrase);
-    auto vecloop_void = VecLoop_void<val_t,dim>{};
-    
-    vecloop_void(grad_u_score_L2norm_i, grad, 
-                 -score/(norm*norm*norm), u_score, 
-                 val_t{1}/norm, phrase);
-    // //Original scoring function without L2-norm factor
-    // vecloop_void(grad_u_score_L2norm_i, grad, 0, u_score, 
-    //              1, phrase);
-};
-
-void backward_path_for_param(Param const &param,
-                   mat_type &gradsum_left, mat_type &gradsum_right,
-                   vec_type &gradsum_bias, vec_type &gradsum_u_score,
-                   node_type const &phrase) {
-    grad_u_score_L2norm(gradsum_u_score.span, param.u_score.span, phrase.vec.span);
-    // gradsum_u_score.span += phrase.vec.span;
-    auto factor = Param::value_type{1}/util::math::norm_L2(param.u_score.span);
-    auto mesg{param.u_score};
-    mesg.span *=factor;
-    backward_path_full(param, gradsum_left, gradsum_right, gradsum_bias, phrase, mesg);
-}
 // weighted_sum=W_left*word_left + W_right*word_right+bias
 // s=u*h(g(f(weighted_sum)))
 // dsdW_left = u cx .. h`.. g`... f`(weighted_sum) X word_left 
-void backward_path_for_param(Param &grad, Param const &param,
+void backward_path(Param &grad, Param const &param,
                    node_type const &phrase) {
-    backward_path_for_param(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
+    backward_path_detail(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
 }//namespace rnn::simple_model::detail

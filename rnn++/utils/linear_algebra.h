@@ -39,6 +39,17 @@ struct Vector{
         // std::cerr<<"size: " << _val.size() <<std::endl;
         return *this;
     };
+    Vector& operator+=(const Vector& vec) {
+        span+=vec.span;
+        return *this;
+    }
+    Vector& operator-=(const Vector& vec) {
+        span-=vec.span;
+        return *this;
+    }Vector& operator*=(T x) {
+        span*=x;
+        return *this;
+    }
     Vector(Vector&& vec) : _val{std::move(vec._val)} {
         span=gsl::span<T, M>{_val};
         //Fail if nan

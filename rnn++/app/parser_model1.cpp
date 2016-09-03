@@ -14,7 +14,7 @@ int main(int /*argc*/, char** argv){
     std::vector<std::string> parsed_sents(testset.val.size());
     //for(auto line : testset.val){
     auto n=testset.val.size();
-    tbb::parallel_for(decltype(n){0}, n, [&](int i) {
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto line=testset.val[i];
         auto initial_nodes = rnn.initialize_tree(line);
         auto &nodes = initial_nodes.val;

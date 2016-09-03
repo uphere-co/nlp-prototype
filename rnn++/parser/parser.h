@@ -1,7 +1,7 @@
 #pragma once
 
 #include <utility>
-
+#include <unordered_map>
 #include "parser/param.h"
 #include "parser/compute.h"
 #include "parser/node.h"
@@ -34,8 +34,8 @@ struct VocaInfo{
     InializedLeafNodes initialize_tree(std::string sentence) const {
         auto idxs = word2idx.getIndex(sentence);
         auto word_block = voca_vecs.getWordVec(idxs);
-        auto words = util::string::split(sentence);    
-        auto nodes = construct_nodes_with_reserve(words);
+        auto words = util::string::split(sentence);
+        auto nodes = construct_nodes_with_reserve(words, idxs);
         return InializedLeafNodes{std::move(nodes), word_block};
     }
     rnn::wordrep::Voca voca;
@@ -43,8 +43,21 @@ struct VocaInfo{
     WordBlock voca_vecs;
 };
 
+struct SparseGrad{
+    using key_t = WordBlock::idx_t;
+    using val_t = Param::vec_type;
+    std::unordered_map<key_t,val_t> val;
+};
+SparseGrad& operator +=(SparseGrad& out, const SparseGrad& x);
+SparseGrad& operator -=(SparseGrad& out, const SparseGrad& x);
+SparseGrad& operator *=(SparseGrad& out, Param::value_type x);
+SparseGrad operator +(const SparseGrad& x, const SparseGrad& y);
+SparseGrad operator -(const SparseGrad& x, const SparseGrad& y);
+SparseGrad operator *(const SparseGrad& x, Param::value_type v);
+
 struct Gradient{
     Param param{};
+    SparseGrad words{};
 };
 Gradient& operator +=(Gradient& out, const Gradient& x);
 Gradient& operator -=(Gradient& out, const Gradient& x);
