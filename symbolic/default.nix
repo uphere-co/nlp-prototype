@@ -35,6 +35,7 @@ let
 	   description = "Symbolic computation";
 	   license = "unknown";
 	   doCheck = false;
+	   doHaddock = false;
 	   
 	 }) {};
     };
