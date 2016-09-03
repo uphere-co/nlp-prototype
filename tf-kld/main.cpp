@@ -77,7 +77,7 @@ vocab_t LearnVocab(TokenizedFile &file) {
   int64_t count = 0;
   while(std::getline(file.val, line)){
     count++;
-    if(count % 1000 == 0) std::cout << count << " lines.\n";
+    if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
 
     std::istringstream iss{line};
     auto words = util::string::split(line);
@@ -100,7 +100,7 @@ doc_t LearnDoc(vocab_t &vocab, TokenizedFile &file) {
     int64_t count = 0;
     while (std::getline(file.val, line)) {
         count++;
-        if(count % 1000 == 0) std::cout << count << " lines.\n";
+        if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
         
         std::istringstream iss{line};
         auto words = util::string::split(line);
@@ -211,14 +211,14 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string train_file = "1b.training";
+    std::string train_file = "1M.training";
     TokenizedFile infile{train_file};
 
     auto vocab = LearnVocab(infile);
-    timer.here_then_reset("Constructed Vocabulary.\n");
+    timer.here_then_reset("\nConstructed Vocabulary.\n");
     infile.setBegin();
     auto docs = LearnDoc(vocab, infile);
-    timer.here_then_reset("Constructed Documents.\n");
+    timer.here_then_reset("\nConstructed Documents.\n");
     
     int64_t n_rows, n_cols;
     n_rows = vocab.size();
