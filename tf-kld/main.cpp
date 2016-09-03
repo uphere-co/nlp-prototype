@@ -52,8 +52,10 @@ struct TokenizedFile{
     std::ifstream val; 
 };
 
-struct docs{
-    doc_t docs;
+struct SpValue{
+    int64_t row;
+    int64_t col;
+    float_t val;
 };
 
 vocab_t LearnVocab(TokenizedFile &file) {
@@ -100,19 +102,16 @@ doc_t LearnDoc(vocab_t &vocab, TokenizedFile &file) {
     return docs;
 }
 
-
-void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
-    int64_t row, col;
-    int64_t count = 0;
+void fillValue(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
     
-    std::vector<int64_t> locations_row;
-    std::vector<int64_t> locations_col;
-    std::vector<float_t> values;
-        
+    int64_t row, col;
+    SpValue value;
+    std::vector<SpValue> values;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
         for(auto itt = it -> begin(); itt != it -> end(); ++itt) {
             row = (*itt).first;
             col = std::distance(docs.begin(),it);
+            
             locations_row.push_back(row);
             locations_col.push_back(col);
             values.push_back((*itt).second);
@@ -120,6 +119,12 @@ void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
         }
     }
 
+    
+}
+
+void fillMat(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
+
+    
     arma::umat location(2,count);
     arma::vec value(count);
 
@@ -132,7 +137,24 @@ void fillMat(vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
     mat = std::move( arma::sp_mat(location, value) );
 }
 
+arma::sp_mat MakeTFIDF(std::vector<int64_t> &locations_row, std::vector<int64_t> &locations_col, std::vector<float_t> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+    std::vector<float_t> idf;
+    int64_t Dt;
+    for(int64_t a = 0; a<locations_row.size(); a++) {
+        Dt = 0;
+        for(int64_t b = 0; b<locations_col.size(); b++) {
+            values[
+        }
 
+        idf.push_back(log(D/Dt));
+    }
+
+    for(int64_t a = 0; a<mat.n_rows; a++) {
+        mat.row(a) *= idf[a];
+    }
+
+    return mat;
+}
         
 void PrintVocab(vocab_t &vocab){
     for(auto x : vocab){
@@ -162,9 +184,7 @@ auto ToStrings(std::vector<char> const &concat_words){
 }
 }//namespace tfkld
 
-void testKLD() {
-    
-}
+
 
 
 
@@ -174,8 +194,9 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string train_file = "1b.training";
+    std::string train_file = "1M.training";
     TokenizedFile infile{train_file};
+
     auto vocab = LearnVocab(infile);
     infile.setBegin();
     auto docs = LearnDoc(vocab, infile);
@@ -191,17 +212,29 @@ int main(){
     //int64_t pos = std::distance(vocab.begin(), vocab.find("that"));
     //std::cout << pos << std::endl;
     
-    fillMat(vocab, docs, inMat);
+    std::vector<int64_t> locations_row;
+    std::vector<int64_t> locations_col;
+    std::vector<float_t> values;
+    int64_t count = 0;
+    
+    fillValue(locations_row, locations_col, values, count, vocab, docs);
+    fillMat(locations_row, locations_col, values, count, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
     
     //inMat.print("inMat = ");
     std::cout << "Finished!" << std::endl;
 
-
-
-
+    //sp_mat tfidf = MakeTFIDF(inMat);
+    //_mat A = sprandu<sp_mat>(5,5,0.1);
+    //col(0) *= 10000;
+    //A.print("A = ");
+    //auto a = nonzeros(A.col(0)).size();
+    //std::cout << a << std::endl;
+    //for(auto x : v ) std::cout << x << std::endl;
     
+    timer.here_then_reset("Testing vectorising.\n");
+
     //arma::mat inMat = arma::randu<arma::mat>(5,5);
 
 
