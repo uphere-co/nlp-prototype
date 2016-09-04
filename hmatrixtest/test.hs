@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra hiding ((!))
 import           Control.Monad
 import           Control.Monad.IO.Class     (MonadIO(liftIO))
 import           Control.Monad.Loops          (whileJust_)
@@ -10,6 +11,7 @@ import           Control.Monad.Trans.State.Strict
 import           Data.Conduit
 import           Data.Conduit.Binary        (sourceFile)
 import           Data.Conduit.Text   as CT
+import           Data.Foldable              (forM_)
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.IORef                 
@@ -22,7 +24,7 @@ import           Data.Text                  (Text)
 import qualified Data.Text           as T
 import qualified Data.Text.IO        as TIO
 import qualified Data.Text.Lazy.IO   as TLIO
-import           Data.Vector.Storable  (Vector, MVector(..))
+import           Data.Vector.Storable  (Vector, MVector(..),(!))
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 
@@ -57,15 +59,13 @@ main' = do
 
 
 count :: (MonadIO m) => Int -> Sink Text m ()
-count !n = do
+count !n = do 
   mt <- await
-  case mt of
-    Nothing -> return ()
-    Just t -> do
-      when (n `mod` 10000 == 0) $ do
-        liftIO $ print n
-        -- liftIO $ print t
-      count (n+1)
+  forM_ mt $ \t -> do
+    when (n `mod` 10000 == 0) $ do
+      liftIO $ print n
+      -- liftIO $ print t
+    count (n+1)
 
 
 wordCount !n = 
@@ -86,7 +86,7 @@ buildMap mref mv md = whileJust_ await $ \t -> do
                         liftIO $ do
                           is <-mapM (voca mref mv) ws
                           let is' = Set.toList (Set.fromList is)
-                          mapM_ (doc md) is
+                          mapM_ (doc md) is'
 
 voca mref mv w = do
   BoundedWordMap n m <- readIORef mref
@@ -112,8 +112,16 @@ main = do
   runResourceT $ 
     sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines $$ getZipSink $
       (,) <$> ZipSink (count 0) <*> ZipSink (buildMap mref mv md)
-  BoundedWordMap n _ <- readIORef mref
-  print n
+  BoundedWordMap n m <- readIORef mref
+  v <- V.freeze mv :: IO (Vector Int)
+  d <- V.freeze md :: IO (Vector Int)
+
+  case HM.lookup "the" m of
+    Nothing -> print "no such word"
+    Just i -> do
+      -- print (v!i)
+      putStrLn ("(v,d)" ++ show (v!i, d!i))
+
   {- 
   txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
   -- print txt
