@@ -58,20 +58,32 @@ learnVocab txt = foldl' addcount (0,HM.empty,M.empty) wss
 -}
 
 count :: (MonadIO m) => Int -> Sink Text m ()
-count n = do
+count !n = do
   mt <- await
   case mt of
     Nothing -> return ()
     Just t -> do
-      when (n `mod` 1000 == 0) $ do
+      when (n `mod` 10000 == 0) $ do
         liftIO $ print n
         -- liftIO $ print t
       count (n+1)
 
 
+wordCount !n = do
+  mt <- await
+  case mt of
+    Nothing -> return n
+    Just t -> do
+      let ws = T.words t
+      wordCount (n+length ws)
+
+-- wordMap w 
+
+
 main = do
-  runResourceT $
-    sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines $$ count 0 
+  r <- runResourceT $
+    sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines $$ getZipSink $ (,) <$> ZipSink (count 0) <*> ZipSink (wordCount 0)
+  print r
   {- 
   txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
   -- print txt
