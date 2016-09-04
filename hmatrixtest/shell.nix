@@ -8,8 +8,10 @@ let
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
     
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
+	      conduit-extra
               hmatrix
 	      #histogram-fill
+	      resourcet
 	      text
 	      unordered-containers
             ]);

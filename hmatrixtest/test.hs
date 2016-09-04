@@ -1,13 +1,19 @@
 {-# LANGUAGE BangPatterns #-}
 
 import Numeric.LinearAlgebra
+import           Control.Monad
+import           Control.Monad.IO.Class     (MonadIO(liftIO))
+import           Control.Monad.Trans.Resource
+import           Data.Conduit
+import           Data.Conduit.Binary
+import           Data.Conduit.Text   as CT
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.List                  (foldl')
 import           Data.IntMap                (IntMap)
 import qualified Data.IntMap         as M
 import           Data.Text                  (Text)
-import qualified Data.Text.Lazy      as TL
+-- import qualified Data.Text.Lazy      as TL
 import qualified Data.Text           as T
 import qualified Data.Text.IO        as TIO
 import qualified Data.Text.Lazy.IO   as TLIO 
@@ -41,6 +47,7 @@ main' = do
   a' <- randn 1000000 1000
   print (singularValues a')
 
+{- 
 learnVocab :: TL.Text -> (Int,HashMap Text Int, IntMap Int)
 learnVocab txt = foldl' addcount (0,HM.empty,M.empty) wss 
   where ls = TL.lines txt
@@ -48,13 +55,29 @@ learnVocab txt = foldl' addcount (0,HM.empty,M.empty) wss
         addcount !(n,mi,mc) !k = case HM.lookup k mi of
                                    Nothing -> (n+1,HM.insert k n mi,M.insert n 1 mc)
                                    Just i -> (n,mi,M.update (Just . (+1)) i mc)
+-}
+
+count :: (MonadIO m) => Int -> Sink Text m ()
+count n = do
+  mt <- await
+  case mt of
+    Nothing -> return ()
+    Just t -> do
+      when (n `mod` 1000 == 0) $ do
+        liftIO $ print n
+        -- liftIO $ print t
+      count (n+1)
+
 
 main = do
-  txt <- TLIO.readFile "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
+  runResourceT $
+    sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines $$ count 0 
+  {- 
+  txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
   -- print txt
 
   let (n',mi,mc) = learnVocab txt
   print n'
 
   print $ M.lookup 2000 mc
-  
+  -}
