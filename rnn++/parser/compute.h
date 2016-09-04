@@ -33,6 +33,56 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
 void backward_path(Param &grad, Param const &param,
                    node_type const &phrase);
 
+
+class DPtable{
+public:
+    //using idx_t = rnn::type::idx_t;
+    // using idx_t = std::ptrdiff_t;
+    using idx_t = std::size_t;
+    using node_t = rnn::simple_model::tree::Node;
+    DPtable(std::vector<node_t> const &nodes)
+    : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()) {
+        for(decltype(n_words)i=0; i<n_words; ++i){
+            get(i,i)=nodes[i];
+        }
+    }
+    node_t& get(idx_t i, idx_t j) {return raw[i*n_words+j];}
+    void search_best(Param const &param, idx_t i, idx_t j){
+        using namespace rnn::simple_model::detail;
+        auto& node=get(i,j);
+        for(idx_t k=i; k<j; ++k){
+            // auto print_elm=[](auto i, auto j){
+            //     print("(");
+            //     print(i);
+            //     print(j);
+            //     print(")");
+            // };
+            // print_elm(i,k);
+            // print("and");
+            // print_elm(k+1,j);
+            // print("|");
+            auto& left =get(i,k);
+            auto& right=get(k+1,j);
+            auto phrase=merge_node(param, left,right);
+            if(phrase.score>node.score){
+                node=phrase;
+            }
+        }
+        // print("\n");
+    }
+    void compute(Param const &param){
+        for(idx_t len=1; len<n_words;++len){
+            for(idx_t left=0; left<n_words-len;++left){
+                search_best(param,left,left+len);
+            }
+            // print('\n');
+        }
+    }
+
+private:
+    idx_t n_words;
+    std::vector<node_t> raw;
+};
 }//namespace rnn::simple_model::detail
 }//namespace rnn::simple_model
 }//namespace rnn

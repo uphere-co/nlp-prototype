@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <limits>
 
 #include "parser/voca.h"
 #include "parser/param.h"
@@ -36,7 +37,7 @@ struct Node{
     vec_type  vec_wsum{};
     vec_type  vec{};
     vec_type  vec_update{};
-    value_type score{};
+    value_type score{std::numeric_limits<value_type>::lowest()};
     Node const *left=nullptr;
     Node const *right=nullptr;
     Node const *parent=nullptr;

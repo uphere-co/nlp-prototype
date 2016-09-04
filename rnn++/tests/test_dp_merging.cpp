@@ -11,34 +11,29 @@
 #include "utils/binary_tree.h"
 #include "utils/profiling.h"
 
+using util::print;
 namespace rnn{
 namespace simple_model{
 namespace test{
-
-
-class DPtable{
-public:
-    //using idx_t = rnn::type::idx_t;
-    // using idx_t = std::ptrdiff_t;
-    using idx_t = std::size_t;
-    using node_t = rnn::simple_model::tree::Node;
-    DPtable(idx_t n_words)
-    : raw(n_words*n_words, node_t::blank_node()), n_words{n_words} {}
-    auto best_score(idx_t i, idx_t j) const {return raw[i*n_words+j].score;}
-    node_t& get(idx_t i, idx_t j) {return raw[i*n_words+j];}
-private:
-    std::vector<node_t> raw;
-    idx_t n_words;
-};
-
 void test_DPtable(){
-    DPtable table{10};
-    assert(table.best_score(1,3)==0.0);
+    using namespace util;
+    using namespace rnn::simple_model::detail;
+    using rnn::simple_model::tree::Node;
+    
+    auto param = rnn::simple_model::randomParam(0.1);
+    std::vector<Node> nodes(8, Node::blank_node());
+    DPtable table{nodes};
     {auto &tmp=table.get(1,3);
     tmp.score=2.2;}
-    assert(table.best_score(1,3)==2.2);
+    assert(table.get(1,3).score==2.2);
     table.get(1,1).score=1.1;
-    assert(table.best_score(1,1)==1.1);
+    assert(table.get(1,1).score==1.1);
+    auto n=nodes.size();
+    for(decltype(n) len=1; len<n;++len){
+        for(decltype(n) j=0; j<n-len;++j){
+            table.search_best(param,j,j+len);
+        }
+    }
 }
 void test_dp_merging(){
     using namespace rnn::simple_model;
@@ -63,34 +58,23 @@ void test_dp_merging(){
     
     timer.here_then_reset("Setup word2vecs & nodes");
 
+    DPtable table{nodes};
+    table.compute(param);
+    auto root_node=table.get(0,n_words-1);
+    print_all_descents(root_node);
+
     auto top_nodes = merge_leaf_nodes(param, nodes);
-    auto node=top_nodes.front();
-    auto span_to_idx=[&nodes](auto node){return node-nodes.data();};
-    auto left_span_idx =[=](auto node){return span_to_idx(get_left_span(node));};
-    auto right_span_idx=[=](auto node){return span_to_idx(get_right_span(node));};
-    // std::vector<std::ptrdiff_t> table_raw(n_words*n_words);
-    // auto table = span_2d<std::ptrdiff_t,n_words,n_words>{table_raw};
-    DPtable table{n_words};
-    table.get(0,1)=merge_node(param, nodes[0],nodes[1]);
-    print(table.get(0,1).score);
-    print(":0,1 merged.\n");
-
-    assert(left_span_idx(node)==0);
-    assert(right_span_idx(node)==1);
-    assert(right_span_idx(top_nodes.back())==7);
-    for(auto node : top_nodes){        
-        print(get_left_span(node)->name.val);
-        print(get_right_span(node)->name.val);
-        print("\n");
-    }
-
     auto merge_history = foward_path(param, top_nodes);
     auto score{0.0};
     for(auto const &node:nodes){
+        if(node.is_leaf()) continue;
         print(node.name.val);
         print(node.score);
         print("\n");
+        score+=node.score;
     } 
+    print(score);
+    print(":total score.\n");
     
     timer.here_then_reset("Forward path");
 }
