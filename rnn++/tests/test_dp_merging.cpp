@@ -60,6 +60,11 @@ void test_dp_merging(){
 
     DPtable table{nodes};
     table.compute(param);
+    auto phrases = table.get_phrases();
+    auto score_dp{0.0};
+    for(auto phrase : phrases) score_dp += phrase->score;
+    print(score_dp);
+    print(":total score_dp.\n");
     auto root_node=table.get(0,n_words-1);
     print_all_descents(root_node);
 
@@ -75,6 +80,8 @@ void test_dp_merging(){
     } 
     print(score);
     print(":total score.\n");
+
+    assert(score_dp>=score);
     
     timer.here_then_reset("Forward path");
 }

@@ -48,7 +48,6 @@ public:
     }
     node_t& get(idx_t i, idx_t j) {return raw[i*n_words+j];}
     void search_best(Param const &param, idx_t i, idx_t j){
-        using namespace rnn::simple_model::detail;
         auto& node=get(i,j);
         for(idx_t k=i; k<j; ++k){
             // auto print_elm=[](auto i, auto j){
@@ -78,8 +77,20 @@ public:
             // print('\n');
         }
     }
+    std::vector<const node_t*> get_phrases(){
+        std::vector<const node_t*> phrases;
+        collect_phrases(&get(0,n_words-1), phrases);
+        return phrases;
+
+    }
 
 private:
+    void collect_phrases(const node_t* node, std::vector<const node_t*> &phrases) {
+        if(node->is_leaf()) return;
+        phrases.push_back(node);
+        if(node->left != nullptr) collect_phrases(node->left, phrases);
+        if(node->right!= nullptr) collect_phrases(node->right, phrases);
+    }
     idx_t n_words;
     std::vector<node_t> raw;
 };
