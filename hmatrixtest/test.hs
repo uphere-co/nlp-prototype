@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Numeric.LinearAlgebra hiding ((!))
+import Numeric.LinearAlgebra.Devel
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.IO.Class     (MonadIO(liftIO))
@@ -18,6 +19,7 @@ import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict as HM
 import           Data.IORef                 
 import           Data.List                  (foldl')
+import           Data.Maybe                 (fromJust,fromMaybe)
 import           Data.IntMap                (IntMap)
 import qualified Data.IntMap         as IM
 import qualified Data.Set            as Set
@@ -98,48 +100,66 @@ buildMap (mref,mv) (dref,md) =
       let is' = Set.toList (Set.fromList is)
       doc dref md docid is'
 
-voca mref mv w = do
-  BoundedWordMap n m <- readIORef mref
+voca mref mcount w = do
+  BoundedWordMap n m mrev <- readIORef mref
   case HM.lookup w m of
     Nothing -> do
-      MV.write mv n 1
-      writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m))
+      MV.write mcount n 1
+      writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m) (IM.insert n w mrev))
       return n
-    Just i -> MV.modify mv (+1) i >> return i
+    Just i -> MV.modify mcount (+1) i >> return i
 
 doc :: IORef (IntMap [Int]) -> MVector (PrimState IO) Int -> Int -> [Int] -> IO ()
 doc dref md docid js = do
   modifyIORef' dref (IM.insert docid js)
   mapM_ (MV.modify md (+1)) js  
 
-
+tfidf :: Int -> IntMap [Int] -> Vector Int -> Int -> Int -> Double
+tfidf sz dmap occ_dwt t d = fromMaybe 0 calc
+  where calc = do ws <- IM.lookup d dmap
+                  guard (t `elem` ws)
+                  return $ log (fromIntegral sz/fromIntegral (occ_dwt!t))
   
-data BoundedWordMap = BoundedWordMap { newid :: !Int, wordmap :: !(HM.HashMap Text Int) }
+data BoundedWordMap = BoundedWordMap { newid :: !Int
+                                     , wordmap :: !(HashMap Text Int)
+                                     , revmap :: !(IntMap Text) 
+                                     }
 
-emptyBWM = BoundedWordMap 0 HM.empty
+emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
+  let sz = 100000
   mref <- newIORef emptyBWM
   dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
   md <- V.thaw (V.replicate 1000000 (0 :: Int))
   
   runResourceT $ 
-    sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines =$= isolate 100000 =$= enumerate 0 $$ getZipSink $
+    sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines =$= isolate sz =$= enumerate 0 $$ getZipSink $
       (,) <$> ZipSink (count 0) <*> ZipSink (buildMap (mref,mv) (dref,md))
-  BoundedWordMap n m <- readIORef mref
+  --
+  BoundedWordMap nword wmap rmap <- readIORef mref
   v <- V.freeze mv :: IO (Vector Int)
-  d <- V.freeze md :: IO (Vector Int)
+  occ_dwt <- V.freeze md :: IO (Vector Int)
   docs <- readIORef dref
-  
-  case HM.lookup "the" m of
-    Nothing -> print "no such word"
-    Just i -> do
-      -- print (v!i)
-      putStrLn ("(v,d)" ++ show (v!i, d!i))
+  --
+  -- case HM.lookup "the" wmap of
+  --   Nothing -> print "no such word"
+  --  Just i  -> putStrLn ("(v,d)" ++ show (v!i, occ!i))
 
-  print (IM.lookup 1000 docs) 
+  -- print (IM.lookup 1000 docs)
+  print (tfidf sz docs occ_dwt 102 0)
 
+  print (IM.lookup 123 rmap)
+
+  let smat :: GMatrix
+      smat = mkSparse [((t,d),v) | d <- [0..sz-1]
+                                 , t <- fromJust (IM.lookup d docs)
+                                 -- , let t = fromJust (IM.lookup i rmap)
+                                 , let v = tfidf sz docs occ_dwt t d ]
+
+  print (nRows smat)
+  print (nCols smat)
   {- 
   txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
   -- print txt
