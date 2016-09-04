@@ -11,6 +11,7 @@ let
 	      conduit-extra
               hmatrix
 	      #histogram-fill
+	      monad-loops
 	      resourcet
 	      text
 	      unordered-containers

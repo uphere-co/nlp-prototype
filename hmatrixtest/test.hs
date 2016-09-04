@@ -3,6 +3,7 @@
 import Numeric.LinearAlgebra
 import           Control.Monad
 import           Control.Monad.IO.Class     (MonadIO(liftIO))
+import           Control.Monad.Loops          (whileJust_)
 import           Control.Monad.Trans          (lift) 
 import           Control.Monad.Trans.Resource
 import           Control.Monad.Trans.State.Strict
@@ -15,6 +16,7 @@ import           Data.IORef
 import           Data.List                  (foldl')
 import           Data.IntMap                (IntMap)
 import qualified Data.IntMap         as M
+import qualified Data.Set            as Set
 import           Data.Text                  (Text)
 -- import qualified Data.Text.Lazy      as TL
 import qualified Data.Text           as T
@@ -53,15 +55,6 @@ main' = do
   a' <- randn 1000000 1000
   print (singularValues a')
 
-{- 
-learnVocab :: TL.Text -> (Int,HashMap Text Int, IntMap Int)
-learnVocab txt = foldl' addcount (0,HM.empty,M.empty) wss 
-  where ls = TL.lines txt
-        wss = map TL.toStrict .  concatMap TL.words $ ls
-        addcount !(n,mi,mc) !k = case HM.lookup k mi of
-                                   Nothing -> (n+1,HM.insert k n mi,M.insert n 1 mc)
-                                   Just i -> (n,mi,M.update (Just . (+1)) i mc)
--}
 
 count :: (MonadIO m) => Int -> Sink Text m ()
 count !n = do
@@ -88,21 +81,24 @@ wordHashMap !n !m = do
                           Nothing -> (n+1,HM.insert w n m)
                           Just _ -> (n,m)
 
-buildVoca mref mv = do
-  mt <- await
-  case mt of
-    Nothing -> return ()
-    Just t -> do
-      let ws = T.words t
-      liftIO$ mapM_ f ws
-      buildVoca mref mv
- where f w = do
-         BoundedWordMap n m <- readIORef mref
-         case HM.lookup w m of
-           Nothing -> do
-             MV.write mv n 1
-             writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m))
-           Just i -> MV.modify mv (+1) i
+buildMap mref mv md = whileJust_ await $ \t -> do
+                        let ws = T.words t
+                        liftIO $ do
+                          is <-mapM (voca mref mv) ws
+                          let is' = Set.toList (Set.fromList is)
+                          mapM_ (doc md) is
+
+voca mref mv w = do
+  BoundedWordMap n m <- readIORef mref
+  case HM.lookup w m of
+    Nothing -> do
+      MV.write mv n 1
+      writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m))
+      return n
+    Just i -> MV.modify mv (+1) i >> return i
+      
+
+doc md j = MV.modify md (+1) j  
                   
 data BoundedWordMap = BoundedWordMap { newid :: !Int, wordmap :: !(HM.HashMap Text Int) }
 
@@ -111,9 +107,11 @@ emptyBWM = BoundedWordMap 0 HM.empty
 main = do
   mref <- newIORef emptyBWM
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
-  (r1,r2,r3) <- runResourceT $ 
+  md <- V.thaw (V.replicate 1000000 (0 :: Int))  
+  
+  runResourceT $ 
     sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines $$ getZipSink $
-      (,,) <$> ZipSink (count 0) <*> ZipSink (wordCount 0) <*> ZipSink (buildVoca mref mv)
+      (,) <$> ZipSink (count 0) <*> ZipSink (buildMap mref mv md)
   BoundedWordMap n _ <- readIORef mref
   print n
   {- 
