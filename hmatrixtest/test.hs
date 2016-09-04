@@ -1,8 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Numeric.LinearAlgebra hiding ((!))
 import Numeric.LinearAlgebra.Devel
+import Numeric.LinearAlgebra.SVD.SVDLIBC
 import           Control.Monad
 import           Control.Monad.Primitive
 import           Control.Monad.IO.Class     (MonadIO(liftIO))
@@ -31,6 +33,7 @@ import qualified Data.Text.Lazy.IO   as TLIO
 import           Data.Vector.Storable  (Vector, MVector(..),(!))
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
+import qualified Data.Vector.Unboxed as VU
 
 a = (4><3) [ 1,2,3
            , 4,0,5
@@ -65,9 +68,7 @@ main' = do
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
   (await >>=) $ mapM_ $ \_ -> do
-    when (n `mod` 10000 == 0) $ do
-      liftIO $ print n
-      -- liftIO $ print t
+    when (n `mod` 10000 == 0) $ liftIO $ print n
     count (n+1)
 
 enumerate :: (Monad m) => Int -> Conduit a m (Int,a)
@@ -78,11 +79,12 @@ enumerate !n = do
     enumerate (n+1)
   
 
-
+{-
 wordCount !n = 
   (await >>=) $ maybe (return n) $ \t ->
     let ws = T.words t in wordCount (n+length ws)
 
+ 
 wordHashMap !n !m = do
   (await >>=) $ maybe (return (n,m)) $ \t -> do
     let ws = T.words t
@@ -91,6 +93,8 @@ wordHashMap !n !m = do
  where update (n,m) w = case HM.lookup w m of
                           Nothing -> (n+1,HM.insert w n m)
                           Just _ -> (n,m)
+-}
+
 
 buildMap (mref,mv) (dref,md) =
   whileJust_ await $ \(docid,t) -> do
@@ -128,7 +132,7 @@ data BoundedWordMap = BoundedWordMap { newid :: !Int
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
-  let sz = 100000
+  let sz = 1000
   mref <- newIORef emptyBWM
   dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
@@ -149,17 +153,52 @@ main = do
 
   -- print (IM.lookup 1000 docs)
   print (tfidf sz docs occ_dwt 102 0)
-
+ 
   print (IM.lookup 123 rmap)
 
-  let smat :: GMatrix
-      smat = mkSparse [((t,d),v) | d <- [0..sz-1]
-                                 , t <- fromJust (IM.lookup d docs)
-                                 -- , let t = fromJust (IM.lookup i rmap)
-                                 , let v = tfidf sz docs occ_dwt t d ]
 
+  mvvrows <- V.thaw (V.replicate 3000000 0)
+  mvvcols <- V.thaw (V.replicate 3000000 0)
+  mvvvals <- V.thaw (V.replicate 3000000 0)  
+  
+  cref <- newIORef (0 :: Int)
+  forM_ [0..sz-1] $ \d -> do
+    let ts = fromJust (IM.lookup d docs)
+    c <- readIORef cref
+    forM_ (zip [c,c+1..] ts) $ \(i,t) -> do
+      MV.write mvvrows i (fromIntegral t)
+      MV.write mvvcols i (fromIntegral d)
+      MV.write mvvvals i (tfidf sz docs occ_dwt t d)
+    writeIORef cref (c+length ts)
+  ssz <- readIORef cref
+  vvrows <- V.take ssz <$> V.freeze mvvrows
+  vvcols <- V.take ssz <$> V.freeze mvvcols
+  vvvals <- V.take ssz <$> V.freeze mvvvals
+
+  let csr  = CSR vvvals vvcols vvrows nword sz
+  let (_,dd,_) = sparseSvd 100 csr
+  print csr
+  -- print (V.take 100 dd)
+   --  mkDesnsefromCSR csr
+  
+  {-
+  let v3 :: VU.Vector (Int,Int,Double)
+        =  VU.take 100 $ (VU.zip3 (V.convert vvrows) (V.convert vvcols) (V.convert vvvals))
+  print v3
+  -}
+  return ()
+  {-                               
+  let -- smat :: GMatrix
+      smat = mkSparse alst
+      alst  = [((t,d),v) | d <- [0..sz-1]
+                         , t <- fromJust (IM.lookup d docs)
+                         , let v = tfidf sz docs occ_dwt t d ]
+
+
+  -- print $ length alst 
   print (nRows smat)
   print (nCols smat)
+  -}
   {- 
   txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
   -- print txt

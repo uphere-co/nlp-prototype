@@ -10,6 +10,7 @@ let
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
 	      conduit-extra
               hmatrix
+	      hmatrix-svdlibc
 	      #histogram-fill
 	      monad-loops
 	      resourcet
