@@ -26,7 +26,6 @@ import           Data.IntMap                (IntMap)
 import qualified Data.IntMap         as IM
 import qualified Data.Set            as Set
 import           Data.Text                  (Text)
--- import qualified Data.Text.Lazy      as TL
 import qualified Data.Text           as T
 import qualified Data.Text.IO        as TIO
 import qualified Data.Text.Lazy.IO   as TLIO
@@ -34,36 +33,6 @@ import           Data.Vector.Storable  (Vector, MVector(..),(!))
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import qualified Data.Vector.Unboxed as VU
-
-a = (4><3) [ 1,2,3
-           , 4,0,5
-           , 7,7,2
-           , 3,3,1 ] :: Matrix R
-
-
-b = (4><2) [ 10, 1
-           , 20, 2
-           , 30, 3
-           , 15, 1 ] :: Matrix R
-
-x  = linearSolveLS a b
-
-
-
-residual = norm_Frob (a <> x - b )
-
-main' = do
-  print a
-  print b
-  print x
-  print residual
-
-  print (singularValues a)
-
-
-  a' <- randn 1000000 1000
-  print (singularValues a')
-
 
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
@@ -77,24 +46,7 @@ enumerate !n = do
   forM_ mx $ \x -> do  
     yield (n,x)
     enumerate (n+1)
-  
-
-{-
-wordCount !n = 
-  (await >>=) $ maybe (return n) $ \t ->
-    let ws = T.words t in wordCount (n+length ws)
-
  
-wordHashMap !n !m = do
-  (await >>=) $ maybe (return (n,m)) $ \t -> do
-    let ws = T.words t
-        (n',m') = foldl' update (n,m) ws
-    wordHashMap n' m'
- where update (n,m) w = case HM.lookup w m of
-                          Nothing -> (n+1,HM.insert w n m)
-                          Just _ -> (n,m)
--}
-
 
 buildMap (mref,mv) (dref,md) =
   whileJust_ await $ \(docid,t) -> do
@@ -132,7 +84,7 @@ data BoundedWordMap = BoundedWordMap { newid :: !Int
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
-  let sz = 1000
+  let sz = 100
   mref <- newIORef emptyBWM
   dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
@@ -147,16 +99,7 @@ main = do
   occ_dwt <- V.freeze md :: IO (Vector Int)
   docs <- readIORef dref
   --
-  -- case HM.lookup "the" wmap of
-  --   Nothing -> print "no such word"
-  --  Just i  -> putStrLn ("(v,d)" ++ show (v!i, occ!i))
-
-  -- print (IM.lookup 1000 docs)
-  print (tfidf sz docs occ_dwt 102 0)
  
-  print (IM.lookup 123 rmap)
-
-
   mvvrows <- V.thaw (V.replicate 3000000 0)
   mvvcols <- V.thaw (V.replicate 3000000 0)
   mvvvals <- V.thaw (V.replicate 3000000 0)  
@@ -178,33 +121,10 @@ main = do
   let csr  = CSR vvvals vvcols vvrows nword sz
   let (_,dd,_) = sparseSvd 100 csr
   print csr
-  -- print (V.take 100 dd)
-   --  mkDesnsefromCSR csr
-  
+  print dd
   {-
   let v3 :: VU.Vector (Int,Int,Double)
         =  VU.take 100 $ (VU.zip3 (V.convert vvrows) (V.convert vvcols) (V.convert vvvals))
   print v3
   -}
   return ()
-  {-                               
-  let -- smat :: GMatrix
-      smat = mkSparse alst
-      alst  = [((t,d),v) | d <- [0..sz-1]
-                         , t <- fromJust (IM.lookup d docs)
-                         , let v = tfidf sz docs occ_dwt t d ]
-
-
-  -- print $ length alst 
-  print (nRows smat)
-  print (nCols smat)
-  -}
-  {- 
-  txt <- TLIO.readFile "1M.training" -- "/home/wavewave/repo/srcp/nlp-data/word2vec-dataset/1b.training"
-  -- print txt
-
-  let (n',mi,mc) = learnVocab txt
-  print n'
-
-  print $ M.lookup 2000 mc
-  -}
