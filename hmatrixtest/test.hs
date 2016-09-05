@@ -47,28 +47,31 @@ enumerate !n = do
     yield (n,x)
     enumerate (n+1)
  
-
-buildMap (mref,mv) (dref,md) =
+buildMap :: (MonadIO m) => MVector (PrimState IO) Int -> MVector (PrimState IO) Int -> Sink (Int,Text) (StateT WordCountState m) ()
+buildMap mcount md =
   whileJust_ await $ \(docid,t) -> do
     let ws = T.words t
-    liftIO $ do
-      is <-mapM (voca mref mv) ws
-      let is' = Set.toList (Set.fromList is)
-      doc dref md docid is'
+    
+    is <- lift $ mapM (voca mcount) ws
+    
+    let is' = Set.toList (Set.fromList is)
+    lift $ doc md docid is'
 
-voca mref mcount w = do
-  BoundedWordMap n m mrev <- readIORef mref
+voca mcount w = do
+  (BoundedWordMap n m mrev,s) <- get -- readIORef mref
   case HM.lookup w m of
     Nothing -> do
-      MV.write mcount n 1
-      writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m) (IM.insert n w mrev))
+      liftIO $ MV.write mcount n 1
+      put $! (BoundedWordMap (n+1) (HM.insert w n m) (IM.insert n w mrev),s)
+      -- writeIORef mref (BoundedWordMap (n+1) (HM.insert w n m) (IM.insert n w mrev))
       return n
-    Just i -> MV.modify mcount (+1) i >> return i
+    Just i -> liftIO $ MV.modify mcount (+1) i >> return i
 
-doc :: IORef (IntMap [Int]) -> MVector (PrimState IO) Int -> Int -> [Int] -> IO ()
-doc dref md docid js = do
-  modifyIORef' dref (IM.insert docid js)
-  mapM_ (MV.modify md (+1)) js  
+doc :: MonadIO m => MVector (PrimState IO) Int -> Int -> [Int] -> StateT WordCountState m ()
+doc md docid js = do
+  (s,r) <- get 
+  put $! (s,IM.insert docid js r)
+  liftIO $ mapM_ (MV.modify md (+1)) js  
 
 tfidf :: Int -> IntMap [Int] -> Vector Int -> Int -> Int -> Double
 tfidf sz dmap occ_dwt t d = fromMaybe 0 calc
@@ -81,28 +84,30 @@ data BoundedWordMap = BoundedWordMap { newid :: !Int
                                      , revmap :: !(IntMap Text) 
                                      }
 
+type WordCountState = (BoundedWordMap,IntMap [Int])
+
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
-  let sz = 100
-  mref <- newIORef emptyBWM
-  dref <- newIORef IM.empty
+  let sz = 1000000
+  -- mref <- newIORef emptyBWM
+  -- dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
   md <- V.thaw (V.replicate 1000000 (0 :: Int))
   
-  runResourceT $ 
+  (_,s) <- runResourceT $ flip runStateT (emptyBWM,IM.empty) $
     sourceFile "1M.training" =$= CT.decode CT.utf8 =$= CT.lines =$= isolate sz =$= enumerate 0 $$ getZipSink $
-      (,) <$> ZipSink (count 0) <*> ZipSink (buildMap (mref,mv) (dref,md))
+      (,) <$> ZipSink (count 0) <*> ZipSink (buildMap mv md)
   --
-  BoundedWordMap nword wmap rmap <- readIORef mref
+  let (BoundedWordMap nword wmap rmap,docs) = s
   v <- V.freeze mv :: IO (Vector Int)
   occ_dwt <- V.freeze md :: IO (Vector Int)
-  docs <- readIORef dref
+  -- docs <- readIORef dref
   --
- 
-  mvvrows <- V.thaw (V.replicate 3000000 0)
-  mvvcols <- V.thaw (V.replicate 3000000 0)
-  mvvvals <- V.thaw (V.replicate 3000000 0)  
+   
+  mvvrows <- V.thaw (V.replicate 30000000 0)
+  mvvcols <- V.thaw (V.replicate 30000000 0)
+  mvvvals <- V.thaw (V.replicate 30000000 0)  
   
   cref <- newIORef (0 :: Int)
   forM_ [0..sz-1] $ \d -> do
@@ -119,9 +124,9 @@ main = do
   vvvals <- V.take ssz <$> V.freeze mvvvals
 
   let csr  = CSR vvvals vvcols vvrows nword sz
-  let (_,dd,_) = sparseSvd 100 csr
-  print csr
-  print dd
+  let (_,dd,_) = sparseSvd 100 csr 
+  -- print csr
+  -- print dd
   {-
   let v3 :: VU.Vector (Int,Int,Double)
         =  VU.take 100 $ (VU.zip3 (V.convert vvrows) (V.convert vvcols) (V.convert vvvals))
