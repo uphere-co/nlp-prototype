@@ -65,6 +65,8 @@ void test_dp_merging(){
     for(auto phrase : phrases) score_dp += phrase->score;
     print(score_dp);
     print(":total score_dp.\n");
+    print(table.score_sum(0,7));
+    print(":score_sum.\n");
     auto root_node=table.get(0,n_words-1);
     print_all_descents(root_node);
 

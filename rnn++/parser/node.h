@@ -64,7 +64,9 @@ auto construct_nodes_with_reserve=[](auto const &words, auto const &idxs){
     auto n=words.size();
     for(decltype(n)i=0; i!=n; ++i){
         Node::word_type word{words[i],idxs[i]};
-        nodes.push_back(Node{word});    
+        Node node{word};
+        node.score=0.0;
+        nodes.push_back(std::move(node));    
     }
     return UninializedLeafNodes{std::move(nodes)};;
 };

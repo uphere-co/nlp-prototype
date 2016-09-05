@@ -1,4 +1,5 @@
 #pragma  once
+#include <limits>
 
 #include "parser/param.h"
 #include "parser/node.h"
@@ -40,13 +41,18 @@ public:
     // using idx_t = std::ptrdiff_t;
     using idx_t = std::size_t;
     using node_t = rnn::simple_model::tree::Node;
+    using val_t= node_t::value_type;
+
     DPtable(std::vector<node_t> const &nodes)
-    : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()) {
+    : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()),
+      score_sums(raw.size(), std::numeric_limits<val_t>::lowest()) {
         for(decltype(n_words)i=0; i<n_words; ++i){
             get(i,i)=nodes[i];
+            score_sum(i,i)=0.0;
         }
     }
     node_t& get(idx_t i, idx_t j) {return raw[i*n_words+j];}
+    val_t&  score_sum(idx_t i, idx_t j) {return score_sums[i*n_words+j];}
     void search_best(Param const &param, idx_t i, idx_t j){
         auto& node=get(i,j);
         for(idx_t k=i; k<j; ++k){
@@ -63,8 +69,12 @@ public:
             auto& left =get(i,k);
             auto& right=get(k+1,j);
             auto phrase=merge_node(param, left,right);
-            if(phrase.score>node.score){
+            auto score_total=phrase.score+score_sum(i,k)+score_sum(k+1,j);
+            auto& current_best_score=score_sum(i,j);
+            if(score_total>current_best_score){
+            // if(phrase.score>node.score){
                 node=phrase;
+                current_best_score=score_total;
             }
         }
         // print("\n");
@@ -93,6 +103,7 @@ private:
     }
     idx_t n_words;
     std::vector<node_t> raw;
+    std::vector<val_t> score_sums;
 };
 }//namespace rnn::simple_model::detail
 }//namespace rnn::simple_model
