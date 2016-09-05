@@ -40,6 +40,14 @@ import           Foreign.Ptr
 
 foreign import ccall "mymain" c_mymain :: CInt -> Ptr CInt -> Ptr CInt -> Ptr Double -> IO CInt
 
+foreign import ccall "&callhaskell" p_callhaskell :: FunPtr (IO ()) 
+
+foreign import ccall "dynamic" mkFunFromC :: FunPtr (IO ()) -> IO ()
+
+foreign import ccall "wrapper" mkFunPtrFromHaskell :: IO () -> IO (FunPtr (IO ()))
+
+foreign import ccall "registerfun" c_register :: FunPtr (IO ()) -> IO ()
+
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
   (await >>=) $ mapM_ $ \_ -> do
@@ -93,8 +101,14 @@ data BoundedWordMap = BoundedWordMap { newid :: !Int
 type WordCountState = (BoundedWordMap,IntMap [Int])
 
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
-                      
+
+testcallback = putStrLn "I am in testcallback"
+
+  
 main = do
+  myfunptr <- mkFunPtrFromHaskell testcallback
+  c_register myfunptr 
+  
   let sz = 1000
   -- mref <- newIORef emptyBWM
   -- dref <- newIORef IM.empty
@@ -145,4 +159,6 @@ main = do
         =  VU.take 100 $ (VU.zip3 (V.convert vvrows) (V.convert vvcols) (V.convert vvvals))
   print v3
   -}
+  freeHaskellFunPtr myfunptr
+  
   return ()

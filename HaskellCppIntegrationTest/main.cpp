@@ -15,6 +15,8 @@
 
 extern "C" {
     int mymain( int, int*, int*, double* );
+    void (*callhaskell)( void );
+    void registerfun( void(*)(void) );
 }
 
 
@@ -211,8 +213,10 @@ auto ToStrings(std::vector<char> const &concat_words){
 }//namespace tfkld
 
 
-
-
+extern void (*callhaskell)( void ); 
+void registerfun( void (*f)(void) ) {
+    callhaskell=  f;
+};
 
 int mymain( int count,  int* vrow, int* vcol, double* vval ){
     auto timer = Timer{};
@@ -239,7 +243,11 @@ int mymain( int count,  int* vrow, int* vcol, double* vval ){
     timer.here_then_reset("Completed SVD calculation!\n");
     
     std::cout << "Finished!" << std::endl;  
-     
+
+    callhaskell();
+
+    std::cout << "After callhaskell()" << std::endl;
+    
     /*    using namespace tfkld;
     using namespace arma;
 
