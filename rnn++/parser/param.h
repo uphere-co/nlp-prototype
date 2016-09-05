@@ -48,6 +48,7 @@ Param operator +(const Param& x, const Param& y);
 Param operator -(const Param& x, const Param& y);
 // Param operator *(Param::value_type x, const Param& y);
 
+void write_to_disk(Param const &param, std::string param_name);
 Param deserializeParam(Param::raw_type &param_raw);
 Param randomParam(Param::value_type scale);
 

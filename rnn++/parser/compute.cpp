@@ -1,5 +1,7 @@
 #include "parser/compute.h"
 
+#include "utils/print.h"
+
 //TODO: move these from this header to .cpp body.
 using rnn::simple_model::Param; 
 using value_type= Param::value_type;
@@ -240,14 +242,17 @@ DPtable::node_t& DPtable::root_node() {return get(0,n_words-1);}
 DPtable::val_t&  DPtable::score_sum(idx_t i, idx_t j) {return score_sums[i*n_words+j];}
 DPtable::val_t&  DPtable::penalty(idx_t i, idx_t j) {return penalties[i*n_words+j];}
 void DPtable::search_best(Param const &param, idx_t i, idx_t j){
+    using util::print;
+    // auto print_elm=[](auto i, auto j){
+    //     print("(");
+    //     print(i);
+    //     print(j);
+    //     print(")");
+    // };
+    // print_elm(i,j);
+    // print(":");    
     auto& node=get(i,j);
     for(idx_t k=i; k<j; ++k){
-        // auto print_elm=[](auto i, auto j){
-        //     print("(");
-        //     print(i);
-        //     print(j);
-        //     print(")");
-        // };
         // print_elm(i,k);
         // print("and");
         // print_elm(k+1,j);

@@ -100,17 +100,17 @@ DPtable dp_merging_with_penalty(VocaInfo const &rnn, Param const &param,
                                 DPtable::val_t lambda,
                                 SentencePair const &sent_pair);
 
-Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes);
-Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
+Param::value_type get_full_greedy_score(Param const &param, InializedLeafNodes &nodes);
+Param::value_type greedy_scoring_dataset(VocaInfo const &rnn, Param const &param, 
                                   TokenizedSentences const &dataset);
 
 template<typename T>
-Param::value_type scoring_minibatch(VocaInfo const &rnn, Param const &param, 
+Param::value_type greedy_scoring_minibatch(VocaInfo const &rnn, Param const &param, 
                                     T beg, T end){
     using rnn::type::float_t;
     auto get_score=[&rnn,&param](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
-        return get_full_score(param, nodes);
+        return get_full_greedy_score(param, nodes);
     };
     auto score_accum = util::parallel_reducer(beg, end, get_score, float_t{});
     return score_accum;
@@ -127,7 +127,7 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
 //                                  + .. 
 //                                  + score_(n-1)
 // score_1 = f(A*f(A*f(...)+b)+b)
-Gradient get_gradient(Param const &param, InializedLeafNodes &nodes );
+Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes );
 
 Gradient get_directed_grad(VocaInfo const &rnn, Param const &param, 
                         SentencePair const &sent_pair);

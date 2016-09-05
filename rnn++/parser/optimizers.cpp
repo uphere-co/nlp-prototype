@@ -19,6 +19,29 @@ auto write_from_ptr=[](lbfgsfloatval_t const *x_ptr, Param const &param){
     for (auto &x : param.u_score.span) x=*x_ptr++;
 };
 
+
+
+auto accum_adagrad_factor_vec = [](int64_t i, auto &out, auto const &vec){
+    out[i] += vec[i]*vec[i];
+};
+auto accum_adagrad_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
+    out[i][j] += vec[i][j]*vec[i][j];
+};
+auto adaptive_update_vec = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+    out[i] += x *grad[i]/std::sqrt(adagrad_factor[i]+0.0000001);
+};
+auto adaptive_update_mat = [](int64_t i, int64_t j, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+    out[i][j] += x *grad[i][j]/std::sqrt(adagrad_factor[i][j]+0.0000001);
+};
+auto accum_rmsprop_factor_vec = [](int64_t i, auto &out, auto const &vec){
+    out[i] *=0.9;
+    out[i] += 0.1*vec[i]*vec[i];
+};
+auto accum_rmsprop_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
+    out[i][j] *= 0.9;
+    out[i][j] += 0.1*vec[i][j]*vec[i][j];
+};
+
 }//nameless namespace
 
 
@@ -112,7 +135,7 @@ LBFGSoptimizer::lfloat_t LBFGSoptimizer::evaluate(const lfloat_t *x, lfloat_t *g
     auto f_grad = [this](Param const &param){
         auto get_grad = [&](auto sentence){
             auto nodes = this->pimpl->rnn.initialize_tree(sentence);
-            return get_gradient(param, nodes);
+            return get_greedy_gradient(param, nodes);
         };
 
         return Gradient{} - parallel_reducer(this->pimpl->beg, this->pimpl->end, get_grad, Gradient{});
@@ -120,7 +143,7 @@ LBFGSoptimizer::lfloat_t LBFGSoptimizer::evaluate(const lfloat_t *x, lfloat_t *g
     write_from_ptr(x, pimpl->param);
     auto grad_sum = f_grad(pimpl->param);
     write_to_ptr(g, grad_sum.param);
-    lfloat_t fx = -scoring_minibatch(pimpl->rnn, pimpl->param, pimpl->beg, pimpl->end);
+    lfloat_t fx = -greedy_scoring_minibatch(pimpl->rnn, pimpl->param, pimpl->beg, pimpl->end);
     // printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%e   \n", 
     //        fx, norm_L1(param.w_left.span), norm_L1(param.w_right.span), 
     //        norm_L1(param.bias.span), norm_L1(param.u_score.span));
@@ -128,6 +151,49 @@ LBFGSoptimizer::lfloat_t LBFGSoptimizer::evaluate(const lfloat_t *x, lfloat_t *g
     return fx;
 }
 
+
+AdaGrad::AdaGrad(val_t scale)
+: ada_scale{scale} {}
+
+void AdaGrad::update(Param &param, Param const &grad){
+    matloop_void(accum_adagrad_factor_mat, ada_factor.w_left.span, grad.w_left.span);
+    matloop_void(accum_adagrad_factor_mat, ada_factor.w_right.span,grad.w_right.span);
+    vecloop_void(accum_adagrad_factor_vec, ada_factor.bias.span ,  grad.bias.span);
+    vecloop_void(accum_adagrad_factor_vec, ada_factor.u_score.span,grad.u_score.span);
+    matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
+    matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
+    vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
+    vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor.u_score.span);
+}
+
+RMSprop::RMSprop(val_t scale, WordBlock::idx_t voca_size)
+: ada_factor_voca{voca_size}, ada_scale{scale} {}
+
+void RMSprop::update(Param &param, Param const &grad){
+    matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_left.span, grad.w_left.span);
+    matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_right.span,grad.w_right.span);
+    vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.bias.span ,  grad.bias.span);
+    vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.u_score.span,grad.u_score.span);
+    matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor_param.w_left.span);
+    matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor_param.w_right.span);
+    vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor_param.bias.span);
+    vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor_param.u_score.span);
+}
+
+void RMSprop::update(WordBlock &voca_vecs, SparseGrad const &grad){
+    assert(ada_factor_voca.size()==552402);
+    std::vector<SparseGrad::key_t> idxs;
+    for(auto const &x:grad.val) idxs.push_back(x.first);
+    auto n=idxs.size();
+    tbb::parallel_for(decltype(n){0},n,[&](auto i){
+        auto idx=idxs[i];
+        auto g = grad.val.find(idx);
+        auto v=ada_factor_voca[idx];
+        vecloop_void(accum_rmsprop_factor_vec, v ,  g->second.span);
+        auto wordvec=voca_vecs[idx];
+        vecloop_void(adaptive_update_vec, wordvec, ada_scale, g->second.span , v);
+    });
+}
 
 }//namespace rnn::simple_model::optimizer
 }//namespace rnn::simple_model

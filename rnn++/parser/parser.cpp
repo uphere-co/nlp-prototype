@@ -65,13 +65,12 @@ DPtable dp_merging_with_penalty(VocaInfo const &rnn, Param const &param,
                                 SentencePair const &sent_pair){
     auto initial_nodes = rnn.initialize_tree(sent_pair.original);
     auto &nodes = initial_nodes.val;
-    auto n_words=nodes.size();
     DPtable table{nodes};
     table.compute(param, lambda, sent_pair.parsed);
     return table;
 }
 
-Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes ) {
+Param::value_type get_full_greedy_score(Param const &param, InializedLeafNodes &nodes ) {
     using namespace rnn::simple_model::detail;
     auto& all_nodes = nodes.val; 
     auto top_nodes = merge_leaf_nodes(param, all_nodes);
@@ -83,13 +82,13 @@ Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes )
     return score;
 }
 
-Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
+Param::value_type greedy_scoring_dataset(VocaInfo const &rnn, Param const &param, 
                                   TokenizedSentences const &dataset){
     using rnn::type::float_t;
     auto &lines = dataset.val;
     auto get_score=[&rnn,&param](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
-        return get_full_score(param, nodes);
+        return get_full_greedy_score(param, nodes);
     };
     // //Serial version for debugging:
     // float_t score_accum{};
@@ -128,7 +127,7 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
     return score_accum;
 }
 
-Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
+Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes ) {
     using namespace detail;
 
     // auto timer=Timer{};
