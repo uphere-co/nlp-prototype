@@ -131,7 +131,7 @@ void test_dp_merging_with_penalty(){
         score+=node.score;
     } 
     print(score);
-    print(":total score.\n");
+    print(":total score_greedy.\n");
     
     timer.here_then_reset("Forward path");
 }

@@ -22,6 +22,12 @@ Param::raw_type Param::serialize() const{
     //  bias.span[0]=1;
     return raw_data;
 }
+void write_to_disk(Param const &param, std::string param_name){
+    using namespace util::io;    
+    auto param_raw = param.serialize();
+    H5file h5store{H5name{"rnn_params.h5"}, hdf5::FileMode::rw_exist};
+    h5store.writeRawData(H5name{param_name}, param_raw);
+}
 
 Param deserializeParam(std::vector<rnn::type::float_t> &param_raw){
     constexpr auto dim = rnn::config::word_dim;

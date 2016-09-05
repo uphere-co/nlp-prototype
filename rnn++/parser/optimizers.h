@@ -7,6 +7,8 @@
 
 #include "parser/basic_type.h"
 #include "utils/loop_gen.h" 
+#include "parser/parser.h"
+#include "parser/config.h"
 
 namespace rnn{
 namespace simple_model{
@@ -47,6 +49,36 @@ protected:
     std::unique_ptr<impl> pimpl;
 };
 
+
+class AdaGrad{    
+public:
+    using val_t = rnn::type::float_t;
+    static const int word_dim=rnn::config::word_dim;
+    AdaGrad(val_t scale);
+
+    void update(Param &param, Param const &grad);
+private:
+    util::math::VecLoop_void<val_t,word_dim> vecloop_void{};
+    util::math::MatLoop_void<val_t,word_dim,word_dim> matloop_void{};
+    Param ada_factor{};
+    val_t ada_scale;
+};
+
+class RMSprop{
+public:
+    using val_t = rnn::type::float_t;
+    static const int word_dim=rnn::config::word_dim;
+    RMSprop(val_t scale, WordBlock::idx_t voca_size);
+
+    void update(Param &param, Param const &grad);
+    void update(WordBlock &voca_vecs, SparseGrad const &grad);
+private:
+    WordBlock ada_factor_voca;
+    Param ada_factor_param{};
+    util::math::VecLoop_void<val_t,word_dim> vecloop_void{};
+    util::math::MatLoop_void<val_t,word_dim,word_dim> matloop_void{};
+    val_t ada_scale;
+};
 
 }//namespace rnn::simple_model::optimizer
 }//namespace rnn::simple_model

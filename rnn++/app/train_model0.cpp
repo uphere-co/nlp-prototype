@@ -26,11 +26,6 @@ using namespace rnn::simple_model::test;
 using namespace rnn::simple_model;
 namespace rnn_t = rnn::type;
 
-void write_to_disk(Param const &param, std::string param_name){    
-    auto param_raw = param.serialize();
-    H5file h5store{H5name{"rnn_params.h5"}, hdf5::FileMode::rw_exist};
-    h5store.writeRawData(H5name{param_name}, param_raw);
-}
 int main(){
     Logger logger{"rnn_model0", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){

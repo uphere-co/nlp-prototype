@@ -22,95 +22,12 @@ using namespace util::io;
 using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
-using namespace rnn::simple_model::test;
+using namespace rnn::simple_model::optimizer;
 using namespace rnn::simple_model;
+using namespace rnn::simple_model::test;
+
 namespace rnn_t = rnn::type;
 
-void write_to_disk(Param const &param, std::string param_name){    
-    auto param_raw = param.serialize();
-    H5file h5store{H5name{"rnn_params.h5"}, hdf5::FileMode::rw_exist};
-    h5store.writeRawData(H5name{param_name}, param_raw);
-}
-
-auto accum_adagrad_factor_vec = [](int64_t i, auto &out, auto const &vec){
-    out[i] += vec[i]*vec[i];
-};
-auto accum_adagrad_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
-    out[i][j] += vec[i][j]*vec[i][j];
-};
-auto adaptive_update_vec = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
-    out[i] += x *grad[i]/std::sqrt(adagrad_factor[i]+0.0000001);
-};
-auto adaptive_update_mat = [](int64_t i, int64_t j, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
-    out[i][j] += x *grad[i][j]/std::sqrt(adagrad_factor[i][j]+0.0000001);
-};
-auto accum_rmsprop_factor_vec = [](int64_t i, auto &out, auto const &vec){
-    out[i] *=0.9;
-    out[i] += 0.1*vec[i]*vec[i];
-};
-auto accum_rmsprop_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
-    out[i][j] *= 0.9;
-    out[i][j] += 0.1*vec[i][j]*vec[i][j];
-};
-class AdaGrad{
-public:
-    AdaGrad(rnn_t::float_t scale)
-    : ada_scale{scale} {}
-
-    void update(Param &param, Param const &grad){
-        matloop_void(accum_adagrad_factor_mat, ada_factor.w_left.span, grad.w_left.span);
-        matloop_void(accum_adagrad_factor_mat, ada_factor.w_right.span,grad.w_right.span);
-        vecloop_void(accum_adagrad_factor_vec, ada_factor.bias.span ,  grad.bias.span);
-        vecloop_void(accum_adagrad_factor_vec, ada_factor.u_score.span,grad.u_score.span);
-        matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor.w_left.span);
-        matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor.w_right.span);
-        vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor.bias.span);
-        vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor.u_score.span);
-    }
-private:
-    util::math::VecLoop_void<rnn_t::float_t,word_dim> vecloop_void{};
-    util::math::MatLoop_void<rnn_t::float_t,word_dim,word_dim> matloop_void{};
-    Param ada_factor{};
-    rnn_t::float_t ada_scale;
-};
-
-class RMSprop{
-public:
-    RMSprop(rnn_t::float_t scale, WordBlock::idx_t voca_size)
-    : ada_factor_voca{voca_size}, ada_scale{scale} {}
-
-    void update(Param &param, Param const &grad){
-        matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_left.span, grad.w_left.span);
-        matloop_void(accum_rmsprop_factor_mat, ada_factor_param.w_right.span,grad.w_right.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.bias.span ,  grad.bias.span);
-        vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.u_score.span,grad.u_score.span);
-        matloop_void(adaptive_update_mat, param.w_left.span, ada_scale, grad.w_left.span, ada_factor_param.w_left.span);
-        matloop_void(adaptive_update_mat, param.w_right.span, ada_scale, grad.w_right.span,ada_factor_param.w_right.span);
-        vecloop_void(adaptive_update_vec, param.bias.span, ada_scale, grad.bias.span ,  ada_factor_param.bias.span);
-        vecloop_void(adaptive_update_vec, param.u_score.span, ada_scale, grad.u_score.span,ada_factor_param.u_score.span);
-    }
-
-    void update(WordBlock &voca_vecs, SparseGrad const &grad){
-        assert(ada_factor_voca.size()==552402);
-        std::vector<SparseGrad::key_t> idxs;
-        for(auto const &x:grad.val) idxs.push_back(x.first);
-        auto n=idxs.size();
-        tbb::parallel_for(decltype(n){0},n,[&](auto i){
-            auto idx=idxs[i];
-            auto g = grad.val.find(idx);
-            auto v=ada_factor_voca[idx];
-            vecloop_void(accum_rmsprop_factor_vec, v ,  g->second.span);
-            auto wordvec=voca_vecs[idx];
-            vecloop_void(adaptive_update_vec, wordvec, ada_scale, g->second.span , v);
-        });
-    }
-private:
-    WordBlock ada_factor_voca;
-    Param ada_factor_param{};
-    util::math::VecLoop_void<rnn_t::float_t,word_dim> vecloop_void{};
-    util::math::MatLoop_void<rnn_t::float_t,word_dim,word_dim> matloop_void{};
-    rnn_t::float_t ada_scale;
-};
 
 void l2_normalize(WordBlock &voca_vecs){
     auto n=voca_vecs.size();
@@ -147,7 +64,6 @@ int main(){
         auto trainset_orig=TokenizedSentences{"1b.s2010.trainset"};
         auto testset = SentencePairs{testset_parsed,testset_orig};
         auto trainset = SentencePairs{trainset_parsed,trainset_orig};
-        auto &pairs = trainset.val;
         
         logger.info("Read trainset");
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
@@ -174,6 +90,7 @@ int main(){
         // optimizer::GradientDescent optimizer{0.0001};
         // AdaGrad optimizer{0.001};
         RMSprop optimizer{0.001, rnn.voca_vecs.size()};
+        auto &pairs = trainset.val;
         for(auto epoch=0; epoch<n_epoch; ++epoch){
             for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
                 auto beg=it;
