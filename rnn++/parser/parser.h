@@ -96,9 +96,16 @@ struct SentencePairs{
 };
 
 using detail::DPtable;
-DPtable dp_merging_with_penalty(VocaInfo const &rnn, Param const &param,
+DPtable dp_merging_with_penalty(Param const &param,
+                                InializedLeafNodes &initialized_nodes,
                                 DPtable::val_t lambda,
                                 SentencePair const &sent_pair);
+Param::value_type get_full_dp_score(Param const &param,
+                                    InializedLeafNodes &initialized_nodes,
+                                    DPtable::val_t lambda,
+                                    SentencePair const &sent_pair);
+Param::value_type dp_scoring_dataset(VocaInfo const &rnn, Param const &param, 
+                                     rnn::type::float_t lambda, SentencePairs const &dataset);
 
 Param::value_type get_full_greedy_score(Param const &param, InializedLeafNodes &nodes);
 Param::value_type greedy_scoring_dataset(VocaInfo const &rnn, Param const &param, 
@@ -128,7 +135,9 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
 //                                  + score_(n-1)
 // score_1 = f(A*f(A*f(...)+b)+b)
 Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes );
-
+Gradient get_dp_gradient(Param const &param, rnn::type::float_t lambda,
+                         InializedLeafNodes &init_nodes,
+                         SentencePair const &sent_pair); 
 Gradient get_directed_grad(VocaInfo const &rnn, Param const &param, 
                         SentencePair const &sent_pair);
     

@@ -105,7 +105,8 @@ void test_dp_merging_with_penalty(){
     auto sentence_parsed = u8"(((((a symbol) of) (british pound)) (is £)) .)";
     SentencePair sent_pair{sentence_parsed, sentence_test};
     
-    DPtable table=dp_merging_with_penalty(rnn, param, 0.5, sent_pair);
+    auto initialized_nodes = rnn.initialize_tree(sent_pair.original);
+    DPtable table=dp_merging_with_penalty(param, initialized_nodes, 0.5, sent_pair);
     timer.here_then_reset("DP merging forward path with penalty terms.");
 
     auto phrases = table.get_phrases();

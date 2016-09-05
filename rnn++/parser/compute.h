@@ -55,6 +55,7 @@ public:
     void compute(Param const &param, val_t lambda, std::string parsed_sentence);
     void set_penalty(val_t lambda, std::string parsed_sentence);
     std::vector<const node_t*> get_phrases();
+    std::vector<const node_t*> get_leafs();
 
 private:
     void collect_phrases(const node_t* node, std::vector<const node_t*> &phrases);
