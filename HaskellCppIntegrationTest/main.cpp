@@ -27,19 +27,21 @@ void registerfun( void (*f)(void) ) {
     callhaskell=  f;
 };
 
-int mymain( int count,  int* vrow, int* vcol, double* vval ){
+int mymain( int count,  int* prow, int* pcol, double* pval ){
     auto timer = Timer{};
-    
     arma::umat location(2,count);
     arma::vec value(count);
-    arma::sp_mat mat;
+    for(size_t a = 0 ; a < count ; a++ ) {
+    	location(0,a) = prow[a];
+    	location(1,a) = pcol[a];
+	value(a) = pval[a];
+    } 
+
+    arma::sp_mat mat(location, value) ;
     
-    for(int64_t a = 0 ; a < count ; a++ ) {
-	location(0,a) = vrow[a];
-	location(1,a) = vcol[a];
-	value(a) = vval[a];
-    }
-    mat = std::move( arma::sp_mat(location, value) );
+    // mat = std::move( arma::sp_mat(location, value) );
+    
+    
     timer.here_then_reset("Move matrix done!\n");
 
     
@@ -50,6 +52,11 @@ int mymain( int count,  int* vrow, int* vcol, double* vval ){
     arma::svds(U, s, V, mat, 100);
 
     timer.here_then_reset("Completed SVD calculation!\n");
+
+    for( auto d : s ) {
+      std::cout << d << "," ;
+    }
+    std::cout << std::endl;
     
     std::cout << "Finished!" << std::endl;  
 
