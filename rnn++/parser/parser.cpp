@@ -60,6 +60,12 @@ TokenizedSentences::TokenizedSentences(std::string tokenized_file)
 ParsedSentences::ParsedSentences(std::string parsed_file)
     : val{util::string::readlines(parsed_file)} {}
 
+DPtable dp_merging(Param const &param, InializedLeafNodes &initialized_nodes){
+    auto &nodes = initialized_nodes.val;
+    DPtable table{nodes};
+    table.compute(param);
+    return table;
+}
 DPtable dp_merging_with_penalty(Param const &param,
                                 InializedLeafNodes &initialized_nodes,
                                 DPtable::val_t lambda,

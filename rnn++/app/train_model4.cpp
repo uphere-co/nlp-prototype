@@ -30,7 +30,7 @@ int main(){
     Logger logger{"rnn_model4", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){
         std::stringstream ss;
-        ss << "model1." << logger.uid_str() <<"."<<i_minibatch;
+        ss << "model4." << logger.uid_str() <<"."<<i_minibatch;
         write_to_disk(param, ss.str());
     };
     try {

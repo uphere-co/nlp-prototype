@@ -96,6 +96,7 @@ struct SentencePairs{
 };
 
 using detail::DPtable;
+DPtable dp_merging(Param const &param, InializedLeafNodes &initialized_nodes);
 DPtable dp_merging_with_penalty(Param const &param,
                                 InializedLeafNodes &initialized_nodes,
                                 DPtable::val_t lambda,
