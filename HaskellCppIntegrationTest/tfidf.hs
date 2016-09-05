@@ -34,11 +34,12 @@ import           Data.Vector.Storable  (Vector, MVector(..),(!))
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import qualified Data.Vector.Unboxed as VU
+import           Data.Word
 import           Foreign.C.Types
 import           Foreign.Ptr
 
 
-foreign import ccall "mymain" c_mymain :: CInt -> Ptr CInt -> Ptr CInt -> Ptr Double -> IO CInt
+foreign import ccall "mymain" c_mymain :: CInt -> Ptr CULong -> Ptr CULong  -> Ptr Double -> IO CInt
 
 foreign import ccall "&callhaskell" p_callhaskell :: FunPtr (IO ()) 
 
@@ -150,8 +151,8 @@ main = do
 
 
 
-  let csr  = CSR vvvals vvcols vvrows nword sz
-  let (_,dd,_) = sparseSvd 100 csr 
+  -- let csr  = CSR vvvals vvcols vvrows nword sz
+  -- let (_,dd,_) = sparseSvd 100 csr 
   -- print csr
   -- print dd
   {-

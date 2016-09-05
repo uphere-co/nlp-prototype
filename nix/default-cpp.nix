@@ -81,10 +81,10 @@ rec {
     inherit openblas_static;
     
     armadillo = stdenv.mkDerivation rec {
-      name = "armadillo-7.200.2";
+      name = "armadillo-7.400.2";
       src = pkgs.fetchurl {
         url = "http://sourceforge.net/projects/arma/files/${name}.tar.xz";
-        sha256 = "1yvx75caks477jqwx5gspi6946jialddk00wdvg6dnh5wdi2xasm";
+        sha256 = "0xmpnqhm9mwr1lssjyarj0cl8b4svbqv6z1xa1dxlwd2ly1srkg4";
       };
       buildInputs = [ cmake ]; 
       propagatedBuildInputs = [ openblas_static liblapack ]; 
