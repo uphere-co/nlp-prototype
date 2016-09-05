@@ -15,6 +15,7 @@ int main(){
     try {
         test_DPtable();
         test_dp_merging();
+        test_dp_merging_with_penalty();
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
     } catch (std::exception &e) {

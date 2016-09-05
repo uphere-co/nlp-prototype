@@ -7,6 +7,7 @@
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
 #include "utils/loop_gen.h"
+#include "utils/binary_tree.h"
 
 namespace rnn{
 namespace simple_model{
@@ -45,7 +46,8 @@ public:
 
     DPtable(std::vector<node_t> const &nodes)
     : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()),
-      score_sums(raw.size(), std::numeric_limits<val_t>::lowest()) {
+      score_sums(raw.size(), std::numeric_limits<val_t>::lowest()),
+      penalties(0) {
         for(decltype(n_words)i=0; i<n_words; ++i){
             get(i,i)=nodes[i];
             score_sum(i,i)=0.0;
@@ -53,6 +55,7 @@ public:
     }
     node_t& get(idx_t i, idx_t j) {return raw[i*n_words+j];}
     val_t&  score_sum(idx_t i, idx_t j) {return score_sums[i*n_words+j];}
+    val_t&  penalty(idx_t i, idx_t j) {return penalties[i*n_words+j];}
     void search_best(Param const &param, idx_t i, idx_t j){
         auto& node=get(i,j);
         for(idx_t k=i; k<j; ++k){
@@ -79,6 +82,20 @@ public:
         }
         // print("\n");
     }
+    void search_best_with_penalty(Param const &param, idx_t i, idx_t j){
+        auto& node=get(i,j);
+        for(idx_t k=i; k<j; ++k){
+            auto& left =get(i,k);
+            auto& right=get(k+1,j);
+            auto phrase=merge_node(param, left,right);
+            auto score_total=phrase.score+penalty(i,j)+score_sum(i,k)+score_sum(k+1,j);
+            auto& current_best_score=score_sum(i,j);
+            if(score_total>current_best_score){
+                node=phrase;
+                current_best_score=score_total;
+            }
+        }
+    }
     void compute(Param const &param){
         for(idx_t len=1; len<n_words;++len){
             for(idx_t left=0; left<n_words-len;++left){
@@ -86,6 +103,30 @@ public:
             }
             // print('\n');
         }
+    }
+    void compute(Param const &param, val_t lambda, std::string parsed_sentence){
+        set_penalty(lambda, parsed_sentence);
+        for(idx_t len=1; len<n_words;++len){
+            for(idx_t left=0; left<n_words-len;++left){
+                search_best_with_penalty(param,left,left+len);
+            }
+            // print('\n');
+        }
+    }
+    void set_penalty(val_t lambda, std::string parsed_sentence){
+        using namespace util;
+        penalties=std::vector<val_t>(score_sums.size(), -lambda);
+        auto label_nodes = deserialize_binary_tree<Node>(parsed_sentence);
+        auto spans=get_span_hashes(label_nodes);
+        for(auto hash:spans) {
+            auto left=hash/label_nodes.size();
+            auto right=hash%label_nodes.size();
+            print(left);
+            print(right);
+            print(",");
+            penalty(left,right)=0.0;
+        }
+        print(": spans from parsed sentence.\n");
     }
     std::vector<const node_t*> get_phrases(){
         std::vector<const node_t*> phrases;
@@ -104,6 +145,7 @@ private:
     idx_t n_words;
     std::vector<node_t> raw;
     std::vector<val_t> score_sums;
+    std::vector<val_t> penalties;
 };
 }//namespace rnn::simple_model::detail
 }//namespace rnn::simple_model
