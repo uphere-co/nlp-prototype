@@ -226,7 +226,7 @@ void test_parallel_reduce(){
     auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
-        return get_gradient(param, nodes);
+        return get_greedy_gradient(param, nodes);
     };
     using rnn::config::n_minibatch;
     using rnn::simple_model::Param;
@@ -265,7 +265,7 @@ void test_rnn_full_step(){
 
     auto get_grad = [&](auto sentence){
         auto nodes = rnn.initialize_tree(sentence);
-        return get_gradient(param, nodes);
+        return get_greedy_gradient(param, nodes);
     };
     auto dParam = randomParam(1.0);
     // dParam.w_left.span  *= 0.00001;

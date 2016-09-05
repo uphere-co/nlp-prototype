@@ -135,7 +135,7 @@ LBFGSoptimizer::lfloat_t LBFGSoptimizer::evaluate(const lfloat_t *x, lfloat_t *g
     auto f_grad = [this](Param const &param){
         auto get_grad = [&](auto sentence){
             auto nodes = this->pimpl->rnn.initialize_tree(sentence);
-            return get_gradient(param, nodes);
+            return get_greedy_gradient(param, nodes);
         };
 
         return Gradient{} - parallel_reducer(this->pimpl->beg, this->pimpl->end, get_grad, Gradient{});

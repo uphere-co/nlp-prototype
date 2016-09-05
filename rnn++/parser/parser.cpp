@@ -128,7 +128,7 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
     return score_accum;
 }
 
-Gradient get_gradient(Param const &param, InializedLeafNodes &nodes ) {
+Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes ) {
     using namespace detail;
 
     // auto timer=Timer{};

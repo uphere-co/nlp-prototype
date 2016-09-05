@@ -77,7 +77,7 @@ int main(){
         };
         auto get_greedy_grad=[&](auto const &sent_pair){
             auto nodes = rnn.initialize_tree(sent_pair.original);
-            return get_gradient(param, nodes);
+            return get_greedy_gradient(param, nodes);
         };
         logger.info("Prepared data.");
 

@@ -127,7 +127,7 @@ Param::value_type scoring_parsed_dataset(VocaInfo const &rnn, Param const &param
 //                                  + .. 
 //                                  + score_(n-1)
 // score_1 = f(A*f(A*f(...)+b)+b)
-Gradient get_gradient(Param const &param, InializedLeafNodes &nodes );
+Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes );
 
 Gradient get_directed_grad(VocaInfo const &rnn, Param const &param, 
                         SentencePair const &sent_pair);
