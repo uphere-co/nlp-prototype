@@ -95,6 +95,11 @@ struct SentencePairs{
     val_t val;
 };
 
+using detail::DPtable;
+DPtable dp_merging_with_penalty(VocaInfo const &rnn, Param const &param,
+                                DPtable::val_t lambda,
+                                SentencePair const &sent_pair);
+
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes);
 Param::value_type scoring_dataset(VocaInfo const &rnn, Param const &param, 
                                   TokenizedSentences const &dataset);

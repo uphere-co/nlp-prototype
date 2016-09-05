@@ -87,6 +87,7 @@ void test_dp_merging(){
     timer.here_then_reset("Forward path");
 }
 
+
 void test_dp_merging_with_penalty(){
     using namespace rnn::simple_model;
     using namespace rnn::config;
@@ -104,26 +105,21 @@ void test_dp_merging_with_penalty(){
     auto sentence_parsed = u8"(((((a symbol) of) (british pound)) (is £)) .)";
     SentencePair sent_pair{sentence_parsed, sentence_test};
     
-    auto initial_nodes = rnn.initialize_tree(sent_pair.original);
-    auto &nodes = initial_nodes.val;
-    auto n_words=nodes.size();
-    assert(n_words==8);
-    assert(nodes.capacity()==15);
-    
-    timer.here_then_reset("Setup word2vecs & nodes");
+    DPtable table=dp_merging_with_penalty(rnn, param, 0.5, sent_pair);
+    timer.here_then_reset("DP merging forward path with penalty terms.");
 
-    DPtable table{nodes};
-    table.compute(param, 0.05, sent_pair.parsed);
     auto phrases = table.get_phrases();
+    print(table.score_sum(0,7));
+    print(":score_sum including penalty.\n");
     auto score_dp{0.0};
     for(auto phrase : phrases) score_dp += phrase->score;
     print(score_dp);
     print(":total score_dp.\n");
-    print(table.score_sum(0,7));
-    print(":score_sum including penalty.\n");
-    auto root_node=table.get(0,n_words-1);
+    auto root_node=table.root_node();
     print_all_descents(root_node);
 
+    auto initial_nodes = rnn.initialize_tree(sent_pair.original);
+    auto &nodes = initial_nodes.val;
     auto top_nodes = merge_leaf_nodes(param, nodes);
     auto merge_history = foward_path(param, top_nodes);
     auto score{0.0};
