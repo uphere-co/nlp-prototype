@@ -119,7 +119,7 @@ int main(){
                 grad_greedy.param *=-1.0;
                 optimizer.update(param, grad_greedy.param);
                 grad_greedy.words *=-0.1;
-                optimizer.update(rnn.voca_vecs, grad_label.words);
+                optimizer.update(rnn.voca_vecs, grad_greedy.words);
 
                 ++i_minibatch;
                 if(i_minibatch%100==0) {
