@@ -86,19 +86,19 @@ span<T,M>& operator +=(span<T,M>& out, const span<T,M>& x){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};
     vecloop_void(add_assign_vec, out, x);
     return out;
-};    
+}    
 template<typename T, int64_t M>
 span<T,M>& operator -=(span<T,M>& out, const span<T,M>& x){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};
     vecloop_void(sub_assign_vec, out, x);
     return out;
-};
+}
 template<typename T, int64_t M>
 span<T,M>& operator *=(span<T,M>& out, T x){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};
     vecloop_void(mul_assign_vec, out, x);
     return out;
-};
+}
 
 
 template<typename T, int64_t M, int64_t N>
@@ -106,19 +106,19 @@ span<T,M,N>& operator +=(span<T,M,N>& out, const span<T,M,N>& x){
     auto matloop_void=util::math::MatLoop_void<T,M,N>{};
     matloop_void(add_assign_mat, out, x);
     return out;
-};
+}
 template<typename T, int64_t M, int64_t N>
 span<T,M,N>& operator -=(span<T,M,N>& out, const span<T,M,N>& x){
     auto matloop_void=util::math::MatLoop_void<T,M,N>{};
     matloop_void(sub_assign_mat, out, x);
     return out;
-};
+}
 template<typename T, int64_t M, int64_t N>
 span<T,M,N>& operator *=(span<T,M,N>& out, T x){
     auto matloop_void=util::math::MatLoop_void<T,M,N>{};
     matloop_void(mul_assign_mat, out, x);
     return out;
-};
+}
 
 
 
@@ -134,10 +134,11 @@ template<typename T, int64_t M, int64_t N>
 void grad_update(span<T,M,N>& param, span<T,M,N> const &grad, T scale){
     auto matloop_void=util::math::MatLoop_void<T,M,N>{};
     matloop_void(grad_update_mat, param, grad, scale);
-};
+}
 template<typename T, int64_t M>
 void grad_update(span<T,M>& param, span<T,M> const &grad, T scale){
     auto vecloop_void=util::math::VecLoop_void<T,M>{};
     vecloop_void(grad_update_vec, param, grad, scale);
-};
+}
+
 }//namespace gsl

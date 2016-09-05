@@ -224,6 +224,107 @@ void backward_path(Param &grad, Param const &param,
     backward_path_detail(param, grad.w_left, grad.w_right, grad.bias, grad.u_score, phrase);
 }
 
+
+
+DPtable::DPtable(std::vector<node_t> const &nodes)
+: n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()),
+    score_sums(raw.size(), std::numeric_limits<val_t>::lowest()),
+    penalties(0) {
+    for(decltype(n_words)i=0; i<n_words; ++i){
+        get(i,i)=nodes[i];
+        score_sum(i,i)=0.0;
+    }
+}
+DPtable::node_t& DPtable::get(idx_t i, idx_t j) {return raw[i*n_words+j];}
+DPtable::node_t& DPtable::root_node() {return get(0,n_words-1);}
+DPtable::val_t&  DPtable::score_sum(idx_t i, idx_t j) {return score_sums[i*n_words+j];}
+DPtable::val_t&  DPtable::penalty(idx_t i, idx_t j) {return penalties[i*n_words+j];}
+void DPtable::search_best(Param const &param, idx_t i, idx_t j){
+    auto& node=get(i,j);
+    for(idx_t k=i; k<j; ++k){
+        // auto print_elm=[](auto i, auto j){
+        //     print("(");
+        //     print(i);
+        //     print(j);
+        //     print(")");
+        // };
+        // print_elm(i,k);
+        // print("and");
+        // print_elm(k+1,j);
+        // print("|");
+        auto& left =get(i,k);
+        auto& right=get(k+1,j);
+        auto phrase=merge_node(param, left,right);
+        auto score_total=phrase.score+score_sum(i,k)+score_sum(k+1,j);
+        auto& current_best_score=score_sum(i,j);
+        if(score_total>current_best_score){
+        // if(phrase.score>node.score){
+            node=phrase;
+            current_best_score=score_total;
+        }
+    }
+    // print("\n");
+}
+void DPtable::search_best_with_penalty(Param const &param, idx_t i, idx_t j){
+    auto& node=get(i,j);
+    for(idx_t k=i; k<j; ++k){
+        auto& left =get(i,k);
+        auto& right=get(k+1,j);
+        auto phrase=merge_node(param, left,right);
+        auto score_total=phrase.score+penalty(i,j)+score_sum(i,k)+score_sum(k+1,j);
+        auto& current_best_score=score_sum(i,j);
+        if(score_total>current_best_score){
+            node=phrase;
+            current_best_score=score_total;
+        }
+    }
+}
+void DPtable::compute(Param const &param){
+    for(idx_t len=1; len<n_words;++len){
+        for(idx_t left=0; left<n_words-len;++left){
+            search_best(param,left,left+len);
+        }
+        // print('\n');
+    }
+}
+void DPtable::compute(Param const &param, val_t lambda, std::string parsed_sentence){
+    set_penalty(lambda, parsed_sentence);
+    for(idx_t len=1; len<n_words;++len){
+        for(idx_t left=0; left<n_words-len;++left){
+            search_best_with_penalty(param,left,left+len);
+        }
+        // print('\n');
+    }
+}
+void DPtable::set_penalty(val_t lambda, std::string parsed_sentence){
+    using namespace util;
+    penalties=std::vector<val_t>(score_sums.size(), -lambda);
+    auto label_nodes = deserialize_binary_tree<Node>(parsed_sentence);
+    auto spans=get_span_hashes(label_nodes);
+    for(auto hash:spans) {
+        auto left=hash/label_nodes.size();
+        auto right=hash%label_nodes.size();
+        print(left);
+        print(right);
+        print(",");
+        penalty(left,right)=0.0;
+    }
+    print(": spans from parsed sentence.\n");
+}
+std::vector<const DPtable::node_t*> DPtable::get_phrases() {
+    std::vector<const node_t*> phrases;
+    collect_phrases(&get(0,n_words-1), phrases);
+    return phrases;
+}
+
+void DPtable::collect_phrases(const node_t* node, 
+                              std::vector<const node_t*> &phrases) {
+    if(node->is_leaf()) return;
+    phrases.push_back(node);
+    if(node->left != nullptr) collect_phrases(node->left, phrases);
+    if(node->right!= nullptr) collect_phrases(node->right, phrases);
+}
+
 }//namespace rnn::simple_model::detail
 }//namespace rnn::simple_model
 }//namespace rnn

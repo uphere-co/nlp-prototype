@@ -1,4 +1,5 @@
 #pragma  once
+#include <limits>
 
 #include "parser/param.h"
 #include "parser/node.h"
@@ -6,6 +7,7 @@
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
 #include "utils/loop_gen.h"
+#include "utils/binary_tree.h"
 
 namespace rnn{
 namespace simple_model{
@@ -33,6 +35,34 @@ void directed_merge(Param const &param, std::vector<node_type*> &top_nodes,
 void backward_path(Param &grad, Param const &param,
                    node_type const &phrase);
 
+
+class DPtable{
+public:
+    //using idx_t = rnn::type::idx_t;
+    // using idx_t = std::ptrdiff_t;
+    using idx_t = std::size_t;
+    using node_t = rnn::simple_model::tree::Node;
+    using val_t= node_t::value_type;
+
+    DPtable(std::vector<node_t> const &nodes);
+    node_t& get(idx_t i, idx_t j);
+    node_t& root_node();
+    val_t&  score_sum(idx_t i, idx_t j);
+    val_t&  penalty(idx_t i, idx_t j);
+    void search_best(Param const &param, idx_t i, idx_t j);
+    void search_best_with_penalty(Param const &param, idx_t i, idx_t j);
+    void compute(Param const &param);
+    void compute(Param const &param, val_t lambda, std::string parsed_sentence);
+    void set_penalty(val_t lambda, std::string parsed_sentence);
+    std::vector<const node_t*> get_phrases();
+
+private:
+    void collect_phrases(const node_t* node, std::vector<const node_t*> &phrases);
+    idx_t n_words;
+    std::vector<node_t> raw;
+    std::vector<val_t> score_sums;
+    std::vector<val_t> penalties;
+};
 }//namespace rnn::simple_model::detail
 }//namespace rnn::simple_model
 }//namespace rnn

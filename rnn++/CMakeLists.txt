@@ -33,6 +33,12 @@ add_executable(train_model1 app/train_model1 tests/test_simple_model
                    utils/string utils/hdf5 utils/math utils/logger)
 target_link_libraries(train_model1 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
+add_executable(train_model4 app/train_model4 tests/test_dp_merging
+                   parser/compute parser/config parser/node parser/param 
+                   parser/parser parser/voca parser/wordvec parser/optimizers
+                   utils/string utils/hdf5 utils/math utils/logger)
+target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs )
+
 
 add_executable(model1 app/parser_model1 
                parser/compute parser/config parser/node parser/param 

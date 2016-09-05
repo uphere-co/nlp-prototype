@@ -62,20 +62,11 @@ enum class FileMode {
     rw_exist,
 };
 
-unsigned int OpenWith(FileMode mode);
-
 }// namespace util::io::hdf5
 
 struct H5file {
-    H5file(H5name path, hdf5::FileMode mode): val{path.val, OpenWith(mode)}, name{path.val} {}
-    ~H5file(){
-        try {
-            val.close();
-            std::cerr << "Close H5File " << name.val << "\n";
-        } catch (H5::Exception ex) {
-            std::cerr << ex.getCDetailMsg() << std::endl;
-        }
-    };
+    H5file(H5name path, hdf5::FileMode mode);
+    ~H5file();
     template<typename T_RAW_ELM>
     std::vector<T_RAW_ELM> getRawData(H5name dataset) const {
         H5dataset data{val, dataset};

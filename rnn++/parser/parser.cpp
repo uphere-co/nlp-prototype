@@ -60,6 +60,16 @@ TokenizedSentences::TokenizedSentences(std::string tokenized_file)
 ParsedSentences::ParsedSentences(std::string parsed_file)
     : val{util::string::readlines(parsed_file)} {}
 
+DPtable dp_merging_with_penalty(VocaInfo const &rnn, Param const &param,
+                                DPtable::val_t lambda,
+                                SentencePair const &sent_pair){
+    auto initial_nodes = rnn.initialize_tree(sent_pair.original);
+    auto &nodes = initial_nodes.val;
+    auto n_words=nodes.size();
+    DPtable table{nodes};
+    table.compute(param, lambda, sent_pair.parsed);
+    return table;
+}
 
 Param::value_type get_full_score(Param const &param, InializedLeafNodes &nodes ) {
     using namespace rnn::simple_model::detail;
