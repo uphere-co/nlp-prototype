@@ -79,11 +79,17 @@ int main(){
             auto nodes = rnn.initialize_tree(sent_pair.original);
             return get_greedy_gradient(param, nodes);
         };
+
+        auto score_diff=[&](){
+            auto score_label = scoring_parsed_dataset(rnn, param, testset);
+            auto score_greedy= greedy_scoring_dataset(rnn, param, testset_orig);
+            return score_label-score_greedy;
+        };
         logger.info("Prepared data.");
 
         logger.info("Begin training");
         int64_t i_minibatch{};
-        logger.log_testscore(i_minibatch, scoring_parsed_dataset(rnn, param, testset));
+        logger.log_testscore(i_minibatch, score_diff());
         write_param(i_minibatch,param);
         print(rnn.voca_vecs.size());
         print(":voca size.\n");
@@ -117,7 +123,7 @@ int main(){
 
                 ++i_minibatch;
                 if(i_minibatch%100==0) {
-                    logger.log_testscore(i_minibatch,scoring_parsed_dataset(rnn, param, testset));
+                    logger.log_testscore(i_minibatch, score_diff());
                     write_param(i_minibatch,param);
                 }
             }
