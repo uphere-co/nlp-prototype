@@ -35,9 +35,10 @@ import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import qualified Data.Vector.Unboxed as VU
 import           Foreign.C.Types
+import           Foreign.Ptr
 
 
-foreign import ccall "mymain" c_mymain :: IO CInt
+foreign import ccall "mymain" c_mymain :: CInt -> Ptr CInt -> Ptr CInt -> Ptr Double -> IO CInt
 
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
@@ -94,8 +95,7 @@ type WordCountState = (BoundedWordMap,IntMap [Int])
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
-  c_mymain
-  let sz = 100000
+  let sz = 1000
   -- mref <- newIORef emptyBWM
   -- dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))
@@ -128,6 +128,13 @@ main = do
   vvrows <- V.take ssz <$> V.freeze mvvrows
   vvcols <- V.take ssz <$> V.freeze mvvcols
   vvvals <- V.take ssz <$> V.freeze mvvvals
+
+  V.unsafeWith vvrows $ \pr ->
+    V.unsafeWith vvcols $ \pc ->
+      V.unsafeWith vvvals $ \pv -> do
+        c_mymain (fromIntegral ssz) pr pc pv
+
+
 
   let csr  = CSR vvvals vvcols vvrows nword sz
   let (_,dd,_) = sparseSvd 100 csr 

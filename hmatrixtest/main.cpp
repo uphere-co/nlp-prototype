@@ -14,7 +14,7 @@
 #include "utils/profiling.h"
 
 extern "C" {
-    int mymain();
+    int mymain( int, int*, int*, double* );
 }
 
 
@@ -214,8 +214,33 @@ auto ToStrings(std::vector<char> const &concat_words){
 
 
 
-int mymain(){
-    using namespace tfkld;
+int mymain( int count,  int* vrow, int* vcol, double* vval ){
+    auto timer = Timer{};
+    
+    arma::umat location(2,count);
+    arma::vec value(count);
+    arma::sp_mat mat;
+    
+    for(int64_t a = 0 ; a < count ; a++ ) {
+	location(0,a) = vrow[a];
+	location(1,a) = vcol[a];
+	value(a) = vval[a];
+    }
+    mat = std::move( arma::sp_mat(location, value) );
+    timer.here_then_reset("Move matrix done!\n");
+
+    
+    arma::mat U;
+    arma::vec s;
+    arma::mat V;
+
+    arma::svds(U, s, V, mat, 100);
+
+    timer.here_then_reset("Completed SVD calculation!\n");
+    
+    std::cout << "Finished!" << std::endl;  
+     
+    /*    using namespace tfkld;
     using namespace arma;
 
     auto timer = Timer{};
@@ -249,7 +274,7 @@ int mymain(){
     
     //inMat.print("inMat = ");
 
-    /*    mat U;
+    mat U;
     vec s;
     mat V;
 
@@ -257,112 +282,7 @@ int mymain(){
 
     timer.here_then_reset("Completed SVD calculation!\n");
     
-    std::cout << "Finished!" << std::endl; */
-
-    //sp_mat tfidf = MakeTFIDF(inMat);
-    //_mat A = sprandu<sp_mat>(5,5,0.1);
-    //col(0) *= 10000;
-    //A.print("A = ");
-    //auto a = nonzeros(A.col(0)).size();
-    //std::cout << a << std::endl;
-    //for(auto x : v ) std::cout << x << std::endl;
-    
-    //timer.here_then_reset("Testing vectorising.\n");
-
-    //arma::mat inMat = arma::randu<arma::mat>(5,5);
-
-
-
-    /*
-    sp_mat X = sprandu<sp_mat>(50000, 200000, 0.001);
-
-    mat U;
-    vec s;
-    mat V;
-
-    svds(U, s, V, X, 200);
-
-
-
-
-    //X.print("X = ");
-    //U.print("U = ");
-    s.print("S = ");
-    //V.print("V = ");
-    
-
-
-    */
-    /*
-    arma::mat inMat = arma::randu<arma::mat>(5,5);
-
-    arma::mat U;
-    arma::vec s;
-    arma::mat V;
-
-    arma::svd(U,s,V,inMat);
-
-
-    inMat.print("inMat = ");                                                                                                                                                  U.print("U = ");                                                                                                                                                          s.print("S = ");                                                                                                                                                          V.print("V = ");
-    */
-
-
-    //PrintVocab(vocab);
-    //std::vector<char> concat_words = Concat(word_count_keys);
-    
-    //H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
-    //file.writeRawData(H5name{"1b.training.1M.count"},word_count_values);
-    //file.writeRawData(H5name{"1b.training.1M.word"},concat_words);
-    
-    //concat_read = file.readRawData(H5name{"bar.word_key"},concat_words); 
-    //auto words = ToStrings(concat_read);
-    //assert(words=word_count_keys);
-    /*
-
-  //fvec column vector                                                                                                                                                     
-
-  arma::fmat inMat;
-  arma::fvec v1;
-  arma::fvec v2;
-  arma::fvec v3;
-
-  v1 = {1, 2, 3};
-  v2 = {2, 3, 4};
-  v3 = {3, 4, 9};
-
-  std::vector<arma::fvec> v;
-  std::vector<arma::fvec> rv;
-  v.push_back(v1);
-  v.push_back(v2);
-  v.push_back(v3);
-
-  rv = makeBasis(v);
-  makeNormal(rv);
-  for(int i = 0; i < rv.size(); i++) {
-    rv[i].print();
-  }
-
-  inMat = {{1,2,3},{2,3,4},{3,4,9}};
-  std::cout << rank(inMat) << std::endl;
-
-  //arma::fmat U;                                                                                                                                                          
-  //arma::fvec S;                                                                                                                                                          
-  //arma::fmat V;                                                                                                                                                          
-
-
-  //arma::svd(U, S, V, inMat);                                                                                                                                             
-
-  //inMat.print("inMat = ");                                                                                                                                               
-  //U.print("U = ");                                                                                                                                                       
-  //S.print("S = ");                                                                                                                                                       
-  //V.print("V = ");                    
-
-
-
-
-
-     */
-
+    std::cout << "Finished!" << std::endl;  */
     
     return 0;
 }
