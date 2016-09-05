@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -33,6 +34,10 @@ import           Data.Vector.Storable  (Vector, MVector(..),(!))
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as MV
 import qualified Data.Vector.Unboxed as VU
+import           Foreign.C.Types
+
+
+foreign import ccall "mymain" c_mymain :: IO CInt
 
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
@@ -89,7 +94,8 @@ type WordCountState = (BoundedWordMap,IntMap [Int])
 emptyBWM = BoundedWordMap 0 HM.empty IM.empty
                       
 main = do
-  let sz = 1000000
+  c_mymain
+  let sz = 100000
   -- mref <- newIORef emptyBWM
   -- dref <- newIORef IM.empty
   mv <- V.thaw (V.replicate 1000000 (0 :: Int))

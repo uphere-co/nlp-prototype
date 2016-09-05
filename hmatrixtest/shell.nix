@@ -2,7 +2,9 @@
 
 with pkgs;
 
-let 
+let
+    toolz = callPackage ../nix/default-cpp.nix { };
+
     hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
 
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
@@ -20,7 +22,7 @@ let
 
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv graphviz ];
+     buildInputs = [ hsenv toolz.armadillo boost ];
      shellHook = ''
      '';
    }
