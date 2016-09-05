@@ -63,7 +63,7 @@ int main(){
         
         logger.info("Begin training");
         int64_t i_minibatch{};
-        logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
+        logger.log_testscore(i_minibatch,greedy_scoring_dataset(rnn, param, testset));
         write_param(i_minibatch,param);
         for(auto epoch=0; epoch<n_epoch; ++epoch){
             for(auto it=lines.cbegin();it <lines.cend(); it+= rnn::config::n_minibatch){
@@ -77,7 +77,7 @@ int main(){
                 // optimizer.update(param, grad_sum.param);            
                 ++i_minibatch;
                 if(i_minibatch%100==0) {
-                    logger.log_testscore(i_minibatch,scoring_dataset(rnn, param, testset));
+                    logger.log_testscore(i_minibatch,greedy_scoring_dataset(rnn, param, testset));
                     write_param(i_minibatch,param);
                 }
             }

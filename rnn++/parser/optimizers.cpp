@@ -143,7 +143,7 @@ LBFGSoptimizer::lfloat_t LBFGSoptimizer::evaluate(const lfloat_t *x, lfloat_t *g
     write_from_ptr(x, pimpl->param);
     auto grad_sum = f_grad(pimpl->param);
     write_to_ptr(g, grad_sum.param);
-    lfloat_t fx = -scoring_minibatch(pimpl->rnn, pimpl->param, pimpl->beg, pimpl->end);
+    lfloat_t fx = -greedy_scoring_minibatch(pimpl->rnn, pimpl->param, pimpl->beg, pimpl->end);
     // printf("fx = %f, w_left=%e, w_right=%e bias=%e u_score=%e   \n", 
     //        fx, norm_L1(param.w_left.span), norm_L1(param.w_right.span), 
     //        norm_L1(param.bias.span), norm_L1(param.u_score.span));

@@ -284,16 +284,16 @@ void test_rnn_full_step(){
     print(": L1-norm\n");
     auto grad_sum = parallel_reducer(lines.cbegin(), lines.cend(), get_grad, Gradient{});
     timer.here_then_reset("Back-propagation for whole testset");
-    auto score = scoring_dataset(rnn, param, testset);
+    auto score = greedy_scoring_dataset(rnn, param, testset);
     timer.here_then_reset("Scoring testset");
     // auto param1{param};
     // param1.u_score.span *= rnn::type::float_t{2};
     // auto param2{param};
     // param2.u_score.span *= rnn::type::float_t{0.5};
     // auto score1 = scoring_dataset(rnn, param1, testset);
-    auto score1 = scoring_dataset(rnn, param+dParam, testset);
+    auto score1 = greedy_scoring_dataset(rnn, param+dParam, testset);
     timer.here_then_reset("Scoring testset");
-    auto score2 = scoring_dataset(rnn, param-dParam, testset);
+    auto score2 = greedy_scoring_dataset(rnn, param-dParam, testset);
     // auto score2 = scoring_dataset(rnn, param2, testset);
     timer.here_then_reset("Scoring testset");
 
