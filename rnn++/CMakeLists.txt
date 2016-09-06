@@ -40,11 +40,16 @@ add_executable(train_model4 app/train_model4 tests/test_dp_merging
 target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs )
 
 
-add_executable(model1 app/parser_model1 
+add_executable(parser_model1 app/parser_model1 
                parser/compute parser/config parser/node parser/param 
                parser/parser parser/voca parser/wordvec 
                utils/hdf5 utils/math utils/string)
-target_link_libraries(model1 hdf5_cpp hdf5_hl_cpp tbb)
+target_link_libraries(parser_model1 hdf5_cpp hdf5_hl_cpp tbb)
+add_executable(parser_model4 app/parser_model4 
+               parser/compute parser/config parser/node parser/param 
+               parser/parser parser/voca parser/wordvec 
+               utils/hdf5 utils/math utils/string)
+target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb)
 
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans utils/string)
 
@@ -61,7 +66,7 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
 
 
 
-install(TARGETS train_model0 train_model1 model1 parser_similarity hdf5io RUNTIME DESTINATION bin)
+install(TARGETS train_model0 train_model1 parser_model1 parser_model4 parser_similarity hdf5io RUNTIME DESTINATION bin)
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/parser" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

@@ -309,19 +309,23 @@ void DPtable::set_penalty(val_t lambda, std::string parsed_sentence){
     for(auto hash:spans) {
         auto left=hash/label_nodes.size();
         auto right=hash%label_nodes.size();
-        print(left);
-        print(right);
-        print(",");
         penalty(left,right)=0.0;
+        // print(left);
+        // print(right);
+        // print(",");
     }
-    print(": spans from parsed sentence.\n");
+    // print(": spans from parsed sentence.\n");
 }
 std::vector<const DPtable::node_t*> DPtable::get_phrases() {
     std::vector<const node_t*> phrases;
     collect_phrases(&get(0,n_words-1), phrases);
     return phrases;
 }
-
+std::vector<const DPtable::node_t*> DPtable::get_leafs() {
+    std::vector<const node_t*> nodes;
+    for(decltype(n_words)i=0;i<n_words; ++i) nodes.push_back(&get(i,i));        
+    return nodes;
+}
 void DPtable::collect_phrases(const node_t* node, 
                               std::vector<const node_t*> &phrases) {
     if(node->is_leaf()) return;
