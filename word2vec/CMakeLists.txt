@@ -22,10 +22,9 @@ include_directories(${RNNPP_PATH})
 
 #include_directories(${HOME}/repo/srcc/GSL/include)
 
-add_executable(distance distance utils.cpp)
-target_link_libraries(distance m pca armadillo openblas boost_iostreams boost_system boost_filesystem)
-
-add_executable(voca_builder app/voca_builder  ../rnn++/utils/string ../rnn++/utils/hdf5)
+add_executable(voca_builder app/voca_builder  
+               ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp
+               ${RNNPP_PATH}/utils/profiling)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
 
 add_executable(wordvec_trainer app/wordvec_trainer  ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp)

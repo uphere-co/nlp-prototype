@@ -6,6 +6,7 @@
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+
 using namespace util::io;
 
 namespace word2vec{
@@ -14,10 +15,12 @@ namespace type{
 using int_t = int;
 using float_t = float;
 using char_t = char;
+
 }//namespace word2vec::type
 }//namespace word2vec
 
 namespace word2vec{
+using hashmap_t = std::map<std::string, type::int_t>;
 
 struct TokenizedFile{
     TokenizedFile(std::string train_file) {
@@ -31,25 +34,14 @@ struct TokenizedFile{
     std::ifstream val; 
 };
 
-//CAUTION!! Do not include a following line in a header.
-using namespace word2vec::type;
-
-using hashmap_t = std::map<std::string, int_t>;
-
 hashmap_t WordCount(TokenizedFile & file){
     std::string line;
     hashmap_t word_count;
     while (std::getline(file.val, line)){  
         std::istringstream iss{line};
         auto words = util::string::split(line);
-        for(auto x : words) {
-            auto isin = word_count.find(x);
-            if(isin != word_count.end()) {
-                word_count[x]+=1;
-            } else {
-                word_count[x]= 1;
-            }
-        }
+        for(auto const &x : words)
+            word_count[x]+=1;
     }
     return word_count;
 }
