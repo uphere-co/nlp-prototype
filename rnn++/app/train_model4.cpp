@@ -40,10 +40,18 @@ int main(){
         // return 0;
         auto lambda=0.05;
 
-        auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
-        auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
-        auto trainset_parsed=ParsedSentences{"1b.s2010.trainset.stanford"};
-        auto trainset_orig=TokenizedSentences{"1b.s2010.trainset"};
+        // auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
+        // auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
+        // auto trainset_parsed=ParsedSentences{"1b.s2010.trainset.stanford"};
+        // auto trainset_orig=TokenizedSentences{"1b.s2010.trainset"};
+        // auto testset_parsed=ParsedSentences{"wsj.test.tree"};
+        // auto testset_orig=TokenizedSentences{"wsj.test"};
+        // auto trainset_parsed=ParsedSentences{"wsj/wsj.train.known.tree"};
+        // auto trainset_orig=TokenizedSentences{"wsj/wsj.train.known"};        
+        auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
+        auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
+        auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
+        auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
         auto testset = SentencePairs{testset_parsed,testset_orig};
         auto trainset = SentencePairs{trainset_parsed,trainset_orig};
         

@@ -62,11 +62,12 @@ public:
         auto tokens = util::string::split(sentence);
         std::vector<idx_t> idxs;
         for(auto const &word : tokens){
-            if(word==std::string{"-LRB-"}) {
-                idxs.push_back(getIndex(Word{std::string{"("}}));
-            }
-            else if(word==std::string{"-RRB-"}) idxs.push_back(getIndex(Word{std::string{")"}}));
-            else idxs.push_back(getIndex(Word{word}));
+            // if(word==std::string{"-LRB-"}) {
+            //     idxs.push_back(getIndex(Word{std::string{"("}}));
+            // }
+            // else if(word==std::string{"-RRB-"}) idxs.push_back(getIndex(Word{std::string{")"}}));
+            // else idxs.push_back(getIndex(Word{word}));
+            idxs.push_back(getIndex(Word{word}));
         }
         return idxs;
     }
