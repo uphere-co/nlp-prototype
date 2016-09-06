@@ -9,6 +9,9 @@ import Foreign.Ptr
 import T
 import T.TH
 
+-- #def #include "template.hh"
+-- #def Wrap_testfunction(int)
+
 -- foreign import ccall "myfuncwrapper" c_myfuncwrapper :: CInt -> IO CInt
 
 test_int = do 
@@ -18,3 +21,4 @@ test_int = do
   -- c_myfuncwrapper 9
 
   $(testfunction ''Int) undefined
+
