@@ -22,7 +22,7 @@ let
 
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv toolz.armadillo boost ];
+     buildInputs = [ hsenv toolz.armadillo boost hello ];
      shellHook = ''
      '';
    }
