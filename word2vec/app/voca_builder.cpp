@@ -6,6 +6,7 @@
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+#include "utils/profiling.h"
 
 using namespace util::io;
 
@@ -98,19 +99,26 @@ auto ToStrings(std::vector<char> const &concat_words){
 
 int main(){
     using namespace word2vec;
+    auto timer=util::Timer{};
     //std::string infile_name = "data.txt";
     std::string infile_name = "data.test";
     TokenizedFile infile{infile_name};
+    timer.here_then_reset("Setup.");
     auto word_count = WordCount(infile);
+    timer.here_then_reset("Word count.");
     auto word_count_values = FilteredMapValues(word_count,5);
     auto word_count_keys = FilteredMapKeys(word_count,5);
+    timer.here_then_reset("Occurence filtering.");
     std::vector<char> concat_words = Concat(word_count_keys);
+    timer.here_then_reset("Transfrom to HDF5 raw data format.");
     
     PrintWordCount(word_count);
+    timer.here_then_reset("print counts.");
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
     file.writeRawData(H5name{"1b.training.1M.count"},word_count_values);
     file.writeRawData(H5name{"1b.training.1M.word"},concat_words);
+    timer.here_then_reset("Write to HDF5 file.");
     
     //concat_read = file.readRawData(H5name{"bar.word_key"},concat_words); 
     //auto words = ToStrings(concat_read);
