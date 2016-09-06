@@ -4,13 +4,13 @@
 
 #include "template.hh"
 
-extern "C" {
-    void helloworld( std::vector<int> ) ;
+/* extern "C" {
+    void helloworld_int( std::vector<int> ) ;
 }
 
 extern "C" {
     void helloworld( std::vector<int> );
-}
+    } */
 
 extern "C" {
   int myfuncwrapper(int); 
