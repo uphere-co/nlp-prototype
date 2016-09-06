@@ -421,6 +421,7 @@ void ArgPass(int argc, char **argv) {
 int main(int argc, char **argv) {
 
   std::vector< std::vector<std::string> > test_set;
+  std::vector<std::string> result;
   std::ifstream inFile;
   std::string line;
   std::vector<std::string> word;
@@ -431,7 +432,18 @@ int main(int argc, char **argv) {
   }
   
   ArgPass(argc, argv);
-  
+
+
+  initVocabHash();
+  ReadWordVector();
+  normalizeWordVectors();
+  std::string hey = "physics";
+  int aaa = 10;
+  result = GetSimilarWords(hey,aaa);
+  for(int i = 0; i < aaa; i++) {
+      std::cout << result[i] << std::endl;
+  }
+  /*
   inFile.open("questions-words.txt", std::ifstream::in);
   if(inFile.fail()) {
     std::cout << "questions-words file not found!\n";
@@ -451,8 +463,13 @@ int main(int argc, char **argv) {
     std::vector<std::string> record;
     for(int i = 0; i < 4; i++) record.push_back(word[i]);
     test_set.push_back(record);
-  }
- 
+  }*/
+
+
+
+
+
+  /*
   // Test part!
   std::string word1, word2, word3, word4; // word1:word2 = word3:word4 -> word2 - word1 = word4 - word3
   std::vector<real> test_vector1, test_vector2, test_vector3, test_vector4;
@@ -488,6 +505,10 @@ int main(int argc, char **argv) {
 
   std::cout << score/(double)total << std::endl;
   //
+
+
+
+  */
   
   inFile.close();
   return 0;
