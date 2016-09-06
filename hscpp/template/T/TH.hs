@@ -16,8 +16,8 @@ mkTFunc (nty,fn,tyf) = do
   addTopDecls [d]
   [|$(varE n)|]
 
-testfunction :: Name -> ExpQ
-testfunction nty = mkTFunc (nty,"_Z8printoutIiEvPSt6vectorIT_SaIS1_EE",tyf)
+printout :: Name -> ExpQ
+printout nty = mkTFunc (nty,"_Z8printoutIiEvPSt6vectorIT_SaIS1_EE",tyf)
   where tyf n = do
           io <- [t|IO ()|]
           let arg = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)

@@ -7,20 +7,15 @@ import Foreign.C.Types
 import Foreign.Ptr
 
 import T
-import T.TH
+import qualified T.TH as TH
 
--- #def #include "template.hh"
--- #def Wrap_testfunction(int)
-
--- foreign import ccall "myfuncwrapper" c_myfuncwrapper :: CInt -> IO CInt
+create    = $(TH.create ''Int)
+push_back = $(TH.push_back ''Int)
+printout  = $(TH.printout ''Int)
 
 test_int = do 
   putStrLn "testing vector<int>"
-  -- c_helloworld nullPtr
-  -- c_lib_link_test
-  -- c_myfuncwrapper 9
-
-  a <- $(create ''Int)
-  $(push_back ''Int) a 10
-  $(testfunction ''Int) a
+  a <- create
+  mapM_ (push_back a) [10,20..100]
+  printout a
 
