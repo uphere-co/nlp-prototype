@@ -83,7 +83,7 @@ vocab_t LearnVocab(MSParaFile &file) {
   std::getline(file.val, line);
   while(std::getline(file.val, line)){
     count++;
-    //if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+    if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
 
     std::istringstream iss{line};
     boost::split(items, line, boost::is_any_of("\t"));
@@ -173,7 +173,6 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
         boost::split(items, line, boost::is_any_of("\t"));
 
         auto words = items[0];
-        std::cout << items[0];
         tag.push_back(words);
     }
 
@@ -244,6 +243,30 @@ void PrintVocab(vocab_t &vocab){
     }
 }
 
+std::vector<std::vector<float_t>> makeSimMat(arma::mat const &V) {
+
+    std::vector<float_t> svec;
+    std::vector< std::vector<float_t> > result;
+    float_t minus = 0;
+
+    // transpose V
+    for(int a = 0; a < V.n_rows; a=a+2) {
+        for(int b = 0; b < V.n_cols; b++) {
+            svec.push_back(V(a,b) + V(a+1,b));
+            minus = pow(V(a,b) - V(a+1,b),2.0);
+        }
+        svec.push_back(sqrt(minus));
+
+        result.push_back(svec);
+        minus = 0;
+        svec.clear();
+        
+    }
+
+    return result;
+}
+
+    
 }//namespace tfkld
 
 
@@ -251,6 +274,7 @@ void PrintVocab(vocab_t &vocab){
 
 
 int main(){
+    
     using namespace tfkld;
     using namespace arma;
 
@@ -260,16 +284,52 @@ int main(){
     MSParaFile fin{fin_name};
 
     auto vocab = LearnVocab(fin);
+    timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
     auto docs = LearnPara(vocab,fin);
+    timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
+    timer.here_then_reset("\nConstructed Tag.\n");
+    
+    int64_t n_rows, n_cols;
+    n_rows = vocab.size();
+    n_cols = docs.size();
 
+    sp_mat inMat(n_rows, n_cols);
+
+    std::vector<SpValue> values;
+
+    int64_t count = 0;
+
+    fillValue(values, count, vocab, docs);
+    MakeTFIDF(values, count, vocab, docs);
+    fillMat(values, count, vocab, docs, inMat);
+
+    timer.here_then_reset("Filled the Matrix.\n");
+    
     mat U;
     vec s;
     mat V;
 
-    //svds(U,s,V,inMat,100);
-    
+    svds(U,s,V,inMat,100);
+
+    auto svec = makeSimMat(V);
+
+    std::ofstream fout{"sim.dat"};
+
+    count = 0;
+    int lcount = 1;
+    for(auto x : svec) {
+        fout << tag[count] << " ";
+        for(auto y : x) {
+            fout << lcount << ":" << y << " ";
+            lcount++;
+        }
+        fout << "\n";
+        lcount = 1;
+        count++;
+    }
+
     return 0;
 }
