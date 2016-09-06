@@ -2,6 +2,7 @@
 #include <sstream>
 #include <cassert>
 
+
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
@@ -94,6 +95,7 @@ int main(){
                 end=end<pairs.cend()?end:pairs.cend();
                 
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
+                // grad_label.param *=0.5;
                 optimizer.update(param, grad_label.param);
                 // optimizer.update(rnn.voca_vecs, grad_label.words);
 
