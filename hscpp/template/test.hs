@@ -5,7 +5,10 @@
 import Foreign.C.Types
 import Foreign.Ptr
 
-import AModule
+import A
+import B
 
-main = mymain
+main = do
+  test_int
+  test_double
   
