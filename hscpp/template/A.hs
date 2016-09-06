@@ -9,12 +9,12 @@ import Foreign.Ptr
 import T
 import T.TH
 
-foreign import ccall "myfuncwrapper" c_myfuncwrapper :: CInt -> IO CInt
+-- foreign import ccall "myfuncwrapper" c_myfuncwrapper :: CInt -> IO CInt
 
 test_int = do 
   putStrLn "testing vector<int>"
   -- c_helloworld nullPtr
   -- c_lib_link_test
-  c_myfuncwrapper 9
+  -- c_myfuncwrapper 9
 
-  $(push_back_int) undefined
+  $(testfunction ''Int) undefined
