@@ -48,7 +48,10 @@ struct MSParaFile{
 
     }
 
-
+    void setBegin() {
+        val.clear();
+        val.seekg(0);
+    }
     std::ifstream val;
 };
     
@@ -114,7 +117,8 @@ doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
     hashmap_t doc;
     int64_t count = 0;
     std::vector<std::string> items;
-    
+
+    std::getline(file.val, line);
     while (std::getline(file.val, line)) {
         count++;
         if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
@@ -153,6 +157,29 @@ doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
 
     return docs;
 }
+
+std::vector<std::string> LearnTag(MSParaFile &file) {
+    std::string line;
+    int64_t count = 0;
+    std::vector<std::string> items;
+    std::vector<std::string> tag;
+    
+    std::getline(file.val, line);
+    while (std::getline(file.val, line)) {
+        count++;
+        if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+        
+        std::istringstream iss{line};
+        boost::split(items, line, boost::is_any_of("\t"));
+
+        auto words = items[0];
+        std::cout << items[0];
+        tag.push_back(words);
+    }
+
+    return tag;
+}
+
 
 void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {    
     SpValue value;
@@ -233,9 +260,16 @@ int main(){
     MSParaFile fin{fin_name};
 
     auto vocab = LearnVocab(fin);
+    fin.setBegin();
     auto docs = LearnPara(vocab,fin);
+    fin.setBegin();
+    auto tag = LearnTag(fin);
 
-    
+    mat U;
+    vec s;
+    mat V;
+
+    //svds(U,s,V,inMat,100);
     
     return 0;
 }
