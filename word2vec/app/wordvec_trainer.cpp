@@ -229,7 +229,9 @@ public:
     void TrainModel();
 };
 
-void Word2Vec::LearnVocab(){  
+void Word2Vec::LearnVocab(){
+
+    std::cout << "I'm here!\n";
     TokenizedFile infile{train_file};
     VocabLearn(infile, word_cn, word_pos, pos_max);
 
@@ -461,9 +463,13 @@ void Word2Vec::TrainModelThread(int tid){
                             target = word;
                             label = 1;
                         } else {
+                            //next_random = sample_in_table();
+                            //target = table[next_random];
+                            //if(target == 0) target = next_random % (vocab_size - 1) + 1;
                             target = table[sample_in_table()];
-                            if(target == 0) target = sample_in_vocab();
+                            //if(target == 0) target = sample_in_vocab();
                             if(target == word) continue;
+                            target = sample_in_vocab();
                             label = 0;
                         }
 
@@ -531,7 +537,7 @@ void Word2Vec::TrainModel() {
     //syn0: beg=syn0[idx*dim], end=syn0[(idx+1)*dim];
     H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
     file.writeRawData(H5name{std::string{"foo.vec" }}, syn0);
-    file.writeRawData(H5name{std::string{"foo.word"}}, word_concat);
+    file.writeRawData(H5name{std::string{"foo.word"}}, vocab);
 }
 
 // End of Learning Net
