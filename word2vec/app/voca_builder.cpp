@@ -60,11 +60,6 @@ void PrintWordCount(hashmap_t const &word_count){
     }
 }
 
-void InsertSpecialTag(hashmap_t &word_count){
-    auto word2vec_sentence_delim = "</s>";
-    word_count[word2vec_sentence_delim]=1;
-}
-
 auto FilteredMapValues(hashmap_t const &map, hashmap_t::mapped_type cutoff){
     std::vector<hashmap_t::mapped_type> values;
     for(auto x : map){
@@ -102,7 +97,6 @@ auto ToStrings(std::vector<char> const &concat_words){
     auto end=concat_words.cend();
     while(it!=end){
         words.push_back(std::string{&(*it)});
-        //std::cout<<std::string{&(*it)}<<std::endl;
         it=std::find(it, end, '\0');
         ++it;
     }
@@ -112,16 +106,15 @@ auto ToStrings(std::vector<char> const &concat_words){
 
 int main(){
     using namespace word2vec;
-    //std::vector<std::vector<double>> wordvector;
-    std::string infile_name = "data.txt";
+    //std::string infile_name = "data.txt";
+    std::string infile_name = "data.test";
     TokenizedFile infile{infile_name};
     auto word_count = WordCount(infile);
-    //InsertSpecialTag(word_count);
     auto word_count_values = FilteredMapValues(word_count,5);
     auto word_count_keys = FilteredMapKeys(word_count,5);
     std::vector<char> concat_words = Concat(word_count_keys);
     
-    //PrintWordCount(word_count);
+    PrintWordCount(word_count);
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
     file.writeRawData(H5name{"1b.training.1M.count"},word_count_values);
