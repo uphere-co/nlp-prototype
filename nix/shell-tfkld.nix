@@ -20,6 +20,8 @@ stdenv.mkDerivation {
 		  gfortran #stdenv.cc.libc
 		  gnuplot
           python27Full
+          gtest
+          eigen
 
                   cmake clang_38 clang-analyzer
                   hdf5 hdf5-cpp zeromq
