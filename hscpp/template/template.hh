@@ -1,18 +1,21 @@
 #include <iostream>
+#include <vector>
 
 template <class T>
-void testfunction ( std::vector<T>* a ) {
-  std::cout << a->size() << std::endl;
+void printout ( std::vector<T>* xs ) {
+  for( auto x : *xs ) { 
+    std::cout << x << std::endl;
+  }
 }
 
-#define Wrap_testfunction(T)				\
-  inline void testfunction_ ## T (void* a) {            \
-    std::vector<T>* p_a = reinterpret_cast< std::vector<T>* >(a);	\
-    testfunction(p_a);  					\
-  }                                                     \
-  auto wrap_length_inline = testfunction_ ## T ;
+template <class T>
+void push_back( std::vector<T>* xs, T x ) {
+  xs->push_back(x);
+}
 
+template <class T>
+std::vector<T>* create( void ) {
+  std::vector<T>* v = new std::vector<T>() ;
+  return v;
+}
 
-
-
-//MYFUNCWRAP(int)

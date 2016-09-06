@@ -20,5 +20,7 @@ test_int = do
   -- c_lib_link_test
   -- c_myfuncwrapper 9
 
-  $(testfunction ''Int) undefined
+  a <- $(create ''Int)
+  $(push_back ''Int) a 10
+  $(testfunction ''Int) a
 
