@@ -140,6 +140,23 @@ rec {
       #'';
     };
 
+    fmt = stdenv.mkDerivation rec {
+      name = "fmt-${version}";
+      version = "3.0.0";
+      src = fetchgit {
+        url = "https://github.com/fmtlib/fmt.git";
+	    rev = "e5e4fb370ccf327bbdcdcd782eb3e53580e11094";
+	    sha256 = "1gskp24jwjfjlp5200f9h86ayyiv0cpnkarbanbvywd3zn9y7ncr";
+      };
+      buildInputs = [ cmake ];
+      patches = [ ];
+      #installPhase = ''
+      #  #mkdir -p $out/spdlog
+      #  #cp -a * $out/spdlog
+      #'';
+    };
+
+
     libsvm = stdenv.mkDerivation rec {
       name = "libsvm-${version}";
       version = "3.21";
