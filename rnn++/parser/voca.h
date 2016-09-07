@@ -71,20 +71,12 @@ public:
         }
         return idxs;
     }
-    bool add_word(Word const &word) {
-        auto it = val.find(word.val);
-        if(it!=val.cend()) {
-            return false;
-        }
-        auto n=val.size();
-        val[word.val]=n;
-        return true;
-    }
 private:
-    data_t val;
+    const data_t val;
 };
 
 class Voca{
+    using idx_t = VocaIndexMap::idx_t;
 public:
     typedef std::vector<rnn::type::char_t> data_t;
     Voca(data_t raw_data)
@@ -95,16 +87,6 @@ public:
         return IndexedWord{word,idx};
     }
     auto size() const {return word_views.size();}
-    auto append_word(Word const &word){
-        auto &raw=word.val;
-        //auto beg=_val.data()+_val.size();
-        //word_views.push_back(beg);
-        std::copy(raw.cbegin(),raw.cend(),std::back_inserter(_val));
-        _val.push_back('\0');
-        //_val can be resized, thus we need to re-calculate it
-        word_views=util::string::unpack_word_views(_val);
-        
-    }
     VocaIndexMap indexing() const{
         auto word_to_idx = VocaIndexMap::data_t{};
         for(auto i=data_t::size_type{0}; i<size(); ++i){
@@ -113,10 +95,9 @@ public:
         return VocaIndexMap{word_to_idx};
     }
 private:
-    data_t _val;
+    const data_t _val;
     util::cstring_span<> span;
     std::vector<const char*> word_views;
-    data_t::size_type voca_size;
 };
 
 Voca load_voca(std::string filename, std::string dataset);

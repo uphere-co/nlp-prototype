@@ -58,14 +58,6 @@ public:
         // std::cerr << "WordBlock::getWordVec : "<< std::chrono::duration<double, std::milli>(t_end-t_start).count() << std::endl;
         return WordBlock_base<word_dim>{new_block};
    }
-   
-   idx_t push_back(span_t word_vec){
-       assert(word_vec.size()==word_dim);
-       auto idx_new=size();
-       std::copy_n(std::cbegin(word_vec), word_dim, std::back_inserter(_val));
-       span=raw_span_t{_val};
-       return idx_new;
-   }
    idx_t size() const {return _val.size()/word_dim;};
 
 // private:
