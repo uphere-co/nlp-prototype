@@ -6,8 +6,8 @@ w_printout(double)
 w_push_back(int)
 w_push_back(double)
 
-w_create(int)
-w_create(double)
+w_new(int)
+w_new(double)
 
 w_at(int)
 w_at(double)

@@ -29,15 +29,15 @@ void printout ( std::vector<T>* xs ) {
     auto a_push_back_ ## T = w_push_back_ ## T  ; 
 
 
-#define w_create(T)                                                     \
+#define w_new(T)                                                     \
     extern "C" {                                                        \
-	void* w_create_ ## T ( void );	                        	\
+	void* w_new_ ## T ( void );	                        	\
     }                                                                   \
-    inline void* w_create_ ## T () {	                 		\
+    inline void* w_new_ ## T () {	                 		\
         std::vector<T>* xs = new std::vector<T>();	          	\
 	return reinterpret_cast<void*>(xs);                             \
     }                                                                   \
-    auto a_create_ ## T = w_create_ ## T  ; 
+    auto a_new_ ## T = w_new_ ## T  ; 
 
 
 #define w_at(T)                                                         \

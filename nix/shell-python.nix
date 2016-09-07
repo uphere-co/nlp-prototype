@@ -36,6 +36,7 @@ stdenv.mkDerivation {
                    linuxPackages_4_6.perf
                    toolz_cpp.msgsl
                    toolz_cpp.spdlog
+                   toolz_cpp.fmt
                    
                  ];
   shellHook = ''
