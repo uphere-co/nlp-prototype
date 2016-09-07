@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include "parser/basic_type.h"
+#include "parser/voca.h"
+#include "parser/config.h"
 
 #include "utils/span.h"
 #include "utils/string.h"
@@ -57,9 +59,12 @@ public:
         return WordBlock_base<word_dim>{new_block};
    }
    
-   void push_back(span_t word_vec){
+   idx_t push_back(span_t word_vec){
+       assert(word_vec.size()==word_dim);
+       auto idx_new=size();
        std::copy_n(std::cbegin(word_vec), word_dim, std::back_inserter(_val));
        span=raw_span_t{_val};
+       return idx_new;
    }
    idx_t size() const {return _val.size()/word_dim;};
 
@@ -84,6 +89,40 @@ WordBlock_base<word_dim> load_voca_vecs(std::string filename, std::string datase
     return WordBlock_base<word_dim>{vocavec};
 }
 
+
+
+struct WordVectors{
+    using key_t = std::string;
+    using val_t = util::math::Vector<rnn::type::float_t,rnn::config::word_dim>;
+    using vec_span_t = util::span_1d<rnn::type::float_t,rnn::config::word_dim>;
+    void add_word(Word const &word, vec_span_t const &vec){
+        add_word(word,val_t{vec});
+    }
+    void add_word(Word const &word, val_t const &vec){
+        val[word.val]=vec;
+    }
+    auto serialize_words() const {
+        std::vector<char> raw_words;
+        for(auto const &x:val){
+            auto const &key=x.first;
+            std::copy(key.cbegin(),key.cend(),std::back_inserter(raw_words));
+            raw_words.push_back('\0');
+        }
+        return raw_words;
+    }
+    auto serialize_vectors() const {
+        std::vector<rnn::type::float_t> raw_vecs;
+        for(auto const &x:val){
+            auto const &vec=x.second.span;
+            std::copy(vec.cbegin(),vec.cend(),std::back_inserter(raw_vecs));
+        }
+        return raw_vecs;
+    }
+
+    std::map<key_t,val_t> val;
+};
+WordVectors& operator +=(WordVectors& out, const WordVectors& x);
+WordVectors operator +(const WordVectors& x, const WordVectors& y);
 
 }//namespace rnn::wordrep
 }//namespace rnn

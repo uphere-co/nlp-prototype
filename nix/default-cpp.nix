@@ -151,14 +151,12 @@ rec {
       buildInputs = [ cmake ];
       cmakeFlags = ["-DBUILD_SHARED_LIBS=TRUE"];
       patches = [ ];
+      #enableParallelBuilding = true;
       buildPhase = ''
         make -j8
       '';
       checkPhase = ''
         make test
-      '';
-      installPhase = ''
-        make install
       '';
       #doCheck = true;
     };
