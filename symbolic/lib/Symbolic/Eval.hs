@@ -10,6 +10,7 @@ module Symbolic.Eval where
 
 import           Control.Lens               (view, _1)
 import           Data.HashMap.Strict        (HashMap)
+import qualified Data.HashMap.Strict  as HM
 import qualified Data.HashSet         as HS
 import           Data.List                  (foldl')
 import           Data.MemoTrie
@@ -83,3 +84,5 @@ seval :: ( Storable a, HasTrie a, Num a
          ) =>
          Args a -> IdxPoint -> MExp a -> a
 seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
+
+mkA = Args . HM.fromList . map (\(s,v) -> (mkSym s,v))

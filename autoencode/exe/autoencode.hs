@@ -25,8 +25,13 @@ import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
 import           LLVM.General.Context              ( withContext )
 import           System.Environment
+import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT
+import           Symbolic.Differential
+import           Symbolic.Eval
+import           Symbolic.Print
+import           Symbolic.Type
 --
 import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
@@ -69,8 +74,8 @@ printer3 = bntPrint [] p q
   where p n = T.pack (show n)
         q _ = "leaf"
 
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
     setLocaleEncoding utf8
     args <- getArgs 
     let !n1 = read (args !! 0) :: Int
@@ -118,5 +123,40 @@ main = do
                   --   putStrLn "****************"
                   --   print rdec
                     -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
-
         return ()
+
+tV :: [Float] -> Vector Float
+tV = V.fromList
+
+main = do
+  let idxm = ("m",1,2)
+      idxJ = ("J",1,4)
+  let ?expHash = trie hash
+      ?functionMap = HM.fromList [ ("tanh", \[x] -> tanh x), ("tanh_1", \[x] -> 1/((cosh x)*(cosh x))) ]
+  let (r,_) = decodeExp 2
+      dmap = HM.empty -- HM.fromList [("y",["wd"])]
+  let expdiff = sdiff dmap (V (mkSym "wd") [idxJ,idxm]) r
+  printf "diff = %s\n" ((prettyPrint . exp2RExp) expdiff :: String)
+
+  
+  let v_wd  = tV [0.1,0.2,0.3,0.4,0.3,0.2,0.1,0.2]
+      v_wd' = tV [0.1+0.001,0.2,0.3,0.4,0.3,0.2,0.1,0.2]
+      v_y   = tV [1.3, 2.5]
+      v_bd  = tV [1.2,1.1,0.9,0.8]
+      args0 = mkA [ ("wd",v_wd), ("y" ,v_y), ("bd",v_bd) ]
+      args1 = mkA [ ("wd",v_wd'), ("y", v_y), ("bd",v_bd) ]
+
+  forM_ [1..4] $ \iI -> do
+    let iptI = [("I",iI)]
+        r0 = seval args0 iptI r
+        r1 = seval args1 iptI r
+        dr = r1 - r0
+    printf "dr(I=%d) = %f \n" iI dr
+
+  forM_ [1..4] $ \iI -> do
+    let iJ = 1
+        m = 1
+    let ipt = [("I",iI),("J",iJ),("m",m)]
+    printf "diff(I=%d,J=%d,m=%d) = %f \n" iI iJ m (seval args0 ipt expdiff)
+
+
