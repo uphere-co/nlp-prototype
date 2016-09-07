@@ -18,20 +18,20 @@ namespace rnn{
 namespace wordrep{
 struct Word{
     typedef size_t idx_t;
-    Word(util::cstring_span<> word) : span{word}, val{span.data()}{}
-    Word(std::string word) : span{word}, val{word} {}
+    // Word(util::cstring_span<> word) : val{word.data()}, span{val} {}
+    Word(std::string word) : val{word}, span{val} {}
     bool operator<(const Word &word)  const { return this->span < word.span;}
-    util::cstring_span<> span;
     std::string val;
+    util::cstring_span<> span;
 };
 struct IndexedWord{
     typedef size_t idx_t;
-    IndexedWord(std::string word, idx_t idx) : span{word}, val{word}, idx{idx} {}
-    IndexedWord(util::cstring_span<> word, idx_t idx) : span{word}, val{span.data()}, idx{idx} {}
+    IndexedWord(std::string word, idx_t idx) : val{word}, span{val}, idx{idx} {}
+    IndexedWord(util::cstring_span<> word, idx_t idx) : val{word.data()}, span{val},  idx{idx} {}
     static auto blank_word() {return IndexedWord{std::string{}, std::numeric_limits<idx_t>::max()};}
     bool operator<(const IndexedWord &word)  const { return this->span < word.span;}
-    util::cstring_span<> span;
     std::string val;
+    util::cstring_span<> span;
     idx_t idx;
 };
 std::ostream& operator<<(std::ostream& os, const Word& obj);
@@ -71,21 +71,40 @@ public:
         }
         return idxs;
     }
+    bool add_word(Word const &word) {
+        auto it = val.find(word.val);
+        if(it!=val.cend()) {
+            return false;
+        }
+        auto n=val.size();
+        val[word.val]=n;
+        return true;
+    }
 private:
-    const data_t val;
+    data_t val;
 };
 
 class Voca{
 public:
     typedef std::vector<rnn::type::char_t> data_t;
     Voca(data_t raw_data)
-    : _val{raw_data}, span{_val},word_views{util::string::unpack_word_views(_val)},
-      voca_size{word_views.size()} {}
+    : _val{raw_data}, span{_val},word_views{util::string::unpack_word_views(_val)}
+    {}
     IndexedWord getWord(data_t::size_type idx) const {
         util::cstring_span<> word = gsl::ensure_z(word_views[idx]);
         return IndexedWord{word,idx};
     }
-    auto size() const {return voca_size;}
+    auto size() const {return word_views.size();}
+    auto append_word(Word const &word){
+        auto &raw=word.val;
+        //auto beg=_val.data()+_val.size();
+        //word_views.push_back(beg);
+        std::copy(raw.cbegin(),raw.cend(),std::back_inserter(_val));
+        _val.push_back('\0');
+        //_val can be resized, thus we need to re-calculate it
+        word_views=util::string::unpack_word_views(_val);
+        
+    }
     VocaIndexMap indexing() const{
         auto word_to_idx = VocaIndexMap::data_t{};
         for(auto i=data_t::size_type{0}; i<size(); ++i){
@@ -94,10 +113,10 @@ public:
         return VocaIndexMap{word_to_idx};
     }
 private:
-    const data_t _val;
+    data_t _val;
     util::cstring_span<> span;
-    const std::vector<const char*> word_views;
-    const data_t::size_type voca_size;
+    std::vector<const char*> word_views;
+    data_t::size_type voca_size;
 };
 
 Voca load_voca(std::string filename, std::string dataset);
