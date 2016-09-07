@@ -3,9 +3,12 @@
 module T.TH where
 
 import Data.Char
+import Foreign.C.Types
 import Foreign.Ptr
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
+
+
 
 import T
 
@@ -25,41 +28,24 @@ std_namefun str nty =
 printout :: Name -> ExpQ
 printout nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "printout" 
-        tyf n = do
-          io <- [t|IO ()|]
-          let arg = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
-          return (ArrowT `AppT` arg `AppT` io)
+        tyf n = [t|Ptr (STLVector $(return (ConT n))) -> IO ()|]
 
 create :: Name -> ExpQ
 create nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "create"
-        tyf n = do
-          return (ConT (mkName "IO") `AppT` (ConT (mkName "Ptr") `AppT` ((ConT (mkName "STLVector") `AppT` ConT n))))
+        tyf n = [t| IO (Ptr (STLVector $(return (ConT n)))) |]
 
 push_back :: Name -> ExpQ
 push_back nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "push_back"
-        tyf n = do
-          io <- [t|IO ()|]
-          let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
-              arg2 = ConT n
-          return (ArrowT `AppT` arg1 `AppT` (ArrowT `AppT` arg2 `AppT` io))
+        tyf n = let ty = return (ConT n) in [t| Ptr (STLVector $(ty)) -> $(ty) -> IO () |]
 
 at :: Name -> ExpQ
 at nty = mkTFunc (nty,std_namefun "at",tyf)
-  where tyf n = do
-          io <- [t|IO ()|]
-          let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
-              arg2 = ConT (mkName "CInt")
-              res = ConT (mkName "IO") `AppT` (ConT (mkName "Ptr") `AppT` (ConT n))
-          return (ArrowT `AppT` arg1 `AppT` (ArrowT `AppT` arg2 `AppT` res))
-
-
+  where tyf n = let ty = return (ConT n)
+                in [t| Ptr (STLVector $(ty)) -> CInt -> IO (Ptr $(ty)) |] 
 
 delete :: Name -> ExpQ
 delete nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "delete"
-        tyf n = do
-          io <- [t|IO ()|]
-          let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
-          return (ArrowT `AppT` arg1 `AppT` io)      
+        tyf n = [t|Ptr (STLVector $(return (ConT n)))->IO ()|]
