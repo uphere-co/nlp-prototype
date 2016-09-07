@@ -173,6 +173,9 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
         boost::split(items, line, boost::is_any_of("\t"));
 
         auto words = items[0];
+
+        if(words == "0") words = "-1";
+        
         tag.push_back(words);
     }
 
@@ -222,6 +225,46 @@ void MakeTFIDF(std::vector<SpValue> &values, int64_t &count, vocab_t const &voca
 
 }
 
+void MakeTFKLD(std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+
+    float_t ep=0.05;
+    float_t count_p=ep;
+    float_t count_q=ep;
+    float_t p=ep;
+    float_t q=ep;
+
+    float_t div;
+    std::vector<float_t> kld;
+    for(int64_t a = 0; a < vocab.size(); ++a) {
+        for(int i = 0; i < tag.size(); ++i) {
+
+            auto isin1 = docs[i*2].find(a);
+            auto isin2 = docs[i*2+1].find(a);
+
+            if(tag[i] == "-1") {
+                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) q++;
+                count_q++;
+            } else { // tag[i] == 1;
+                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) p++;
+                count_p++;
+            }
+           
+        }
+        
+        div = (p/count_p)*log((p/count_p)/(q/count_q)) + (1-p/count_p)*log((1-p/count_p)/(1-q/count_q));        
+        kld.push_back(div);
+        count_p = ep;
+        count_q = ep;
+        p = ep;
+        q = ep;
+    }
+
+    for(auto &x : values) {
+        x.val *= kld[x.row];
+    }
+}
+
+
 void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
 
     
@@ -243,7 +286,7 @@ void PrintVocab(vocab_t &vocab){
     }
 }
 
-std::vector<std::vector<float_t>> makeSimMat(arma::mat const &V) {
+std::vector<std::vector<float_t> > makeSimMat(arma::mat const &V) {
 
     std::vector<float_t> svec;
     std::vector< std::vector<float_t> > result;
@@ -303,7 +346,8 @@ int main(){
     int64_t count = 0;
 
     fillValue(values, count, vocab, docs);
-    MakeTFIDF(values, count, vocab, docs);
+    //MakeTFIDF(values, count, vocab, docs);
+    MakeTFKLD(tag, values, count, vocab, docs);
     fillMat(values, count, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
@@ -316,7 +360,7 @@ int main(){
 
     auto svec = makeSimMat(V);
 
-    std::ofstream fout{"sim.dat"};
+    std::ofstream fout{"train_KLD.dat"};
 
     count = 0;
     int lcount = 1;
@@ -331,5 +375,7 @@ int main(){
         count++;
     }
 
+
+    //  MakeTFKLD(tag, values, count, vocab, docs);
     return 0;
 }
