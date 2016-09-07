@@ -1,3 +1,4 @@
+rm stub.o
 #rm A_supl.o #clib2.o test.o
 #g++ -c  -fPIC --std=c++14  A_supl.cc
 #g++ --std=c++14 -c clib2.cxx
