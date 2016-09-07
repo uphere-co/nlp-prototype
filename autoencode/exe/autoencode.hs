@@ -28,6 +28,7 @@ import           System.Environment
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT
+import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Print
@@ -98,7 +99,7 @@ main' = do
       Right lst -> do
         withContext $ \context ->
           flip runReaderT context $
-            compileNRun ["encode", "decode"] fullAST $
+            compileNRun ["encode", "decode"] (fullAST 100) $
               
               forM_ ((drop n1 . take n2) lst) $ \tr -> do
                 let (_btr,mvtr) = getVectorizedTree wvm tr
@@ -136,6 +137,7 @@ main = do
   let (r,_) = decodeExp 2
       dmap = HM.empty -- HM.fromList [("y",["wd"])]
   let expdiff = sdiff dmap (V (mkSym "wd") [idxJ,idxm]) r
+  printf "r= %s\n" ((prettyPrint . exp2RExp) r :: String)
   printf "diff = %s\n" ((prettyPrint . exp2RExp) expdiff :: String)
 
   
@@ -151,7 +153,7 @@ main = do
         r0 = seval args0 iptI r
         r1 = seval args1 iptI r
         dr = r1 - r0
-    printf "dr(I=%d) = %f \n" iI dr
+    printf "I=%d, r0 = %f, dr = %f \n" iI r0 dr
 
   forM_ [1..4] $ \iI -> do
     let iJ = 1
@@ -159,4 +161,13 @@ main = do
     let ipt = [("I",iI),("J",iJ),("m",m)]
     printf "diff(I=%d,J=%d,m=%d) = %f \n" iI iJ m (seval args0 ipt expdiff)
 
+
+  withContext $ \context ->
+     flip runReaderT context $
+       compileNRun ["decode"] (fullAST 2) $ do
+         let vr = V.replicate 4 0 :: WVector
+         mv@(V.MVector _ fpr) <- liftIO (V.thaw vr)
+         callFn "decode" [v_y,v_wd,v_bd] fpr
+         vr' <- liftIO (V.freeze mv)
+         liftIO $ print vr'
 

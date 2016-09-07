@@ -112,9 +112,11 @@ decodeExp n =
               , V (mkSym "bd") [idxI] ] )
 
 
-fullAST :: (?expHash :: WExp :->: Hash) => AST.Module
-fullAST = mkASTWithExt ext [("encode",encodeExp 100), ("decode",decodeExp 100)]
-  where ext = external double "tanh" [(double, AST.Name "x")] 
+fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
+fullAST n = mkASTWithExt ext [("encode",encodeExp n), ("decode",decodeExp n)]
+  where ext = do
+          external double "tanh"   [(double, AST.Name "x")]
+          external double "tanh_1" [(double, AST.Name "x")]
  
                    
 encodeP :: AENode -> LLVMRunT IO WVector
