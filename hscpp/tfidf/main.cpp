@@ -14,7 +14,7 @@
 #include "utils/profiling.h"
 
 extern "C" {
-    int mymain( int, int*, int*, double* );
+  int mymain( int, arma::uword*, arma::uword*, double* );
     void (*callhaskell)( void );
     void registerfun( void(*)(void) );
 }
@@ -27,20 +27,23 @@ void registerfun( void (*f)(void) ) {
     callhaskell=  f;
 };
 
-int mymain( int count,  int* prow, int* pcol, double* pval ){
-    auto timer = Timer{};
-    arma::umat location(2,count);
-    arma::vec value(count);
-    for(size_t a = 0 ; a < count ; a++ ) {
-    	location(0,a) = prow[a];
-    	location(1,a) = pcol[a];
-	value(a) = pval[a];
-    } 
+// armadillo: column-major ordering
 
+int mymain( int count, arma::uword* prow, arma::uword* pcol, double* pval ){
+    auto timer = Timer{};
+    std::vector<uint64_t> vloc(2*count);
+    vloc.insert(vloc.begin(),prow,prow+count);
+    vloc.insert(vloc.begin()+count,pcol,pcol+count);
+    std::vector<double> vval(count);
+    vval.assign(pval,pval+count);
+    arma::vec value(vval);
+
+    
+    arma::umat locationt ((arma::uword*)vloc.data(), (arma::uword)count, (arma::uword)2);
+    arma::umat location = locationt.t();
+
+    
     arma::sp_mat mat(location, value) ;
-    
-    // mat = std::move( arma::sp_mat(location, value) );
-    
     
     timer.here_then_reset("Move matrix done!\n");
 

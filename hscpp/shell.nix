@@ -16,13 +16,14 @@ let
 	      #histogram-fill
 	      monad-loops
 	      resourcet
+	      shell-conduit
 	      text
 	      unordered-containers
             ]);
 
 in stdenv.mkDerivation {
      name = "ghc-shell";
-     buildInputs = [ hsenv toolz.armadillo boost ];
+     buildInputs = [ hsenv toolz.armadillo boost hello ];
      shellHook = ''
      '';
    }
