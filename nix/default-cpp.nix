@@ -142,18 +142,25 @@ rec {
 
     fmt = stdenv.mkDerivation rec {
       name = "fmt-${version}";
-      version = "3.0.0";
+      version = "0d25f6f";
       src = fetchgit {
         url = "https://github.com/fmtlib/fmt.git";
-	    rev = "e5e4fb370ccf327bbdcdcd782eb3e53580e11094";
-	    sha256 = "1gskp24jwjfjlp5200f9h86ayyiv0cpnkarbanbvywd3zn9y7ncr";
+	rev = "0d25f6fcbbf0a867b939a5501965ee4462b21ee6";
+	sha256 = "179qcshc7v125lc1cgy1sixczrpjvg4grnqxwjxx8gwm4g46bvm8";
       };
       buildInputs = [ cmake ];
+      cmakeFlags = ["-DBUILD_SHARED_LIBS=TRUE"];
       patches = [ ];
-      #installPhase = ''
-      #  #mkdir -p $out/spdlog
-      #  #cp -a * $out/spdlog
-      #'';
+      buildPhase = ''
+        make -j8
+      '';
+      checkPhase = ''
+        make test
+      '';
+      installPhase = ''
+        make install
+      '';
+      #doCheck = true;
     };
 
 
