@@ -9,6 +9,10 @@ w_push_back(double)
 w_create(int)
 w_create(double)
 
+w_at(int)
+w_at(double)
+
+
 // template void printout<int> (std::vector<int>*);
 
 // template std::vector<int>* create();

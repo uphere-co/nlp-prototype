@@ -53,3 +53,20 @@ std::vector<T>* create( void ) {
     }                                                                   \
     auto a_create_ ## T = w_create_ ## T  ; 
 
+
+template <class T>
+T* at( std::vector<T>* v, int i ) {
+    return &(v->at(i));
+}
+
+
+#define w_at(T)                                                         \
+    extern "C" {                                                        \
+	T* w_at_ ## T ( void*, int );	                        	\
+    }                                                                   \
+    inline T* w_at_ ## T ( void* v, int i ) {	              		\
+	std::vector<T>* v1 = reinterpret_cast<std::vector<T>* >(v);     \
+	return at( v1, i );		                         	\
+    }                                                                   \
+    auto a_at_ ## T = w_at_ ## T  ; 
+

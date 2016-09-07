@@ -5,17 +5,20 @@ module A where
 
 import Foreign.C.Types
 import Foreign.Ptr
+import Foreign.Storable
 
 import T
 import qualified T.TH as TH
 
-create    = $(TH.create ''Int)
-push_back = $(TH.push_back ''Int)
-printout  = $(TH.printout ''Int)
+create    = $(TH.create ''CInt)
+push_back = $(TH.push_back ''CInt)
+printout  = $(TH.printout ''CInt)
 
-createD    = $(TH.create ''Double)
-push_backD = $(TH.push_back ''Double)
-printoutD  = $(TH.printout ''Double)
+createD    = $(TH.create ''CDouble)
+push_backD = $(TH.push_back ''CDouble)
+printoutD  = $(TH.printout ''CDouble)
+atD        = $(TH.at ''CDouble)
+
 
 test_int = do 
   putStrLn "testing vector<int>"
@@ -29,3 +32,6 @@ test_double2 = do
   mapM_ (push_backD b) [1.1,1.2..2.0]
   printoutD b
 
+  c <- atD b 5
+  v <- peek c
+  print  v

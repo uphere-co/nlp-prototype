@@ -9,9 +9,9 @@ import Foreign.Ptr
 import T
 import qualified T.TH as TH
 
-createD    = $(TH.create ''Double)
-push_backD = $(TH.push_back ''Double)
-printoutD  = $(TH.printout ''Double)
+createD    = $(TH.create ''CDouble)
+push_backD = $(TH.push_back ''CDouble)
+printoutD  = $(TH.printout ''CDouble)
 
 
 test_double = do

@@ -17,7 +17,9 @@ mkTFunc (nty,nf,tyf) = do
   addTopDecls [d]
   [|$(varE n)|]
 
-std_namefun str nty = "w_" ++ str ++ "_" ++ (map toLower (nameBase nty))
+std_namefun str nty =
+  let n:ns = nameBase nty
+  in "w_" ++ str ++ "_" ++ (map toLower ns)
 
 
 printout :: Name -> ExpQ
@@ -42,6 +44,15 @@ push_back nty = mkTFunc (nty,nf,tyf)
           let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
               arg2 = ConT n
           return (ArrowT `AppT` arg1 `AppT` (ArrowT `AppT` arg2 `AppT` io))
+
+at :: Name -> ExpQ
+at nty = mkTFunc (nty,std_namefun "at",tyf)
+  where tyf n = do
+          io <- [t|IO ()|]
+          let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
+              arg2 = ConT (mkName "CInt")
+              res = ConT (mkName "IO") `AppT` (ConT (mkName "Ptr") `AppT` (ConT n))
+          return (ArrowT `AppT` arg1 `AppT` (ArrowT `AppT` arg2 `AppT` res))
 
 
 
