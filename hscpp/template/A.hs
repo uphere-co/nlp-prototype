@@ -22,24 +22,24 @@ printoutD  = $(TH.printout ''CDouble)
 atD        = $(TH.at ''CDouble)
 deleteD    = $(TH.delete ''CDouble)
 
--- create2 = $(TH.create ''CInt)
-
 withVecI :: (Ptr (STLVector CInt) -> IO ()) -> IO ()
 withVecI = bracket create delete 
 
+withVecD :: (Ptr (STLVector CDouble) -> IO ()) -> IO ()
+withVecD = bracket createD deleteD
+
 test_int = do 
   putStrLn "testing vector<int>"
-  -- a <- create
   withVecI $ \a -> do
     mapM_ (push_back a) [10,20..100]
     printout a
 
 
 test_double2 = do
-  b <- createD
-  mapM_ (push_backD b) [1.1,1.2..2.0]
-  printoutD b
-
-  c <- atD b 5
-  v <- peek c
-  print  v
+  putStrLn "test_double2"
+  withVecD $ \b -> do
+    mapM_ (push_backD b) [1.1,1.2..2.0]
+    printoutD b
+    c <- atD b 5
+    v <- peek c
+    putStrLn ("b[5]= " ++ show v)
