@@ -13,18 +13,28 @@ import qualified T.TH as TH
 create    = $(TH.create ''CInt)
 push_back = $(TH.push_back ''CInt)
 printout  = $(TH.printout ''CInt)
+delete    = $(TH.delete ''CInt)
 
 createD    = $(TH.create ''CDouble)
 push_backD = $(TH.push_back ''CDouble)
 printoutD  = $(TH.printout ''CDouble)
 atD        = $(TH.at ''CDouble)
+deleteD    = $(TH.delete ''CDouble)
+
+-- create2 = $(TH.create ''CInt)
+
+withVecI :: (Ptr (STLVector CInt) -> IO ()) -> IO ()
+withVecI f = do v <- create
+                f v
+                delete v
 
 
 test_int = do 
   putStrLn "testing vector<int>"
-  a <- create
-  mapM_ (push_back a) [10,20..100]
-  printout a
+  -- a <- create
+  withVecI $ \a -> do
+    mapM_ (push_back a) [10,20..100]
+    printout a
 
 
 test_double2 = do

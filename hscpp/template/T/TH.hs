@@ -56,3 +56,10 @@ at nty = mkTFunc (nty,std_namefun "at",tyf)
 
 
 
+delete :: Name -> ExpQ
+delete nty = mkTFunc (nty,nf,tyf)
+  where nf = std_namefun "delete"
+        tyf n = do
+          io <- [t|IO ()|]
+          let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
+          return (ArrowT `AppT` arg1 `AppT` io)      

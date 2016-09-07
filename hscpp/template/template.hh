@@ -70,3 +70,21 @@ T* at( std::vector<T>* v, int i ) {
     }                                                                   \
     auto a_at_ ## T = w_at_ ## T  ; 
 
+
+//template <class T>
+//std::vector<T>* free( void ) {
+//  std::vector<T>* v = new std::vector<T>() ;
+//  return v;
+//}
+
+
+#define w_delete(T)                                                     \
+    extern "C" {                                                        \
+	void w_delete_ ## T ( void* );	                        	\
+    }                                                                   \
+    inline void w_delete_ ## T ( void* v ) {	                 	\
+        std::vector<T>* xs = reinterpret_cast<std::vector<T>* >(v);     \
+	delete xs;                              			\
+    }                                                                   \
+    auto a_delete_ ## T = w_delete_ ## T  ; 
+

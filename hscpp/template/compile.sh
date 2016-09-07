@@ -6,7 +6,7 @@
 #ghc test.hs A_supl.o -lstdc++
 
 g++ -c -fPIC --std=c++14 stub.cc 
-ghc test.hs stub.o -lstdc++
+ghc -ddump-splices test.hs stub.o -lstdc++
 
 
 #ghc -O2 -fforce-recomp -funbox-strict-fields test.hs clibcomb.o  -lstdc++

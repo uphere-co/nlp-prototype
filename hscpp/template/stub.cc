@@ -12,6 +12,9 @@ w_create(double)
 w_at(int)
 w_at(double)
 
+w_delete(int)
+w_delete(double)
+
 
 // template void printout<int> (std::vector<int>*);
 
