@@ -3,6 +3,7 @@
 
 module A where
 
+import Control.Exception
 import Foreign.C.Types
 import Foreign.Ptr
 import Foreign.Storable
@@ -24,10 +25,7 @@ deleteD    = $(TH.delete ''CDouble)
 -- create2 = $(TH.create ''CInt)
 
 withVecI :: (Ptr (STLVector CInt) -> IO ()) -> IO ()
-withVecI f = do v <- create
-                f v
-                delete v
-
+withVecI = bracket create delete 
 
 test_int = do 
   putStrLn "testing vector<int>"
