@@ -24,15 +24,14 @@ std_namefun str nty =
   let n:ns = nameBase nty
   in "w_" ++ str ++ "_" ++ (map toLower ns)
 
-
 printout :: Name -> ExpQ
 printout nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "printout" 
         tyf n = [t|Ptr (STLVector $(return (ConT n))) -> IO ()|]
 
-create :: Name -> ExpQ
-create nty = mkTFunc (nty,nf,tyf)
-  where nf = std_namefun "create"
+new :: Name -> ExpQ
+new nty = mkTFunc (nty,nf,tyf)
+  where nf = std_namefun "new"
         tyf n = [t| IO (Ptr (STLVector $(return (ConT n)))) |]
 
 push_back :: Name -> ExpQ
