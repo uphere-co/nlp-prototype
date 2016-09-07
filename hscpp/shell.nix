@@ -16,6 +16,7 @@ let
 	      #histogram-fill
 	      monad-loops
 	      resourcet
+	      shell-conduit
 	      text
 	      unordered-containers
             ]);

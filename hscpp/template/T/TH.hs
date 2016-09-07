@@ -17,13 +17,12 @@ mkTFunc (nty,nf,tyf) = do
   addTopDecls [d]
   [|$(varE n)|]
 
+std_namefun str nty = "w_" ++ str ++ "_" ++ (map toLower (nameBase nty))
+
+
 printout :: Name -> ExpQ
 printout nty = mkTFunc (nty,nf,tyf)
-  where nf nty =
-          case nameBase nty of
-            "Int"    -> "_Z8printoutIiEvPSt6vectorIT_SaIS1_EE"
-            "Double" -> "_Z8printoutIdEvPSt6vectorIT_SaIS1_EE"
-
+  where nf = std_namefun "printout" 
         tyf n = do
           io <- [t|IO ()|]
           let arg = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
@@ -31,19 +30,13 @@ printout nty = mkTFunc (nty,nf,tyf)
 
 create :: Name -> ExpQ
 create nty = mkTFunc (nty,nf,tyf)
-  where nf nty =
-          case nameBase nty of
-            "Int"    -> "_Z6createIiEPSt6vectorIT_SaIS1_EEv"
-            "Double" -> "_Z6createIdEPSt6vectorIT_SaIS1_EEv"
+  where nf = std_namefun "create"
         tyf n = do
           return (ConT (mkName "IO") `AppT` (ConT (mkName "Ptr") `AppT` ((ConT (mkName "STLVector") `AppT` ConT n))))
 
 push_back :: Name -> ExpQ
 push_back nty = mkTFunc (nty,nf,tyf)
-  where nf nty =
-          case nameBase nty of
-            "Int"    -> "_Z9push_backIiEvPSt6vectorIT_SaIS1_EES1_"
-            "Double" -> "_Z9push_backIdEvPSt6vectorIT_SaIS1_EES1_"
+  where nf = std_namefun "push_back"
         tyf n = do
           io <- [t|IO ()|]
           let arg1 = ConT (mkName "Ptr") `AppT` (ConT (mkName "STLVector") `AppT` ConT n)
