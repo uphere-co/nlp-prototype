@@ -11,22 +11,22 @@ import Foreign.Storable
 import T
 import qualified T.TH as TH
 
-create    = $(TH.create ''CInt)
+new       = $(TH.new ''CInt)
 push_back = $(TH.push_back ''CInt)
 printout  = $(TH.printout ''CInt)
 delete    = $(TH.delete ''CInt)
 
-createD    = $(TH.create ''CDouble)
+newD       = $(TH.new ''CDouble)
 push_backD = $(TH.push_back ''CDouble)
 printoutD  = $(TH.printout ''CDouble)
 atD        = $(TH.at ''CDouble)
 deleteD    = $(TH.delete ''CDouble)
 
 withVecI :: (Ptr (STLVector CInt) -> IO ()) -> IO ()
-withVecI = bracket create delete 
+withVecI = bracket new delete 
 
 withVecD :: (Ptr (STLVector CDouble) -> IO ()) -> IO ()
-withVecD = bracket createD deleteD
+withVecD = bracket newD deleteD
 
 test_int = do 
   putStrLn "testing vector<int>"
