@@ -105,6 +105,9 @@ Executable autoencode
                         transformers,
                         unordered-containers,
                         vector,
+
+                        llvm-general-pure,
+                        
                         --
                         autoencode
 

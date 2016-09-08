@@ -19,7 +19,7 @@ import           Data.Vector.Storable            ( Vector )
 import           Data.Vector.Storable.Matrix
 import           Data.Void
 import qualified LLVM.General.AST            as AST
-import           LLVM.General.AST.Type           ( double )
+import           LLVM.General.AST.Type           ( float )
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
 import           Symbolic.CodeGen.LLVM.Operation ( external )
@@ -115,8 +115,8 @@ decodeExp n =
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
 fullAST n = mkASTWithExt ext [("encode",encodeExp n), ("decode",decodeExp n)]
   where ext = do
-          external double "tanh"   [(double, AST.Name "x")]
-          external double "tanh_1" [(double, AST.Name "x")]
+          external float "tanh"   [(float, AST.Name "x")]
+          -- external float "tanh_1" [(float, AST.Name "x")]
  
                    
 encodeP :: AENode -> LLVMRunT IO WVector
