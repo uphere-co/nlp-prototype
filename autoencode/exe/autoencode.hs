@@ -145,7 +145,7 @@ main = do
   printf "r= %s\n" ((prettyPrint . exp2RExp) r :: String)
   printf "diff = %s\n" ((prettyPrint . exp2RExp) expdiff :: String)
 
-  
+  putStrLn "Interpreter Evaluation:"
   let v_wd  = tV [0.1,0.2,0.3,0.4,0.3,0.2,0.1,0.2]
       v_wd' = tV [0.1+0.001,0.2,0.3,0.4,0.3,0.2,0.1,0.2]
       v_y   = tV [1.3, 2.5]
@@ -166,43 +166,16 @@ main = do
     let ipt = [("I",iI),("J",iJ),("m",m)]
     printf "diff(I=%d,J=%d,m=%d) = %f \n" iI iJ m (seval args0 ipt expdiff)
 
-  triple <- getDefaultTargetTriple
-  withTargetLibraryInfo triple $ \tli -> do
-    Just lf_tanh <- getLibraryFunction tli "tanh"
-    f_tanh <- getLibraryFunctionName tli lf_tanh
-    print f_tanh
-    let ?expHash = trie hash
-        ?functionMap = HM.fromList [("temp" :: String, (/100.0) . head)]      
-    let exp1 :: MExp Float
-        exp1 = fun "tanh" [varx] 
-    liftIO $ do
-      putStr "f = "
-      prettyPrintR exp1
-    let ext = do
-          external float "llvm.exp.f32" [(float, AST.Name "x")]
-          define float "tanh" [(float, AST.Name "x")] $ do
-            let xref = local (AST.Name "x")
-            v <- fadd xref xref
-            e <- call (externf (AST.Name "llvm.exp.f32")) [v]
-            m <- fsub e (fval 1)
-            d <- fadd e (fval 1)
-            r <- fdiv m d
-            ret r
-         
-        -- do withTargetgetLibraryFunction 
-        ast = mkASTWithExt ext [("fun1",(exp1,[ V (mkSym "x") [] ]))]
 
-    let vr = V.replicate 4 0 :: WVector
- 
-    withContext $ \context ->
-      flip runReaderT context $ do
-        runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [v_y] vr
-        {- 
-        compileNRun ["decode"] (fullAST 2) $ do
-           let vr = V.replicate 4 0 :: WVector
-           mv@(V.MVector _ fpr) <- liftIO (V.thaw vr)
-           callFn "decode" [v_y,v_wd,v_bd] fpr
-           vr' <- liftIO (V.freeze mv)
-           liftIO $ print vr'
-         -}
+  putStrLn "LLVM code result:"
+  withContext $ \context ->
+    flip runReaderT context $ do
+      -- runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [v_y] vr
+      compileNRun ["decode"] (fullAST 2) $ do
+        let vr = V.replicate 4 0 :: WVector
+        mv@(V.MVector _ fpr) <- liftIO (V.thaw vr)
+        callFn "decode" [v_y,v_wd,v_bd] fpr
+        vr' <- liftIO (V.freeze mv)
+        liftIO $ print vr'
+         
 

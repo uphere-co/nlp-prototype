@@ -22,7 +22,7 @@ import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( float )
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
-import           Symbolic.CodeGen.LLVM.Operation ( external )
+import           Symbolic.CodeGen.LLVM.Operation ( call, define, external, externf, fadd, fdiv, fsub, fval, local, ret )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Predefined
 import           Symbolic.Type
@@ -78,6 +78,17 @@ data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_Wd  :: WMatrix
                                , autodec_b   :: WVector
                                }
+externFun = do
+  external float "llvm.exp.f32" [(float, AST.Name "x")]
+  define float "tanh" [(float, AST.Name "x")] $ do
+    let xref = local (AST.Name "x")
+    v <- fadd xref xref
+    e <- call (externf (AST.Name "llvm.exp.f32")) [v]
+    m <- fsub e (fval 1)
+    d <- fadd e (fval 1)
+    r <- fdiv m d
+    ret r
+
 
 encodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
 encodeExp n =
@@ -113,10 +124,10 @@ decodeExp n =
 
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
-fullAST n = mkASTWithExt ext [("encode",encodeExp n), ("decode",decodeExp n)]
-  where ext = do
-          external float "tanh"   [(float, AST.Name "x")]
-          -- external float "tanh_1" [(float, AST.Name "x")]
+fullAST n = mkASTWithExt externFun [("encode",encodeExp n), ("decode",decodeExp n)]
+--   where ext = do
+--           external float "tanh"   [(float, AST.Name "x")]
+--          -- external float "tanh_1" [(float, AST.Name "x")]
  
                    
 encodeP :: AENode -> LLVMRunT IO WVector
