@@ -160,7 +160,19 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
     return tag;
 }
 
+vocab_t ReadVocab(std::ifstream &vocab_file) {
+    std::string word;
+    int64_t index;
+    vocab_t vocab;
+    
+    while(vocab_file >> word >> index) {
+        vocab[word] = index;
+    }
 
+    return vocab;
+}
+
+    
 void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {    
     SpValue value;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
@@ -192,7 +204,7 @@ void MakeTFIDF(std::vector<SpValue> &values, int64_t &count, vocab_t const &voca
 
 }
 
-void MakeTFKLD(std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
 
     float_t ep=0.05;
     float_t count_p=2*ep;
@@ -201,10 +213,9 @@ void MakeTFKLD(std::vector<std::string> &tag, std::vector<SpValue> &values, int6
     float_t q=ep;
 
     float_t div;
-    std::vector<float_t> kld;
     for(int64_t a = 0; a < vocab.size(); ++a) {
         for(int i = 0; i < tag.size(); ++i) {
-
+            
             auto isin1 = docs[i*2].find(a);
             auto isin2 = docs[i*2+1].find(a);
 
@@ -225,20 +236,20 @@ void MakeTFKLD(std::vector<std::string> &tag, std::vector<SpValue> &values, int6
                     count_p++;
                 }
             }
-            
-            div = (p/count_p)*log((p/count_p)/(q/count_q)) + (1-p/count_p)*log((1-p/count_p)/(1-q/count_q));        
-            kld.push_back(div);
-            count_p = 2*ep;
-            count_q = 2*ep;
-            p = ep;
-            q = ep;
         }
         
-        for(auto &x : values) x.val *= kld[x.row];
+        div = (p/count_p)*log((p/count_p)/(q/count_q)) + (1-p/count_p)*log((1-p/count_p)/(1-q/count_q));        
+        kld.push_back(div);
+        count_p = 2*ep;
+        count_q = 2*ep;
+        p = ep;
+        q = ep;
         
     }
+
+    for(auto &x : values) x.val *= kld[x.row];
+        
 }
-    
 
 void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
 
@@ -318,7 +329,7 @@ int main(){
 
     auto timer = Timer{};
     
-    std::string fin_name = "msr_paraphrase_train.txt";
+    std::string fin_name = "Tk_msr_paraphrase_train.txt";
     MSParaFile fin{fin_name};
 
     auto vocab = LearnVocab(fin);
@@ -337,12 +348,12 @@ int main(){
     sp_mat inMat(n_rows, n_cols);
 
     std::vector<SpValue> values;
-
+    std::vector<float_t> kld;
     int64_t count = 0;
 
     fillValue(values, count, vocab, docs);
     //MakeTFIDF(values, count, vocab, docs);
-    MakeTFKLD(tag, values, count, vocab, docs);
+    MakeTFKLD(kld, tag, values, count, vocab, docs);
     fillMat(values, count, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
@@ -376,15 +387,40 @@ int main(){
 
     timer.here_then_reset("Writing Similarity Vectors is Done.\n");
 
+    std::string vocab_filename = "vocab.dat";
+    std::ofstream vocab_out{vocab_filename};
 
+    std::string kld_filename = "kld.dat";
+    std::ofstream kld_out{kld_filename};
+    
+    for(auto x : vocab) {
+        vocab_out << x.first << " " << x.second << std::endl;
+    }
 
+    for(auto x : kld) {
+        kld_out << x << std::endl;
+    }
 
+    
+    /*
     H5file file{H5name{"data.h5"}, hdf5::FileMode::create};
     auto vocab_word = getVocabWord(vocab);
     auto vocab_index = getVocabIndex(vocab);
     std::vector<char> concat_words = Concat(vocab_word);
     file.writeRawData(H5name{"MSR.training.vocab.word"},concat_words);
     file.writeRawData(H5name{"MSR.training.vocab.index"},vocab_index);
+    */
+
     
+    
+
+    vocab_out.close();
+    kld_out.close();
+
+    std::string vocabread_filename = "vocab.dat";
+    std::ifstream vocabread_in{vocabread_filename};
+
+    auto vocab2 = ReadVocab(vocabread_in);
+
     return 0;
 }
