@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module NLP.Types where
 
@@ -9,18 +11,49 @@ import           Control.Applicative
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.State
+import           Data.Bifoldable
+import           Data.Bifunctor
+import           Data.Bifunctor.Flip
+import           Data.Bitraversable
 import           Data.Map                 (Map)
 import qualified Data.Map            as M
+import           Data.Monoid              ((<>))
 --
 import           Prelude hiding (lookup)
 
 
 data BinTreeF a r = BinNodeF r r
                   | BinLeafF a
-                  deriving (Functor, Foldable, Traversable)
+--                   deriving (Functor, Foldable, Traversable)
+
+instance Bifunctor BinTreeF where
+  bimap f g (BinNodeF l r) = BinNodeF (g l) (g r)
+  bimap f g (BinLeafF x)   = BinLeafF (f x) 
+
+instance Bifoldable BinTreeF where
+  bifoldMap f g (BinNodeF l r) = g l <> g r
+  bifoldMap f g (BinLeafF x)   = f x
+  
+instance Bitraversable BinTreeF where
+  bitraverse f g (BinNodeF l r) = BinNodeF <$> g l <*> g r
+  bitraverse f g (BinLeafF x)   = BinLeafF <$> f x
+
 
 data BNTTreeF a r = BNTNodeF a r r
                   | BNTLeafF a
+
+
+instance Bifunctor BNTTreeF where
+  bimap f g (BNTNodeF x l r) = BNTNodeF (f x) (g l) (g r)
+  bimap f g (BNTLeafF x)     = BNTLeafF (f x)
+
+instance Bifoldable BNTTreeF where
+  bifoldMap f g (BNTNodeF x l r) = f x <> g l <> g r
+  bifoldMap f g (BNTLeafF x)     = f x
+
+instance Bitraversable BNTTreeF where
+  bitraverse f g (BNTNodeF x l r) = BNTNodeF <$> f x <*> g l <*> g r
+  bitraverse f g (BNTLeafF x)     = BNTLeafF <$> f x
 
 newtype Fix f = Fix (f (Fix f))
 
@@ -68,16 +101,26 @@ binnodeM l r = do lookup l
 binleafM :: (Monad m) => a -> TreeM a m Ref
 binleafM a = push (binleaff a)
 
-graph2tree :: Map Ref (BinTreeF a Ref) -> Ref -> Either String (BinTreeR a)
+
+
+
+-- non-generic version. 
+--
+-- graph2tree :: Map Ref (BinTreeF a Ref) -> Ref -> Either String (BinTreeR a)
+-- graph2tree m r = do f <- elookup r m
+--                     case f of
+--                       BinNodeF l r -> binnode <$> graph2tree m l <*> graph2tree m r
+--                       BinLeafF a -> return (binleaf a)
+--   where elookup r = maybe (Left ("no such " ++ show r)) Right . M.lookup r
+
+
+-- | generic graph2tree
+graph2tree :: (Bitraversable f) => Map Ref (f a Ref) -> Ref -> Either String (Fix (f a))
 graph2tree m r = do f <- elookup r m
-                    case f of
-                      BinNodeF l r -> do
-                        l' <- graph2tree m l
-                        r' <- graph2tree m r
-                        return (binnode l' r')
-                      BinLeafF a -> return (binleaf a)
-  where elookup r = maybe (Left ("no such " ++ show r)) Right . M.lookup r
-    
+                    Fix <$> bitraverse pure (graph2tree m) f
+ where elookup r = maybe (Left ("no such " ++ show r)) Right . M.lookup r
+                      
+       
 binprint :: (Show a) => BinTreeR a -> String
 binprint (Fix (BinNodeF l r)) = "(" ++ binprint l ++ "," ++ binprint r ++ ")"
 binprint (Fix (BinLeafF a))   = show a

@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 
+import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.State
 import           Data.Functor.Identity
@@ -19,14 +20,16 @@ main = do
             r2 <- binleafM 2
             r3 <- binnodeM r1 r2
             binnodeM r1 r3
+            
   let m = currentGraph s
   (print . M.keys) m
 
-  case e of
-    Left str -> error str
-    Right r -> do
-      case graph2tree m r of
-        Left str' -> error str'
-        Right r' -> putStrLn $ binprint r'
-  -- let btree= binnode (binnode (binleaf 1) (binleaf 2)) (binleaf 3)
-  -- putStrLn $ binprint btree  
+  r <- runEitherT $ do
+    r <- hoistEither e
+    r' <- hoistEither (graph2tree m r)
+    liftIO $ putStrLn (binprint r')
+
+  -- error handling
+  case r of
+    Left err -> putStrLn err
+    Right _ -> return ()
