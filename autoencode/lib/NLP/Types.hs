@@ -68,7 +68,16 @@ binnodeM l r = do lookup l
 binleafM :: (Monad m) => a -> TreeM a m Ref
 binleafM a = push (binleaff a)
 
-
+graph2tree :: Map Ref (BinTreeF a Ref) -> Ref -> Either String (BinTreeR a)
+graph2tree m r = do f <- elookup r m
+                    case f of
+                      BinNodeF l r -> do
+                        l' <- graph2tree m l
+                        r' <- graph2tree m r
+                        return (binnode l' r')
+                      BinLeafF a -> return (binleaf a)
+  where elookup r = maybe (Left ("no such " ++ show r)) Right . M.lookup r
+    
 binprint :: (Show a) => BinTreeR a -> String
 binprint (Fix (BinNodeF l r)) = "(" ++ binprint l ++ "," ++ binprint r ++ ")"
 binprint (Fix (BinLeafF a))   = show a
