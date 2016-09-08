@@ -63,43 +63,44 @@ type BNTTreeR a = Fix (BNTTreeF a)
 
 newtype Ref = Ref Int deriving (Eq,Ord,Show,Num)
 
-data TreeState a = TreeState { nextRef :: Ref
-                             , currentGraph :: Map Ref (BinTreeF a Ref)
-                             -- , currentTree :: BinTreeR a
-                             }
+data TreeState f a = TreeState { nextRef :: Ref
+                               , currentGraph :: Map Ref (f a Ref)
+                               -- , currentTree :: BinTreeR a
+                               }
 
-emptyTS :: TreeState a
+emptyTS :: TreeState f a
 emptyTS = TreeState 0 M.empty
                    
-type TreeM a m = EitherT String (StateT (TreeState a) m)
+type TreeM f a m = EitherT String (StateT (TreeState f a) m)
 
-push :: (Monad m) => BinTreeF a Ref -> TreeM a m Ref
+push :: (Monad m) => f a Ref -> TreeM f a m Ref
 push t = lift $ do TreeState r m <- get
                    put (TreeState (r+1) (M.insert r t m))
                    return r
 
-lookup :: (Monad m) => Ref -> TreeM a m (BinTreeF a Ref)
-lookup r = maybe (left ("No such ref" ++ show r)) right . M.lookup r =<< lift (currentGraph <$> get)
+lookup :: (Monad m) => Ref -> TreeM f a m (f a Ref)
+lookup r = maybe (left ("No such ref" ++ show r)) right . M.lookup r
+           =<< lift (currentGraph <$> get)
 
-binnodef :: r -> r -> BinTreeF a r
-binnodef l r = BinNodeF l r
+binnodeF :: r -> r -> BinTreeF a r
+binnodeF l r = BinNodeF l r
 
-binleaff :: a -> BinTreeF a r
-binleaff a = BinLeafF a
+binleafF :: a -> BinTreeF a r
+binleafF a = BinLeafF a
 
 binnode :: BinTreeR a -> BinTreeR a -> BinTreeR a 
-binnode l r = Fix (binnodef l r)
+binnode l r = Fix (binnodeF l r)
 
 binleaf :: a -> BinTreeR a
-binleaf a = Fix (binleaff a)
+binleaf a = Fix (binleafF a)
 
-binnodeM :: (Monad m) => Ref -> Ref -> TreeM a m Ref
+binnodeM :: (Monad m) => Ref -> Ref -> TreeM BinTreeF a m Ref
 binnodeM l r = do lookup l
                   lookup r
-                  push (binnodef l r)
+                  push (binnodeF l r)
 
-binleafM :: (Monad m) => a -> TreeM a m Ref
-binleafM a = push (binleaff a)
+binleafM :: (Monad m) => a -> TreeM BinTreeF a m Ref
+binleafM a = push (binleafF a)
 
 
 
