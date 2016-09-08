@@ -106,10 +106,7 @@ encodeExp n =
       c = concat_ idxI [c1,c2]
       prd = sum_ [idxI] (mul [we, c])
       result = tanh_ [ add [prd, be] ]
-  in (result, [ V (mkSym "c1") [idxi]
-              , V (mkSym "c2") [idxj]
-              , V (mkSym "we")  [idxk,idxI]
-              , V (mkSym "be")  [idxk] ] )
+  in (result, map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
 
 decodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
 decodeExp n =
@@ -120,9 +117,7 @@ decodeExp n =
       bd = ivar (mkSym "bd") [idxI]
       prd = sum_ [idxk] (mul [wd, y])
       result = tanh_ [ add [prd, bd] ]
-  in (result, [ V (mkSym "y") [idxk]
-              , V (mkSym "wd") [idxI,idxk]
-              , V (mkSym "bd") [idxI] ] )
+  in (result, map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
 
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module

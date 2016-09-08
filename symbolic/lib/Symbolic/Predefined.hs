@@ -14,6 +14,9 @@ import           Data.Monoid               ((<>))
 import           Symbolic.Type
 --
 
+mkV :: (String,[Index]) -> Variable
+mkV (s,is) = V (mkSym s) is
+
 var :: Symbol -> MExp a
 var s = MExp (Var (V s [])) HM.empty HS.empty
 
