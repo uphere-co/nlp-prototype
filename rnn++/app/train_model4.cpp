@@ -51,19 +51,19 @@ int main(){
         // auto trainset_orig=TokenizedSentences{"wsj/wsj.train.known"};        
         auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
         auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
-        // auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
-        // auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
-        auto trainset_parsed=ParsedSentences{"wsj.long.s2010.train.tree"};
-        auto trainset_orig=TokenizedSentences{"wsj.long.s2010.train"};
+        auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
+        auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
+        // auto trainset_parsed=ParsedSentences{"wsj.long.s2010.train.tree"};
+        // auto trainset_orig=TokenizedSentences{"wsj.long.s2010.train"};
         auto testset = SentencePairs{testset_parsed,testset_orig};
         auto trainset = SentencePairs{trainset_parsed,trainset_orig};
         
         logger.info("Read trainset");
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
-        auto param = load_param(rnn_param_store_name, "model4.d877053.2000", DataType::dp);
-        // auto param = randomParam(0.05);
-        // param.bias.span *= rnn::type::float_t{0.0};
+        // auto param = load_param(rnn_param_store_name, "model4.d877053.2000", DataType::dp);
+        auto param = randomParam(0.05);
+        param.bias.span *= rnn::type::float_t{0.0};
         auto get_label_grad=[&](auto const &sent_pair){
             return get_directed_grad(rnn, param, sent_pair);
         };
@@ -108,7 +108,7 @@ int main(){
                 // optimizer.update(rnn.voca_vecs, grad_dp.words);
 
                 ++i_minibatch;
-                if(i_minibatch%5==0) {
+                if(i_minibatch%100==0) {
                     logger.log_testscore(i_minibatch,score_diff());
                     write_param(i_minibatch,param);
                 }

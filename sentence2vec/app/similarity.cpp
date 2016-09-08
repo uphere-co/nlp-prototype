@@ -147,9 +147,10 @@ int main(){
     // auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
     // auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
     // Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
-    auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.train.words", w2vmodel_f_type);
-    auto voca_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.train.vecs", w2vmodel_f_type);
-    Voca voca = load_voca("phrases.h5", "wsj.train.words");
+    auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "news_wsj.test.vecs", w2vmodel_f_type);
+    Voca voca = load_voca("phrases.h5", "news_wsj.test.words");
+    // auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.s2010.train.vecs", w2vmodel_f_type);
+    // Voca voca = load_voca("phrases.h5", "wsj.s2010.train.words");
     // auto voca_vecs = load_voca_vecs<word_dim>("gensim.h5", "1b.training.1M.gensim", w2vmodel_f_type);
     // Voca voca = load_voca("gensim.h5", "1b.training.1M.gensim.word" );
     // auto voca_vecs = load_voca_vecs<word_dim>("data.w2v.h5", "foo.vec", w2vmodel_f_type);
@@ -161,11 +162,23 @@ int main(){
     timer.here_then_reset("Data loaded.");
 
     std::vector<Query> queries;
-    queries.emplace_back("(no comment)",voca, word2idx);
-    queries.emplace_back("(had (no comment))",voca, word2idx);
-    queries.emplace_back("((had (no comment)) .)",voca, word2idx);
-    queries.emplace_back("((A (Shearson spokesman)) ((had (no comment)) .))",voca, word2idx);
-    queries.emplace_back("(Hess ((declined (*-1 (to comment))) .))",voca, word2idx);
+    // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
+    // queries.emplace_back("(would (n't (comment .)))",voca, word2idx);
+    // queries.emplace_back("((((Donaldson Lufkin) would) (n't comment)) .)",voca, word2idx);
+    // queries.emplace_back("(n't comment)",voca, word2idx);
+    // queries.emplace_back("((((It belonged) to) (her grandfather)) .)",voca, word2idx);
+    // queries.emplace_back("(((((Opponents do) n't) buy) (such arguments)) .)",voca, word2idx);
+    // queries.emplace_back("(such arguments)",voca, word2idx);
+    // queries.emplace_back("(such arguments)",voca, word2idx);
+
+    queries.emplace_back("(spokesman (declined (to comment)))",voca, word2idx);
+    queries.emplace_back("(declined (to comment))",voca, word2idx);
+    // queries.emplace_back("(no comment)",voca, word2idx);
+    // queries.emplace_back("(had (no comment))",voca, word2idx);
+    // queries.emplace_back("((had (no comment)) .)",voca, word2idx);
+    // queries.emplace_back("((A (Shearson spokesman)) ((had (no comment)) .))",voca, word2idx);
+    // queries.emplace_back("(Hess ((declined (*-1 (to comment))) .))",voca, word2idx);
+
     // queries.emplace_back("Physics",voca, word2idx);
     // queries.emplace_back("physics",voca, word2idx);
     // queries.emplace_back("Mathematics",voca, word2idx);
@@ -175,8 +188,8 @@ int main(){
     // queries.emplace_back("science",voca, word2idx);
     // queries.emplace_back("academic",voca, word2idx);
     timer.here_then_reset("Got index.");    
-    //process_queries_euclidean(queries, voca_vecs);
-    process_queries_angle(queries, voca_vecs);
+    // process_queries_euclidean(queries, sent_vecs);
+    process_queries_angle(queries, sent_vecs);
     timer.here_then_reset("Calculate distances.");
     //std::sort(distances.begin(),distances.end());
     display_queries(queries, voca);
