@@ -33,7 +33,7 @@ struct Query{
     idx_t idx;
 };
 
-auto process_query=[](Query &query, auto const& voca_vecs){
+auto process_query_angle=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();
     assert(n==query.distances.size());
     auto q=voca_vecs[query.idx];
@@ -46,10 +46,37 @@ auto process_query=[](Query &query, auto const& voca_vecs){
         }
     });
 };
+
+auto euclidean_distance_i=[](int64_t i, auto &out, auto const &x, auto const &y){
+    auto tmp=x[i]-y[i];
+    out += tmp*tmp;
+};
+auto euclidean_distance=[](auto const &x, auto const &y){
+    // pa||pb == pa[i] log(pb[i]/pa[i]) 
+    VecLoop_void<val_t,word_dim> vecloop_void{};
+    val_t distance{};
+    vecloop_void(euclidean_distance_i, distance, x, y);
+    return distance;
+};
+
+auto process_query_euclidean=[](Query &query, auto const& voca_vecs){
+    auto n=voca_vecs.size();
+    assert(n==query.distances.size());
+    auto q=voca_vecs[query.idx];
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
+                      [&](tbb::blocked_range<decltype(n)> const &r){
+        for(decltype(n) i=r.begin(); i!=r.end(); ++i){
+            auto const& v=voca_vecs[i];
+            query.distances[i] = -euclidean_distance(v,q);
+            // distances2[i]=dot(v,q2)/std::sqrt(dot(v,v)*dot(q2,q2));//sigmoid(v,q2);
+        }
+    });
+};
+
 auto process_queries_simple=[](std::vector<Query> &queries, auto const& voca_vecs){
     for(auto &query:queries) process_query(query, voca_vecs);
 };
-auto process_queries=[](std::vector<Query> &queries, auto const& voca_vecs){    
+auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs){    
     auto n=voca_vecs.size();
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
@@ -58,6 +85,22 @@ auto process_queries=[](std::vector<Query> &queries, auto const& voca_vecs){
                 auto q=voca_vecs[query.idx];
                 auto const& v=voca_vecs[i];
                 query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
+            }            
+        }
+    });
+};
+
+auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_vecs){    
+    auto n=voca_vecs.size();
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
+                      [&](tbb::blocked_range<decltype(n)> const &r){
+        for(decltype(n) i=r.begin(); i!=r.end(); ++i){
+            for(auto &query:queries){
+                auto q=voca_vecs[query.idx];
+                auto const& v=voca_vecs[i];
+                auto tmp{q};
+                tmp-=v;
+                query.distances[i] = -euclidean_distance(v,q);
             }            
         }
     });
@@ -101,10 +144,12 @@ int main(){
     rnn::simple_model::TokenizedSentences dataset{"1b.trainset.1M"};
     auto& sents = dataset.val;
     auto n_sent=sents.size();    
-    auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
-
-    auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
-    Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
+    // auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
+    // auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
+    // Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
+    auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.train.words", w2vmodel_f_type);
+    auto voca_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.train.vecs", w2vmodel_f_type);
+    Voca voca = load_voca("phrases.h5", "wsj.train.words");
     // auto voca_vecs = load_voca_vecs<word_dim>("gensim.h5", "1b.training.1M.gensim", w2vmodel_f_type);
     // Voca voca = load_voca("gensim.h5", "1b.training.1M.gensim.word" );
     // auto voca_vecs = load_voca_vecs<word_dim>("data.w2v.h5", "foo.vec", w2vmodel_f_type);
@@ -116,24 +161,30 @@ int main(){
     timer.here_then_reset("Data loaded.");
 
     std::vector<Query> queries;
-    queries.emplace_back("Physics",voca, word2idx);
-    queries.emplace_back("physics",voca, word2idx);
-    queries.emplace_back("Mathematics",voca, word2idx);
-    queries.emplace_back("mathematics",voca, word2idx);
-    queries.emplace_back("math",voca, word2idx);
-    queries.emplace_back("biology",voca, word2idx);
-    queries.emplace_back("science",voca, word2idx);
-    queries.emplace_back("academic",voca, word2idx);
+    queries.emplace_back("(no comment)",voca, word2idx);
+    queries.emplace_back("(had (no comment))",voca, word2idx);
+    queries.emplace_back("((had (no comment)) .)",voca, word2idx);
+    queries.emplace_back("((A (Shearson spokesman)) ((had (no comment)) .))",voca, word2idx);
+    queries.emplace_back("(Hess ((declined (*-1 (to comment))) .))",voca, word2idx);
+    // queries.emplace_back("Physics",voca, word2idx);
+    // queries.emplace_back("physics",voca, word2idx);
+    // queries.emplace_back("Mathematics",voca, word2idx);
+    // queries.emplace_back("mathematics",voca, word2idx);
+    // queries.emplace_back("math",voca, word2idx);
+    // queries.emplace_back("biology",voca, word2idx);
+    // queries.emplace_back("science",voca, word2idx);
+    // queries.emplace_back("academic",voca, word2idx);
     timer.here_then_reset("Got index.");    
-    process_queries(queries, voca_vecs);
+    //process_queries_euclidean(queries, voca_vecs);
+    process_queries_angle(queries, voca_vecs);
     timer.here_then_reset("Calculate distances.");
     //std::sort(distances.begin(),distances.end());
     display_queries(queries, voca);
     timer.here_then_reset("Queries answered.");
 
-    Query sent_query{sents[0],0, n_sent};
-    process_query(sent_query, sent_vecs);
-    display_query(sent_query, sents);
+    // Query sent_query{sents[0],0, n_sent};
+    // process_query(sent_query, sent_vecs);
+    // display_query(sent_query, sents);
     timer.here_then_reset("Sentence query answered.");
     
     return 0;

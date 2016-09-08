@@ -15,12 +15,6 @@ using namespace util;
 using namespace util::math;
 
 namespace{
-void print_words(Voca const &voca){
-    for(size_t i=0; i<voca.size(); ++i){
-        std::cout << voca.getWord(i).val <<std::endl;
-    }
-}
-
 
 }//nameless namespace
 namespace test{

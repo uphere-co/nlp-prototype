@@ -101,6 +101,7 @@ private:
 };
 
 Voca load_voca(std::string filename, std::string dataset);
+void print_words(Voca const &voca);
 
 }//namespace rnn::wordrep
 }//namespace rnn

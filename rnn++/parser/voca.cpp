@@ -15,6 +15,11 @@ Voca load_voca(std::string filename, std::string dataset){
     H5file file{H5name{filename}, hdf5::FileMode::read_exist};
     return Voca{file.getRawData<rnn::type::char_t>(H5name{dataset})};
 }
+void print_words(Voca const &voca){
+    for(size_t i=0; i<voca.size(); ++i){
+        std::cout << voca.getWord(i).val <<std::endl;
+    }
+}
 
 }//namespace rnn::wordrep
 }//namespace rnn
