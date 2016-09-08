@@ -81,29 +81,36 @@ push t = lift $ do TreeState r m <- get
 lookup :: (Monad m) => Ref -> TreeM f a m (f a Ref)
 lookup r = maybe (left ("No such ref" ++ show r)) right . M.lookup r
            =<< lift (currentGraph <$> get)
-
+{-
 binnodeF :: r -> r -> BinTreeF a r
 binnodeF l r = BinNodeF l r
 
 binleafF :: a -> BinTreeF a r
 binleafF a = BinLeafF a
+-}
+
 
 binnode :: BinTreeR a -> BinTreeR a -> BinTreeR a 
-binnode l r = Fix (binnodeF l r)
+binnode l r = Fix (BinNodeF l r)
 
 binleaf :: a -> BinTreeR a
-binleaf a = Fix (binleafF a)
+binleaf x = Fix (BinLeafF x)
 
 binnodeM :: (Monad m) => Ref -> Ref -> TreeM BinTreeF a m Ref
 binnodeM l r = do lookup l
                   lookup r
-                  push (binnodeF l r)
+                  push (BinNodeF l r)
 
 binleafM :: (Monad m) => a -> TreeM BinTreeF a m Ref
-binleafM a = push (binleafF a)
+binleafM x = push (BinLeafF x)
 
+bntnodeM :: (Monad m) => a -> Ref -> Ref -> TreeM BNTTreeF a m Ref
+bntnodeM x l r = do lookup l
+                    lookup r
+                    push (BNTNodeF x l r)
 
-
+bntleafM :: (Monad m) => a -> TreeM BNTTreeF a m Ref
+bntleafM x = push (BNTLeafF x)
 
 -- non-generic version. 
 --
@@ -125,6 +132,10 @@ graph2tree m r = do f <- elookup r m
 binprint :: (Show a) => BinTreeR a -> String
 binprint (Fix (BinNodeF l r)) = "(" ++ binprint l ++ "," ++ binprint r ++ ")"
 binprint (Fix (BinLeafF a))   = show a
+
+bntprint :: (Show a) => BNTTreeR a -> String
+bntprint (Fix (BNTNodeF x l r)) = "(" ++ show x ++ "," ++ bntprint l ++ "," ++ bntprint r ++ ")"
+bntprint (Fix (BNTLeafF x))   = show x
 
 
 
