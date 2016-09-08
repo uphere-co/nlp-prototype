@@ -22,7 +22,7 @@ import qualified LLVM.General.AST            as AST
 import           LLVM.General.AST.Type           ( float )
 --
 import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
-import           Symbolic.CodeGen.LLVM.Operation ( call, define, external, externf, fadd, fdiv, fsub, fval, local, ret )
+import           Symbolic.CodeGen.LLVM.Operation ( LLVM, call, define, external, externf, fadd, fdiv, fsub, fval, local, ret )
 import           Symbolic.CodeGen.LLVM.Run
 import           Symbolic.Predefined
 import           Symbolic.Type
@@ -78,6 +78,8 @@ data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_Wd  :: WMatrix
                                , autodec_b   :: WVector
                                }
+
+externFun :: LLVM ()
 externFun = do
   external float "llvm.exp.f32" [(float, AST.Name "x")]
   define float "tanh" [(float, AST.Name "x")] $ do
@@ -125,11 +127,7 @@ decodeExp n =
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
 fullAST n = mkASTWithExt externFun [("encode",encodeExp n), ("decode",decodeExp n)]
---   where ext = do
---           external float "tanh"   [(float, AST.Name "x")]
---          -- external float "tanh_1" [(float, AST.Name "x")]
  
-                   
 encodeP :: AENode -> LLVMRunT IO WVector
 encodeP AENode {..} = do
   let vc1 = aenode_c1
