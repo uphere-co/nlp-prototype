@@ -39,6 +39,8 @@ Library
                         bytestring,
                         conduit,
                         conduit-extra,
+                        containers,
+                        either,
                         hashable,
                         llvm-general-pure,
                         MemoTrie,
@@ -58,6 +60,7 @@ Library
                         NLP.SyntaxTree.Printer
                         NLP.SyntaxTree.Regularize
                         NLP.SyntaxTree.Type
+                        NLP.Types
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
                         Numeric.Kahan
@@ -92,6 +95,8 @@ Executable autoencode
                         attoparsec,
                         bifunctors,
                         bytestring,
+                        containers,
+                        either,
                         hashable,
                         llvm-general,
                         MemoTrie,
