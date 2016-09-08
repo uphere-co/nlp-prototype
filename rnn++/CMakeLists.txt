@@ -49,6 +49,11 @@ add_executable(parser_model4 app/parser_model4  tests/test_voca_wordvec
                parser/parser parser/voca parser/wordvec 
                utils/hdf5 utils/math utils/string)
 target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
+add_executable(phrases_model4 app/phrases_model4  tests/test_voca_wordvec
+               parser/compute parser/config parser/node parser/param 
+               parser/parser parser/voca parser/wordvec 
+               utils/hdf5 utils/math utils/string)
+target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans utils/string)
 

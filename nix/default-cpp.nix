@@ -151,10 +151,7 @@ rec {
       buildInputs = [ cmake ];
       cmakeFlags = ["-DBUILD_SHARED_LIBS=TRUE"];
       patches = [ ];
-      #enableParallelBuilding = true;
-      buildPhase = ''
-        make -j8
-      '';
+      enableParallelBuilding = true;
       checkPhase = ''
         make test
       '';

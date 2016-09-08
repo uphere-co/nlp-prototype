@@ -116,5 +116,14 @@ struct WordVectors{
 WordVectors& operator +=(WordVectors& out, const WordVectors& x);
 WordVectors operator +(const WordVectors& x, const WordVectors& y);
 
+template<typename T>
+void write_to_disk(T const &new_words, std::string voca_name){
+    using namespace util::io;
+    H5file h5store{H5name{"phrases.h5"}, hdf5::FileMode::replace};
+    // h5store.writeRawData(H5name{voca_name}, raw_data);
+    h5store.writeRawData(H5name{voca_name+".vecs"}, new_words.serialize_vectors());
+    h5store.writeRawData(H5name{voca_name+".words"}, new_words.serialize_words());
+}
+
 }//namespace rnn::wordrep
 }//namespace rnn
