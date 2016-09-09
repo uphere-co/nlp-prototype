@@ -79,12 +79,12 @@ data AutoDecoder = AutoDecoder { autodec_dim :: Int
                                , autodec_b   :: WVector
                                }
 
-encodeExp :: (?expHash :: WExp :->: Hash) => (WMExp, [Variable])
-encodeExp =
-  let idxi = ("i",1,100)
-      idxj = ("j",1,100)
-      idxk = ("k",1,100)
-      idxI = ("I",1,200)
+encodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+encodeExp n =
+  let idxi = ("i",1,n)
+      idxj = ("j",1,n)
+      idxk = ("k",1,n)
+      idxI = ("I",1,2*n)
       c1 = ivar (mkSym "c1") [idxi]
       c2 = ivar (mkSym "c2") [idxj]
       we = ivar (mkSym "we") [idxk, idxI]
@@ -98,10 +98,10 @@ encodeExp =
               , V (mkSym "we")  [idxk,idxI]
               , V (mkSym "be")  [idxk] ] )
 
-decodeExp :: (?expHash :: WExp :->: Hash) => (WMExp, [Variable])
-decodeExp =
-  let idxk = ("k",1,100)
-      idxI = ("I",1,200)
+decodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+decodeExp n =
+  let idxk = ("k",1,n)
+      idxI = ("I",1,2*n)
       y = ivar (mkSym "y") [idxk]
       wd = ivar (mkSym "wd") [idxI, idxk]
       bd = ivar (mkSym "bd") [idxI]
@@ -112,9 +112,11 @@ decodeExp =
               , V (mkSym "bd") [idxI] ] )
 
 
-fullAST :: (?expHash :: WExp :->: Hash) => AST.Module
-fullAST = mkASTWithExt ext [("encode",encodeExp), ("decode",decodeExp)]
-  where ext = external double "tanh" [(double, AST.Name "x")] 
+fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
+fullAST n = mkASTWithExt ext [("encode",encodeExp n), ("decode",decodeExp n)]
+  where ext = do
+          external double "tanh"   [(double, AST.Name "x")]
+          external double "tanh_1" [(double, AST.Name "x")]
  
                    
 encodeP :: AENode -> LLVMRunT IO WVector
@@ -183,21 +185,4 @@ l2unfoldingRAE ae ad bt  = do
   return . bimap (bifoldl' const (+) 0 . bimap id (uncurry l2norm) . runJoin) (const ())
          . runJoin $ bted
 
-{- 
--- Compute L^2 norm
-l2RAE:: AutoEncoder
-          -> AutoDecoder
-          -> BinTree WVector
-          -> LLVMRunT IO (WVal WVector)
-l2RAE ae ad bt  = do
-     bte <- encode ae bt
-     btd <- decode ad bte
-     let l2tree::BNTree (WVal WVector) (WVal WVector)
-         l2tree = zipWithTree l2 bte btd
-     return $ foldNode (+) 0 l2tree
-  where
-    l2 :: WVector -> WVector -> WVal WVector
-    l2 v1 v2 = let vec_sub = VS.zipWith (*) v1 v2
-               in VS.sum $ VS.zipWith (*) vec_sub vec_sub
-
--}
+-- differential 

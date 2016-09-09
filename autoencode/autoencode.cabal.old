@@ -39,8 +39,6 @@ Library
                         bytestring,
                         conduit,
                         conduit-extra,
-                        containers,
-                        either,
                         hashable,
                         llvm-general-pure,
                         MemoTrie,
@@ -60,7 +58,6 @@ Library
                         NLP.SyntaxTree.Printer
                         NLP.SyntaxTree.Regularize
                         NLP.SyntaxTree.Type
-                        NLP.Types
                         NLP.WordVector.Parser
                         NLP.WordVector.Vectorize
                         Numeric.Kahan
@@ -95,8 +92,6 @@ Executable autoencode
                         attoparsec,
                         bifunctors,
                         bytestring,
-                        containers,
-                        either,
                         hashable,
                         llvm-general,
                         MemoTrie,
@@ -108,3 +103,116 @@ Executable autoencode
                         --
                         autoencode
 
+--
+-- rnnresult program. 
+--
+Executable rnnresult
+  Main-is:              rnnresult.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall  -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base,
+                        --
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        text,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+
+--                        
+-- treebank program. 
+--
+Executable treebank
+  Main-is:              treebank.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall  -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base,
+                        --
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        text,
+                        unordered-containers,
+                        vector,
+                        --
+                        autoencode
+
+--                        
+-- wordvecparser program. 
+--
+Executable wordvecparser
+  Main-is:              wordvecparser.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-orphans
+                        -fno-warn-unused-do-bind
+                                                
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base,
+                        --
+                        bytestring,
+                        text,
+                        transformers,
+                        unordered-containers,
+                        vector,
+                        vector-algorithms,
+                        --
+                        autoencode
+
+
+-- 
+-- lbfgs program
+--
+
+Executable lbfgs
+  Main-is:              lbfgs.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind                        
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base,
+                        --
+                        array,
+                        lbfgs,
+                        --
+                        autoencode
+
+                        

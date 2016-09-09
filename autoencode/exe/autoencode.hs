@@ -3,120 +3,57 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 
-import GHC.IO.Encoding                             ( setLocaleEncoding, utf8 )
-
-import           Control.Monad.IO.Class            ( liftIO )
-import           Control.Monad.Trans.Reader        ( runReaderT )
-import qualified Data.Attoparsec.Text       as A
-import           Data.Bifoldable
-import           Data.Bifunctor.Join
-import qualified Data.ByteString.Char8      as B
-import           Data.Foldable
-import           Data.Hashable                     ( hash )
-import qualified Data.HashMap.Strict        as HM
-import           Data.MemoTrie                     ( trie )
-import           Data.Text                         ( Text )
-import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
-import           Data.Vector.Storable              ( Vector )
-import qualified Data.Vector.Storable       as V
-import           Foreign.ForeignPtr
-import           Foreign.Marshal.Alloc
-import           Foreign.Marshal.Utils
-import           LLVM.General.Context              ( withContext )
-import           System.Environment
---
-import           Symbolic.CodeGen.LLVM.JIT
---
-import           Data.Vector.Storable.Matrix
-import           NLP.RecursiveNN.AutoEncoder
-import           NLP.SyntaxTree.Binarize
-import           NLP.SyntaxTree.Parser
-import           NLP.SyntaxTree.Printer
-import           NLP.SyntaxTree.Regularize
-import           NLP.SyntaxTree.Type
-import           NLP.WordVector.Vectorize
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Either
+import           Control.Monad.Trans.State
+import           Data.Functor.Identity
+import           Data.Map       (Map)
+import qualified Data.Map  as M
+import           NLP.Types
 
 
-prepareData :: IO (Vector Float)
-prepareData = do
-    bstr <- B.readFile "/data/groups/uphere/randomtest/randomtest.dat"
-    v :: Vector Float <- B.useAsCString bstr $ \cstr -> do
-      nstr <- mallocBytes 4000000
-      copyBytes nstr cstr 4000000
-      fptr <- castForeignPtr <$> newForeignPtr_ nstr
-      return (V.unsafeFromForeignPtr0 fptr 1000000)
-    return v
+main0 = do
+  let 
+      (e,s) =
+        runIdentity . flip runStateT emptyTS . runEitherT $ do
+            r1 <- binleafM (1 :: Int)
+            r2 <- binleafM 2
+            r3 <- binnodeM r1 r2
+            binnodeM r1 r3
+            
+  let m = currentGraph s
+  (print . M.keys) m
 
-getVectorizedTree :: WordVectorMap -> PennTree -> (BinTree Text, Maybe (BinTree (Vector Float)))
-getVectorizedTree wvm tr = (btr, traverse (\w -> (fmap snd . HM.lookup w . wvmap) wvm) btr)
-  where
-    btr0  = binarizeR tr
-    btr   = regularize btr0
+  r <- runEitherT $ do
+    r <- hoistEither e
+    r' <- hoistEither (graph2tree m r)
+    liftIO $ putStrLn (binprint r')
+
+  -- error handling
+  case r of
+    Left err -> putStrLn err
+    Right _ -> return ()
 
 
--- let p (v0,v1) = "ab"
--- printer :: BNTree (WVector,WVector) (WVector,WVector) -> Text
-
-{-
-printer1 = bntPrint [] p p where p = T.pack . show . V.take 4
-
-printer2 = bntPrint [] p p where p (v0,v1) = "ab"
--}
-
-printer3 :: BNTree Float () -> Text
-printer3 = bntPrint [] p q
-  where p n = T.pack (show n)
-        q _ = "leaf"
-
-main :: IO ()
 main = do
-    setLocaleEncoding utf8
-    args <- getArgs 
-    let !n1 = read (args !! 0) :: Int
-        !n2 = read (args !! 1) :: Int
-    v <- V.map (\x -> x - 0.5) <$> prepareData
-    putStrLn "data prepared"
-    let we = Mat (100,200) . V.slice 0 20000 . V.map (/100.0) $ v
-        be = V.slice 20000 100 . V.map (/100.0) $ v
-        wd = Mat (200,100) . V.slice 20100 20000 . V.map (/10.0) $ v
-        bd = V.slice 40100 200 . V.map (/50.0) $ v
-    let ?expHash = trie hash        
-    let autoenc = AutoEncoder 100 we be
-        autodec = AutoDecoder 100 wd bd
-    txt <- TIO.readFile "/data/groups/uphere/LDC2003T05_POS/LDC2003T05_parsed1.pos" -- "parsed.txt"
-    (_,wvm) <- createWordVectorMap "/data/groups/uphere/tmp/nlp-data/word2vec-result-20150501/vectors100statmt.bin"
-    let p' = penntree <* A.skipSpace 
-        r = A.parseOnly (A.many1 p') txt
-    case r of
-      Left err -> print err
-      Right lst -> do
-        withContext $ \context ->
-          flip runReaderT context $
-            compileNRun ["encode", "decode"] fullAST $
-              
-              forM_ ((drop n1 . take n2) lst) $ \tr -> do
-                let (_btr,mvtr) = getVectorizedTree wvm tr
-                forM_ mvtr $ \vtr -> do
-                  r <- l2unfoldingRAE autoenc autodec vtr
-                  liftIO $ TIO.putStrLn (printer3 r)
-                  -- liftIO $ print r
-                  liftIO $ print (bifoldl' (+) const 0 r)
-                  {-
-                  enc <- encode autoenc vtr
-                  dec <- decode autodec enc
-                  liftIO $ do
-                    putStrLn "================"
-                    TIO.putStrLn $ printer1 enc
-                    putStrLn "----------------"
-                    TIO.putStrLn $ printer2 dec
-                  rdec <- traverse (fmap Join . decode autodec . runJoin) (duplicate (Join enc))
-                  liftIO $ print rdec
-                  return () -}
-                  
-                  -- liftIO $ do
-                  --   putStrLn "****************"
-                  --   print rdec
-                    -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
+  let 
+      (e,s) =
+        runIdentity . flip runStateT emptyTS . runEitherT $ do
+            r1 <- bntleafM (1 :: Int)
+            r2 <- bntleafM 2
+            r3 <- bntnodeM 3 r1 r2
+            r4 <- bntnodeM 4 r3 r1
+            bntnodeM 5 r1 r4
+            
+  let m = currentGraph s
+  (print . M.keys) m
 
-        return ()
+  r <- runEitherT $ do
+    r <- hoistEither e
+    r' <- hoistEither (graph2tree m r)
+    liftIO $ putStrLn (bntprint r')
+
+  -- error handling
+  case r of
+    Left err -> putStrLn err
+    Right _ -> return ()
