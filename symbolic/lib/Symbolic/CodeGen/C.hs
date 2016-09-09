@@ -22,6 +22,7 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint
 --
+import           Symbolic.Dependency
 import           Symbolic.Type
 --
 

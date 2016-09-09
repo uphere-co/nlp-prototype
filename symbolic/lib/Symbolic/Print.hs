@@ -15,6 +15,7 @@ import           Data.List                 (intercalate)
 import           Data.MemoTrie
 import           Text.Printf
 --
+import           Symbolic.Dependency
 import           Symbolic.Type
 -- 
 

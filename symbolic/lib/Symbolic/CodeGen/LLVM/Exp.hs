@@ -23,6 +23,7 @@ import qualified LLVM.General.AST.Type             as T   (void)
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Operation
+import           Symbolic.Dependency
 import           Symbolic.Type
 import qualified Symbolic.Type                     as S   (Exp(..))
 import           Symbolic.Util                            (indexFlatteningFactors, sizeIndex)

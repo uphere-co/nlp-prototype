@@ -1,5 +1,5 @@
 Name:                   symbolic
-Version:                0.0
+Version:                0.1
 Cabal-version:          >=1.8
 Tested-with:            GHC >= 7.10
 Build-type:             Simple
@@ -21,7 +21,7 @@ source-repository HEAD
   type:                 git
   location:             https://github.com/uphere-co/nlp-prototype
   branch:               master
-  tag:                  0.0
+  -- tag:                  0.1
 
 -------------------------------------------------------
   
@@ -51,6 +51,7 @@ Library
                         Symbolic.CodeGen.LLVM.JIT
                         Symbolic.CodeGen.LLVM.Operation
                         Symbolic.CodeGen.LLVM.Run
+                        Symbolic.Dependency
                         Symbolic.Differential
                         Symbolic.Eval
                         Symbolic.Predefined
