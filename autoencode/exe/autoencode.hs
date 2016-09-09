@@ -148,7 +148,7 @@ compare = do
       idxJ = ("J",1,4)
   let ?expHash = trie hash
       ?functionMap = HM.fromList [ ("tanh", \[x] -> tanh x), ("tanh_1", \[x] -> 1/((cosh x)*(cosh x))) ]
-  let (r,_) = decodeExp 2
+  let (r,_) = dec 2
       dmap = HM.empty -- HM.fromList [("y",["wd"])]
   let expdiff = sdiff dmap (mkV ("wd",[idxJ,idxm])) r
   printf "r= %s\n" ((prettyPrint . exp2RExp) r :: String)
@@ -203,25 +203,25 @@ generate = do
 
   withContext $ \context ->
     flip runReaderT context $ do
-      compileNRun ["encode","dencodedwe","dencodedbe","decode","ddecodedwd","ddecodedbd"] (fullAST n) $ do
-        liftIO $ putStrLn "ddecode/dwd:"
+      compileNRun ["encode","dencdwe","dencdbe","decode","ddecdwd","ddecdbd"] (fullAST n) $ do
+        liftIO $ putStrLn "ddec/dwd:"
         dw <- mutateWith (V.replicate (m*m*n) 0) $ \fpr -> 
-          callFn "ddecodedwd" [vy,vwd,vbd] fpr
+          callFn "ddecdwd" [vy,vwd,vbd] fpr
         liftIO $ print dw
         --
-        liftIO $ putStrLn "ddecode/dbd:"
+        liftIO $ putStrLn "ddec/dbd:"
         db <- mutateWith (V.replicate (m*m) 0) $ \fpr -> 
-          callFn "ddecodedbd" [vy,vwd,vbd] fpr
+          callFn "ddecdbd" [vy,vwd,vbd] fpr
         liftIO $ print db
         --
-        liftIO $ putStrLn "dencode/dwe:"
+        liftIO $ putStrLn "denc/dwe:"
         ew <- mutateWith (V.replicate (n*m*n) 0) $ \fpr -> 
-          callFn "dencodedwe" [vc1,vc2,vwe,vbe] fpr
+          callFn "dencdwe" [vc1,vc2,vwe,vbe] fpr
         liftIO $ print ew
         --
-        liftIO $ putStrLn "dencode/dbe:"
-        eb <- mutateWith (V.replicate (n*m*n) 0) $ \fpr -> 
-          callFn "dencodedbe" [vc1,vc2,vwe,vbe] fpr
+        liftIO $ putStrLn "denc/dbe:"
+        eb <- mutateWith (V.replicate (n*n) 0) $ \fpr -> 
+          callFn "dencdbe" [vc1,vc2,vwe,vbe] fpr
         liftIO $ print eb
   
 

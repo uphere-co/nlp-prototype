@@ -107,8 +107,8 @@ externFun = do
     r <- fdiv (fval 4) d2
     ret r
 
-encodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-encodeExp n =
+enc :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+enc n =
   let idxi = ("i",1,n)
       idxj = ("j",1,n)
       idxk = ("k",1,n)
@@ -122,8 +122,8 @@ encodeExp n =
   in (result, map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
 
 
-dencode_dwe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-dencode_dwe n =
+denc_dwe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+denc_dwe n =
   let idxi = ("i",1,n)
       idxj = ("j",1,n)
       idxk = ("k",1,n)
@@ -131,27 +131,27 @@ dencode_dwe n =
       idxI = ("I",1,2*n)
       idxJ = ("J",1,2*n)
       --
-      (r,_) = encodeExp n
+      (r,_) = enc n
       dmap = HM.empty
       result = sdiff dmap (mkV ("we",[idxm,idxJ])) r
   in (result,map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
 
-dencode_dbe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-dencode_dbe n =
+denc_dbe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+denc_dbe n =
   let idxi = ("i",1,n)
       idxj = ("j",1,n)
       idxk = ("k",1,n)
       idxm = ("m",1,n)
       idxI = ("I",1,2*n)
       --
-      (r,_) = encodeExp n
+      (r,_) = enc n
       dmap = HM.empty
       result = sdiff dmap (mkV ("be",[idxm])) r
   in (result,map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
 
 
-decodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-decodeExp n =
+dec :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+dec n =
   let idxk = ("k",1,n)
       idxI = ("I",1,2*n)
       --
@@ -162,40 +162,39 @@ decodeExp n =
       --
   in (result, map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
 
-ddecode_dwd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-ddecode_dwd n =
+ddec_dwd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+ddec_dwd n =
   let idxk = ("k",1,n)
       idxI = ("I",1,2*n)
       idxJ = ("J",1,2*n)
       idxm = ("m",1,n)
       --
-      (r,_) = decodeExp n
+      (r,_) = dec n
       dmap = HM.empty
       result = sdiff dmap (mkV ("wd",[idxJ,idxm])) r
   in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
 
-ddecode_dbd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-ddecode_dbd n =
+ddec_dbd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+ddec_dbd n =
   let idxk = ("k",1,n)
       idxI = ("I",1,2*n)
       idxJ = ("J",1,2*n)
-      idxm = ("m",1,n)
       --
-      (r,_) = decodeExp n
+      (r,_) = dec n
       dmap = HM.empty
-      result = sdiff dmap (mkV ("bd",[idxm])) r
+      result = sdiff dmap (mkV ("bd",[idxJ])) r
   in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
 
 
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
 fullAST n = mkASTWithExt externFun
-              [ ("encode",encodeExp n)
-              , ("dencodedwe",dencode_dwe n)
-              , ("dencodedbe",dencode_dbe n)
-              , ("decode",decodeExp n)
-              , ("ddecodedwd",ddecode_dwd n)
-              , ("ddecodedbd",ddecode_dbd n)
+              [ ("encode" ,enc n)
+              , ("dencdwe",denc_dwe n)
+              , ("dencdbe",denc_dbe n)
+              , ("decode" ,dec n)
+              , ("ddecdwd",ddec_dwd n)
+              , ("ddecdbd",ddec_dbd n)
               ]
  
 encodeP :: AENode -> LLVMRunT IO WVector
