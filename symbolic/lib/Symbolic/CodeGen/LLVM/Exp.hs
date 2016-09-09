@@ -18,7 +18,7 @@ import           Data.MemoTrie
 import           LLVM.General.AST ( Operand(..) )
 import qualified LLVM.General.AST                  as AST
 import qualified LLVM.General.AST.IntegerPredicate as IP
-import           LLVM.General.AST.Type                    (double, float, i64, ptr)
+import           LLVM.General.AST.Type                    (float, i64, ptr)
 import qualified LLVM.General.AST.Type             as T   (void) 
 import           Text.Printf
 --
