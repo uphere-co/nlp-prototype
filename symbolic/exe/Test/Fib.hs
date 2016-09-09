@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Fib where
+module Test.Fib where
 
 import           Data.Hashable
 import qualified Data.HashMap.Strict   as HM

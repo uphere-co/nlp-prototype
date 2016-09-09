@@ -36,7 +36,7 @@ prettyPrint ROne  = printf "1"
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showVar s)
 prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
-prettyPrint (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: String)
+prettyPrint (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrint es++map prettyPrintKD ds) :: String)
 prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 prettyPrint (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrint es) :: String)
@@ -62,7 +62,8 @@ dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
 dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showVar s)
 dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
-dotPrint' h (Mul hs ds)    = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
+dotPrint' h (Mul hs ds)    = printf "x%x [label=\"*%s\"];\n" h (listPrintf "*" (map prettyPrintKD ds) :: String)
+                             ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 dotPrint' h (Concat i hs)  = printf "x%x [label=\"concat_(%s)\"];\n" h (showIdxSet [i]) ++ (concatMap (printf "x%x -> x%x;\n" h) hs)

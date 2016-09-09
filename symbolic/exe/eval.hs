@@ -7,12 +7,13 @@
 {-# LANGUAGE ViewPatterns #-}
 
 --
-import           Fib
-import           Test
+import           Test.Delta
+import           Test.Fib
+import           Test.Simple
 
 
 main :: IO ()
 main = do
   -- testfib
-  test18
+  test9
     
