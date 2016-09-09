@@ -7,15 +7,12 @@ namespace config{
 // std::string file_name{"s2010.h5"};
 // std::string voca_name{"s2010.words"}; 
 // std::string w2vmodel_name{"s2010.vecs"};
-std::string file_name{"data.h5"};
-std::string voca_name{"1b.model.voca"}; 
-std::string w2vmodel_name{"1b.model"};
-// std::string file_name{"glove.h5"};
-// std::string voca_name{"glove.6B.100.voca"}; 
-// std::string w2vmodel_name{"glove.6B.100"};
-// std::string file_name{"word2vec.h5"};
-// std::string voca_name{"foo.word"};
-// std::string w2vmodel_name{"foo.vec"};
+// std::string file_name{"data.h5"};
+// std::string voca_name{"1b.model.voca"}; 
+// std::string w2vmodel_name{"1b.model"};
+std::string file_name{"news_wsj.h5"};
+std::string voca_name{"news_wsj.voca"};
+std::string w2vmodel_name{"news_wsj"};
 
 std::string rnn_param_store_name{"rnn_params.h5"};
 //HDF5 dataset name to use as inital RNN parameter.

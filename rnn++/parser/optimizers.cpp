@@ -34,12 +34,12 @@ auto adaptive_update_mat = [](int64_t i, int64_t j, auto &out, auto x, auto cons
     out[i][j] += x *grad[i][j]/std::sqrt(adagrad_factor[i][j]+0.0000001);
 };
 auto accum_rmsprop_factor_vec = [](int64_t i, auto &out, auto const &vec){
-    out[i] *=0.9;
-    out[i] += 0.1*vec[i]*vec[i];
+    out[i] *=0.98;
+    out[i] += 0.02*vec[i]*vec[i];
 };
 auto accum_rmsprop_factor_mat = [](int64_t i, int64_t j, auto &out, auto const &vec){
-    out[i][j] *= 0.9;
-    out[i][j] += 0.1*vec[i][j]*vec[i][j];
+    out[i][j] *= 0.98;
+    out[i][j] += 0.02*vec[i][j]*vec[i][j];
 };
 
 }//nameless namespace
@@ -181,7 +181,6 @@ void RMSprop::update(Param &param, Param const &grad){
 }
 
 void RMSprop::update(WordBlock &voca_vecs, SparseGrad const &grad){
-    assert(ada_factor_voca.size()==552402);
     std::vector<SparseGrad::key_t> idxs;
     for(auto const &x:grad.val) idxs.push_back(x.first);
     auto n=idxs.size();

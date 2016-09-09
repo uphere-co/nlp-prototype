@@ -6,6 +6,8 @@
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+#include "utils/profiling.h"
+
 using namespace util::io;
 
 namespace word2vec{
@@ -14,10 +16,12 @@ namespace type{
 using int_t = int;
 using float_t = float;
 using char_t = char;
+
 }//namespace word2vec::type
 }//namespace word2vec
 
 namespace word2vec{
+using hashmap_t = std::map<std::string, type::int_t>;
 
 struct TokenizedFile{
     TokenizedFile(std::string train_file) {
@@ -31,25 +35,14 @@ struct TokenizedFile{
     std::ifstream val; 
 };
 
-//CAUTION!! Do not include a following line in a header.
-using namespace word2vec::type;
-
-using hashmap_t = std::map<std::string, int_t>;
-
 hashmap_t WordCount(TokenizedFile & file){
     std::string line;
     hashmap_t word_count;
     while (std::getline(file.val, line)){  
         std::istringstream iss{line};
         auto words = util::string::split(line);
-        for(auto x : words) {
-            auto isin = word_count.find(x);
-            if(isin != word_count.end()) {
-                word_count[x]+=1;
-            } else {
-                word_count[x]= 1;
-            }
-        }
+        for(auto const &x : words)
+            word_count[x]+=1;
     }
     return word_count;
 }
@@ -58,11 +51,6 @@ void PrintWordCount(hashmap_t const &word_count){
     for(auto x : word_count){
         std::cout << x.first << " " <<x.second<< std::endl;
     }
-}
-
-void InsertSpecialTag(hashmap_t &word_count){
-    auto word2vec_sentence_delim = "</s>";
-    word_count[word2vec_sentence_delim]=1;
 }
 
 auto FilteredMapValues(hashmap_t const &map, hashmap_t::mapped_type cutoff){
@@ -102,7 +90,6 @@ auto ToStrings(std::vector<char> const &concat_words){
     auto end=concat_words.cend();
     while(it!=end){
         words.push_back(std::string{&(*it)});
-        //std::cout<<std::string{&(*it)}<<std::endl;
         it=std::find(it, end, '\0');
         ++it;
     }
@@ -112,20 +99,26 @@ auto ToStrings(std::vector<char> const &concat_words){
 
 int main(){
     using namespace word2vec;
-    //std::vector<std::vector<double>> wordvector;
-    std::string infile_name = "data.txt";
+    auto timer=util::Timer{};
+    //std::string infile_name = "data.txt";
+    std::string infile_name = "data.test";
     TokenizedFile infile{infile_name};
+    timer.here_then_reset("Setup.");
     auto word_count = WordCount(infile);
-    //InsertSpecialTag(word_count);
+    timer.here_then_reset("Word count.");
     auto word_count_values = FilteredMapValues(word_count,5);
     auto word_count_keys = FilteredMapKeys(word_count,5);
+    timer.here_then_reset("Occurence filtering.");
     std::vector<char> concat_words = Concat(word_count_keys);
+    timer.here_then_reset("Transfrom to HDF5 raw data format.");
     
-    //PrintWordCount(word_count);
+    PrintWordCount(word_count);
+    timer.here_then_reset("print counts.");
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
     file.writeRawData(H5name{"1b.training.1M.count"},word_count_values);
     file.writeRawData(H5name{"1b.training.1M.word"},concat_words);
+    timer.here_then_reset("Write to HDF5 file.");
     
     //concat_read = file.readRawData(H5name{"bar.word_key"},concat_words); 
     //auto words = ToStrings(concat_read);

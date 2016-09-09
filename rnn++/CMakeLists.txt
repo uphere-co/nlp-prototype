@@ -18,8 +18,7 @@ message(${CMAKE_CXX_FLAGS})
 find_package (Threads)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${HOME}/repo/srcc/GSL/include)
-include_directories(${HOME}/repo/srcc/spdlog/include)
+
 add_executable(train_model0 app/train_model0 tests/test_simple_model
                    parser/compute parser/config parser/node parser/param 
                    parser/parser parser/voca parser/wordvec parser/optimizers
@@ -37,7 +36,7 @@ add_executable(train_model4 app/train_model4 tests/test_dp_merging
                    parser/compute parser/config parser/node parser/param 
                    parser/parser parser/voca parser/wordvec parser/optimizers
                    utils/string utils/hdf5 utils/math utils/logger)
-target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs )
+target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
 
 add_executable(parser_model1 app/parser_model1 
@@ -45,11 +44,16 @@ add_executable(parser_model1 app/parser_model1
                parser/parser parser/voca parser/wordvec 
                utils/hdf5 utils/math utils/string)
 target_link_libraries(parser_model1 hdf5_cpp hdf5_hl_cpp tbb)
-add_executable(parser_model4 app/parser_model4 
+add_executable(parser_model4 app/parser_model4  tests/test_voca_wordvec
                parser/compute parser/config parser/node parser/param 
                parser/parser parser/voca parser/wordvec 
                utils/hdf5 utils/math utils/string)
-target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb)
+target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
+add_executable(phrases_model4 app/phrases_model4  tests/test_voca_wordvec
+               parser/compute parser/config parser/node parser/param 
+               parser/parser parser/voca parser/wordvec 
+               utils/hdf5 utils/math utils/string)
+target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans utils/string)
 
