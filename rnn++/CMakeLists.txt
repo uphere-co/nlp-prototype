@@ -18,11 +18,12 @@ message(${CMAKE_CXX_FLAGS})
 find_package (Threads)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
-FILE(GLOB all_rnn_files parser/*cpp)
+FILE(GLOB all_rnn_files src/parser/*cpp)
 FILE(GLOB parser_files
-    parser/parser.cpp parser/voca.cpp parser/wordvec.cpp
-    parser/compute.cpp parser/config.cpp parser/node.cpp parser/param.cpp)
+    src/parser/parser.cpp src/parser/voca.cpp src/parser/wordvec.cpp
+    src/parser/compute.cpp src/parser/config.cpp src/parser/node.cpp src/parser/param.cpp)
 FILE(GLOB util_files utils/*cpp)
 
 add_executable(train_model0 app/train_model0 tests/test_simple_model
@@ -52,7 +53,7 @@ target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
-add_executable(hdf5io app/hdf5io parser/config parser/param utils/hdf5 utils/string)
+add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
 
 
