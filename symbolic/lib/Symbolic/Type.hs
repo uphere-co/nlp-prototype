@@ -90,16 +90,19 @@ instance Hashable Variable where
   hashWithSalt :: Hash -> Variable -> Hash
   hashWithSalt s (V x k) = s `hashWithSalt` x `hashWithSalt` k
 
+data KDelta = Delta Index Index
+            | CDelta Index [[Index]] Int
+                 -- ^ delta for collective index
+                 -- (collective index, index scheme, partition number (1-based))
+            deriving (Show,Eq)
+
+
 data Exp a = Zero
            | One
-           | Delta Index Index
-           | CDelta Index [[Index]] Int
-                -- ^ delta for collective index
-                -- (collective index, index scheme, partition number (1-based))
            | Val a
            | Var Variable
            | Add [Hash]
-           | Mul [Hash]
+           | Mul [Hash] [KDelta]
            | Fun String [Hash]
            | Sum [Index] Hash
            | Concat Index [Hash]
@@ -113,9 +116,11 @@ isOne :: Exp a -> Bool
 isOne One = True
 isOne _ = False
 
+{- 
 isDelta :: Exp a -> Bool
 isDelta (Delta _ _) = True
 isDelta _           = False
+-}
 
 isSum :: Exp a -> Bool
 isSum (Sum _ _) = True
@@ -138,12 +143,12 @@ getMHash e = untrie ?expHash (mexpExp e)
 
 data RExp a = RZero
             | ROne
-            | RDelta Index Index
-            | RCDelta Index [[Index]] Int
+            -- | RDelta Index Index
+            -- | RCDelta Index [[Index]] Int
             | RVal a
             | RVar Variable
             | RAdd [RExp a]
-            | RMul [RExp a]              
+            | RMul [RExp a] [KDelta]
             | RFun String [RExp a]
             | RSum [Index] (RExp a)
             | RConcat Index [RExp a]
@@ -181,15 +186,29 @@ instance HasTrie Float where
   enumerate = error "enumerate of HasTrie instance of Float is undefined"
 
 
+instance HasTrie KDelta where
+  data (KDelta :->: b) = KDTrie ((Index,Index) :->: b) ((Index,[[Index]],Int) :->: b)
+
+  trie :: (KDelta -> b) -> (KDelta :->: b)
+  trie f = KDTrie (trie (f . uncurry Delta))
+                  (trie (f . uncurry3 CDelta))
+
+  untrie :: (KDelta :->: b) -> KDelta -> b
+  untrie (KDTrie d cd) e =
+    case e of
+      Delta i j    -> untrie d (i,j)
+      CDelta i is p -> untrie cd (i,is,p)      
+    
+  enumerate :: (KDelta :->: b) -> [(KDelta,b)]
+  enumerate (KDTrie d cd) = enum' (uncurry Delta) d `weave` enum' (uncurry3 CDelta) cd
+
 instance HasTrie a => HasTrie (Exp a) where
   data (Exp a :->: b) = ExpTrie (() :->: b)
                                 (() :->: b)
-                                ((Index,Index) :->: b)
-                                ((Index,[[Index]],Int) :->: b)
                                 (a :->: b)
                                 (Variable :->: b)
                                 ([Hash] :->: b)     -- ^ for Add
-                                ([Hash] :->: b)     -- ^ for Mul
+                                (([Hash],[KDelta]) :->: b)     -- ^ for Mul
                                 ((String,[Hash]) :->: b) -- ^ for Fun
                                 (([Index],Hash) :->: b)
                                 ((Index,[Hash]) :->: b)
@@ -197,40 +216,32 @@ instance HasTrie a => HasTrie (Exp a) where
   trie :: (Exp a -> b) -> (Exp a :->: b)
   trie f = ExpTrie (trie (\() -> f Zero))
                    (trie (\() -> f One))
-                   (trie (f . uncurry Delta))
-                   (trie (f . uncurry3 CDelta))
                    (trie (f . Val))
                    (trie (f . Var))
                    (trie (f . Add))
-                   (trie (f . Mul))
+                   (trie (f . uncurry Mul))
                    (trie (f . uncurry Fun))
                    (trie (f . uncurry Sum))
                    (trie (f . uncurry Concat))
            
   untrie :: (Exp a :->: b) -> Exp a -> b
-  untrie (ExpTrie z o d cd l v a m f su c) e =
+  untrie (ExpTrie z o l v a m f su c) e =
     case e of
-      Zero         -> untrie z ()
-      One          -> untrie o ()
-      Delta i j    -> untrie d (i,j)
-      CDelta i is p -> untrie cd (i,is,p)      
-      Val n        -> untrie l n
-      Var s        -> untrie v s
-      Add hs       -> untrie a hs
-      Mul hs       -> untrie m hs
-      Fun s hs     -> untrie f (s,hs) 
+      Zero         -> untrie z  ()
+      One          -> untrie o  ()
+      Val n        -> untrie l  n
+      Var s        -> untrie v  s
+      Add hs       -> untrie a  hs
+      Mul hs ds    -> untrie m  (hs,ds)
+      Fun s hs     -> untrie f  (s,hs) 
       Sum is h     -> untrie su (is,h)
-      Concat i hs  -> untrie c (i,hs)
+      Concat i hs  -> untrie c  (i,hs)
                                      
   enumerate :: (Exp a :->: b) -> [(Exp a,b)]
-  enumerate (ExpTrie z o d cd n v a m f su c) =
+  enumerate (ExpTrie z o n v a m f su c) =
     enum' (\()->Zero) z
     `weave`
     enum' (\()->One) o
-    `weave`
-    enum' (uncurry Delta) d 
-    `weave`
-    enum' (uncurry3 CDelta) cd
     `weave`
     enum' Val n
     `weave`
@@ -238,7 +249,7 @@ instance HasTrie a => HasTrie (Exp a) where
     `weave`
     enum' Add a
     `weave`
-    enum' Mul m
+    enum' (uncurry Mul) m
     `weave`
     enum' (uncurry Fun) f
     `weave`
@@ -253,31 +264,36 @@ weave :: [a] -> [a] -> [a]
 [] `weave` as = as
 as `weave` [] = as
 (a:as) `weave` bs = a : (bs `weave` as)
-                  
+
+instance Hashable KDelta where
+  hashWithSalt s (Delta i j)     = s `hashWithSalt` (0 :: Int) `hashWithSalt` i `hashWithSalt` j
+  hashWithSalt s (CDelta i iss p)= s `hashWithSalt` (1 :: Int) `hashWithSalt` i `hashWithSalt` iss `hashWithSalt` p
+  
+  
 instance Hashable a => Hashable (Exp a) where
   hashWithSalt :: Hash -> Exp a -> Hash
   hashWithSalt s Zero            = s `hashWithSalt` (0 :: Int)
   hashWithSalt s One             = s `hashWithSalt` (1 :: Int)
-  hashWithSalt s (Delta i j)     = s `hashWithSalt` (2 :: Int) `hashWithSalt` i `hashWithSalt` j
-  hashWithSalt s (CDelta i iss p)= s `hashWithSalt` (3 :: Int) `hashWithSalt` i `hashWithSalt` iss `hashWithSalt` p
-  hashWithSalt s (Val n)         = s `hashWithSalt` (4 :: Int) `hashWithSalt` n
-  hashWithSalt s (Var s')        = s `hashWithSalt` (5 :: Int) `hashWithSalt` s'
-  hashWithSalt s (Add hs)        = s `hashWithSalt` (6 :: Int) `hashWithSalt` hs
-  hashWithSalt s (Mul hs)        = s `hashWithSalt` (7 :: Int) `hashWithSalt` hs
-  hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (8 :: Int) `hashWithSalt` s' `hashWithSalt` hs
-  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (9 :: Int) `hashWithSalt` is `hashWithSalt` h1
-  hashWithSalt s (Concat i hs)   = s `hashWithSalt` (10 :: Int) `hashWithSalt` i `hashWithSalt` hs
+  hashWithSalt s (Val n)         = s `hashWithSalt` (2 :: Int) `hashWithSalt` n
+  hashWithSalt s (Var s')        = s `hashWithSalt` (3 :: Int) `hashWithSalt` s'
+  hashWithSalt s (Add hs)        = s `hashWithSalt` (4 :: Int) `hashWithSalt` hs
+  hashWithSalt s (Mul hs ds)     = s `hashWithSalt` (5 :: Int) `hashWithSalt` hs `hashWithSalt` ds
+  hashWithSalt s (Fun s' hs)     = s `hashWithSalt` (6 :: Int) `hashWithSalt` s' `hashWithSalt` hs
+  hashWithSalt s (Sum is h1)     = s `hashWithSalt` (7 :: Int) `hashWithSalt` is `hashWithSalt` h1
+  hashWithSalt s (Concat i hs)   = s `hashWithSalt` (8 :: Int) `hashWithSalt` i `hashWithSalt` hs
+
+
+-- exp2RExp (MExp (Delta i j) _ _) = RDelta i j
+-- exp2RExp (MExp (CDelta i is j) _ _) = RCDelta i is j
 
 
 exp2RExp :: MExp a -> RExp a
 exp2RExp (MExp Zero        _ _) = RZero
 exp2RExp (MExp One         _ _) = ROne
-exp2RExp (MExp (Delta i j) _ _) = RDelta i j
-exp2RExp (MExp (CDelta i is j) _ _) = RCDelta i is j
 exp2RExp (MExp (Val n)     _ _) = RVal n
 exp2RExp (MExp (Var s)     _ _) = RVar s
 exp2RExp (MExp (Add hs)    m _) = RAdd $ map (exp2RExp . flip justLookup m) hs
-exp2RExp (MExp (Mul hs)    m _) = RMul $ map (exp2RExp . flip justLookup m) hs
+exp2RExp (MExp (Mul hs ds) m _) = RMul (map (exp2RExp . flip justLookup m) hs) ds
 exp2RExp (MExp (Fun s hs)  m _) = RFun s $ map (exp2RExp . flip justLookup m) hs
 exp2RExp (MExp (Sum is h1) m _) = let e1 = justLookup h1 m in RSum is (exp2RExp e1)
 exp2RExp (MExp (Concat i hs) m _) = RConcat i $ map (exp2RExp . flip justLookup m) hs

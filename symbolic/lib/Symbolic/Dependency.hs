@@ -16,12 +16,10 @@ import Symbolic.Type
 daughters :: Exp a -> [Hash]
 daughters Zero           = []
 daughters One            = []
-daughters (Delta _ _)    = []
-daughters (CDelta _ _ _) = []
 daughters (Val _)        = []
 daughters (Var _)        = []
 daughters (Add hs)       = hs
-daughters (Mul hs)       = hs
+daughters (Mul hs _)       = hs
 daughters (Fun _ hs)     = hs
 daughters (Sum _ h1)     = [h1]
 daughters (Concat _ hs)  = hs

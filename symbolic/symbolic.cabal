@@ -46,7 +46,7 @@ Library
                         vector,
                         zenc
   Exposed-modules:
-                        Symbolic.CodeGen.C
+                        -- Symbolic.CodeGen.C   -- for the time being
                         Symbolic.CodeGen.LLVM.Exp
                         Symbolic.CodeGen.LLVM.JIT
                         Symbolic.CodeGen.LLVM.Operation
