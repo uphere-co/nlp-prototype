@@ -27,7 +27,9 @@ add_executable(voca_builder app/voca_builder
                ${RNNPP_PATH}/utils/profiling)
 target_link_libraries(voca_builder hdf5_cpp hdf5_hl_cpp)
 
-add_executable(wordvec_trainer app/wordvec_trainer  ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp)
+add_executable(wordvec_trainer app/wordvec_trainer
+               ${RNNPP_PATH}/utils/string.cpp ${RNNPP_PATH}/utils/hdf5.cpp
+               ${RNNPP_PATH}/utils/profiling)
 target_link_libraries(wordvec_trainer ${CMAKE_THREAD_LIBS_INIT} hdf5_cpp hdf5_hl_cpp)
 
 install(TARGETS voca_builder wordvec_trainer RUNTIME DESTINATION bin)
