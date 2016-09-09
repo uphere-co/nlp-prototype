@@ -141,7 +141,7 @@ main = do
       ?functionMap = HM.fromList [ ("tanh", \[x] -> tanh x), ("tanh_1", \[x] -> 1/((cosh x)*(cosh x))) ]
   let (r,_) = decodeExp 2
       dmap = HM.empty -- HM.fromList [("y",["wd"])]
-  let expdiff = sdiff dmap (V (mkSym "wd") [idxJ,idxm]) r
+  let expdiff = sdiff dmap (mkV ("wd",[idxJ,idxm])) r
   printf "r= %s\n" ((prettyPrint . exp2RExp) r :: String)
   printf "diff = %s\n" ((prettyPrint . exp2RExp) expdiff :: String)
 
@@ -171,10 +171,10 @@ main = do
   withContext $ \context ->
     flip runReaderT context $ do
       -- runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [v_y] vr
-      compileNRun ["decode"] (fullAST 2) $ do
-        let vr = V.replicate 4 0 :: WVector
+      compileNRun ["decode","ddecodeExpdwd"] (fullAST 2) $ do
+        let vr = V.replicate (4*4*2) 0 :: WVector
         mv@(V.MVector _ fpr) <- liftIO (V.thaw vr)
-        callFn "decode" [v_y,v_wd,v_bd] fpr
+        callFn "ddecodeExpdwd" [v_y,v_wd,v_bd] fpr
         vr' <- liftIO (V.freeze mv)
         liftIO $ print vr'
          
