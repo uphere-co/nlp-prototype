@@ -171,11 +171,21 @@ main = do
   withContext $ \context ->
     flip runReaderT context $ do
       -- runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [v_y] vr
-      compileNRun ["decode","ddecodeExpdwd"] (fullAST 2) $ do
-        let vr = V.replicate (4*4*2) 0 :: WVector
-        mv@(V.MVector _ fpr) <- liftIO (V.thaw vr)
-        callFn "ddecodeExpdwd" [v_y,v_wd,v_bd] fpr
-        vr' <- liftIO (V.freeze mv)
-        liftIO $ print vr'
-         
+      compileNRun ["decode","ddecodeExpdwd","ddecodeExpdbd"] (fullAST 2) $ do
+        -- let vr = V.replicate (4*4*2) 0 :: WVector
+        dwd <- mutateWith (V.replicate (4*4*2) 0) $ \fpr -> 
+          callFn "ddecodeExpdwd" [v_y,v_wd,v_bd] fpr
+        liftIO $ print dwd
+        dbd <- mutateWith (V.replicate (4*2) 0) $ \fpr -> 
+          callFn "ddecodeExpdbd" [v_y,v_wd,v_bd] fpr
+        liftIO $ print dbd
+
+          
+
+mutateWith v f = do
+  mv@(V.MVector _ fpr) <- liftIO (V.thaw v)
+  f fpr
+  liftIO (V.freeze mv)
+  -- return v
+  
 

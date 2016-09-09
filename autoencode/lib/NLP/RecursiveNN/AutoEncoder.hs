@@ -146,19 +146,32 @@ ddecodeExp_dwd n =
       idxI = ("I",1,2*n)
       idxJ = ("J",1,2*n)
       idxm = ("m",1,n)
-      
+      --
       (r,_) = decodeExp n
       dmap = HM.empty
       result = sdiff dmap (mkV ("wd",[idxJ,idxm])) r
-  in trace (printf "result = %s\n" ((prettyPrint . exp2RExp) result :: String)) $
-       (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
+  in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
+
+ddecodeExp_dbd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+ddecodeExp_dbd n =
+  let idxk = ("k",1,n)
+      idxI = ("I",1,2*n)
+      idxJ = ("J",1,2*n)
+      idxm = ("m",1,n)
+      --
+      (r,_) = decodeExp n
+      dmap = HM.empty
+      result = sdiff dmap (mkV ("bd",[idxm])) r
+  in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
 
 
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
 fullAST n = mkASTWithExt externFun
-              [("encode",encodeExp n), ("decode",decodeExp n)
-              ,("ddecodeExpdwd",ddecodeExp_dwd n)
+              [ ("encode",encodeExp n)
+              , ("decode",decodeExp n)
+              , ("ddecodeExpdwd",ddecodeExp_dwd n)
+              , ("ddecodeExpdbd",ddecodeExp_dbd n)
               ]
  
 encodeP :: AENode -> LLVMRunT IO WVector
