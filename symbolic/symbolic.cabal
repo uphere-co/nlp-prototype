@@ -46,11 +46,11 @@ Library
                         vector,
                         zenc
   Exposed-modules:
-                        -- Symbolic.CodeGen.C   -- for the time being
-                        Symbolic.CodeGen.LLVM.Exp
-                        Symbolic.CodeGen.LLVM.JIT
-                        Symbolic.CodeGen.LLVM.Operation
-                        Symbolic.CodeGen.LLVM.Run
+                        -- Symbolic.CodeGen.C               -- for the time being
+                        -- Symbolic.CodeGen.LLVM.Exp
+                        -- Symbolic.CodeGen.LLVM.JIT
+                        -- Symbolic.CodeGen.LLVM.Operation
+                        -- Symbolic.CodeGen.LLVM.Run
                         Symbolic.Dependency
                         Symbolic.Differential
                         Symbolic.Eval
@@ -114,31 +114,31 @@ Executable eval
 -------------------------------------------------------
 
                         
-Executable llvm
-  Main-is:              llvm.hs
-  hs-source-dirs:       exe
+-- Executable llvm
+--   Main-is:              llvm.hs
+--   hs-source-dirs:       exe
 
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
-                        -fno-warn-unused-do-bind
+--   other-modules:       
+--   ghc-options:          -Wall -O2
+--                         -threaded
+--                         -funbox-strict-fields
+--                         -fno-warn-unused-do-bind
 
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
+--   ghc-prof-options:     -auto-all
+--   extra-libraries:     
+--   c-sources:            
                         
-  build-depends:        base,
-                        --
-                        containers,
-                        hashable,
-                        llvm-general,
-                        llvm-general-pure,
-                        MemoTrie,
-                        mtl,
-                        vector,
-                        transformers,
-                        unordered-containers,
-                        --
-                        symbolic
+--   build-depends:        base,
+--                         --
+--                         containers,
+--                         hashable,
+--                         llvm-general,
+--                         llvm-general-pure,
+--                         MemoTrie,
+--                         mtl,
+--                         vector,
+--                         transformers,
+--                         unordered-containers,
+--                         --
+--                         symbolic
                         

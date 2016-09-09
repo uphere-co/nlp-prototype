@@ -8,19 +8,14 @@
 
 module Test where
 
-
-
 import           Data.Foldable             (forM_)
-
 import           Data.Hashable
-
 import qualified Data.HashMap.Strict as HM
-
 import           Data.MemoTrie
 import qualified Data.Vector.Storable as VS
 import           Text.Printf
 --
-import           Symbolic.CodeGen.C
+-- import           Symbolic.CodeGen.C
 import           Symbolic.Differential
 import           Symbolic.Eval
 import           Symbolic.Predefined
@@ -143,7 +138,7 @@ test13 = do
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
   
-  cPrint "testfunction" [V (mkSym "x") [], V (mkSym "y") [idxi,idxj], V (mkSym "z") [idxi] ] exp5
+  -- cPrint "testfunction" [V (mkSym "x") [], V (mkSym "y") [idxi,idxj], V (mkSym "z") [idxi] ] exp5
 
 
 test14 :: IO ()

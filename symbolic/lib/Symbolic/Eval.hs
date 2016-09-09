@@ -50,11 +50,11 @@ eval :: ( Num a, Storable a, HasTrie a
 eval _ (_,_,Zero)         = 0
 eval _ (_,_,One)          = 1
 eval _ (_,_,Val n)        = n
-eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j
-eval _ (_,ip,CDelta i iss p) = evalCDelta ip i iss p 
+-- eval _ (_,ip,Delta (i,_,_) (j,_,_)) = evalDelta ip i j
+-- eval _ (_,ip,CDelta i iss p) = evalCDelta ip i iss p 
 eval _ (args,ip,Var v)    = evalVar args ip v
-eval m (args,ip,Mul hs)   = let es = map (mexpExp . flip justLookup m) hs
-                            in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
+eval m (args,ip,Mul hs ds)   = let es = map (mexpExp . flip justLookup m) hs
+                               in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
 eval m (args,ip,Add hs)   = let es = map (mexpExp . flip justLookup m) hs
                             in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
 eval m (args,ip,Fun s hs) = let es = map (mexpExp . flip justLookup m) hs

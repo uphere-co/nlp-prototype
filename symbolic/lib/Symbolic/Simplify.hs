@@ -38,5 +38,5 @@ argsAdd (MExp (Add hs) m _) = Just (map (flip justLookup m) hs)
 argsAdd _                   = Nothing
 
 argsMul :: MExp a -> Maybe [MExp a]
-argsMul (MExp (Mul hs) m _) = Just (map (flip justLookup m) hs)
-argsMul _                   = Nothing
+argsMul (MExp (Mul hs ds) m _) = Just (map (flip justLookup m) hs)
+argsMul _                      = Nothing

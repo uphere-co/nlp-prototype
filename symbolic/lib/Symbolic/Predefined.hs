@@ -56,10 +56,12 @@ val :: a -> MExp a
 val n = MExp (Val n) HM.empty HS.empty
 
 delta :: Index -> Index -> MExp a
-delta j k = MExp (Delta j k) HM.empty (HS.fromList [j,k])
+delta j k = MExp (Mul [] [Delta j k]) HM.empty (HS.fromList [j,k])
 
 cdelta :: Index -> [[Index]] -> Int -> MExp a
-cdelta i iss p = MExp (CDelta i iss p)  HM.empty (HS.fromList (i:(iss !! (p-1))))
+cdelta i iss p = MExp (Mul [] [cd]) HM.empty (HS.fromList (i:(iss !! (p-1))))
+  where cd = (CDelta i iss p)
+
 
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
 varop op es = let hes = map ((,) <$> getMHash <*> id) es
@@ -73,8 +75,16 @@ varop op es = let hes = map ((,) <$> getMHash <*> id) es
 add :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 add = varop Add
 
+
+-- this should be rewritten. using delta lifting
 mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-mul = varop Mul
+mul es = let hes = map ((,) <$> getMHash <*> id) es
+             ms = map mexpMap es
+             is = map mexpIdx es
+             m' = foldl1 HM.union ms
+             i' = foldl1 HS.union is
+             m'' = foldr (uncurry HM.insert) m' hes
+         in MExp (Mul (map fst hes) []) m'' i'
 
 sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =

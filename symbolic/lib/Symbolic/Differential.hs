@@ -28,13 +28,11 @@ diff' dm m t (s,e) =
   case e of
     Zero         -> zero 
     One          -> zero
-    Delta _ _    -> zero
-    CDelta _ _ _ -> zero    
     Val _        -> zero
     Var s'       -> dvar dm s s'
     Add hs       -> let es = map (flip justLookup m) hs
                     in add' (map (\e' -> untrie t (s,mexpExp e')) es)
-    Mul hs       -> let es = map (flip justLookup m) hs
+    Mul hs ds    -> let es = map (flip justLookup m) hs
                     in add' (diffmul es)
     Fun sym hs   -> let es = map (flip justLookup m) hs
                         ies = zip [1..] es 

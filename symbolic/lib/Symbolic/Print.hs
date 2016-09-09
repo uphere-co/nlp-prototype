@@ -24,15 +24,19 @@ listPrintf _   []     = printf ""
 listPrintf _   (x:[]) = printf "%s" x
 listPrintf sep (x:xs) = printf "%s%s%s" x sep (listPrintf sep xs :: String)
 
+prettyPrintKD :: (PrintfType r) => KDelta -> r
+prettyPrintKD (Delta i j) = printf "delta_%s%s" (indexName i) (indexName j)
+prettyPrintKD (CDelta i iss p) = printf "cdelta_%s(%s)" (view _1 i) ((listPrintf "" . map (view _1)) (iss !! (p-1)) :: String)
+
+
+
 prettyPrint :: (Show a, PrintfType r) => RExp a -> r
 prettyPrint RZero = printf "0"
 prettyPrint ROne  = printf "1"
-prettyPrint (RDelta i j) = printf "delta_%s%s" (indexName i) (indexName j)
-prettyPrint (RCDelta i iss p) = printf "cdelta_%s(%s)" (view _1 i) ((listPrintf "" . map (view _1)) (iss !! (p-1)) :: String)
 prettyPrint (RVal n) = printf "%s" (show n) 
 prettyPrint (RVar s) = printf "%s" (showVar s)
 prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
-prettyPrint (RMul es) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: String)
+prettyPrint (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrint es) :: String)
 prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
 prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
 prettyPrint (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrint es) :: String)
@@ -47,15 +51,18 @@ endl = putStrLn ""
 showIdxSet :: [Index] -> String
 showIdxSet = intercalate "," . map (view _1)
 
+
+-- dotPrint h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h (indexName i) (indexName j)
+-- dotPrint h (CDelta i iss p) = printf "x%x [label=\"cdelta_%s(%s)\"];\n" h (indexName i) ((listPrintf "" . map indexName) (iss !! (p-1)) :: String)
+
+
 dotPrint' :: (Show a) => Hash -> Exp a -> String
 dotPrint' h Zero           = printf "x%x [label=\"0\"];\n" h
 dotPrint' h One            = printf "x%x [label=\"1\"];\n" h
-dotPrint' h (Delta i j)    = printf "x%x [label=\"delta_%s%s\"];\n" h (indexName i) (indexName j)
-dotPrint' h (CDelta i iss p) = printf "x%x [label=\"cdelta_%s(%s)\"];\n" h (indexName i) ((listPrintf "" . map indexName) (iss !! (p-1)) :: String)
 dotPrint' h (Val n)        = printf "x%x [label=\"%s\"];\n" h (show n)
 dotPrint' h (Var s)        = printf "x%x [label=\"%s\"];\n" h (showVar s)
 dotPrint' h (Add hs)       = printf "x%x [label=\"+\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
-dotPrint' h (Mul hs)       = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
+dotPrint' h (Mul hs ds)    = printf "x%x [label=\"*\"];\n" h ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Fun s hs)     = printf "x%x [label=\"%s\"];\n" h s ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
 dotPrint' h (Sum is h1)    = printf "x%x [label=\"sum_(%s)\"];\nx%x -> x%x;\n" h (showIdxSet is) h h1
 dotPrint' h (Concat i hs)  = printf "x%x [label=\"concat_(%s)\"];\n" h (showIdxSet [i]) ++ (concatMap (printf "x%x -> x%x;\n" h) hs)
