@@ -107,6 +107,7 @@ Executable autoencode
                         vector,
 
                         llvm-general-pure,
+                        mersenne-random,
                         
                         --
                         autoencode

@@ -26,8 +26,9 @@ import           Foreign.Marshal.Utils
 import qualified LLVM.General.AST           as AST
 import           LLVM.General.AST.Type             ( float )
 import           LLVM.General.Context              ( withContext )
-import LLVM.General.Target
 import           System.Environment
+import           System.Random.Mersenne
+
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.JIT
@@ -134,7 +135,15 @@ main' = do
 tV :: [Float] -> Vector Float
 tV = V.fromList
 
-main = do
+ 
+mutateWith v f = do
+  mv@(V.MVector _ fpr) <- liftIO (V.thaw v)
+  f fpr
+  liftIO (V.freeze mv)
+
+
+
+compare = do
   let idxm = ("m",1,2)
       idxJ = ("J",1,4)
   let ?expHash = trie hash
@@ -166,26 +175,54 @@ main = do
     let ipt = [("I",iI),("J",iJ),("m",m)]
     printf "diff(I=%d,J=%d,m=%d) = %f \n" iI iJ m (seval args0 ipt expdiff)
 
-
+  let n=2; m=2*n
+  
   putStrLn "LLVM code result:"
   withContext $ \context ->
     flip runReaderT context $ do
-      -- runJITASTPrinter "fun1" (\r->putStrLn $ "Evaluated to: " ++ show r) ast [v_y] vr
-      compileNRun ["decode","ddecodeExpdwd","ddecodeExpdbd"] (fullAST 2) $ do
-        -- let vr = V.replicate (4*4*2) 0 :: WVector
-        dwd <- mutateWith (V.replicate (4*4*2) 0) $ \fpr -> 
-          callFn "ddecodeExpdwd" [v_y,v_wd,v_bd] fpr
+      compileNRun ["encode","dencoddwe","decode","ddecodedwd","ddecodedbd"] (fullAST n) $ do
+        dwd <- mutateWith (V.replicate (m*m*n) 0) $ \fpr -> 
+          callFn "ddecodedwd" [v_y,v_wd,v_bd] fpr
         liftIO $ print dwd
-        dbd <- mutateWith (V.replicate (4*2) 0) $ \fpr -> 
-          callFn "ddecodeExpdbd" [v_y,v_wd,v_bd] fpr
-        liftIO $ print dbd
 
-          
 
-mutateWith v f = do
-  mv@(V.MVector _ fpr) <- liftIO (V.thaw v)
-  f fpr
-  liftIO (V.freeze mv)
-  -- return v
+generate = do  
+  mtgen <- newMTGen Nothing
+  let n = 4; m = 2*n
+  let ?expHash = trie hash
+  
+  vwd <- tV . take (m*n) . map realToFrac <$> (randoms mtgen :: IO [Double])
+  vbd <- tV . take m     . map realToFrac <$> (randoms mtgen :: IO [Double])
+  vy  <- tV . take n     . map realToFrac <$> (randoms mtgen :: IO [Double])
+
+  vwe <- tV . take (n*m) . map realToFrac <$> (randoms mtgen :: IO [Double])
+  vbe <- tV . take n     . map realToFrac <$> (randoms mtgen :: IO [Double])
+  vc1 <- tV . take n     . map realToFrac <$> (randoms mtgen :: IO [Double])
+  vc2 <- tV . take n     . map realToFrac <$> (randoms mtgen :: IO [Double])
+
+
+  withContext $ \context ->
+    flip runReaderT context $ do
+      compileNRun ["encode","dencodedwe","dencodedbe","decode","ddecodedwd","ddecodedbd"] (fullAST n) $ do
+        liftIO $ putStrLn "ddecode/dwd:"
+        dw <- mutateWith (V.replicate (m*m*n) 0) $ \fpr -> 
+          callFn "ddecodedwd" [vy,vwd,vbd] fpr
+        liftIO $ print dw
+        --
+        liftIO $ putStrLn "ddecode/dbd:"
+        db <- mutateWith (V.replicate (m*m) 0) $ \fpr -> 
+          callFn "ddecodedbd" [vy,vwd,vbd] fpr
+        liftIO $ print db
+        --
+        liftIO $ putStrLn "dencode/dwe:"
+        ew <- mutateWith (V.replicate (n*m*n) 0) $ \fpr -> 
+          callFn "dencodedwe" [vc1,vc2,vwe,vbe] fpr
+        liftIO $ print ew
+        --
+        liftIO $ putStrLn "dencode/dbe:"
+        eb <- mutateWith (V.replicate (n*m*n) 0) $ \fpr -> 
+          callFn "dencodedbe" [vc1,vc2,vwe,vbe] fpr
+        liftIO $ print eb
   
 
+main = generate
