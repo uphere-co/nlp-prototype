@@ -1,0 +1,47 @@
+Name:                   standard-template-library
+Version:                0.0
+Cabal-version:          >=1.8
+Tested-with:            GHC >= 7.10
+Build-type:             Simple
+Synopsis:               Binding to C++ STL
+Description:            Binding to C++ STL
+License:                BSD3
+License-file:           LICENSE
+Author:                 Ian-Woo Kim
+Maintainer:             Ian-Woo Kim <ianwookim@gmail.com>
+Homepage:               https://github.com/uphere-co/nlp-prototype
+Bug-reports:            https://github.com/uphere-co/nlp-prototype
+
+Category:               FFI
+Stability:              Experimental
+
+Extra-source-files:     
+
+source-repository HEAD
+  type:                 git
+  location:             https://github.com/uphere-co/nlp-prototype
+  branch:               master
+  tag:                  0.0
+
+-------------------------------------------------------
+  
+Library
+  hs-source-dirs:       lib
+  Build-depends:        base,
+                        template-haskell
+  Exposed-modules:
+                        STL
+                        STL.TH
+  Other-modules:        
+
+  c-sources:            csrc/stub.cc
+  include-dirs:         csrc
+  install-includes:     csrc/template.hh
+                        
+  ghc-options:          -O2 -Wall
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+                        -fno-warn-orphans
+
+  ghc-prof-options:     -caf-all -auto-all
+  cc-options:           -fPIC -std=c++14
