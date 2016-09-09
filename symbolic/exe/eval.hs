@@ -14,9 +14,8 @@ import           Test.Simple
 
 main :: IO ()
 main = do
-  -- testfib
-  -- test9
-  delta_nosimplify
-  putStr "\n\n\n\n\n"
-  delta_simplify
+  -- delta_nosimplify
+  -- putStr "\n\n\n\n\n"
+  -- delta_simplify
+  delta_eval
     

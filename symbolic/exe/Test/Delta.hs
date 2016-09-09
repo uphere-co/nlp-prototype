@@ -61,19 +61,17 @@ delta_simplify = do
   digraph e4
 
 
-
-test11 :: IO ()
-test11 = do
+delta_eval :: IO ()
+delta_eval = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let e1 = mul [delta idxi idxm,  delta idxj idxn] :: MExp Int
-      e2 = mul [val (-1), delta idxi idxn, delta idxj idxm]
-      e3 = add [e1,e2]
-      e4 = mul [e3,x_ [idxm,idxn]]
+  let e1 = mul' [delta idxi idxm,  delta idxj idxn] :: MExp Int
+      e2 = mul' [val (-1), delta idxi idxn, delta idxj idxm]
+      e3 = add' [e1,e2]
+      e4 = mul' [e3,x_ [idxm,idxn]]
       e5 = sum_ [idxm,idxn] e4
   printf "e5 = %s\n"  ((prettyPrint . exp2RExp) e5 :: String)
-  let vals = VS.fromList [1,2,3,4]
-      args = Args (HM.fromList [(mkSym "x",vals)])
+  let args = mkA [("x",VS.fromList [1,2,3,4])]
   forM_ [(1,1),(1,2),(2,1),(2,2)] $ \(i,j) -> do
     let idx = [("i",i),("j",j)] 
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)

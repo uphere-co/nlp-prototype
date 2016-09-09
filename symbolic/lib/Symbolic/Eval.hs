@@ -21,6 +21,8 @@ import           Symbolic.Type
 import           Symbolic.Util
 --
 
+mkA = Args . HM.fromList . map (\(s,v) -> (mkSym s,v))
+
 
 evalVar :: (Num a, VS.Storable a) => Args a -> IdxPoint -> Variable -> a
 evalVar args ip (V s is) = let i's = map (flip justLookupL ip . indexName) is
@@ -40,6 +42,10 @@ evalCDelta ip i iss p =
       j' = flatIndexDisjoint iss (partNth p vs) 
   in if i' == j' then 1 else 0
 
+evalKDelta :: (Num a) => [(IndexSymbol,Int)] -> KDelta -> a
+evalKDelta ip (Delta (i,_,_) (j,_,_)) = evalDelta ip i j
+evalKDelta ip (CDelta i iss p)        = evalCDelta ip i iss p
+
 eval :: ( Num a, Storable a, HasTrie a
         , ?expHash :: Exp a :->: Hash
         , ?functionMap :: FunctionMap a
@@ -54,7 +60,9 @@ eval _ (_,_,Val n)        = n
 -- eval _ (_,ip,CDelta i iss p) = evalCDelta ip i iss p 
 eval _ (args,ip,Var v)    = evalVar args ip v
 eval m (args,ip,Mul hs ds)   = let es = map (mexpExp . flip justLookup m) hs
-                               in foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
+                                   v1 = foldl' (*) 1 (map (\e->eval m (args,ip,e)) es)
+                                   v2 = foldl' (*) 1 (map (evalKDelta ip) ds)
+                               in v1*v2
 eval m (args,ip,Add hs)   = let es = map (mexpExp . flip justLookup m) hs
                             in foldl' (+) 0 (map (\e->eval m (args,ip,e)) es)
 eval m (args,ip,Fun s hs) = let es = map (mexpExp . flip justLookup m) hs
@@ -85,4 +93,3 @@ seval :: ( Storable a, HasTrie a, Num a
          Args a -> IdxPoint -> MExp a -> a
 seval a ip e = eval (mexpMap e) (a,ip,mexpExp e)
 
-mkA = Args . HM.fromList . map (\(s,v) -> (mkSym s,v))
