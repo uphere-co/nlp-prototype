@@ -88,7 +88,7 @@ test13 = do
       exp2 = sum_ [idxm] (add' [exp0,exp1])
       exp3 = mul' [ z_ [idxk], z_ [idxk] ]
       exp4 = sum_ [(idxk)] exp3
-      exp5 = add' [ sum_ [idxn] (mul [exp2,  exp4]), varx ] 
+      exp5 = add' [ sum_ [idxn] (mul' [exp2,  exp4]), varx ] 
 
   printf "exp5 = %s\n"  ((prettyPrint . exp2RExp) exp5 :: String)
   putStrLn "\n---------------------------------------\n"
@@ -133,24 +133,20 @@ test16 :: IO ()
 test16 = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
-  let exp1 :: MExp Int
+  let exp1, exp2 :: MExp Int
       exp1 = concat_ idxI [ x_ [idxi], y_ [idxj] ]
-  let exp2 :: MExp Int
-      exp2 = mul [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
-  let xvals = VS.fromList [101,102]
-      yvals = VS.fromList [203,204]
-      args = Args (HM.fromList [(mkSym "x",xvals),(mkSym "y",yvals)])
+      exp2 = mul' [ cdelta idxI [[idxi],[idxj]] 2, exp1 ] 
+  let args = mkA [("x",VS.fromList [101,102]),("y",VS.fromList [203,204])]
   prettyPrintR exp2
-  -- digraph exp
-
+  --
   forM_ [(i,j) | i <- [1,2,3,4], j <- [1,2] ] $ \(i,j) -> do
     let iptI = [("I",i)]
         iptj = [("j",j)]
     printf "val(I=%d,j=%d) = %d \n" i j (seval args (iptI++iptj) exp2)
 
 
-test17 :: IO ()
-test17 = do
+test_differentiation :: IO ()
+test_differentiation = do
   let ?expHash = trie hash
       ?functionMap = HM.empty
   let exp1 :: MExp Int
@@ -162,13 +158,13 @@ test17 = do
   putStr "df/dx_k = "
   prettyPrintR exp'
 
-  let xvals = VS.fromList [101,102]
-      yvals = VS.fromList [203,204]
+  let xvals    = VS.fromList [101,102]
+      yvals    = VS.fromList [203,204]
       dydxvals = VS.fromList [0,1,1,0]
-      args = Args (HM.fromList [(mkSym "x",xvals)
-                               ,(mkSym "y",yvals)
-                               ,(Deriv "y" "x",dydxvals)
-                               ])
+      args     = Args (HM.fromList [(mkSym "x",xvals)
+                                   ,(mkSym "y",yvals)
+                                   ,(Deriv "y" "x",dydxvals)
+                                   ])
   
   forM_ [(iI,k) | iI <- [1,2,3,4], k <- [1,2] ] $ \(iI,k) -> do
     let iptI = [("I",iI)]

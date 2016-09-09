@@ -17,5 +17,6 @@ main = do
   -- delta_nosimplify
   -- putStr "\n\n\n\n\n"
   -- delta_simplify
-  delta_eval
+  -- delta_eval
+  test_differentiation
     
