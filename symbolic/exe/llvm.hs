@@ -296,5 +296,5 @@ test9 = do
 
 
 main = withContext $ \context ->
-         flip runReaderT context test9
+         flip runReaderT context test7
 

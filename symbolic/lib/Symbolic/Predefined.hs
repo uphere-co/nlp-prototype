@@ -86,8 +86,6 @@ findTriple es = let hes = map ((,) <$> getMHash <*> id) es
 add :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 add = varop Add
 
-
--- this should be rewritten. using delta lifting
 mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 mul es = let (hs,m,is) = findTriple es
          in MExp (Mul hs []) m is

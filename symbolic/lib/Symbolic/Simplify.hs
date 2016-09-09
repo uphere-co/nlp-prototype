@@ -45,15 +45,3 @@ liftMul :: MExp a -> ([MExp a],[KDelta])
 liftMul x@(MExp (Mul hs ds) m _) = (map (flip justLookup m) hs,ds)
 liftMul x@(_)                    = ([x],[])
 
-{- 
-flatten1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (MExp a -> Maybe [MExp a]) -> MExp a -> [MExp a]
-flatten1 f e = maybe [e] id (f e)
-
-argsAdd :: MExp a -> Maybe [MExp a]
-argsAdd (MExp (Add hs) m _) = Just (map (flip justLookup m) hs)
-argsAdd _                   = Nothing
-
-argsMul :: MExp a -> Maybe [MExp a]
-argsMul (MExp (Mul hs ds) m _) = Just (map (flip justLookup m) hs)
-argsMul _                      = Nothing
--}
