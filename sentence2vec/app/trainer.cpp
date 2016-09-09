@@ -101,16 +101,10 @@ void test_voca_update(){
     print(dot(vec, vec2));
     for(auto &x:vec2)x=2.0;
     print(dot(vec, vec2));
-    voca_vecs.push_back(vec);//TODO: this cause undefined behaviour. Do not do push_back!!
-    span_1d<val_t,word_dim> vec3 = voca_vecs[100]; //vec3==1
-    // vec+=vec2; //vec==3
-    // return;
+    
     for(auto &x:vec)x=2.5;
-    // assert(voca_vecs[0]==vec);
-    // voca_vecs[0]+=voca_vecs[1];
     print(dot(vec, vec2));
     print(dot(voca_vecs[0], vec2));
-    print(dot(vec3, vec2));
     print(":dot\n");
     return;
 }

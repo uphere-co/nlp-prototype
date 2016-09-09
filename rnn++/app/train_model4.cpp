@@ -2,6 +2,7 @@
 #include <sstream>
 #include <cassert>
 
+
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
@@ -40,18 +41,27 @@ int main(){
         // return 0;
         auto lambda=0.05;
 
-        auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
-        auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
-        auto trainset_parsed=ParsedSentences{"1b.s2010.trainset.stanford"};
-        auto trainset_orig=TokenizedSentences{"1b.s2010.trainset"};
+        // auto testset_parsed=ParsedSentences{"1b.s2010.testset.stanford"};
+        // auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
+        // auto trainset_parsed=ParsedSentences{"1b.s2010.trainset.stanford"};
+        // auto trainset_orig=TokenizedSentences{"1b.s2010.trainset"};
+        // auto testset_parsed=ParsedSentences{"wsj.test.tree"};
+        // auto testset_orig=TokenizedSentences{"wsj.test"};
+        // auto trainset_parsed=ParsedSentences{"wsj/wsj.train.known.tree"};
+        // auto trainset_orig=TokenizedSentences{"wsj/wsj.train.known"};        
+        auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
+        auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
+        auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
+        auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
+        // auto trainset_parsed=ParsedSentences{"wsj.long.s2010.train.tree"};
+        // auto trainset_orig=TokenizedSentences{"wsj.long.s2010.train"};
         auto testset = SentencePairs{testset_parsed,testset_orig};
         auto trainset = SentencePairs{trainset_parsed,trainset_orig};
         
         logger.info("Read trainset");
         VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
-        // auto param = load_param(rnn_param_store_name, "model1.563109e7.400", DataType::dp);
-        // l2_normalize(rnn.voca_vecs);
+        // auto param = load_param(rnn_param_store_name, "model4.d877053.2000", DataType::dp);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
         auto get_label_grad=[&](auto const &sent_pair){
@@ -86,7 +96,9 @@ int main(){
                 end=end<pairs.cend()?end:pairs.cend();
                 
                 auto grad_label = parallel_reducer(beg, end, get_label_grad, Gradient{});
+                // grad_label.param *=0.5;
                 optimizer.update(param, grad_label.param);
+                // grad_label.words *=-1.0;
                 // optimizer.update(rnn.voca_vecs, grad_label.words);
 
                 auto grad_dp = parallel_reducer(beg, end, get_dp_grad, Gradient{});
