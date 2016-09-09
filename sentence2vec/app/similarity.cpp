@@ -90,6 +90,20 @@ auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs
     });
 };
 
+auto process_queries_innerdot=[](std::vector<Query> &queries, auto const& voca_vecs){
+    auto n=voca_vecs.size();
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
+                      [&](tbb::blocked_range<decltype(n)> const &r){
+                          for(decltype(n) i=r.begin(); i!=r.end(); ++i){
+                              for(auto &query:queries){
+                                  auto q=voca_vecs[query.idx];
+                                  auto const& v=voca_vecs[i];
+                                  query.distances[i] = dot(v,q);
+                              }
+                          }
+                      });
+};
+
 auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_vecs){    
     auto n=voca_vecs.size();
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
@@ -106,25 +120,27 @@ auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_
     });
 };
 void display_query(Query const &query, std::vector<std::string> const &sents){
+    auto n_top = 20;
     std::vector<idx_t> idxs(query.distances.size());
     idx_t i{0};
     for(auto &x:idxs) x=i++;
-    std::partial_sort(idxs.begin(),idxs.begin()+10,idxs.end(),
+    std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
     print("------------------\n");
-    for(auto it=idxs.begin(); it!=idxs.begin()+10; ++it){
+    for(auto it=idxs.begin(); it!=idxs.begin()+n_top; ++it){
         print(sents[*it]);
         print("\n");
     }
 }
 void display_query(Query const &query, Voca const &voca){
+    auto n_top = 20;
     std::vector<idx_t> idxs(query.distances.size());
     idx_t i{0};
     for(auto &x:idxs) x=i++;
-    std::partial_sort(idxs.begin(),idxs.begin()+10,idxs.end(),
+    std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
     print("------------------\n");
-    for(auto it=idxs.begin(); it!=idxs.begin()+10; ++it){
+    for(auto it=idxs.begin(); it!=idxs.begin()+n_top; ++it){
         print(voca.getWord(*it).val);
         print(query.distances[*it]);
         print("\n");
@@ -173,6 +189,7 @@ int main(){
 
     queries.emplace_back("(spokesman (declined (to comment)))",voca, word2idx);
     queries.emplace_back("(declined (to comment))",voca, word2idx);
+    queries.emplace_back("(no comment)",voca, word2idx);
     // queries.emplace_back("(no comment)",voca, word2idx);
     // queries.emplace_back("(had (no comment))",voca, word2idx);
     // queries.emplace_back("((had (no comment)) .)",voca, word2idx);
@@ -189,7 +206,8 @@ int main(){
     // queries.emplace_back("academic",voca, word2idx);
     timer.here_then_reset("Got index.");    
     // process_queries_euclidean(queries, sent_vecs);
-    process_queries_angle(queries, sent_vecs);
+//    process_queries_angle(queries, sent_vecs);
+    process_queries_innerdot(queries, sent_vecs);
     timer.here_then_reset("Calculate distances.");
     //std::sort(distances.begin(),distances.end());
     display_queries(queries, voca);

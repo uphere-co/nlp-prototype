@@ -15,3 +15,6 @@ make -j8
 - app/parser_model1.cpp : measure similarity between two parsed files
  1. ./parser_similarity parsed_file1 parsed_file2
 
+# Doxygen 
+## Usages
+Just run `doxygen` inside this directory, then documentation is generated and stored in HTML_OUTPUT of `Doxyfile` file, `/data/groups/uphere/doxygen/rnn++/`, presently.

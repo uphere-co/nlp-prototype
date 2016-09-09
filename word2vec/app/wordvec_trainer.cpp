@@ -536,8 +536,9 @@ void Word2Vec::TrainModel() {
     auto word_concat = Concat(MapKeys(word_idx));
     //syn0: beg=syn0[idx*dim], end=syn0[(idx+1)*dim];
     H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
-    file.writeRawData(H5name{std::string{"foo.vec" }}, syn0);
-    file.writeRawData(H5name{std::string{"foo.word"}}, vocab);
+    file.writeRawData(H5name{std::string{"foo.vec" }}, syn0); 
+    //TODO: check if syn0 and word_concat has consistantly ordered.
+    file.writeRawData(H5name{std::string{"foo.word"}}, word_concat);//it was vocab, which was the cause of compile error.  
 }
 
 // End of Learning Net
