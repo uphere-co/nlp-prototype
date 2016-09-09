@@ -13,6 +13,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-float-equal")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -ftree-vectorize")
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build )
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+
 message(${CMAKE_CXX_FLAGS})
 
 find_package (Threads)
@@ -23,20 +26,20 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 include_directories($ENV{MS_GSL}/GSL/include)
 include_directories($ENV{SPDLOG}/spdlog/include)
 
-add_executable(main main
+add_executable(main app/main
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(main hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 
-add_executable(MSPara MSPara
+add_executable(MSPara app/MSPara
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
 target_link_libraries(MSPara hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 
 
-add_executable(pair_paraphrase pair_paraphrase
+add_executable(pair_paraphrase app/pair_paraphrase
                ../rnn++/parser/compute ../rnn++/parser/config ../rnn++/parser/node ../rnn++/parser/param 
                ../rnn++/parser/parser ../rnn++/parser/voca ../rnn++/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)

@@ -225,8 +225,6 @@ void MakeTFIDF(std::vector<float_t> &idf, std::vector<SpValue> &values) {
 void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
 
     float_t ep=0.05;
-    float_t count_p=2*ep;
-    float_t count_q=2*ep;
     float_t p=ep;
     float_t q=ep;
     float_t np=ep;
@@ -242,38 +240,28 @@ void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::ve
             if(tag[i] == "-1") {
                 if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
                     q++;
-                    count_q++;
                 }
                 if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
                     nq++;
-                    count_q++;
                 }
                 if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
                     nq++;
-                    count_q++;
                 }
             } else { // tag[i] == 1;
                 if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
                     p++;
-                    count_p++;
                 }
                 if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
                     np++;
-                    count_p++;
                 }
                 if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
                     np++;
-                    count_p++;
                 }
             }
         }
 
-        if(a == (vocab.find("neither") -> second)) std::cout << "p/count_p = " << p/count_p << "    q/count_q = " << q/count_q << std::endl;  
-        
-        div = (p/count_p)*log((p/count_p)/(q/count_q) + 1e-7) + (np/count_p)*log((np/count_p)/(nq/count_q) + 1e-7);        
+        div = (p/(p+np))*log((p/(p+np))/(q/(q+nq)) + 1e-7) + (np/(p+np))*log((np/(p+np))/(nq/(q+nq)) + 1e-7);        
         kld.push_back(div);
-        count_p = 2*ep;
-        count_q = 2*ep;
         p = ep;
         q = ep;
         np = ep;
