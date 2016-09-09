@@ -5,9 +5,11 @@
 
 module Symbolic.Predefined where
 
+import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict as HM
-import           Data.HashSet              (difference)
+import           Data.HashSet              (HashSet, difference)
 import qualified Data.HashSet        as HS
+import           Data.List                 (foldl')
 import           Data.MemoTrie
 import           Data.Monoid               ((<>))
 --
@@ -55,22 +57,31 @@ zero = MExp Zero HM.empty HS.empty
 val :: a -> MExp a
 val n = MExp (Val n) HM.empty HS.empty
 
-delta :: Index -> Index -> MExp a
-delta j k = MExp (Mul [] [Delta j k]) HM.empty (HS.fromList [j,k])
 
+delta :: Index -> Index -> MExp a
+delta j k = MExp (Mul [] [d]) HM.empty (HS.fromList (deltaIndex d))
+  where d = Delta j k
+        
 cdelta :: Index -> [[Index]] -> Int -> MExp a
-cdelta i iss p = MExp (Mul [] [cd]) HM.empty (HS.fromList (i:(iss !! (p-1))))
+cdelta i iss p = MExp (Mul [] [cd]) HM.empty (HS.fromList (deltaIndex cd))
   where cd = (CDelta i iss p)
 
 
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
-varop op es = let hes = map ((,) <$> getMHash <*> id) es
-                  ms = map mexpMap es
-                  is = map mexpIdx es
-                  m' = foldl1 HM.union ms
-                  i' = foldl1 HS.union is
-                  m'' = foldr (uncurry HM.insert) m' hes
-              in MExp (op (map fst hes)) m'' i'
+varop op es = let (hs,m,is) = findTriple es
+              in MExp (op hs) m is
+
+
+findTriple :: (HasTrie a, ?expHash :: Exp a :->: Hash) =>
+              [MExp a] -> ([Hash],HashMap Hash (MExp a), HashSet Index)
+findTriple es = let hes = map ((,) <$> getMHash <*> id) es
+                    hs = map fst hes
+                    ms = map mexpMap es
+                    is = map mexpIdx es
+                    m' = foldl' HM.union HM.empty ms
+                    i' = foldl' HS.union HS.empty is
+                    m'' = foldr (uncurry HM.insert) m' hes 
+                in (hs, m'', i')
 
 add :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
 add = varop Add
@@ -78,13 +89,8 @@ add = varop Add
 
 -- this should be rewritten. using delta lifting
 mul :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-mul es = let hes = map ((,) <$> getMHash <*> id) es
-             ms = map mexpMap es
-             is = map mexpIdx es
-             m' = foldl1 HM.union ms
-             i' = foldl1 HS.union is
-             m'' = foldr (uncurry HM.insert) m' hes
-         in MExp (Mul (map fst hes) []) m'' i'
+mul es = let (hs,m,is) = findTriple es
+         in MExp (Mul hs []) m is
 
 sum_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum_ is em@(MExp e1 m1 i1) =

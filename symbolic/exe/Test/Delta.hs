@@ -38,8 +38,8 @@ idxn = ("n",1,2)
 
 
 
-test9 :: IO ()
-test9 = do
+delta_nosimplify :: IO ()
+delta_nosimplify = do
   let ?expHash = trie hash
   let e1 = mul [delta idxi idxm, delta idxj idxn]
       e2 = mul [delta idxi idxn, delta idxj idxm]
@@ -48,6 +48,18 @@ test9 = do
   printf "e4 = %s\n"  ((prettyPrint . exp2RExp) (e4 ::  MExp Int) :: String)
 
   digraph e4
+
+delta_simplify :: IO ()
+delta_simplify = do
+  let ?expHash = trie hash
+  let e1 = mul' [delta idxi idxm, delta idxj idxn]
+      e2 = mul' [delta idxi idxn, delta idxj idxm]
+      e3 = add' [e1,e2]
+      e4 = mul' [e3,x_ [idxm,idxn]]
+  printf "e4 = %s\n"  ((prettyPrint . exp2RExp) (e4 ::  MExp Int) :: String)
+
+  digraph e4
+
 
 
 test11 :: IO ()

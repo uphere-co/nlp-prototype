@@ -132,6 +132,9 @@ isSumOrConcat (Concat _ _) = True
 isSumOrConcat _            = False
 
 
+deltaIndex :: KDelta -> [Index]
+deltaIndex (Delta j k)      = [j,k]
+deltaIndex (CDelta i iss p) = i:(iss !! (p-1))
 
 data MExp a = MExp { mexpExp :: Exp a
                    , mexpMap :: HashMap Hash (MExp a)
