@@ -8,8 +8,8 @@ import Foreign.C.Types
 import Foreign.Ptr
 import Foreign.Storable
 
-import T
-import qualified T.TH as TH
+import  STL
+import qualified STL.TH as TH
 
 new       = $(TH.new ''CInt)
 push_back = $(TH.push_back ''CInt)

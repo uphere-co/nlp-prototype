@@ -37,11 +37,12 @@ Library
   c-sources:            csrc/stub.cc
   include-dirs:         csrc
   install-includes:     csrc/template.hh
-                        
+  extra-libraries:      stdc++
+                          
   ghc-options:          -O2 -Wall
                         -funbox-strict-fields
                         -fno-warn-unused-do-bind
                         -fno-warn-orphans
-
+                        
   ghc-prof-options:     -caf-all -auto-all
-  cc-options:           -fPIC -std=c++14
+  cc-options:           -fPIC -std=c++14 

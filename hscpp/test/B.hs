@@ -6,8 +6,8 @@ module B where
 import Foreign.C.Types
 import Foreign.Ptr
 
-import T
-import qualified T.TH as TH
+import  STL
+import qualified STL.TH as TH
 
 newD       = $(TH.new ''CDouble)
 push_backD = $(TH.push_back ''CDouble)
