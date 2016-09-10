@@ -45,3 +45,12 @@ liftMul :: MExp a -> ([MExp a],[KDelta])
 liftMul x@(MExp (Mul hs ds) m _) = (map (flip justLookup m) hs,ds)
 liftMul x@(_)                    = ([x],[])
 
+{- 
+sum'_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
+sum'_ is em@(MExp e1 m1 i1) =
+  let h1 = untrie ?expHash e1
+      i = i1 `difference` HS.fromList is
+      e = Sum is h1
+      m = HM.insert h1 em m1
+  in MExp e m i
+-}

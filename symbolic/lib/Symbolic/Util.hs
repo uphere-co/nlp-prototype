@@ -3,6 +3,9 @@
 
 module Symbolic.Util where
 
+import           Control.Monad.IO.Class      (liftIO)
+import qualified Data.Vector.Storable   as V
+--
 import Symbolic.Type
 --
 
@@ -71,3 +74,10 @@ splitIndexDisjointF (is:iss) j
 -- | splitting index for disjoint sum
 splitIndexDisjoint :: [[Index]] -> Int -> Disjoint [Int]
 splitIndexDisjoint iss j = fmap (uncurry splitIndex) (splitIndexDisjointF iss j)
+
+
+mutateWith v f = do
+  mv@(V.MVector _ fpr) <- liftIO (V.thaw v)
+  f fpr
+  liftIO (V.freeze mv)
+

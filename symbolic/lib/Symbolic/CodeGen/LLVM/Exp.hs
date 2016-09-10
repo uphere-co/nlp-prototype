@@ -171,14 +171,13 @@ mkInnerbody v = do
   hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
   es_ordered = map (flip justLookup bmap) hs_ordered
 
-
+cgenKDelta :: KDelta -> Codegen Operand
 cgenKDelta (Delta idxi idxj) = do
   let ni = indexName idxi
       nj = indexName idxj
   i <- getIndex idxi
   j <- getIndex idxj
   cgencond float ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
-  -- assign name x
 cgenKDelta (CDelta idxI iss p) = do
   let js = iss !! (p-1) 
       prejs = take (p-1) iss
@@ -189,9 +188,6 @@ cgenKDelta (CDelta idxI iss p) = do
   j0 <- flatIndexM js =<< mapM getIndex js
   j <- iadd (ival startjs) j0
   cgencond float ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
-  -- assign name x
-
-
   
 llvmCodegen :: (?expHash :: Exp Float :->: Hash) =>
                String -> MExp Float -> Codegen Operand
@@ -203,8 +199,9 @@ llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
 llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold mkAdd (fval 0) hs >>= assign name
 llvmCodegen name (MExp (S.Mul hs ds) _ _)        = do
   d <- foldrM fmul (fval 1) =<< mapM cgenKDelta ds
-  e <- cgen4fold mkMul d hs
-  assign name e
+  e <- cgen4fold mkMul (fval 1) hs
+  f <- fmul d e 
+  assign name f
 llvmCodegen name (MExp (Fun sym hs) _ _)         = do
   lst <- mapM (getvar . hVar) hs
   val <- call (externf (AST.Name sym)) lst

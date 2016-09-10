@@ -29,7 +29,8 @@ import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
-
+--
+import           Test.LLVM
 
 testexp1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => MExp a
 testexp1 = mul [val 1,val 3]
@@ -295,6 +296,5 @@ test9 = do
     liftIO $ printf "val(I=%d) = %f \n" iI (seval args iptI exp1)
 
 
-main = withContext $ \context ->
-         flip runReaderT context test7
+main = withContext $ \context -> flip runReaderT context delta_test
 

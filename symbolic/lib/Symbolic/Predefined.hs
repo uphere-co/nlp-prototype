@@ -12,9 +12,14 @@ import qualified Data.HashSet        as HS
 import           Data.List                 (foldl')
 import           Data.MemoTrie
 import           Data.Monoid               ((<>))
+import           Data.Vector.Storable      (Vector)
+import qualified Data.Vector.Storable as V
 --
 import           Symbolic.Type
 --
+
+tV :: [Float] -> Vector Float
+tV = V.fromList
 
 mkV :: (String,[Index]) -> Variable
 mkV (s,is) = V (mkSym s) is

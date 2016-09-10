@@ -77,6 +77,7 @@ delta_eval = do
     printf "val(e5(i=%d,j=%d) = %d\n" i j (seval args idx e5)
 
 
+
 test13 :: IO ()
 test13 = do
   let ?expHash = trie hash
