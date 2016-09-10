@@ -66,7 +66,7 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
 
 
 
-install(TARGETS train_model0 train_model1 parser_model1 parser_model4 parser_similarity hdf5io RUNTIME DESTINATION bin)
+install(TARGETS train_model0 train_model1 train_model4 parser_model1 parser_model4 phrases_model4 parser_similarity RUNTIME DESTINATION bin)
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/parser" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/parser" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
