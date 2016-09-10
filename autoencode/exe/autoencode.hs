@@ -39,6 +39,7 @@ import           Symbolic.Eval
 import           Symbolic.Predefined
 import           Symbolic.Print
 import           Symbolic.Type
+import           Symbolic.Util
 --
 import           Data.Vector.Storable.Matrix
 import           NLP.RecursiveNN.AutoEncoder
