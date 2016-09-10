@@ -10,6 +10,7 @@ module Symbolic.CodeGen.LLVM.Exp where
 import           Control.Monad.State
 import           Data.Array                               ((!))
 import           Data.Foldable                            (foldrM)
+import           Data.Function                            (on)
 import           Data.Graph                               (topSort)
 import qualified Data.HashMap.Strict               as HM
 import qualified Data.HashSet                      as HS
@@ -23,6 +24,7 @@ import qualified LLVM.General.AST.Type             as T   (void)
 import           Text.Printf
 --
 import           Symbolic.CodeGen.LLVM.Operation
+import           Symbolic.Dependency
 import           Symbolic.Type
 import qualified Symbolic.Type                     as S   (Exp(..))
 import           Symbolic.Util                            (indexFlatteningFactors, sizeIndex)
@@ -106,12 +108,10 @@ splitIndexDisjointFM f lst jj = do
       f e
 
 
-cgen4fold :: String -> (Int -> Operand -> Codegen Operand) -> Float -> [Int] -> Codegen Operand
-cgen4fold name _  ini []     = assign name (fval ini)
-cgen4fold name op _   (h:hs) = do
-  val1 <- getvar (hVar h)
-  v' <- foldrM op val1 hs
-  assign name v'
+cgen4fold :: (Int -> Operand -> Codegen Operand) -> Operand -> [Int] -> Codegen Operand
+cgen4fold _  ini []     = return ini-- assign name (fval ini)
+cgen4fold op _   (h:hs) = getvar (hVar h) >>= \val1 -> foldrM op val1 hs
+  -- assign name v'
 
 cgencond :: AST.Type
          -> String
@@ -171,19 +171,15 @@ mkInnerbody v = do
   (_hashmap,table,depgraph) = mkDepGraphNoSum v
   hs_ordered = delete h_result (reverse (map (\i -> table ! i) (topSort depgraph)))
   es_ordered = map (flip justLookup bmap) hs_ordered
-  
-llvmCodegen :: (?expHash :: Exp Float :->: Hash) =>
-               String -> MExp Float -> Codegen Operand
-llvmCodegen name (MExp Zero _ _)                 = assign name (fval 0)
-llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
-llvmCodegen name (MExp (Delta idxi idxj) _ _)    = do
+
+cgenKDelta :: KDelta -> Codegen Operand
+cgenKDelta (Delta idxi idxj) = do
   let ni = indexName idxi
       nj = indexName idxj
   i <- getIndex idxi
   j <- getIndex idxj
-  x <- cgencond float ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
-  assign name x
-llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
+  cgencond float ("delta"++ni++nj) (icmp IP.EQ i j) (return fone) (return fzero)
+cgenKDelta (CDelta idxI iss p) = do
   let js = iss !! (p-1) 
       prejs = take (p-1) iss
       startjs = sum (map sizeIndex prejs)
@@ -192,13 +188,21 @@ llvmCodegen name (MExp (CDelta idxI iss p) _ _)   = do
   iI <- flatIndexM [idxI] =<< mapM getIndex [idxI]
   j0 <- flatIndexM js =<< mapM getIndex js
   j <- iadd (ival startjs) j0
-  x <- cgencond float ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
-  assign name x
+  cgencond float ("cdelta"++nI++nj) (icmp IP.EQ iI j) (return fone) (return fzero)
+  
+llvmCodegen :: (?expHash :: Exp Float :->: Hash) =>
+               String -> MExp Float -> Codegen Operand
+llvmCodegen name (MExp Zero _ _)                 = assign name (fval 0)
+llvmCodegen name (MExp One _ _)                  = assign name (fval 1)
 llvmCodegen name (MExp (Var (V s is)) _ _) = 
    mapM getIndex is >>= flatIndexM is >>= getElem float (zencSym s) >>= assign name
 llvmCodegen name (MExp (Val n) _ _)              = assign name (fval n)
-llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold name mkAdd 0 hs 
-llvmCodegen name (MExp (S.Mul hs) _ _)           = cgen4fold name mkMul 1 hs 
+llvmCodegen name (MExp (S.Add hs) _ _)           = cgen4fold mkAdd (fval 0) hs >>= assign name
+llvmCodegen name (MExp (S.Mul hs ds) _ _)        = do
+  d <- foldrM fmul (fval 1) =<< mapM cgenKDelta ds
+  e <- cgen4fold mkMul (fval 1) hs
+  f <- fmul d e 
+  assign name f
 llvmCodegen name (MExp (Fun sym hs) _ _)         = do
   lst <- mapM (getvar . hVar) hs
   val <- call (externf (AST.Name sym)) lst
@@ -233,7 +237,7 @@ llvmAST :: (?expHash :: Exp Float :->: Hash) =>
 llvmAST name syms v =
   define T.void name symsllvm $ do
     let rref = LocalReference (ptr float) (AST.Name "result")
-        is = HS.toList (mexpIdx v)
+        is = (sortBy (compare `on` (\(i,_,_)->i)) . HS.toList  . mexpIdx) v
     if null is
       then do
         mkInnerbody v

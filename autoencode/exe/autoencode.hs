@@ -132,18 +132,10 @@ main' = do
                     -- TIO.putStrLn . bntPrint [] printer (const "(no leaf)") $ rdec
         return ()
 
-tV :: [Float] -> Vector Float
-tV = V.fromList
-
  
-mutateWith v f = do
-  mv@(V.MVector _ fpr) <- liftIO (V.thaw v)
-  f fpr
-  liftIO (V.freeze mv)
 
 
-
-compare = do
+comparison = do
   let idxm = ("m",1,2)
       idxJ = ("J",1,4)
   let ?expHash = trie hash
@@ -180,13 +172,13 @@ compare = do
   putStrLn "LLVM code result:"
   withContext $ \context ->
     flip runReaderT context $ do
-      compileNRun ["encode","dencoddwe","decode","ddecodedwd","ddecodedbd"] (fullAST n) $ do
+      compileNRun ["encode","dencdwe","decode","ddecdwd","ddecdbd"] (fullAST n) $ do
         dwd <- mutateWith (V.replicate (m*m*n) 0) $ \fpr -> 
-          callFn "ddecodedwd" [v_y,v_wd,v_bd] fpr
+          callFn "ddecdwd" [v_y,v_wd,v_bd] fpr
         liftIO $ print dwd
 
 
-generate = do  
+generation = do  
   mtgen <- newMTGen Nothing
   let n = 4; m = 2*n
   let ?expHash = trie hash
@@ -225,4 +217,4 @@ generate = do
         liftIO $ print eb
   
 
-main = generate
+main = comparison -- generate

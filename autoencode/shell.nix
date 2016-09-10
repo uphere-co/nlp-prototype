@@ -15,7 +15,6 @@ let hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix
               hblas
               lbfgs
               MemoTrie lens
-	      mersenns-random
               language-c containers
 	      llvm-general
 	      QuickCheck

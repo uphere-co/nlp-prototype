@@ -7,12 +7,17 @@
 {-# LANGUAGE ViewPatterns #-}
 
 --
-import           Fib
-import           Test
+import           Test.Delta
+import           Test.Fib
+import           Test.Simple
 
 
 main :: IO ()
 main = do
-  -- testfib
-  test18
+  -- delta_nosimplify
+  -- putStr "\n\n\n\n\n"
+  -- delta_simplify
+  -- delta_eval
+  test_differentiation
+  -- delta_test
     

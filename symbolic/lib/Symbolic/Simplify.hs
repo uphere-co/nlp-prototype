@@ -7,6 +7,7 @@
 
 module Symbolic.Simplify where
 
+import qualified Data.HashSet        as HS
 import           Data.MemoTrie
 import           Data.Monoid
 --
@@ -15,28 +16,41 @@ import           Symbolic.Type
 --
 
 add' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-add' es = let es' = (filter (not . isZero . mexpExp) . concatMap (flatten1 argsAdd)) es
+add' es = let es' = (filter (not . isZero . mexpExp) . concatMap liftAdd) es
           in case es' of
                []   -> zero
                e:[] -> e
                _    -> add es'
 
 mul' :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => [MExp a] -> MExp a
-mul' es = let es' = (filter (not . isOne . mexpExp) . concatMap (flatten1 argsMul)) es
-          in if (getAny (foldMap (Any . isZero . mexpExp) es))
+mul' es = let concatTuple xs = (concatMap fst xs, concatMap snd xs)
+              (es',ds') = (concatTuple . map liftMul) es
+              es'' = filter (not . isOne . mexpExp) es'
+          in if (getAny (foldMap (Any . isZero . mexpExp) es''))
                then zero
-               else case es' of
-                      []   -> one
-                      e:[] -> e
-                      _    -> mul es'
+               else case (es'',ds') of
+                      ([],[])   -> one
+                      (e:[],[]) -> e
+                      _         ->
+                        let (hs,m,is) = findTriple es''
+                            is' = HS.fromList (concatMap deltaIndex ds')
+                        in MExp (Mul hs ds') m (HS.union is is') 
 
-flatten1 :: (HasTrie a, Num a, ?expHash :: Exp a :->: Hash) => (MExp a -> Maybe [MExp a]) -> MExp a -> [MExp a]
-flatten1 f e = maybe [e] id (f e)
 
-argsAdd :: MExp a -> Maybe [MExp a]
-argsAdd (MExp (Add hs) m _) = Just (map (flip justLookup m) hs)
-argsAdd _                   = Nothing
+liftAdd :: MExp a -> [MExp a]
+liftAdd x@(MExp (Add hs) m _)    = map (flip justLookup m) hs
+liftAdd x@(_)                    = [x] 
 
-argsMul :: MExp a -> Maybe [MExp a]
-argsMul (MExp (Mul hs) m _) = Just (map (flip justLookup m) hs)
-argsMul _                   = Nothing
+liftMul :: MExp a -> ([MExp a],[KDelta])
+liftMul x@(MExp (Mul hs ds) m _) = (map (flip justLookup m) hs,ds)
+liftMul x@(_)                    = ([x],[])
+
+{- 
+sum'_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
+sum'_ is em@(MExp e1 m1 i1) =
+  let h1 = untrie ?expHash e1
+      i = i1 `difference` HS.fromList is
+      e = Sum is h1
+      m = HM.insert h1 em m1
+  in MExp e m i
+-}

@@ -22,6 +22,7 @@ import           Language.C.Syntax
 import           Text.Printf
 import           Text.PrettyPrint
 --
+import           Symbolic.Dependency
 import           Symbolic.Type
 --
 
@@ -113,21 +114,23 @@ mkReturn e = CReturn (Just e) nodeinfo
 hVar :: Int -> String
 hVar h = printf "x%x" h
 
-cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
-cPrint' name (MExp Zero        _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
-cPrint' name (MExp One         _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
-cPrint' name (MExp (Delta i j) _ _)  = [ CIf cond  stru (Just sfal) nodeinfo ]
+cPrint4KDelta :: String -> KDelta -> [CStat]
+cPrint4KDelta name (Delta i j) = [ CIf cond  stru (Just sfal) nodeinfo ]
   where cond = mkBinary (mkVar (indexName i)) CEqOp (mkVar (indexName j))
         stru = mkExpr (mkAssign name (mkConst (mkI 1)))
         sfal = mkExpr (mkAssign name (mkConst (mkI 0)))
-cPrint' _    (MExp (CDelta _ _ _) _ _) = error "cPrint' undefined for CDelta case"        
+cPrint4KDelta name (CDelta _ _ _) = error "cPrint4KDelta undefined for CDelta case"        
+
+cPrint' :: (?expHash :: Exp Double :->: Hash)=> String -> MExp Double -> [CStat] 
+cPrint' name (MExp Zero        _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 0))) ]
+cPrint' name (MExp One         _ _)  = [ mkExpr (mkAssign name (mkConst (mkI 1))) ]
 cPrint' name (MExp (Var v)     _ _)  = [ mkExpr (mkAssign name rhs) ] 
   where rhs = case v of
                 V s is -> mkIVar s (map indexName is)
 cPrint' name (MExp (Val n)     _ _)  = [ mkExpr (mkAssign name (mkConst (mkF n))) ]
 cPrint' name (MExp (Add hs)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CAddOp)) lst ]
   where lst = map (mkVar . hVar) hs
-cPrint' name (MExp (Mul hs)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
+cPrint' name (MExp (Mul hs ds)    _ _)  = [ (mkExpr . mkAssign name . foldr1 (flip mkBinary CMulOp)) lst ]
   where lst = map (mkVar . hVar) hs
 cPrint' name (MExp (Fun sym hs) _ _) = [ mkExpr (mkAssign name (mkCall sym lst)) ]
   where lst = map (mkVar . hVar) hs
