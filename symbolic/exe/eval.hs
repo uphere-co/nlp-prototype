@@ -20,5 +20,5 @@ main = do
   -- delta_simplify
   -- delta_eval
   -- test_differentiation
-  delta_rule
+  rule2
     

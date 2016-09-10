@@ -71,6 +71,11 @@ cdelta :: Index -> [[Index]] -> Int -> MExp a
 cdelta i iss p = MExp (Mul [] [cd]) HM.empty (HS.fromList (deltaIndex cd))
   where cd = (CDelta i iss p)
 
+kdelta :: KDelta -> MExp aa
+kdelta (Delta i j)      = delta i j
+kdelta (CDelta i iss p) = cdelta i iss p  
+
+
 
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
 varop op es = let (hs,m,is) = findTriple es
