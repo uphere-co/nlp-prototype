@@ -10,6 +10,7 @@ module Symbolic.CodeGen.LLVM.Exp where
 import           Control.Monad.State
 import           Data.Array                               ((!))
 import           Data.Foldable                            (foldrM)
+import           Data.Function                            (on)
 import           Data.Graph                               (topSort)
 import qualified Data.HashMap.Strict               as HM
 import qualified Data.HashSet                      as HS
@@ -236,7 +237,7 @@ llvmAST :: (?expHash :: Exp Float :->: Hash) =>
 llvmAST name syms v =
   define T.void name symsllvm $ do
     let rref = LocalReference (ptr float) (AST.Name "result")
-        is = HS.toList (mexpIdx v)
+        is = (sortBy (compare `on` (\(i,_,_)->i)) . HS.toList  . mexpIdx) v
     if null is
       then do
         mkInnerbody v
