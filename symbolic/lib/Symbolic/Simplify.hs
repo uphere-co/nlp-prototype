@@ -8,6 +8,9 @@
 
 module Symbolic.Simplify where
 
+import           Control.Applicative
+import           Control.Monad
+-- import           Control.Monad.Loops
 import           Data.Either
 import qualified Data.HashSet        as HS
 import qualified Data.HashMap.Strict as HM
@@ -61,33 +64,73 @@ sum'_ is em@(MExp e1 m1 i1) =
        Mul hs ds ->
          let es = map (flip justLookup m1) hs
              iss = map (map indexName . HS.toList . mexpIdx) es
-             is' = map indexName is
+             -- is' = map indexName is
              -- ds' = mapMaybe (\case Delta j k -> Just (indexName j,indexName k); CDelta _ _ _ -> Nothing)  ds
              
-             test = concatMap prettifyRule . concatMap (\x-> mkRule4Var x ds) $ is'
+             test = get1Rule (head is) ds -- concatMap prettifyRule . concatMap (\x-> mkRule4Var x ds) $ is'
              
-         in trace (show is' ++":"++ show iss ++ ":" ++show ds++":"++test) (MExp e m i )
+         in trace (show test) (MExp e m i )
 
        _ -> MExp e m i
 
  
-data Rule = FromTo IndexSymbol IndexSymbol KDelta deriving Show
+data Rule = FromTo Index Index deriving Show
 
-mkRule :: IndexSymbol -> KDelta -> Either KDelta Rule
-mkRule x d@(Delta y z) | x==y'     = Right (FromTo x z' d)
-                       | x==z'     = Right (FromTo x y' d)
-                       | otherwise = Left d
+prettifyRule :: Rule -> String
+prettifyRule (FromTo i j) = "(" ++ indexName i ++ "->" ++ indexName j ++ ")"
+
+
+mkRule :: Index -> KDelta -> Maybe Rule
+mkRule x (Delta y z) | x==y     = Just (FromTo x z)
+                     | x==z     = Just (FromTo x y)
+                     | otherwise = Nothing
+--   where (y',z') = (indexName y, indexName z)
+mkRule _ _ = Nothing   -- this should be implemented. 
+ 
+get1Rule :: Index -> [KDelta] -> Maybe (Rule,[KDelta]) -- Maybe (Rule,[KDelta])
+get1Rule x ds = go [] ds
+  where
+    go ds' (d:ds) = (mkRule x d >>= \r -> return (r,map (repDelta r) (ds'++ds))) <|> (go (ds'++[d]) ds)
+    go _ []       = Nothing
+
+repDelta :: Rule -> KDelta -> KDelta
+repDelta (FromTo i j) d@(Delta x y)
+  = Delta (if i == x then j else x) (if i == y then j else y) 
+repDelta (FromTo i j) d = d -- this should be implemented 
+
+{- 
+replace :: Rule -> MExp a -> MExp a
+replace (FromTo i j) me@(MExp e m is)
+  | i `HS.member` is = MExp e' m' ((HS.insert j . HS.delete i) is)
+  | otherwise        = me
+-}
+
+{- 
+| x==y'     = Just (FromTo x z' d)
+                       | x==z'     = Just (FromTo x y' d)
+                       | otherwise = Nothing
   where (y',z') = (indexName y, indexName z)
-mkRule _ d = Left d
+mkRule _ d = Nothing
+-}
+                             
 
 
+
+  --msum (map (mkRule x) ds)
+{-   <|> 
+  let (d1s,d2s) = break isJust (map (mkRule x) ds)
+                in case d2s of
+                     []       -> (Nothing,ds)
+                     (d':d's) -> (mkRule x d',ds++d's)
+-}
+
+
+{- 
 -- mkRule4Var :: IndexSymbol -> [(IndexSymbol,IndexSymbol)] -> ([(IndexSymbol,IndexSymbol)])
 mkRule4Var :: IndexSymbol -> [KDelta] -> [Rule]
 mkRule4Var x ys = rights (map (mkRule x) ys) -- partitionEithers (map (mkRule x) ys)
 
-prettifyRule :: Rule -> String
-prettifyRule (FromTo i j _) = "(" ++ i ++ "->" ++ j ++ ")"
-
+-}
 
 
 {-                      
