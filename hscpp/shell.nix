@@ -10,6 +10,7 @@ let
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
     
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
+              cabal-install
 	      conduit-extra
               hmatrix
 	      hmatrix-svdlibc

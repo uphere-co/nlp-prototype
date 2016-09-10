@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module T.TH where
+module STL.TH where
 
 import Data.Char
 import Foreign.C.Types
@@ -10,7 +10,7 @@ import Language.Haskell.TH.Syntax
 
 
 
-import T
+import STL
 
 mkTFunc :: (Name,Name->String,Name-> Q Type) -> ExpQ  
 mkTFunc (nty,nf,tyf) = do
