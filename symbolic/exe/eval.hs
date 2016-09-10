@@ -9,6 +9,7 @@
 --
 import           Test.Delta
 import           Test.Fib
+import           Test.Rule
 import           Test.Simple
 
 
@@ -18,6 +19,6 @@ main = do
   -- putStr "\n\n\n\n\n"
   -- delta_simplify
   -- delta_eval
-  test_differentiation
-  -- delta_test
+  -- test_differentiation
+  delta_rule
     

@@ -38,7 +38,7 @@ diff' dm m t (s,e) =
                         ies = zip [1..] es 
                     in add' (map (difff sym es) ies)
     Sum is h1    -> let MExp e1 _ _ = justLookup h1 m
-                    in sum_ is (untrie t (s,e1))
+                    in sum'_ is (untrie t (s,e1))
     Concat i hs  -> let es = map (flip justLookup m) hs
                         ies = zip [1..] es
                         iss = map (HS.toList . mexpIdx) es
@@ -55,7 +55,7 @@ diff' dm m t (s,e) =
   -- 
   diffc i iss (n,e1) = let e' = untrie t (s,mexpExp e1)
                            si = iss !! (n-1)
-                       in sum_ si (mul' [cdelta i iss n,e']) 
+                       in sum'_ si (mul' [cdelta i iss n,e']) 
                              
 
 -- | differentiation of variables
