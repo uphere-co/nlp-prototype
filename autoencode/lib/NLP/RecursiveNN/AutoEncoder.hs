@@ -7,27 +7,34 @@
 
 module NLP.RecursiveNN.AutoEncoder where
 
-import           Control.Monad.IO.Class          ( liftIO )
+import           Control.Monad.IO.Class             ( liftIO )
 import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bifunctor.Join
 import           Data.Bitraversable
+import qualified Data.HashMap.Strict         as HM
 import           Data.MemoTrie
 import           Data.Monoid
-import qualified Data.Vector.Storable      as VS
-import           Data.Vector.Storable            ( Vector )
+import qualified Data.Vector.Storable        as VS
+import           Data.Vector.Storable               ( Vector )
 import           Data.Vector.Storable.Matrix
 import           Data.Void
 import qualified LLVM.General.AST            as AST
-import           LLVM.General.AST.Type           ( float )
+import           LLVM.General.AST.Type              ( float )
+import           Text.Printf
 --
-import           Symbolic.CodeGen.LLVM.JIT       ( LLVMRunT )
-import           Symbolic.CodeGen.LLVM.Operation ( LLVM, call, define, external, externf, fadd, fdiv, fsub, fval, local, ret )
+import           Symbolic.CodeGen.LLVM.JIT          ( LLVMRunT )
+import           Symbolic.CodeGen.LLVM.Operation    ( LLVM, call, define, external, externf
+                                                    , fadd, fdiv, fsub, fval, local, ret )
 import           Symbolic.CodeGen.LLVM.Run
+import           Symbolic.Differential
 import           Symbolic.Predefined
+import           Symbolic.Print
 import           Symbolic.Type
 --
 import           NLP.SyntaxTree.Type
+--
+import           Debug.Trace
 
 type WVector = Vector Float
 type family WVal a :: *
@@ -90,43 +97,105 @@ externFun = do
     d <- fadd e (fval 1)
     r <- fdiv m d
     ret r
+  define float "tanh_1" [(float, AST.Name "x")] $ do
+    let xref = local (AST.Name "x")
+    v <- fadd xref xref
+    e <- call (externf (AST.Name "llvm.exp.f32")) [v]
+    einv <- fdiv (fval 1) e
+    d1 <- fadd e einv
+    d2 <- fadd d1 (fval 2)
+    r <- fdiv (fval 4) d2
+    ret r
 
-
-encodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-encodeExp n =
+enc :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+enc n =
   let idxi = ("i",1,n)
       idxj = ("j",1,n)
       idxk = ("k",1,n)
       idxI = ("I",1,2*n)
-      c1 = ivar (mkSym "c1") [idxi]
-      c2 = ivar (mkSym "c2") [idxj]
-      we = ivar (mkSym "we") [idxk, idxI]
-      be = ivar (mkSym "be") [idxk]
-
+      -- 
+      (c1,c2,we,be) = (iV ("c1",[idxi]),iV ("c2",[idxj]),iV ("we",[idxk, idxI]),iV ("be",[idxk]))
+      -- 
       c = concat_ idxI [c1,c2]
       prd = sum_ [idxI] (mul [we, c])
       result = tanh_ [ add [prd, be] ]
-  in (result, [ V (mkSym "c1") [idxi]
-              , V (mkSym "c2") [idxj]
-              , V (mkSym "we")  [idxk,idxI]
-              , V (mkSym "be")  [idxk] ] )
+  in (result, map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
 
-decodeExp :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
-decodeExp n =
+
+denc_dwe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+denc_dwe n =
+  let idxi = ("i",1,n)
+      idxj = ("j",1,n)
+      idxk = ("k",1,n)
+      idxm = ("m",1,n)
+      idxI = ("I",1,2*n)
+      idxJ = ("J",1,2*n)
+      --
+      (r,_) = enc n
+      dmap = HM.empty
+      result = sdiff dmap (mkV ("we",[idxm,idxJ])) r
+  in (result,map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
+
+denc_dbe :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+denc_dbe n =
+  let idxi = ("i",1,n)
+      idxj = ("j",1,n)
+      idxk = ("k",1,n)
+      idxm = ("m",1,n)
+      idxI = ("I",1,2*n)
+      --
+      (r,_) = enc n
+      dmap = HM.empty
+      result = sdiff dmap (mkV ("be",[idxm])) r
+  in (result,map mkV [("c1",[idxi]),("c2",[idxj]),("we",[idxk,idxI]),("be",[idxk])])
+
+
+dec :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+dec n =
   let idxk = ("k",1,n)
       idxI = ("I",1,2*n)
-      y = ivar (mkSym "y") [idxk]
-      wd = ivar (mkSym "wd") [idxI, idxk]
-      bd = ivar (mkSym "bd") [idxI]
+      --
+      (y,wd,bd) = (iV ("y",[idxk]),iV ("wd",[idxI,idxk]),iV ("bd",[idxI]))
+      --
       prd = sum_ [idxk] (mul [wd, y])
       result = tanh_ [ add [prd, bd] ]
-  in (result, [ V (mkSym "y") [idxk]
-              , V (mkSym "wd") [idxI,idxk]
-              , V (mkSym "bd") [idxI] ] )
+      --
+  in (result, map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
+
+ddec_dwd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+ddec_dwd n =
+  let idxk = ("k",1,n)
+      idxI = ("I",1,2*n)
+      idxJ = ("J",1,2*n)
+      idxm = ("m",1,n)
+      --
+      (r,_) = dec n
+      dmap = HM.empty
+      result = sdiff dmap (mkV ("wd",[idxJ,idxm])) r
+  in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
+
+ddec_dbd :: (?expHash :: WExp :->: Hash) => Int -> (WMExp, [Variable])
+ddec_dbd n =
+  let idxk = ("k",1,n)
+      idxI = ("I",1,2*n)
+      idxJ = ("J",1,2*n)
+      --
+      (r,_) = dec n
+      dmap = HM.empty
+      result = sdiff dmap (mkV ("bd",[idxJ])) r
+  in (result,map mkV [("y",[idxk]),("wd",[idxI,idxk]),("bd",[idxI])])
+
 
 
 fullAST :: (?expHash :: WExp :->: Hash) => Int -> AST.Module
-fullAST n = mkASTWithExt externFun [("encode",encodeExp n), ("decode",decodeExp n)]
+fullAST n = mkASTWithExt externFun
+              [ ("encode" ,enc n)
+              , ("dencdwe",denc_dwe n)
+              , ("dencdbe",denc_dbe n)
+              , ("decode" ,dec n)
+              , ("ddecdwd",ddec_dwd n)
+              , ("ddecdbd",ddec_dbd n)
+              ]
  
 encodeP :: AENode -> LLVMRunT IO WVector
 encodeP AENode {..} = do
