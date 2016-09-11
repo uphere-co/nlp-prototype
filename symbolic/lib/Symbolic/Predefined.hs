@@ -27,12 +27,14 @@ tV = V.fromList
 mkV :: (String,[Index]) -> Variable
 mkV (s,is) = V (mkSym s) is
 
+embedVar :: Variable -> MExp a
+embedVar v@(V _ is) = MExp (Var v) HM.empty (HS.fromList is)
+
 var :: Symbol -> MExp a
 var s = noStructure (Var (V s []))
 
 iV :: (String,[Index]) -> MExp a
 iV (s,is) = ivar (mkSym s) is
-
 
 ivar :: Symbol -> [Index] -> MExp a
 ivar n i = MExp (Var (V n i)) HM.empty (HS.fromList i)

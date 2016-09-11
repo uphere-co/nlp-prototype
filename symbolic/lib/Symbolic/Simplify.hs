@@ -9,16 +9,19 @@
 module Symbolic.Simplify where
 
 import           Control.Applicative
-import           Control.Monad
+--import           Control.Monad
 -- import           Control.Monad.Loops
+import           Control.Monad.Trans.State
 import           Data.Either
 import qualified Data.HashSet        as HS
 import qualified Data.HashMap.Strict as HM
 import           Data.Maybe
 import           Data.MemoTrie
 import           Data.Monoid               ((<>),Any(..),getAny)
+-- import           Text.Printf
 --
 import           Symbolic.Predefined
+import           Symbolic.Print
 import           Symbolic.Type
 --
 import           Debug.Trace
@@ -92,7 +95,7 @@ replace r@(FromTo i j) me@(MExp e m is)
            Zero        -> zero
            One         -> one
            Val n       -> val n
-           Var x       -> noStructure (Var (repVar r x))
+           Var x       -> embedVar (repVar r x)
            Add hs      -> me'
            Mul hs ds   -> me'
            Fun s hs    -> me'
@@ -133,9 +136,21 @@ mkNewSum is_rem (es,ds) =
 sum'_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum'_ is (MExp (Mul hs ds) m i) =
   let es = map (flip justLookup m) hs
-      i' = head is
+      {- i' = head is
       Just (rule,ds') = get1Rule i' ds
-      es' = map (replace rule) es
-  in mkNewSum (tail is) (es',ds')
+      es' = map (replace rule) es -}
+      (js,es',ds') = execState (elimSumIndex is) ([],es,ds)
+  in mkNewSum js (es',ds')
 sum'_ is em = sum_ is em
+
+elimSumIndex :: [Index] -> State ([Index],[MExp a],[KDelta]) ()
+elimSumIndex []     = return ()
+elimSumIndex (i:is) = do
+  (js,es,ds) <- get 
+  let mr = get1Rule i ds
+  case mr of
+    Nothing         -> put (js++[i],es,ds) >> elimSumIndex is
+    Just (rule,ds') -> let es' = map (replace rule) es
+                       in trace (prettifyRule rule ++ "\n" ++ concatMap (debugExp "es'") es') $ 
+                            put (js,es',ds') >> elimSumIndex is
 
