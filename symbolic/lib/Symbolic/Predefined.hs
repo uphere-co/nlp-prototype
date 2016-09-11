@@ -18,6 +18,9 @@ import qualified Data.Vector.Storable as V
 import           Symbolic.Type
 --
 
+noStructure :: Exp a -> MExp a
+noStructure e = MExp e HM.empty HS.empty
+
 tV :: [Float] -> Vector Float
 tV = V.fromList
 
@@ -25,8 +28,7 @@ mkV :: (String,[Index]) -> Variable
 mkV (s,is) = V (mkSym s) is
 
 var :: Symbol -> MExp a
-var s = MExp (Var (V s [])) HM.empty HS.empty
-
+var s = noStructure (Var (V s []))
 
 iV :: (String,[Index]) -> MExp a
 iV (s,is) = ivar (mkSym s) is
@@ -54,13 +56,13 @@ z_ :: [Index] -> MExp a
 z_ i = ivar (mkSym "z") i
 
 one :: MExp a
-one = MExp One HM.empty HS.empty
+one = noStructure One
 
 zero :: MExp a 
-zero = MExp Zero HM.empty HS.empty
+zero = noStructure Zero
 
 val :: a -> MExp a
-val n = MExp (Val n) HM.empty HS.empty
+val n = noStructure (Val n)
 
 
 delta :: Index -> Index -> MExp a
@@ -80,7 +82,6 @@ kdelta (CDelta i iss p) = cdelta i iss p
 varop :: (HasTrie a, ?expHash :: Exp a :->: Hash) => ([Hash] -> Exp a) -> [MExp a] -> MExp a
 varop op es = let (hs,m,is) = findTriple es
               in MExp (op hs) m is
-
 
 findTriple :: (HasTrie a, ?expHash :: Exp a :->: Hash) =>
               [MExp a] -> ([Hash],HashMap Hash (MExp a), HashSet Index)
