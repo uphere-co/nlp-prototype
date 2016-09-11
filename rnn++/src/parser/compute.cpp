@@ -2,8 +2,7 @@
 
 #include "utils/print.h"
 
-//TODO: move these from this header to .cpp body.
-using rnn::simple_model::Param; 
+using rnn::simple_model::Param;
 using value_type= Param::value_type;
 using vec_type  = Param::vec_type;
 using mat_type  = Param::mat_type;
@@ -40,7 +39,6 @@ auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
                          auto const &mesg, auto const &w)  {
     grad[j]+=mesg[i]*w[i][j];
 };
-//TODO:Move the following two to nameless namespace in .cpp file.
 vec_type weighted_sum_word_pair(Param const &param, vec_type const &word_left,
                                 vec_type const &word_right) {
     //TODO: change interface to remove .span?

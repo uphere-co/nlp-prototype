@@ -14,7 +14,7 @@
 
 namespace rnn{
 namespace simple_model{
-using WordBlock = wordrep::WordBlock_base<rnn::config::word_dim>;
+using WordBlock= wordrep::WordBlock_base<rnn::config::word_dim>;
 struct InializedLeafNodes{
     InializedLeafNodes(UninializedLeafNodes &&nodes,
                        WordBlock const &word_block) : val{std::move(nodes.val)} {
