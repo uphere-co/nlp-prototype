@@ -9,7 +9,7 @@ import Foreign.Ptr
 
 data RawSTLVector a
 
-type STLVector a = (Ptr (RawSTLVector a))
+newtype STLVector a = STLVector (Ptr (RawSTLVector a))
 
 class ISTLVector a where
   printout  :: STLVector a -> IO ()

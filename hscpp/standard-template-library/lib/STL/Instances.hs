@@ -10,17 +10,17 @@ import  STL
 import qualified STL.TH as TH
 
 instance ISTLVector CInt where
-  new       = $(TH.new       ''CInt)
-  push_back = $(TH.push_back ''CInt)
-  printout  = $(TH.printout  ''CInt)
-  at        = $(TH.at        ''CInt)
-  delete    = $(TH.delete    ''CInt)
+  printout (STLVector ptr) = $(TH.printout ''CInt) ptr  
+  new = STLVector <$> $(TH.new ''CInt)
+  push_back (STLVector ptr) x = $(TH.push_back ''CInt) ptr x 
+  at (STLVector ptr) i = $(TH.at ''CInt) ptr i
+  delete (STLVector ptr) = $(TH.delete ''CInt) ptr
 
 instance ISTLVector CDouble where
-  new       = $(TH.new       ''CDouble)
-  push_back = $(TH.push_back ''CDouble)
-  printout  = $(TH.printout  ''CDouble)
-  at        = $(TH.at        ''CDouble)
-  delete    = $(TH.delete    ''CDouble)
+  printout (STLVector ptr) = $(TH.printout  ''CDouble) ptr
+  new = STLVector <$> $(TH.new ''CDouble)
+  push_back (STLVector ptr) x = $(TH.push_back ''CDouble) ptr x
+  at (STLVector ptr) i = $(TH.at ''CDouble) ptr i
+  delete (STLVector ptr) = $(TH.delete ''CDouble) ptr
 
 
