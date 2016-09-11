@@ -12,7 +12,12 @@ import           Test.Fib
 import           Test.Rule
 import           Test.Simple
 
+separator s = do
+  putStrLn "--------------------"
+  putStrLn ("--    " ++ s )
+  putStrLn "--------------------"
 
+  
 main :: IO ()
 main = do
   -- delta_nosimplify
@@ -20,5 +25,8 @@ main = do
   -- delta_simplify
   -- delta_eval
   -- test_differentiation
+  separator "rule1"
+  rule1
+  separator "rule2"
   rule2
     
