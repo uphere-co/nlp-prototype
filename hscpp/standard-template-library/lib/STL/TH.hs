@@ -27,24 +27,24 @@ std_namefun str nty =
 printout :: Name -> ExpQ
 printout nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "printout" 
-        tyf n = [t|Ptr (STLVector $(return (ConT n))) -> IO ()|]
+        tyf n = [t|STLVector $(return (ConT n)) -> IO ()|]
 
 new :: Name -> ExpQ
 new nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "new"
-        tyf n = [t| IO (Ptr (STLVector $(return (ConT n)))) |]
+        tyf n = [t| IO (STLVector $(return (ConT n))) |]
 
 push_back :: Name -> ExpQ
 push_back nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "push_back"
-        tyf n = let ty = return (ConT n) in [t| Ptr (STLVector $(ty)) -> $(ty) -> IO () |]
+        tyf n = let ty = return (ConT n) in [t| STLVector $(ty) -> $(ty) -> IO () |]
 
 at :: Name -> ExpQ
 at nty = mkTFunc (nty,std_namefun "at",tyf)
   where tyf n = let ty = return (ConT n)
-                in [t| Ptr (STLVector $(ty)) -> CInt -> IO (Ptr $(ty)) |] 
+                in [t| STLVector $(ty) -> CInt -> IO (Ptr $(ty)) |] 
 
 delete :: Name -> ExpQ
 delete nty = mkTFunc (nty,nf,tyf)
   where nf = std_namefun "delete"
-        tyf n = [t|Ptr (STLVector $(return (ConT n)))->IO ()|]
+        tyf n = [t|STLVector $(return (ConT n)) -> IO ()|]
