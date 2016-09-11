@@ -35,6 +35,10 @@ add_executable(train_model1 app/train_model1 tests/test_simple_model
                ${all_rnn_files} ${util_files})
 target_link_libraries(train_model1 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
+add_executable(train_model2 app/train_model2 tests/test_context_rnn
+               ${all_rnn_files} ${util_files})
+target_link_libraries(train_model2 hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
+
 add_executable(train_model4 app/train_model4 tests/test_dp_merging
                ${all_rnn_files} ${util_files})
 target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
