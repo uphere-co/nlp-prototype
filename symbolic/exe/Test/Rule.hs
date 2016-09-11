@@ -59,3 +59,22 @@ rule2 = do
   showExp "changed" changed
 
 
+norule :: IO ()
+norule = do
+  let idxi, idxj, idxm, idxn, idxk :: Index
+      idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxk = ("k",1,2)
+      idxm = ("m",1,2)
+      idxn = ("n",1,2)
+  let ?expHash = trie hash
+  let test1,test2 :: MExp Int
+      e1 = mul' [delta idxm idxk, x_ [idxm,idxn], y_ [idxi ,idxk], delta idxi idxm, delta idxj idxn]
+      e2 = mul' [delta idxm idxk, x_ [idxm,idxn], y_ [idxi, idxk], delta idxi idxn, delta idxj idxm]
+      test1 = sum_ [idxm,idxn] (add' [e1,e2])      
+      test2 = sum'_ [idxm,idxn] (add' [e1,e2])
+  showExp "test1" test1
+  showExp "test2" test2
+
+
+

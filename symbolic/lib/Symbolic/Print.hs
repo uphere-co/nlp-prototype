@@ -38,7 +38,7 @@ prettyPrint (RVar s) = printf "%s" (showVar s)
 prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
 prettyPrint (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrint es++map prettyPrintKD ds) :: String)
 prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
-prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
+prettyPrint (RSum is e1) = printf "sum_(%s) %s" (showIdxSet is) (prettyPrint e1 :: String)
 prettyPrint (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrint es) :: String)
 
 
