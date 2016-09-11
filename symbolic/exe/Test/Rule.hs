@@ -74,6 +74,37 @@ rule3 = do
   showExp "changed" changed
 
 
+rule4 :: IO ()
+rule4 = do
+  let ?expHash = trie hash
+      ?functionMap = HM.empty
+  let
+      idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxk = ("k",1,2)
+
+      idxI = ("I",1,4)
+      idxJ = ("J",1,4)
+
+      original1, changed1, original2, changed2, original3, changed3 :: MExp Int
+      e1 = concat_ idxI [ mul' [ x_ [idxi], x_ [idxi] ]  , mul' [ y_ [idxj], x_ [idxj] ] ]
+      original1 = sum_ [idxI] (mul' [e1, delta idxI idxJ ] )
+      changed1  = sum'_ [idxI] (mul' [e1, delta idxI idxJ ] )
+      original2 = sum_ [idxI] (mul' [e1, delta idxi idxk ] )
+      changed2  = sum'_ [idxI] (mul' [e1, delta idxi idxk ] )
+      original3 = sum_ [idxI] (mul' [e1, cdelta idxI [[idxi],[idxj]] 1 ] )
+      changed3  = sum'_ [idxI] (mul' [e1, cdelta idxI [[idxi],[idxj]] 1 ] )
+
+  showExp "original1" original1
+  showExp "changed1" changed1
+  putStrLn "--"
+  showExp "original2" original2
+  showExp "changed2" changed2
+  putStrLn "--"
+  showExp "original3" original3
+  showExp "changed3" changed3
+  putStrLn "--"
+
 
 norule :: IO ()
 norule = do

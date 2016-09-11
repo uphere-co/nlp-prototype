@@ -31,6 +31,9 @@ main = do
   rule2
   separator "rule3"
   rule3
+  separator "rule4"
+  rule4
+
 
   -- separator "norule"
   -- norule
