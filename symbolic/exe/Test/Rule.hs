@@ -58,6 +58,22 @@ rule2 = do
   showExp "original" original
   showExp "changed" changed
 
+rule3 :: IO ()
+rule3 = do
+  let idxi, idxj, idxm, idxn, idxk :: Index
+      idxi = ("i",1,2)
+      idxj = ("j",1,2)
+      idxk = ("k",1,2)
+      idxm = ("m",1,2)
+      idxn = ("n",1,2)
+  let ?expHash = trie hash
+  let original, changed :: MExp Int
+      original = sum_ [idxn,idxm] (mul' [add' [x_ [idxm,idxn], y_ [idxi ,idxn]], delta idxj idxn, delta idxm idxk])
+      changed = sum'_ [idxn,idxm] (mul' [add' [x_ [idxm,idxn], y_ [idxi ,idxn]], delta idxj idxn, delta idxm idxk])
+  showExp "original" original
+  showExp "changed" changed
+
+
 
 norule :: IO ()
 norule = do

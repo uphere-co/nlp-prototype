@@ -9,8 +9,6 @@
 module Symbolic.Simplify where
 
 import           Control.Applicative
---import           Control.Monad
--- import           Control.Monad.Loops
 import           Control.Monad.Trans.State
 import           Data.Either
 import qualified Data.HashSet        as HS
@@ -18,7 +16,6 @@ import qualified Data.HashMap.Strict as HM
 import           Data.Maybe
 import           Data.MemoTrie
 import           Data.Monoid               ((<>),Any(..),getAny)
--- import           Text.Printf
 --
 import           Symbolic.Predefined
 import           Symbolic.Print
@@ -86,7 +83,7 @@ repDelta (FromTo i j) d = d -- this should be implemented
 repVar :: Rule -> Variable -> Variable
 repVar r (V s is) = V s (map (repIndex r) is)
 
-replace :: Rule -> MExp a -> MExp a
+replace :: (HasTrie a, ?expHash :: Exp a :->: Hash) => Rule -> MExp a -> MExp a
 replace r@(FromTo i j) me@(MExp e m is)
   | i `HS.member` is =
       let is' = (HS.insert j . HS.delete i) is
@@ -96,54 +93,32 @@ replace r@(FromTo i j) me@(MExp e m is)
            One         -> one
            Val n       -> val n
            Var x       -> embedVar (repVar r x)
-           Add hs      -> me'
-           Mul hs ds   -> me'
-           Fun s hs    -> me'
-           Sum is h    -> me'
-           Concat i hs -> me'
+           Add hs      -> let es = map (flip justLookup m) hs
+                          in add' (map (replace r) es)
+           Mul hs ds   -> let es = map (flip justLookup m) hs
+                          in mul' (map (replace r) es)
+           Fun s hs    -> let es = map (flip justLookup m) hs
+                          in fun s (map (replace r) es)
+           Sum is h    -> let e = justLookup h m
+                          in sum_ is (replace r e)
+           Concat i hs -> let es = map (flip justLookup m) hs
+                              j = repIndex r i 
+                          in concat_ j (map (replace r) es)
   | otherwise = me
 
--- eliminate
-
---     MExp e' m' ()
 
 mkNewSum is_rem (es,ds) = 
   let nt = mul' (es++map kdelta ds)
   in if null is_rem then nt else sum_ is_rem nt
 
-
-      -- ([h],m,i) = findTriple [nt] 
-      -- nt_h1 = getMHash nt
-      -- sume_is = tail is
-      -- m' = HM.insert nt_h1 nt (mexpMap nt)
-
-
-      -- iss = map (map indexName . HS.toList . mexpIdx) es
-      -- is' = map indexName is
-
-      -- (hs',m,is') = findTriple es'
-
-      -- mnt = MExp  nt m is'
-      -- hs' = map getMHash es'
-      
-      --  m' = HM.insert h1 em m1
-      
-      -- newterm = Mul
-
-  -- in trace (prettifyRule rule) s
-    
-
 sum'_ :: (HasTrie a, ?expHash :: Exp a  :->: Hash) => [Index] -> MExp a -> MExp a
 sum'_ is (MExp (Mul hs ds) m i) =
   let es = map (flip justLookup m) hs
-      {- i' = head is
-      Just (rule,ds') = get1Rule i' ds
-      es' = map (replace rule) es -}
       (js,es',ds') = execState (elimSumIndex is) ([],es,ds)
   in mkNewSum js (es',ds')
 sum'_ is em = sum_ is em
 
-elimSumIndex :: [Index] -> State ([Index],[MExp a],[KDelta]) ()
+elimSumIndex :: (HasTrie a, ?expHash :: Exp a :->: Hash) => [Index] -> State ([Index],[MExp a],[KDelta]) ()
 elimSumIndex []     = return ()
 elimSumIndex (i:is) = do
   (js,es,ds) <- get 
@@ -151,6 +126,6 @@ elimSumIndex (i:is) = do
   case mr of
     Nothing         -> put (js++[i],es,ds) >> elimSumIndex is
     Just (rule,ds') -> let es' = map (replace rule) es
-                       in trace (prettifyRule rule ++ "\n" ++ concatMap (debugExp "es'") es') $ 
-                            put (js,es',ds') >> elimSumIndex is
+                       in -- trace (prettifyRule rule ++ "\n" ++ concatMap (debugExp "es'") es') $ 
+                          put (js,es',ds') >> elimSumIndex is
 
