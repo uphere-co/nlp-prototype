@@ -38,7 +38,7 @@ prettyPrint (RVar s) = printf "%s" (showVar s)
 prettyPrint (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrint es) :: String)
 prettyPrint (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrint es++map prettyPrintKD ds) :: String)
 prettyPrint (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrint es) :: String)
-prettyPrint (RSum is e1) = printf "(sum_(%s) %s)" (showIdxSet is) (prettyPrint e1 :: String)
+prettyPrint (RSum is e1) = printf "sum_(%s) %s" (showIdxSet is) (prettyPrint e1 :: String)
 prettyPrint (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrint es) :: String)
 
 
@@ -89,3 +89,19 @@ digraph v = do
     putStrLn "digraph G {"
     putStrLn $ evalState (dotPrint m h) HS.empty
     putStrLn "}"
+
+-- for debugging
+
+debugExp s e = printf "%s = %s\n" s ((prettyPrintD . exp2RExp) e :: String)
+
+
+prettyPrintD :: (PrintfType r) => RExp a -> r
+prettyPrintD RZero = printf "0"
+prettyPrintD ROne  = printf "1"
+prettyPrintD (RVal n) = printf "%s" "somen"
+prettyPrintD (RVar s) = printf "%s" (showVar s)
+prettyPrintD (RAdd es) = printf "(%s)" (listPrintf "+" (map prettyPrintD es) :: String)
+prettyPrintD (RMul es ds) = printf "(%s)" (listPrintf "*" (map prettyPrintD es++map prettyPrintKD ds) :: String)
+prettyPrintD (RFun s es) = printf "%s(%s)" s (listPrintf "," (map prettyPrintD es) :: String)
+prettyPrintD (RSum is e1) = printf "sum_(%s) %s" (showIdxSet is) (prettyPrintD e1 :: String)
+prettyPrintD (RConcat i es) = printf "(concat_(%s) (%s))" (showIdxSet [i]) (listPrintf "," (map prettyPrintD es) :: String)
