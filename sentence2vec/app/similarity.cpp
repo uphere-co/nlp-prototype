@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "wordrep/sentence2vec.h"
 
 #include "parser/parser.h"
@@ -8,12 +10,15 @@
 #include "utils/print.h"
 #include "utils/loop_gen.h"
 
+#include "json/json.hpp"
+
 using namespace sent2vec;
 using namespace rnn::wordrep;
 using namespace rnn::simple_model;
 using namespace util;
 using namespace util::math;
 using namespace util::io;
+using json = nlohmann::json;
 
 namespace{
 using val_t = double;
@@ -157,14 +162,30 @@ void KLdistance(){
 
 int main(){
     Timer timer{};
+    std::ifstream jsonData("/data/groups/uphere/test.json", std::ifstream::in);
+    json j;
+
+    if(jsonData.is_open()) {
+        jsonData >> j;
+    }
+
+    std::string phrase_store = j["phrase_store"];
+    std::string phrase_vec = j["phrase_vec"];
+    std::string phrase_word = j["phrase_word"];
+    std::string rnn_param_store = j["rnn_param_store"];
+    std::string rnn_param_uid = j["rnn_param_uid"];
+    std::string wordvec_store = j["wordvec_store"];
+    std::string voca_name = j["voca_name"];
+    std::string w2vmodel_name = j["w2vmodel_name"];        
+    
     rnn::simple_model::TokenizedSentences dataset{"1b.trainset.1M"};
     auto& sents = dataset.val;
     auto n_sent=sents.size();    
     // auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
     // auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
     // Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
-    auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "news_wsj.test.vecs", w2vmodel_f_type);
-    Voca voca = load_voca("phrases.h5", "news_wsj.test.words");
+    auto sent_vecs = load_voca_vecs<word_dim>(phrase_store, phrase_vec, w2vmodel_f_type);
+    Voca voca = load_voca(phrase_store, phrase_word);
     // auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.s2010.train.vecs", w2vmodel_f_type);
     // Voca voca = load_voca("phrases.h5", "wsj.s2010.train.words");
     // auto voca_vecs = load_voca_vecs<word_dim>("gensim.h5", "1b.training.1M.gensim", w2vmodel_f_type);
@@ -176,11 +197,13 @@ int main(){
     VocaIndexMap word2idx = voca.indexing();
     auto voca_size = voca.size();
     timer.here_then_reset("Data loaded.");
-    auto param = load_param("rnn_params.h5", "model4.d877053.2000", util::DataType::dp);
+    auto param = load_param(rnn_param_store, rnn_param_uid, util::DataType::dp);
     timer.here_then_reset("Param loaded.");
 
-    auto line="spokesman declined to comment";
-    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::DataType::dp};
+    //auto line="spokesman declined to comment";
+    auto line=j["queries"][0];
+    
+    VocaInfo rnn{wordvec_store, voca_name, w2vmodel_name, util::DataType::dp};
     auto init_nodes = rnn.initialize_tree(line);
     DPtable table=dp_merging(param, init_nodes);
     auto phrases = table.get_phrases();
