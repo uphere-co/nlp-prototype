@@ -26,11 +26,12 @@ stdenv.mkDerivation {
                    toolz.nltk toolz.bllipparser
                    psycopg2
                    #cgroup-utils
+                   toolz.cldoc
                  ]) 
                    ++ 
                  [
                    wget jdk zip unzip which stress
-                   cmake pkgconfig clang_38 clang-analyzer
+                   cmake clang_38 pkgconfig clang-analyzer
                    boost
                    hdf5 hdf5-cpp liblbfgs zeromq
                    tbb openblas  
