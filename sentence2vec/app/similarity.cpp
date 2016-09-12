@@ -22,22 +22,21 @@ using idx_t = std::size_t;
 constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 }//nameless namespace
 
-struct Query{
-    Query(std::string word, Voca const &voca, VocaIndexMap const &word2idx)
-    :word{word}, distances(voca.size()),
-     idx{word2idx.getIndex(Word{word})} {}    
-    Query(std::string word, idx_t idx, idx_t voca_size)
-    :word{word}, distances(voca_size), idx{idx}{}
 
-    std::string word;
+struct Query{
+    using vec_view_t = WordBlock::span_t;
+    Query(std::string word, vec_view_t vec, Voca const &voca)
+    :query_word{word}, query_vec{vec}, distances(voca.size())
+    {}
+    std::string query_word;
+    vec_view_t query_vec;
     std::vector<val_t> distances;
-    idx_t idx;
 };
 
 auto process_query_angle=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();
     assert(n==query.distances.size());
-    auto q=voca_vecs[query.idx];
+    auto q=query.query_vec;
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
@@ -63,7 +62,7 @@ auto euclidean_distance=[](auto const &x, auto const &y){
 auto process_query_euclidean=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();
     assert(n==query.distances.size());
-    auto q=voca_vecs[query.idx];
+    auto q=query.query_vec;
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
@@ -83,7 +82,7 @@ auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             for(auto &query:queries){
-                auto q=voca_vecs[query.idx];
+                auto q=query.query_vec;
                 auto const& v=voca_vecs[i];
                 query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
             }            
@@ -97,7 +96,7 @@ auto process_queries_innerdot=[](std::vector<Query> &queries, auto const& voca_v
                       [&](tbb::blocked_range<decltype(n)> const &r){
                           for(decltype(n) i=r.begin(); i!=r.end(); ++i){
                               for(auto &query:queries){
-                                  auto q=voca_vecs[query.idx];
+                                  auto q=query.query_vec;
                                   auto const& v=voca_vecs[i];
                                   query.distances[i] = dot(v,q);
                               }
@@ -111,7 +110,7 @@ auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             for(auto &query:queries){
-                auto q=voca_vecs[query.idx];
+                auto q=query.query_vec;
                 auto const& v=voca_vecs[i];
                 auto tmp{q};
                 tmp-=v;
@@ -192,7 +191,7 @@ int main(){
         auto parsed_tree_str = phrase->name.val;
 //        print(parsed_tree_str);
 //        print("\n");
-        queries.emplace_back(parsed_tree_str,voca, word2idx);
+        queries.emplace_back(parsed_tree_str, phrase->vec.span, voca);
     }
     // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
     // queries.emplace_back("(would (n't (comment .)))",voca, word2idx);
