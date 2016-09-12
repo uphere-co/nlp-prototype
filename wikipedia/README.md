@@ -16,6 +16,9 @@ ghc parsing.hs
 nix-shell shell-wiki.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
 #treebank_3/parsed/mrg/wsj/test : directory containing WSJ sections
 #wsj.test : output file name. 
-#output : wsj.test and wsj.test.tree
+#output : 
+# - wsj.test and wsj.test.tree : contain all nodes
+# - wsj.test.trim and wsj.test.trim.tree : nodes with '-NONE-' tag is removed.
+
 ipython ptb_reader.py ~/treebank_3/parsed/mrg/wsj/test wsj.test
 ```
