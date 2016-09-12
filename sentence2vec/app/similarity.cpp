@@ -10,6 +10,7 @@
 
 using namespace sent2vec;
 using namespace rnn::wordrep;
+using namespace rnn::simple_model;
 using namespace util;
 using namespace util::math;
 using namespace util::io;
@@ -176,8 +177,23 @@ int main(){
     VocaIndexMap word2idx = voca.indexing();
     auto voca_size = voca.size();
     timer.here_then_reset("Data loaded.");
+    auto param = load_param("rnn_params.h5", "model4.d877053.2000", util::DataType::dp);
+    timer.here_then_reset("Param loaded.");
+
+    auto line="spokesman declined to comment";
+    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::DataType::dp};
+    auto init_nodes = rnn.initialize_tree(line);
+    DPtable table=dp_merging(param, init_nodes);
+    auto phrases = table.get_phrases();
+//    auto root_node=table.root_node();
 
     std::vector<Query> queries;
+    for(auto const &phrase:phrases){
+        auto parsed_tree_str = phrase->name.val;
+//        print(parsed_tree_str);
+//        print("\n");
+        queries.emplace_back(parsed_tree_str,voca, word2idx);
+    }
     // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
     // queries.emplace_back("(would (n't (comment .)))",voca, word2idx);
     // queries.emplace_back("((((Donaldson Lufkin) would) (n't comment)) .)",voca, word2idx);
@@ -187,9 +203,10 @@ int main(){
     // queries.emplace_back("(such arguments)",voca, word2idx);
     // queries.emplace_back("(such arguments)",voca, word2idx);
 
-    queries.emplace_back("(spokesman (declined (to comment)))",voca, word2idx);
-    queries.emplace_back("(declined (to comment))",voca, word2idx);
-    queries.emplace_back("(no comment)",voca, word2idx);
+//    queries.emplace_back("(spokesman (declined (to comment)))",voca, word2idx);
+//    queries.emplace_back("(declined (to comment))",voca, word2idx);
+//    queries.emplace_back("(no comment)",voca, word2idx);
+
     // queries.emplace_back("(no comment)",voca, word2idx);
     // queries.emplace_back("(had (no comment))",voca, word2idx);
     // queries.emplace_back("((had (no comment)) .)",voca, word2idx);
