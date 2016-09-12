@@ -13,20 +13,20 @@ import STL
 import qualified STL.TH as TH
 import STL.Instances 
 
-withVec :: (ISTLVector a) => (Ptr (STLVector a) -> IO ()) -> IO ()
+withVec :: (ISTLVector a) => (STLVector a -> IO ()) -> IO ()
 withVec = bracket new delete 
 
 
 test_int = do 
   putStrLn "testing vector<int>"
-  withVec $ \(a :: Ptr (STLVector CInt)) -> do
+  withVec $ \(a :: STLVector CInt) -> do
     mapM_ (push_back a) [10,20..100]
     printout a
 
 
 test_double2 = do
   putStrLn "test_double2"
-  withVec $ \(b :: Ptr (STLVector CDouble)) -> do
+  withVec $ \(b :: STLVector CDouble) -> do
     mapM_ (push_back b) [1.1,1.2..2.0]
     printout b
     c <- at b 5
