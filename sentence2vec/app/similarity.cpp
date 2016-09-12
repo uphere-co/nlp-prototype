@@ -170,70 +170,54 @@ void KLdistance(){
 }
 
 struct SimilaritySearch{
+    SimilaritySearch(json const &config)
+    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], w2vmodel_f_type)},
+        phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
+        // phrase2idx{phrase_voca.indexing()},
+        param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
+        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
+    {}
 
+    json process_queries(json ask){
+        std::vector<Query> queries;
+        for(auto const &line : ask["queries"]){        
+            auto init_nodes = rnn.initialize_tree(line);
+            DPtable table=dp_merging(param, init_nodes);
+            auto phrases = table.get_phrases();
+            for(auto const &phrase:phrases){
+                auto parsed_tree_str = phrase->name.val;
+                queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
+            }
+        }
+        process_queries_innerdot(queries, sent_vecs);
+        json answer=display_queries(queries, phrase_voca);
+        return answer;
+    }
+
+    WordBlock sent_vecs;
+    Voca phrase_voca;
+    // VocaIndexMap phrase2idx;
+    Param param; 
+    VocaInfo rnn;
 };
-int main(){
-    Timer timer{};
-    
+
+json load_json(std::string filename){
     json j;    
-    std::ifstream jsonData("/data/groups/uphere/similarity_test/input.json", std::ifstream::in);
+    std::ifstream jsonData(filename, std::ifstream::in);
     if(jsonData.is_open()) {
         jsonData >> j;
     }
+    return j;
+}
 
-    std::string phrase_store = j["phrase_store"];
-    std::string phrase_vec = j["phrase_vec"];
-    std::string phrase_word = j["phrase_word"];
-    std::string rnn_param_store = j["rnn_param_store"];
-    std::string rnn_param_uid = j["rnn_param_uid"];
-    std::string wordvec_store = j["wordvec_store"];
-    std::string voca_name = j["voca_name"];
-    std::string w2vmodel_name = j["w2vmodel_name"];        
+int main(){
+    Timer timer{};
     
-    rnn::simple_model::TokenizedSentences dataset{"1b.trainset.1M"};
-    auto& sents = dataset.val;
-    auto n_sent=sents.size();    
-    // auto sent_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M.sentvec", w2vmodel_f_type);
-    // auto voca_vecs = load_voca_vecs<word_dim>("data.1M.h5", "1b.training.1M", w2vmodel_f_type);
-    // Voca voca = load_voca("data.1M.h5", "1b.training.1M.word");
-    auto sent_vecs = load_voca_vecs<word_dim>(phrase_store, phrase_vec, w2vmodel_f_type);
-    Voca voca = load_voca(phrase_store, phrase_word);
-    // auto sent_vecs = load_voca_vecs<word_dim>("phrases.h5", "wsj.s2010.train.vecs", w2vmodel_f_type);
-    // Voca voca = load_voca("phrases.h5", "wsj.s2010.train.words");
-    // auto voca_vecs = load_voca_vecs<word_dim>("gensim.h5", "1b.training.1M.gensim", w2vmodel_f_type);
-    // Voca voca = load_voca("gensim.h5", "1b.training.1M.gensim.word" );
-    // auto voca_vecs = load_voca_vecs<word_dim>("data.w2v.h5", "foo.vec", w2vmodel_f_type);
-    // Voca voca = load_voca("data.w2v.h5", "foo.word");
-    print(voca.size());
-    print(":voca size.\n");
-    VocaIndexMap word2idx = voca.indexing();
-    auto voca_size = voca.size();
-    timer.here_then_reset("Data loaded.");
-    auto param = load_param(rnn_param_store, rnn_param_uid, util::DataType::dp);
-    VocaInfo rnn{wordvec_store, voca_name, w2vmodel_name, util::DataType::dp};
-    timer.here_then_reset("Param loaded.");
-
-    //auto line="spokesman declined to comment";
-    std::vector<Query> queries;
-    for(auto const &line : j["queries"]){        
-        auto init_nodes = rnn.initialize_tree(line);
-        DPtable table=dp_merging(param, init_nodes);
-        auto phrases = table.get_phrases();
-        for(auto const &phrase:phrases){
-            auto parsed_tree_str = phrase->name.val;
-            queries.emplace_back(parsed_tree_str, phrase->vec.span, voca);
-        }
-    }
-    // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
-
-    timer.here_then_reset("Got index.");    
-    process_queries_innerdot(queries, sent_vecs);
-    timer.here_then_reset("Calculate distances.");
-    json output=display_queries(queries, voca);
-    std::cout << output.dump(4) << std::endl;
+    auto j = load_json("/data/groups/uphere/similarity_test/input.json");
+    SimilaritySearch engine{j};
+    timer.here_then_reset("Search engine loaded.");
+    auto answer=engine.process_queries(j);
     timer.here_then_reset("Queries answered.");
-
-    timer.here_then_reset("Sentence query answered.");
-    
+    std::cout << answer.dump(4) << std::endl;
     return 0;
 }
