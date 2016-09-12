@@ -144,13 +144,13 @@ void display_query(Query const &query, Voca const &voca, json &output){
     for(auto &x:idxs) x=i++;
     std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
-    print("------------------\n");
+    // print("------------------\n");
     json answer;
     auto beg=idxs.begin();
     for(auto it=beg; it!=beg+n_top; ++it){
-        print(voca.getWord(*it).val);
-        print(query.distances[*it]);
-        print("\n");
+        // print(voca.getWord(*it).val);
+        // print(query.distances[*it]);
+        // print("\n");
         answer[it-beg] = voca.getWord(*it).val;
     }
     output[query.query_word]=answer;
@@ -204,23 +204,21 @@ int main(){
     auto voca_size = voca.size();
     timer.here_then_reset("Data loaded.");
     auto param = load_param(rnn_param_store, rnn_param_uid, util::DataType::dp);
+    VocaInfo rnn{wordvec_store, voca_name, w2vmodel_name, util::DataType::dp};
     timer.here_then_reset("Param loaded.");
 
     //auto line="spokesman declined to comment";
-    auto line=j["queries"][0];
-    
-    VocaInfo rnn{wordvec_store, voca_name, w2vmodel_name, util::DataType::dp};
-    auto init_nodes = rnn.initialize_tree(line);
-    DPtable table=dp_merging(param, init_nodes);
-    auto phrases = table.get_phrases();
-//    auto root_node=table.root_node();
-
     std::vector<Query> queries;
-    for(auto const &phrase:phrases){
-        auto parsed_tree_str = phrase->name.val;
-//        print(parsed_tree_str);
-//        print("\n");
-        queries.emplace_back(parsed_tree_str, phrase->vec.span, voca);
+    for(auto const &line : j["queries"]){        
+        auto init_nodes = rnn.initialize_tree(line);
+        DPtable table=dp_merging(param, init_nodes);
+        auto phrases = table.get_phrases();
+        for(auto const &phrase:phrases){
+            auto parsed_tree_str = phrase->name.val;
+        //    print(parsed_tree_str);
+        //    print("\n");
+            queries.emplace_back(parsed_tree_str, phrase->vec.span, voca);
+        }
     }
     // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
     // queries.emplace_back("(would (n't (comment .)))",voca, word2idx);
