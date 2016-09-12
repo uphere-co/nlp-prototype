@@ -145,20 +145,23 @@ void display_query(Query const &query, Voca const &voca, json &output){
     std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
     // print("------------------\n");
-    json answer;
+    json answer;    
+    answer["query"]=query.query_word;
+    json similar_ones;
     auto beg=idxs.begin();
     for(auto it=beg; it!=beg+n_top; ++it){
         // print(voca.getWord(*it).val);
         // print(query.distances[*it]);
         // print("\n");
-        answer[it-beg] = voca.getWord(*it).val;
+        similar_ones[it-beg] = voca.getWord(*it).val;
     }
-    output[query.query_word]=answer;
+    answer["result"]=similar_ones;
+    output[output.size()]=answer;
 }
-void display_queries(std::vector<Query> const &queries, Voca const &voca){
+json display_queries(std::vector<Query> const &queries, Voca const &voca){
     json output;
     for(auto &query:queries) display_query(query, voca, output);
-    std::cout << output.dump(4) << std::endl;
+    return output;
 }
 
 void KLdistance(){
@@ -166,11 +169,14 @@ void KLdistance(){
     VecLoop_void<val_t,word_dim> vecloop_void{};
 }
 
+struct SimilaritySearch{
+
+};
 int main(){
     Timer timer{};
+    
+    json j;    
     std::ifstream jsonData("/data/groups/uphere/similarity_test/input.json", std::ifstream::in);
-    json j;
-
     if(jsonData.is_open()) {
         jsonData >> j;
     }
@@ -215,50 +221,18 @@ int main(){
         auto phrases = table.get_phrases();
         for(auto const &phrase:phrases){
             auto parsed_tree_str = phrase->name.val;
-        //    print(parsed_tree_str);
-        //    print("\n");
             queries.emplace_back(parsed_tree_str, phrase->vec.span, voca);
         }
     }
     // queries.emplace_back("(Donaldson (Lufkin (would (n't (comment .)))))",voca, word2idx);
-    // queries.emplace_back("(would (n't (comment .)))",voca, word2idx);
-    // queries.emplace_back("((((Donaldson Lufkin) would) (n't comment)) .)",voca, word2idx);
-    // queries.emplace_back("(n't comment)",voca, word2idx);
-    // queries.emplace_back("((((It belonged) to) (her grandfather)) .)",voca, word2idx);
-    // queries.emplace_back("(((((Opponents do) n't) buy) (such arguments)) .)",voca, word2idx);
-    // queries.emplace_back("(such arguments)",voca, word2idx);
-    // queries.emplace_back("(such arguments)",voca, word2idx);
 
-//    queries.emplace_back("(spokesman (declined (to comment)))",voca, word2idx);
-//    queries.emplace_back("(declined (to comment))",voca, word2idx);
-//    queries.emplace_back("(no comment)",voca, word2idx);
-
-    // queries.emplace_back("(no comment)",voca, word2idx);
-    // queries.emplace_back("(had (no comment))",voca, word2idx);
-    // queries.emplace_back("((had (no comment)) .)",voca, word2idx);
-    // queries.emplace_back("((A (Shearson spokesman)) ((had (no comment)) .))",voca, word2idx);
-    // queries.emplace_back("(Hess ((declined (*-1 (to comment))) .))",voca, word2idx);
-
-    // queries.emplace_back("Physics",voca, word2idx);
-    // queries.emplace_back("physics",voca, word2idx);
-    // queries.emplace_back("Mathematics",voca, word2idx);
-    // queries.emplace_back("mathematics",voca, word2idx);
-    // queries.emplace_back("math",voca, word2idx);
-    // queries.emplace_back("biology",voca, word2idx);
-    // queries.emplace_back("science",voca, word2idx);
-    // queries.emplace_back("academic",voca, word2idx);
     timer.here_then_reset("Got index.");    
-    // process_queries_euclidean(queries, sent_vecs);
-//    process_queries_angle(queries, sent_vecs);
     process_queries_innerdot(queries, sent_vecs);
     timer.here_then_reset("Calculate distances.");
-    //std::sort(distances.begin(),distances.end());
-    display_queries(queries, voca);
+    json output=display_queries(queries, voca);
+    std::cout << output.dump(4) << std::endl;
     timer.here_then_reset("Queries answered.");
 
-    // Query sent_query{sents[0],0, n_sent};
-    // process_query(sent_query, sent_vecs);
-    // display_query(sent_query, sents);
     timer.here_then_reset("Sentence query answered.");
     
     return 0;
