@@ -78,9 +78,6 @@ auto process_query_euclidean=[](Query &query, auto const& voca_vecs){
     });
 };
 
-auto process_queries_simple=[](std::vector<Query> &queries, auto const& voca_vecs){
-    for(auto &query:queries) process_query(query, voca_vecs);
-};
 auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs){    
     auto n=voca_vecs.size();
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
@@ -124,20 +121,8 @@ auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_
         }
     });
 };
-void display_query(Query const &query, std::vector<std::string> const &sents){
-    auto n_top = 20;
-    std::vector<idx_t> idxs(query.distances.size());
-    idx_t i{0};
-    for(auto &x:idxs) x=i++;
-    std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
-                      [&](auto i, auto j){return query.distances[i]>query.distances[j];});
-    print("------------------\n");
-    for(auto it=idxs.begin(); it!=idxs.begin()+n_top; ++it){
-        print(sents[*it]);
-        print("\n");
-    }
-}
-void display_query(Query const &query, Voca const &voca, json &output){
+
+void collect_query_result(Query const &query, Voca const &voca, json &output){
     auto n_top = 20;
     std::vector<idx_t> idxs(query.distances.size());
     idx_t i{0};
@@ -158,9 +143,9 @@ void display_query(Query const &query, Voca const &voca, json &output){
     answer["result"]=similar_ones;
     output[output.size()]=answer;
 }
-json display_queries(std::vector<Query> const &queries, Voca const &voca){
+json collect_queries_results(std::vector<Query> const &queries, Voca const &voca){
     json output;
-    for(auto &query:queries) display_query(query, voca, output);
+    for(auto &query:queries) collect_query_result(query, voca, output);
     return output;
 }
 
@@ -173,7 +158,6 @@ struct SimilaritySearch{
     SimilaritySearch(json const &config)
     :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], w2vmodel_f_type)},
         phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
-        // phrase2idx{phrase_voca.indexing()},
         param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
         rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
     {}
@@ -190,13 +174,12 @@ struct SimilaritySearch{
             }
         }
         process_queries_innerdot(queries, sent_vecs);
-        json answer=display_queries(queries, phrase_voca);
+        json answer=collect_queries_results(queries, phrase_voca);
         return answer;
     }
 
     WordBlock sent_vecs;
     Voca phrase_voca;
-    // VocaIndexMap phrase2idx;
     Param param; 
     VocaInfo rnn;
 };
@@ -216,7 +199,7 @@ int main(){
     auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     SimilaritySearch engine{config};
     timer.here_then_reset("Search engine loaded.");
-    auto input = load_json("/data/groups/uphere/similarity_test/input.json");
+    auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
     auto answer=engine.process_queries(input);
     std::cout << answer.dump(4) << std::endl;
     timer.here_then_reset("Queries answered.");
