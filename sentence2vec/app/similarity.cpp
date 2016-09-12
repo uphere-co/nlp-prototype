@@ -137,7 +137,7 @@ void display_query(Query const &query, std::vector<std::string> const &sents){
         print("\n");
     }
 }
-void display_query(Query const &query, Voca const &voca){
+void display_query(Query const &query, Voca const &voca, json &output){
     auto n_top = 20;
     std::vector<idx_t> idxs(query.distances.size());
     idx_t i{0};
@@ -145,14 +145,20 @@ void display_query(Query const &query, Voca const &voca){
     std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
     print("------------------\n");
-    for(auto it=idxs.begin(); it!=idxs.begin()+n_top; ++it){
+    json answer;
+    auto beg=idxs.begin();
+    for(auto it=beg; it!=beg+n_top; ++it){
         print(voca.getWord(*it).val);
         print(query.distances[*it]);
         print("\n");
+        answer[it-beg] = voca.getWord(*it).val;
     }
+    output[query.query_word]=answer;
 }
 void display_queries(std::vector<Query> const &queries, Voca const &voca){
-    for(auto &query:queries) display_query(query, voca);
+    json output;
+    for(auto &query:queries) display_query(query, voca, output);
+    std::cout << output.dump(4) << std::endl;
 }
 
 void KLdistance(){
@@ -162,7 +168,7 @@ void KLdistance(){
 
 int main(){
     Timer timer{};
-    std::ifstream jsonData("/data/groups/uphere/test.json", std::ifstream::in);
+    std::ifstream jsonData("/data/groups/uphere/similarity_test/input.json", std::ifstream::in);
     json j;
 
     if(jsonData.is_open()) {
