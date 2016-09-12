@@ -158,6 +158,28 @@ rec {
       #doCheck = true;
     };
 
+    json = stdenv.mkDerivation rec {
+      name = "json-${version}";
+      version = "2.0.4";
+      src = fetchgit {
+        url = "https://github.com/nlohmann/json.git";
+        rev = "24c588cd258d7d600e4c46caee18d01092d3a212";
+        sha256 = "14a4dmgw1sz4z3w8nh40yawwx23zls73vfnd2pva0xc27hdb7xq5";
+      };
+      buildInputs = [ cmake ];
+      cmakeFlags = [ ];
+      patches = [ ];
+      enableParallelBuilding = true;
+      #checkPhase = ''
+      #  make test
+      #'';
+      installPhase = ''
+        make install
+        mkdir -p $out/include/json
+        cp -a ../src/* $out/include/json
+      '';
+    };
+
 
     libsvm = stdenv.mkDerivation rec {
       name = "libsvm-${version}";
