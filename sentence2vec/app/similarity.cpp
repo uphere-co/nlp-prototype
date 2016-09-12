@@ -162,7 +162,7 @@ void KLdistance(){
 
 int main(){
     Timer timer{};
-    std::ifstream jsonData("test.json", std::ifstream::in);
+    std::ifstream jsonData("/data/groups/uphere/test.json", std::ifstream::in);
     json j;
 
     if(jsonData.is_open()) {
