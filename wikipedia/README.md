@@ -12,6 +12,7 @@ ghc parsing.hs
 #Read/processing Penn Treebank dataset
 ## Usage 
 `ptb_reader.py` : extract raw text and Chomsky normalized binary tree from Penn treebank dataset
+`filter_short_sents.py` : filter short sentences only from a pair of INFILE and INFILE.tree.
 ```
 nix-shell shell-wiki.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
 #treebank_3/parsed/mrg/wsj/test : directory containing WSJ sections
