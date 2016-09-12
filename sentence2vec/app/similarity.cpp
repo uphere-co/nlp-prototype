@@ -213,11 +213,12 @@ json load_json(std::string filename){
 int main(){
     Timer timer{};
     
-    auto j = load_json("/data/groups/uphere/similarity_test/input.json");
-    SimilaritySearch engine{j};
+    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
+    SimilaritySearch engine{config};
     timer.here_then_reset("Search engine loaded.");
-    auto answer=engine.process_queries(j);
-    timer.here_then_reset("Queries answered.");
+    auto input = load_json("/data/groups/uphere/similarity_test/input.json");
+    auto answer=engine.process_queries(input);
     std::cout << answer.dump(4) << std::endl;
+    timer.here_then_reset("Queries answered.");
     return 0;
 }
