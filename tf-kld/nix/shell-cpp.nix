@@ -8,20 +8,16 @@ stdenv.mkDerivation {
   name = "cpp-env";
   buildInputs = [ boost
                   toolz.openblas_static
-                  #liblapack
                   toolz.armadillo toolz.libpca
-		  toolz.msgsl
-		  toolz.spdlog
+		          toolz.msgsl
+    	          toolz.spdlog
                   gdb
-		  pkgconfig
-		  gfortran #stdenv.cc.libc
-		  gnuplot
-
+		          pkgconfig
+          		  gfortran
                   cmake clang_38 clang-analyzer
                   hdf5 hdf5-cpp zeromq
                   tbb 
                   linuxPackages_4_6.perf
-                  #openblas
                 ];
   shellHook = ''
     export MS_GSL=${toolz.msgsl}
