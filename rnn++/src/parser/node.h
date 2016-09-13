@@ -40,6 +40,7 @@ struct Node{
     value_type score{std::numeric_limits<value_type>::lowest()};
     Node const *left=nullptr;
     Node const *right=nullptr;
+    //TODO:remove parent field.
     Node const *parent=nullptr;
 };
 

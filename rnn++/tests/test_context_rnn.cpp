@@ -66,14 +66,27 @@ struct Param{
 }//namespace rnn
 namespace {
 
-constexpr int len_context = 2;
 struct NodeContext{
+    static constexpr auto len_context = 2;
     using idx_t = std::ptrdiff_t;
     using node_t = tree::Node;
+//    using span_t = util::span_1d<node_t, len_context>;
     using span_t = util::span_dyn<node_t>;
-    NodeContext(span_t nodes, idx_t idx_self)
-    : self(nodes[idx_self]) {}
-    node_t& self;
+//    NodeContext(node_t &&node) : self{std::move(node)} {}
+    NodeContext(node_t const &node, span_t lefts, span_t rights)
+    : self{node},  lefts{lefts}, rights{rights} {}
+//    NodeContext(span_t nodes, idx_t idx_self)
+//    : self{nodes[idx_self]} {
+//        auto n=nodes.length();
+//        auto i = idx_self;
+//        auto left_beg=i>len_context?i-len_context:0;
+//        auto right_end=i+len_context+1<n?i+len_context+1:n;
+//        lefts= nodes.subspan(left_beg,i-left_beg);
+//        rights=nodes.subspan(i+1,right_end-(i+1));
+////        lefts=gsl::as_span(nodes.subspan(left_beg,i-left_beg), util::dim<len_context>());
+////        rights=gsl::as_span(nodes.subspan(i+1,right_end-(i+1)), util::dim<len_context>());
+//    }
+    node_t self;
     span_t lefts;
     span_t rights;
 };
@@ -81,17 +94,18 @@ struct NodeContext{
 struct InializedNodesContext{
     InializedNodesContext(InializedLeafNodes &init_nodes)
     : nodes{init_nodes.val} {
+        auto len_context = NodeContext::len_context;
         auto n=nodes.length();
         for(decltype(n)i=0; i!=n; ++i){
-            NodeContext cnode{nodes, i};
             auto left_beg=i>len_context?i-len_context:0;
             auto right_end=i+len_context+1<n?i+len_context+1:n;
-            cnode.lefts=nodes.subspan(left_beg,i-left_beg);
-            cnode.rights=nodes.subspan(i+1,right_end-(i+1));
+            auto lefts = nodes.subspan(left_beg,i-left_beg);
+            auto rights= nodes.subspan(i+1,right_end-(i+1));
+//            NodeContext cnode{nodes, i};
+            NodeContext cnode{nodes[i], lefts, rights};
             cnodes.push_back(cnode);
         }
     }
-
     util::span_dyn<tree::Node> nodes;
     std::vector<NodeContext> cnodes;
 };
@@ -102,6 +116,31 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
     std::copy(ori.bias.span.cbegin(),   ori.bias.span.cend(),   dest.bias.begin());
     std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
 }
+
+void set_cnode_property(rnn::context_model::Param const &param, NodeContext &node) {
+//    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
+//    node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
+//    node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
+//    node.score= scoring_node(param, node);
+//    node.set_name();
+}
+NodeContext merge_cnode(rnn::context_model::Param const &param,
+                       NodeContext const &left, NodeContext const &right) {
+//    NodeContext new_node{detail::merge_node(left.self, right.self)};
+    NodeContext new_node{left};
+//    detail::set_node_property(param, new_node.self);
+    new_node.lefts=left.lefts;
+    new_node.rights=right.rights;
+    return new_node;
+}
+
+void print_cnode(NodeContext const &cnode) {
+    for (auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
+    fmt::print("__ {} __ ", cnode.self.name.val);
+    for (auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
+    fmt::print("\n");
+}
+
 }//nameless namespace
 
 namespace rnn{
@@ -136,11 +175,12 @@ void test_context_node(){
     InializedNodesContext cnodes{nodes};
 
     for(auto const &cnode: cnodes.cnodes){
-        for(auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
-        fmt::print(", {} , ", cnode.self.name.val);
-        for(auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
-        fmt::print("\n");
+        print_cnode(cnode);
     }
+
+    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
+    auto new_cnode = ::merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
+    print_cnode(new_cnode);
 }
 
 }//namespace rnn::simple_model::test
