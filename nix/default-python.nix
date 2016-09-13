@@ -107,4 +107,25 @@ rec {
      meta = {
      };
    };
+  pyparsing = buildPythonPackage rec {
+    name = "pyparsing-1.5.7";
+    src = pkgs.fetchurl {
+      url = "https://pypi.python.org/packages/6f/2c/47457771c02a8ff0f302b695e094ec309e30452232bd79198ee94fda689f/pyparsing-1.5.7.tar.gz";
+      sha256 = "17z7ws076z977sclj628fvwrp8y9j2rvdjcsq42v129n1gwi8vk4";
+    };
+    propagatedBuildInputs = [ ];
+    meta = {
+    };
+  };
+  cldoc = buildPythonPackage rec {
+    name = "cldoc-1.9";
+    src = pkgs.fetchurl {
+      url = "https://pypi.python.org/packages/38/1e/105f1018c810ca568b7178d26f33427805c3a61199b34fbee7c0529fca9f/cldoc-1.9.tar.gz";
+      sha256 = "0y0fyps8rmnf24b647jaydvhxh68hlh2ni1vj584s1mm970lhdwd";
+    };
+    propagatedBuildInputs = [pyparsing];
+    meta = {
+    };
+  };
+
 }

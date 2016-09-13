@@ -12,10 +12,14 @@ ghc parsing.hs
 #Read/processing Penn Treebank dataset
 ## Usage 
 `ptb_reader.py` : extract raw text and Chomsky normalized binary tree from Penn treebank dataset
+`filter_short_sents.py` : filter short sentences only from a pair of INFILE and INFILE.tree.
 ```
 nix-shell shell-wiki.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
 #treebank_3/parsed/mrg/wsj/test : directory containing WSJ sections
 #wsj.test : output file name. 
-#output : wsj.test and wsj.test.tree
+#output : 
+# - wsj.test and wsj.test.tree : contain all nodes
+# - wsj.test.trim and wsj.test.trim.tree : nodes with '-NONE-' tag is removed.
+
 ipython ptb_reader.py ~/treebank_3/parsed/mrg/wsj/test wsj.test
 ```
