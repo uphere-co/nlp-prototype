@@ -12,32 +12,30 @@ stdenv.mkDerivation {
   name = "cpp-env";
   buildInputs = [ boost
                   toolz.openblas_static
-                  #liblapack
                   toolz.armadillo toolz.libpca
-		  toolz.msgsl
-		  toolz.spdlog
-          toolz.libsvm
-          toolz.liblinear
-          #libsvm
+          		  toolz.msgsl
+           		  toolz.spdlog
+                  toolz.libsvm
+                  toolz.liblinear
                   gdb
-		  pkgconfig
-		  gfortran #stdenv.cc.libc
-		  gnuplot
-          python27Full
-          gtest
-          eigen
-          
+          		  pkgconfig
+           		  gfortran
+          		  gnuplot
+                  python27Full
+                  gtest
+                  eigen
                   cmake clang_38 clang-analyzer
                   hdf5 hdf5-cpp zeromq
                   tbb 
                   linuxPackages_4_6.perf
-                  #openblas
+                  doxygen graphviz
                 ]
                 ++
                 (with python27Packages;
                 [
-                toolz_py.nltk
-                numpy scipy scikitlearn cython
+                  toolz_py.nltk
+                  numpy scipy scikitlearn cython pandas numba
+                  ipython jupyter ipyparallel matplotlib
                 ]);
   shellHook = ''
     export MS_GSL=${toolz.msgsl}
