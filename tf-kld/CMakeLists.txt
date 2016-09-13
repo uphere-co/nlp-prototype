@@ -30,18 +30,6 @@ include_directories($ENV{SPDLOG}/spdlog/include)
 add_executable(main app/main
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
                ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
-               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
+               src/TFKLD)
 target_link_libraries(main hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
-
-add_executable(MSPara app/MSPara
-               ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
-               ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
-               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
-target_link_libraries(MSPara hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
-
-
-add_executable(pair_paraphrase app/pair_paraphrase
-               ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
-               ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
-               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger)
-target_link_libraries(pair_paraphrase hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
