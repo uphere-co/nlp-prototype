@@ -25,6 +25,45 @@ using namespace rnn::simple_model;
 using namespace rnn::simple_model::test;
 
 
+namespace rnn{
+namespace context_model{
+
+struct Param{
+    static constexpr auto dim = rnn::config::word_dim;
+    static constexpr auto d_ext =util::dim<dim>();
+    static constexpr auto len_context = 0;
+    static constexpr auto lc_ext = util::dim<len_context>();
+    using val_t = rnn::type::float_t;
+    using raw_t = std::vector<val_t>;
+    using raw_span_t = util::span_dyn<val_t>;
+    using ws_t  = util::span_3d<val_t, len_context*2+2, dim,dim>;
+    using mats_t= util::span_3d<val_t, len_context, dim,dim>;
+    using mat_t = util::span_2d<val_t, dim,dim>;
+    using vec_t = util::span_1d<val_t, dim>;
+    Param()
+    : _val(dim*dim*(2+2*len_context)+dim*2), span{_val},
+      w_context_left{gsl::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
+      w_left{ gsl::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
+      w_right{gsl::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
+      w_context_right{gsl::as_span(span.subspan((2+len_context)*dim*dim, len_context*dim*dim),lc_ext,d_ext,d_ext)},
+      bias{gsl::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
+      u_score{gsl::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
+    {}
+
+    raw_t serialize() const {return _val;};
+
+    raw_t _val;
+    raw_span_t span;
+    mats_t w_context_left;
+    mat_t w_left;
+    mat_t w_right;
+    mats_t w_context_right;
+    vec_t bias;
+    vec_t u_score;
+};
+
+}//namespace rnn::context_model
+}//namespace rnn
 namespace {
 
 constexpr int len_context = 2;
@@ -57,12 +96,29 @@ struct InializedNodesContext{
     std::vector<NodeContext> cnodes;
 };
 
+void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
+    std::copy(ori.w_left.span.cbegin(), ori.w_left.span.cend(), dest.w_left.begin());
+    std::copy(ori.w_right.span.cbegin(),ori.w_right.span.cend(),dest.w_right.begin());
+    std::copy(ori.bias.span.cbegin(),   ori.bias.span.cend(),   dest.bias.begin());
+    std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
+}
 }//nameless namespace
+
 namespace rnn{
 namespace simple_model{
 namespace test{
 
 void test_context_node(){
+    constexpr auto dim=util::dim<2>();
+    std::vector<float> vec(1000000);
+    util::span_dyn<float> aa{vec};
+    auto bb = gsl::as_span(aa.subspan(0, 2*2*2),util::dim<2>(),dim,dim);
+    util::span_3d<float,1,2,2> cc = gsl::as_span(bb.subspan(0, 1*2*2),util::dim<1>(),dim,dim);
+    rnn::context_model::Param cparam;
+    auto param = randomParam(0.05);
+    param.bias.span *= rnn::type::float_t{0.0};
+    copy(param, cparam);
+
     Voca voca =load_voca("data.h5", "1b.model.voca");
     auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
     std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
@@ -74,7 +130,9 @@ void test_context_node(){
 
     auto words = util::string::split(sentence);
     auto leaf_nodes = construct_nodes_with_reserve(words, idxs);
+    //Nodes are initialized if word vectors are set.
     InializedLeafNodes nodes{std::move(leaf_nodes), word_block};
+    //NodeCcontexts are initailized if context words of initialized nodes are set
     InializedNodesContext cnodes{nodes};
 
     for(auto const &cnode: cnodes.cnodes){
