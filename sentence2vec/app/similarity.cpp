@@ -12,6 +12,8 @@
 
 #include "json/json.hpp"
 
+#include "tbb/task_group.h"
+
 using namespace sent2vec;
 using namespace rnn::wordrep;
 using namespace rnn::simple_model;
@@ -162,7 +164,7 @@ struct SimilaritySearch{
         rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
     {}
 
-    json process_queries(json ask){
+    json process_queries(json ask) const {
         std::vector<Query> queries;
         for(auto const &line : ask["queries"]){        
             auto init_nodes = rnn.initialize_tree(line);
@@ -195,13 +197,24 @@ json load_json(std::string filename){
 
 int main(){
     Timer timer{};
-    
+    tbb::task_group g;
+
     auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     SimilaritySearch engine{config};
     timer.here_then_reset("Search engine loaded.");
     auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
-    auto answer=engine.process_queries(input);
-    std::cout << answer.dump(4) << std::endl;
-    timer.here_then_reset("Queries answered.");
+    auto task=[&]() {
+        auto answer = engine.process_queries(input);
+        //timer.here_then_reset("Queries answered.");
+        std::cout << answer.dump(4) << std::endl;
+    };
+    for(int i=0; i<100; ++i) {
+        g.run(task);
+        std::cerr << i << std::endl;
+    }
+    g.wait();
+//    task();
+
+    timer.here_then_reset("All queries are answered.");
     return 0;
 }
