@@ -1,7 +1,6 @@
 #include <fstream>
 
 #include <zmq.hpp>
-#include "json/json.hpp"
 #include "tbb/task_group.h"
 
 #include "wordrep/sentence2vec.h"
@@ -12,6 +11,7 @@
 #include "utils/parallel.h"
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
+#include "utils/json.h"
 #include "utils/loop_gen.h"
 
 
@@ -21,6 +21,7 @@ using namespace rnn::simple_model;
 using namespace util;
 using namespace util::math;
 using namespace util::io;
+
 using json = nlohmann::json;
 
 namespace{
@@ -33,24 +34,24 @@ constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
 
 struct Query{
     using vec_view_t = WordBlock::span_t;
+    using vec_t = Vector<WordBlock::float_t, 100>;
     Query(std::string word, vec_view_t vec, Voca const &voca)
     :query_word{word}, query_vec{vec}, distances(voca.size())
     {}
     std::string query_word;
-    vec_view_t query_vec;
+    vec_t query_vec;
     std::vector<val_t> distances;
 };
 
 auto process_query_angle=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();
     assert(n==query.distances.size());
-    auto q=query.query_vec;
+    auto q=query.query_vec.span;
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             auto const& v=voca_vecs[i];
             query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
-            // distances2[i]=dot(v,q2)/std::sqrt(dot(v,v)*dot(q2,q2));//sigmoid(v,q2);
         }
     });
 };
@@ -76,7 +77,6 @@ auto process_query_euclidean=[](Query &query, auto const& voca_vecs){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             auto const& v=voca_vecs[i];
             query.distances[i] = -euclidean_distance(v,q);
-            // distances2[i]=dot(v,q2)/std::sqrt(dot(v,v)*dot(q2,q2));//sigmoid(v,q2);
         }
     });
 };
@@ -87,7 +87,7 @@ auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             for(auto &query:queries){
-                auto q=query.query_vec;
+                auto q=query.query_vec.span;
                 auto const& v=voca_vecs[i];
                 query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
             }            
@@ -132,15 +132,17 @@ void collect_query_result(Query const &query, Voca const &voca, json &output){
     for(auto &x:idxs) x=i++;
     std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
-    // print("------------------\n");
+//    print("-----------------------------------------\n");
+//    print(query.query_word);
+//    print("\n------------------\n");
     json answer;    
     answer["query"]=query.query_word;
     json similar_ones;
     auto beg=idxs.begin();
     for(auto it=beg; it!=beg+n_top; ++it){
-        // print(voca.getWord(*it).val);
-        // print(query.distances[*it]);
-        // print("\n");
+//        print(voca.getWord(*it).val);
+//        print(query.distances[*it]);
+//        print("\n");
         similar_ones[it-beg] = voca.getWord(*it).val;
     }
     answer["result"]=similar_ones;
@@ -159,7 +161,7 @@ void KLdistance(){
 
 struct SimilaritySearch{
     SimilaritySearch(json const &config)
-    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], w2vmodel_f_type)},
+    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], util::DataType::dp)},
         phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
         param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
         rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
@@ -176,7 +178,8 @@ struct SimilaritySearch{
                 queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
             }
         }
-        process_queries_innerdot(queries, sent_vecs);
+        //process_queries_innerdot(queries, sent_vecs);
+        process_queries_angle(queries, sent_vecs);
         json answer=collect_queries_results(queries, phrase_voca);
         return answer;
     }
@@ -187,29 +190,22 @@ struct SimilaritySearch{
     VocaInfo rnn;
 };
 
-json load_json(std::string filename){
-    json j;    
-    std::ifstream jsonData(filename, std::ifstream::in);
-    if(jsonData.is_open()) {
-        jsonData >> j;
-    }
-    return j;
-}
-
-int main(){
+int main(int /*argc*/, char** argv){
     Timer timer{};
     tbb::task_group g;
 
     auto config = load_json("/data/groups/uphere/similarity_test/config.json");
+//    auto config = load_json(argv[1]);
     SimilaritySearch engine{config};
+    std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded.");
     auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
-
+//    auto input = load_json(argv[2]);
     const char * protocol = "tcp://*:5555";
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
     socket.bind(protocol);
-    while(1){
+    while(0){
         zmq::message_t request;
         socket.recv (&request);
         auto query = json::parse((const char*)request.data());
