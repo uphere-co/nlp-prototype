@@ -81,10 +81,10 @@ rec {
     inherit openblas_static;
     
     armadillo = stdenv.mkDerivation rec {
-      name = "armadillo-7.200.2";
+      name = "armadillo-7.400.2";
       src = pkgs.fetchurl {
         url = "http://sourceforge.net/projects/arma/files/${name}.tar.xz";
-        sha256 = "1yvx75caks477jqwx5gspi6946jialddk00wdvg6dnh5wdi2xasm";
+        sha256 = "0xmpnqhm9mwr1lssjyarj0cl8b4svbqv6z1xa1dxlwd2ly1srkg4";
       };
       buildInputs = [ cmake ]; 
       propagatedBuildInputs = [ openblas_static liblapack ]; 
@@ -138,6 +138,87 @@ rec {
       #  #mkdir -p $out/spdlog
       #  #cp -a * $out/spdlog
       #'';
+    };
+
+    fmt = stdenv.mkDerivation rec {
+      name = "fmt-${version}";
+      version = "0d25f6f";
+      src = fetchgit {
+        url = "https://github.com/fmtlib/fmt.git";
+	rev = "0d25f6fcbbf0a867b939a5501965ee4462b21ee6";
+	sha256 = "179qcshc7v125lc1cgy1sixczrpjvg4grnqxwjxx8gwm4g46bvm8";
+      };
+      buildInputs = [ cmake ];
+      cmakeFlags = ["-DBUILD_SHARED_LIBS=TRUE"];
+      patches = [ ];
+      enableParallelBuilding = true;
+      checkPhase = ''
+        make test
+      '';
+      #doCheck = true;
+    };
+
+    json = stdenv.mkDerivation rec {
+      name = "json-${version}";
+      version = "2.0.4";
+      src = fetchgit {
+        url = "https://github.com/nlohmann/json.git";
+        rev = "24c588cd258d7d600e4c46caee18d01092d3a212";
+        sha256 = "14a4dmgw1sz4z3w8nh40yawwx23zls73vfnd2pva0xc27hdb7xq5";
+      };
+      buildInputs = [ cmake ];
+      cmakeFlags = [ ];
+      patches = [ ];
+      enableParallelBuilding = true;
+      #checkPhase = ''
+      #  make test
+      #'';
+      installPhase = ''
+        make install
+        mkdir -p $out/include/json
+        cp -a ../src/* $out/include/json
+      '';
+    };
+
+
+    libsvm = stdenv.mkDerivation rec {
+      name = "libsvm-${version}";
+      version = "3.21";
+      src = fetchgit {
+        url = "https://github.com/cjlin1/libsvm.git";
+        rev = "2fdc614c1526970b4412ba1db0cfcf772023ab61";
+        sha256 = "0fp43iwi37iyp2fx7crs8l9xc21rbv7znn31mhjss8kmyv9nr0js";
+      };
+
+      buildPhase = ''
+      make
+      make lib
+      '';
+      installPhase = ''
+      mkdir -p $out/libsvm
+      cp -a * $out/libsvm
+      '';
+
+    };
+
+liblinear = stdenv.mkDerivation rec {
+      name = "liblinear-${version}";
+      version = "2.1";
+      src = fetchgit {
+        url = "https://github.com/cjlin1/liblinear.git";
+        rev = "993963e43c6162c1d016ce77e7205ac24c1548de";
+        sha256 = "1kv4nzzjd0qh7cik1ilry87ypg4dxlcqq5c28ckga3j7l0ky98l7";
+      };
+
+      buildPhase = ''
+      make
+      make lib
+      '';
+      installPhase = ''
+      mkdir -p $out/liblinear
+      cp -a train predict $out/liblinear
+      '';
+
     };
     
       

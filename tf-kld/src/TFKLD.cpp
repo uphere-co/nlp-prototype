@@ -1,19 +1,4 @@
-#include <armadillo>
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <string>
-#include <algorithm>
-#include <map>
-#include <iterator>
-#include <unordered_set>
-#include <utility>
-
-#include "utils/hdf5.h"
-#include "utils/string.h"
-#include "utils/profiling.h"
-
-#include <boost/algorithm/string.hpp>
+#include "src/TFKLD.h"
 
 using namespace util;
 using namespace util::io;
@@ -32,46 +17,9 @@ using namespace tfkld::type;
 
 using hashmap_t = std::map<int64_t, int_t>;
 using vocab_t = std::map<std::string, int64_t>;
-//using vocab_t = std::unordered_set<std::string>;
 using doc_t = std::vector<hashmap_t>;
 
 namespace tfkld{
-
-struct MSParaFile{
-    MSParaFile(std::string train_file) {
-        val.open(train_file, std::ifstream::in);
-
-        if(val.fail()) {
-            std::cout << "ERROR: training data file not found!\n";
-            exit(1);
-        }
-
-    }
-
-    void setBegin() {
-        val.clear();
-        val.seekg(0);
-    }
-    std::ifstream val;
-};
-    
-struct SpValue{
-    SpValue() {
-        row = 0;
-        col = 0;
-        val = 0.0;
-    }
-
-    void reset() {
-        row = 0;
-        col = 0;
-        val = 0.0;
-    }
-    
-    int64_t row;
-    int64_t col;
-    float_t val;
-};
 
 vocab_t LearnVocab(MSParaFile &file) {
   std::string line;
@@ -88,16 +36,7 @@ vocab_t LearnVocab(MSParaFile &file) {
     std::istringstream iss{line};
     boost::split(items, line, boost::is_any_of("\t"));
 
-    auto words = util::string::split(items[3]);
-    for(auto x : words) {
-        auto isin = vocab.find(x);
-        if(isin == vocab.end()) {
-            vocab[x] = word_idx;
-            word_idx++;
-        }
-    }
-
-    words = util::string::split(items[4]);
+    auto words = util::string::split(items[3]+" "+items[4]);
     for(auto x : words) {
         auto isin = vocab.find(x);
         if(isin == vocab.end()) {
@@ -128,12 +67,10 @@ doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
         
         auto words = util::string::split(items[3]);
         for(auto x : words) {
-            auto word_idx = vocab.find(x) -> second;
-            auto isin = doc.find(word_idx);
-            if(isin != doc.end()) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
                 doc[word_idx] += 1;
-            } else {
-                doc[word_idx] = 1;
             }
         }
         docs.push_back(doc);
@@ -141,12 +78,10 @@ doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
 
         words = util::string::split(items[4]);
         for(auto x : words) {
-            auto word_idx = vocab.find(x) -> second;
-            auto isin = doc.find(word_idx);
-            if(isin != doc.end()) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
                 doc[word_idx] += 1;
-            } else {
-                doc[word_idx] = 1;
             }
         }
         docs.push_back(doc);
@@ -182,7 +117,19 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
     return tag;
 }
 
+vocab_t ReadVocab(std::ifstream &vocab_file) {
+    std::string word;
+    int64_t index;
+    vocab_t vocab;
+    
+    while(vocab_file >> word >> index) {
+        vocab[word] = index;
+    }
 
+    return vocab;
+}
+
+    
 void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {    
     SpValue value;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
@@ -201,70 +148,90 @@ float_t val_idf(int64_t D, int_t Dt) {
     return log(D/(float_t)Dt);
 }
     
-void MakeTFIDF(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFIDF(std::vector<float_t> &idf, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+
     hashmap_t df;
     int64_t D = docs.size();
     
-    for(auto x : values) {
-        auto isin = df.find(x.row);
-        if(isin != df.end()) {
-            df[x.row] += 1;
-        } else {
-            df[x.row] = 1;
-        }
-    }
+    for(auto x : values) df[x.row] += 1;
 
-    std::vector<float_t> idf;
-    for(auto x : df) {
-        idf.push_back(val_idf(D,x.second));
+    if(df.size() != vocab.size()) {
+        std::cout << "Sanity check failed!\n";
+        exit(1);
     }
+    
+    for(auto x : df) idf.push_back(val_idf(D,x.second));
 
-    for(auto &x : values) {
-        x.val *= idf[x.row];
-    }
+    for(auto &x : values) x.val *= idf[x.row];
 
 }
 
-void MakeTFKLD(std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFIDF(std::vector<float_t> &idf, std::vector<SpValue> &values) {
+
+    for(auto &x : values) x.val *= idf[x.row];
+
+}
+
+
+
+void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
 
     float_t ep=0.05;
-    float_t count_p=ep;
-    float_t count_q=ep;
     float_t p=ep;
     float_t q=ep;
-
+    float_t np=ep;
+    float_t nq=ep;
+    
     float_t div;
-    std::vector<float_t> kld;
     for(int64_t a = 0; a < vocab.size(); ++a) {
         for(int i = 0; i < tag.size(); ++i) {
-
+            
             auto isin1 = docs[i*2].find(a);
             auto isin2 = docs[i*2+1].find(a);
 
             if(tag[i] == "-1") {
-                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) q++;
-                count_q++;
+                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                    q++;
+                }
+                if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
+                    nq++;
+                }
+                if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                    nq++;
+                }
             } else { // tag[i] == 1;
-                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) p++;
-                count_p++;
+                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                    p++;
+                }
+                if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
+                    np++;
+                }
+                if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                    np++;
+                }
             }
-           
         }
-        
-        div = (p/count_p)*log((p/count_p)/(q/count_q)) + (1-p/count_p)*log((1-p/count_p)/(1-q/count_q));        
+
+        div = (p/(p+np))*log((p/(p+np))/(q/(q+nq)) + 1e-7) + (np/(p+np))*log((np/(p+np))/(nq/(q+nq)) + 1e-7);        
         kld.push_back(div);
-        count_p = ep;
-        count_q = ep;
         p = ep;
         q = ep;
+        np = ep;
+        nq = ep;
+        
     }
 
-    for(auto &x : values) {
-        x.val *= kld[x.row];
-    }
+    for(auto &x : values) x.val *= kld[x.row];
+        
 }
 
+void MakeTFKLD(std::vector<float_t> &kld, std::vector<SpValue> &values) {
 
+    for(auto &x : values) x.val *= kld[x.row];
+        
+}
+
+    
 void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
 
     
@@ -281,9 +248,7 @@ void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab,
 }
     
 void PrintVocab(vocab_t &vocab){
-    for(auto x : vocab){
-        std::cout << x.first << std::endl;
-    }
+    for(auto x : vocab) std::cout << x.first << std::endl;
 }
 
 std::vector<std::vector<float_t> > makeSimMat(arma::mat const &V) {
@@ -309,73 +274,44 @@ std::vector<std::vector<float_t> > makeSimMat(arma::mat const &V) {
     return result;
 }
 
+
+void normalizeSimMat(std::vector<std::vector<float_t> > &svec) {
+
+    float_t sum = 0;
+    
+    for(auto &x : svec) {
+        for(auto &y : x) {
+            sum += y*y;
+        }
+
+        for(auto &y : x) {
+            y = y / sqrt(sum);
+        }
+
+        sum = 0;
+    }
+}
+
+auto getVocabWord(vocab_t &vocab) {
+    std::vector<std::string> result;
+    for(auto x : vocab) result.push_back(x.first);
+    return result;
+}
+
+auto getVocabIndex(vocab_t &vocab) {
+    std::vector<int64_t> result;
+    for(auto x : vocab) result.push_back(x.second);
+    return result;
+}
+
+auto Concat(std::vector<std::string> const &words){
+    std::vector<char> vec;
+    for(auto const &x:words){
+        std::copy(x.cbegin(),x.cend(),std::back_inserter(vec));
+        vec.push_back('\0');
+    }
+    return vec;
+}
+
     
 }//namespace tfkld
-
-
-
-
-
-int main(){
-    
-    using namespace tfkld;
-    using namespace arma;
-
-    auto timer = Timer{};
-    
-    std::string fin_name = "msr_paraphrase_train.txt";
-    MSParaFile fin{fin_name};
-
-    auto vocab = LearnVocab(fin);
-    timer.here_then_reset("\nConstructed Vocabulary.\n");
-    fin.setBegin();
-    auto docs = LearnPara(vocab,fin);
-    timer.here_then_reset("\nConstructed Paragraphs.\n");
-    fin.setBegin();
-    auto tag = LearnTag(fin);
-    timer.here_then_reset("\nConstructed Tag.\n");
-    
-    int64_t n_rows, n_cols;
-    n_rows = vocab.size();
-    n_cols = docs.size();
-
-    sp_mat inMat(n_rows, n_cols);
-
-    std::vector<SpValue> values;
-
-    int64_t count = 0;
-
-    fillValue(values, count, vocab, docs);
-    //MakeTFIDF(values, count, vocab, docs);
-    MakeTFKLD(tag, values, count, vocab, docs);
-    fillMat(values, count, vocab, docs, inMat);
-
-    timer.here_then_reset("Filled the Matrix.\n");
-    
-    mat U;
-    vec s;
-    mat V;
-
-    svds(U,s,V,inMat,100);
-
-    auto svec = makeSimMat(V);
-
-    std::ofstream fout{"train_KLD.dat"};
-
-    count = 0;
-    int lcount = 1;
-    for(auto x : svec) {
-        fout << tag[count] << " ";
-        for(auto y : x) {
-            fout << lcount << ":" << y << " ";
-            lcount++;
-        }
-        fout << "\n";
-        lcount = 1;
-        count++;
-    }
-
-
-    //  MakeTFKLD(tag, values, count, vocab, docs);
-    return 0;
-}
