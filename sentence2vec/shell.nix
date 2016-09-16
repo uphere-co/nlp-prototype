@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, rnnpp ? import ../rnn++ {}
+}:
 
 with pkgs;
 
@@ -41,7 +43,8 @@ stdenv.mkDerivation {
                    toolz_cpp.fmt
                    toolz_cpp.json
                    doxygen graphviz
-                   libcgroup 
+                   libcgroup
+		   rnnpp
                  ];
   shellHook = ''
      EDITOR=vim
