@@ -1,6 +1,6 @@
 #include <fstream>
 
-#include <zmq.hpp>
+#include "zmq.hpp"
 #include "tbb/task_group.h"
 
 #include "wordrep/sentence2vec.h"
@@ -132,17 +132,17 @@ void collect_query_result(Query const &query, Voca const &voca, json &output){
     for(auto &x:idxs) x=i++;
     std::partial_sort(idxs.begin(),idxs.begin()+n_top,idxs.end(),
                       [&](auto i, auto j){return query.distances[i]>query.distances[j];});
-//    print("-----------------------------------------\n");
-//    print(query.query_word);
-//    print("\n------------------\n");
+    print("-----------------------------------------\n");
+    print(query.query_word);
+    print("\n------------------\n");
     json answer;    
     answer["query"]=query.query_word;
     json similar_ones;
     auto beg=idxs.begin();
     for(auto it=beg; it!=beg+n_top; ++it){
-//        print(voca.getWord(*it).val);
-//        print(query.distances[*it]);
-//        print("\n");
+        print(voca.getWord(*it).val);
+        print(query.distances[*it]);
+        print("\n");
         similar_ones[it-beg] = voca.getWord(*it).val;
     }
     answer["result"]=similar_ones;
@@ -194,13 +194,12 @@ int main(int /*argc*/, char** argv){
     Timer timer{};
     tbb::task_group g;
 
-    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
-//    auto config = load_json(argv[1]);
+//    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
+    auto config = load_json(argv[1]);
     SimilaritySearch engine{config};
     std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded.");
-    auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
-//    auto input = load_json(argv[2]);
+
     const char * protocol = "tcp://*:5555";
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
@@ -211,20 +210,18 @@ int main(int /*argc*/, char** argv){
         auto query = json::parse((const char*)request.data());
         std::cerr << query.dump(4) << std::endl;
 
-        auto task=[&,query]() {
-            auto answer = engine.process_queries(query);
-            timer.here_then_reset("Query is answered.");
-            std::string aa{answer.dump(4)};
-            zmq::message_t reply(aa.size());
-            std::cerr<<aa.size()<<std::endl;
-            std::cerr<<answer.size()<<std::endl;
-            std::memcpy ((void *) reply.data (), (void*)aa.data(), aa.size());
-            socket.send (reply);
-        };
-        g.run(task);
-        g.wait();
+        auto answer = engine.process_queries(query);
+        timer.here_then_reset("Query is answered.");
+        std::string aa{answer.dump(4)};
+        zmq::message_t reply(aa.size());
+        std::cerr<<aa.size()<<std::endl;
+        std::cerr<<answer.size()<<std::endl;
+        std::memcpy ((void *) reply.data (), (void*)aa.data(), aa.size());
+        socket.send (reply);
     }
 
+//    auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
+    auto input = load_json(argv[2]);
     auto task=[&]() {
         auto answer = engine.process_queries(input);
         timer.here_then_reset("Query is answered.");
