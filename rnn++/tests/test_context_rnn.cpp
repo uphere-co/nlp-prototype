@@ -71,9 +71,7 @@ struct Context{
     }
 
     void set_context(util::span_dyn<node_t> lefts,
-                     util::span_1d<node_t,1> self_node,
                      util::span_dyn<node_t> rights){
-        self = &self_node[0];
         auto m = lefts.length();
         for(decltype(m)i=0; i<m; ++i) left_ctxs[i]  = &lefts[i];
         auto n = rights.length();
@@ -84,7 +82,6 @@ struct Context{
     util::span_1d <val_t,  3*WORD_DIM> vspan;
     std::array<node_t const*, LEN_CTX> left_ctxs;
     std::array<node_t const*, LEN_CTX> right_ctxs;
-    node_t* self;
     util::cstring_span<> name;
     vec_t vec;
     vec_t vec_wsum;
@@ -125,7 +122,7 @@ struct InitializedNodes{
             auto lefts = nodes.subspan(left_beg,i-left_beg);
             auto rights= nodes.subspan(i+1,right_end-(i+1));
             if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
-            nodes[i].prop.set_context(lefts, nodes[i], rights);
+            nodes[i].prop.set_context(lefts, rights);
             if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
         }
     }
@@ -204,27 +201,33 @@ auto accumulate_context_weights=[](int64_t i, auto &word_vec,
     }
 };
 
-void weighted_sum_word_pair(Param const &param, Node &node) {
+void weighted_sum_word_pair(Param const &param, Node::prop_t &self,
+                            Node::prop_t const &left, Node::prop_t const &right) {
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
-    vecloop_void(weighted_sum, node.prop.vec,
+    vecloop_void(weighted_sum, self.vec,
                  param.w_left, param.w_right, param.bias,
-                 node.left->prop.vec, node.right->prop.vec);
-    vecloop_void(accumulate_context_weights, node.prop.vec,
+                 left.vec, right.vec);
+    vecloop_void(accumulate_context_weights, self.vec,
                  param.w_context_left, param.w_context_right,
-                 node.prop.left_ctxs, node.prop.right_ctxs);
+                 self.left_ctxs, self.right_ctxs);
 }
-Node compose_node(Param const &param,
-                Node const &left, Node const &right) {
-    Node new_node = Node::blank_node();
-    new_node.left=&left;
-    new_node.right=&right;
-    new_node.prop.left_ctxs=left.prop.left_ctxs;
-    new_node.prop.right_ctxs=right.prop.right_ctxs;
-
-    weighted_sum_word_pair(param, new_node);
+Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
+    Node::prop_t self{};
+    self.left_ctxs = left.left_ctxs;
+    self.right_ctxs = right.right_ctxs;
+    weighted_sum_word_pair(param, self, left, right);
 //    new_node.prop.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
 //    new_node.prop.score= scoring_node(param, node);
 //    node.set_name();
+
+    return self;
+}
+Node compose_node(Param const &param, Node const &left, Node const &right) {
+    auto prop = compose_node_prop(param, left.prop, right.prop);
+    Node new_node{prop};
+    new_node.left=&left;
+    new_node.right=&right;
+
     return new_node;
 }
 
