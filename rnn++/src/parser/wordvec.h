@@ -117,12 +117,12 @@ WordVectors& operator +=(WordVectors& out, const WordVectors& x);
 WordVectors operator +(const WordVectors& x, const WordVectors& y);
 
 template<typename T>
-void write_to_disk(T const &new_words, std::string voca_name){
+void write_to_disk(T const &new_words, std::string h5store_name, std::string voca_name_prefix){
     using namespace util::io;
-    H5file h5store{H5name{"phrases.h5"}, hdf5::FileMode::replace};
+    H5file h5store{H5name{h5store_name}, hdf5::FileMode::replace};
     // h5store.writeRawData(H5name{voca_name}, raw_data);
-    h5store.writeRawData(H5name{voca_name+".vecs"}, new_words.serialize_vectors());
-    h5store.writeRawData(H5name{voca_name+".words"}, new_words.serialize_words());
+    h5store.writeRawData(H5name{voca_name_prefix+".vecs"}, new_words.serialize_vectors());
+    h5store.writeRawData(H5name{voca_name_prefix+".words"}, new_words.serialize_words());
 }
 
 }//namespace rnn::wordrep

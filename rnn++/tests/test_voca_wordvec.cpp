@@ -46,7 +46,7 @@ void test_collecting_new_voca(){
     WordBlock new_vecs{new_words.serialize_vectors()};
     Voca new_voca{new_words.serialize_words()};
     auto new_word2idx = new_voca.indexing();
-    write_to_disk(new_words, "test");
+    write_to_disk(new_words, "phrases.h5", "test");
     print_words(new_voca);
 
     //Test if "the" was over-written in addition operation.
