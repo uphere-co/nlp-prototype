@@ -201,24 +201,37 @@ auto accumulate_context_weights=[](int64_t i, auto &word_vec,
     }
 };
 
+auto activation_fun=[](int64_t i, auto &out, auto const &x) {
+    out[i] = util::math::Fun<rnn::config::activation>(x[i]);
+};
+auto activation_dfun=[](int64_t i, auto &out, auto const &x) {
+    out[i] =  util::math::Fun<rnn::config::activation_df>(x[i]);
+};
+
 void weighted_sum_word_pair(Param const &param, Node::prop_t &self,
                             Node::prop_t const &left, Node::prop_t const &right) {
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
-    vecloop_void(weighted_sum, self.vec,
+    vecloop_void(weighted_sum, self.vec_wsum,
                  param.w_left, param.w_right, param.bias,
                  left.vec, right.vec);
-    vecloop_void(accumulate_context_weights, self.vec,
+    vecloop_void(accumulate_context_weights, self.vec_wsum,
                  param.w_context_left, param.w_context_right,
                  self.left_ctxs, self.right_ctxs);
 }
+
+Param::val_t scoring_node(Param const &param, Node::prop_t const &node) {
+    using namespace util::math;
+    return dot(param.u_score, node.vec) / norm_L2(param.u_score);
+}
+
 Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
     Node::prop_t self{};
     self.left_ctxs = left.left_ctxs;
     self.right_ctxs = right.right_ctxs;
     weighted_sum_word_pair(param, self, left, right);
-//    new_node.prop.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
-//    new_node.prop.score= scoring_node(param, node);
-//    node.set_name();
+    auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
+    vecloop_void(activation_fun, self.vec, self.vec_wsum);
+    self.score= scoring_node(param, self);
 
     return self;
 }
