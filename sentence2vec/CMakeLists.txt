@@ -30,9 +30,9 @@ add_executable(trainer app/trainer wordrep/sentence2vec
                ${parser_files} ${util_files})
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
-add_executable(similarity app/similarity wordrep/sentence2vec
+add_executable(query_similarity app/query_similarity wordrep/sentence2vec
                ${parser_files} ${util_files})
-target_link_libraries(similarity hdf5_cpp hdf5_hl_cpp tbb zmq)
+target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb zmq similarity)
 
 add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
                ${parser_files} ${util_files})
