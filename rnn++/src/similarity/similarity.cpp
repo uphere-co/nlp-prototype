@@ -24,25 +24,6 @@ using namespace util::io;
 
 using json = nlohmann::json;
 
-namespace{
-using val_t = double;
-using idx_t = std::size_t;
-//constexpr int word_dim=100; //already declared in sentence2vec.h
-constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
-}//nameless namespace
-
-struct Query{
-    using vec_view_t = WordBlock::span_t;
-    using vec_t = Vector<WordBlock::float_t, 100>;
-    Query(std::string word, vec_view_t vec, Voca const &voca)
-    :query_word{word}, query_vec{vec}, distances(voca.size())
-    {}
-    std::string query_word;
-    vec_t query_vec;
-    std::vector<val_t> distances;
-};
-
-
 
 auto process_query_angle=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();
@@ -149,6 +130,7 @@ void collect_query_result(Query const &query, Voca const &voca, json &output){
     answer["result"]=similar_ones;
     output[output.size()]=answer;
 }
+
 json collect_queries_results(std::vector<Query> const &queries, Voca const &voca){
     json output;
     for(auto &query:queries) collect_query_result(query, voca, output);
@@ -160,33 +142,19 @@ void KLdistance(){
     VecLoop_void<val_t,word_dim> vecloop_void{};
 }
 
-struct SimilaritySearch{
-    SimilaritySearch(json const &config)
-    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], util::DataType::dp)},
-        phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
-        param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
-        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
-    {}
-
-    json process_queries(json ask) const {
-        std::vector<Query> queries;
-        for(auto const &line : ask["queries"]){        
-            auto init_nodes = rnn.initialize_tree(line);
-            DPtable table=dp_merging(param, init_nodes);
-            auto phrases = table.get_phrases();
-            for(auto const &phrase:phrases){
-                auto parsed_tree_str = phrase->name.val;
-                queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
-            }
-        }
-        //process_queries_innerdot(queries, sent_vecs);
-        process_queries_angle(queries, sent_vecs);
-        json answer=collect_queries_results(queries, phrase_voca);
-        return answer;
+json SimilaritySearch::process_queries(json ask) const {
+    std::vector<Query> queries;
+    for(auto const &line : ask["queries"]){        
+        auto init_nodes = rnn.initialize_tree(line);
+	DPtable table=dp_merging(param, init_nodes);
+	auto phrases = table.get_phrases();
+	for(auto const &phrase:phrases){
+	    auto parsed_tree_str = phrase->name.val;
+	    queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
+	}
     }
-
-    WordBlock sent_vecs;
-    Voca phrase_voca;
-    Param param; 
-    VocaInfo rnn;
-};
+    //process_queries_innerdot(queries, sent_vecs);
+    process_queries_angle(queries, sent_vecs);
+    json answer=collect_queries_results(queries, phrase_voca);
+    return answer;
+}
