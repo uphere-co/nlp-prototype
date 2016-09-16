@@ -15,39 +15,159 @@
 #include "parser/optimizers.h"
 #include "parser/parser.h"
 
-using namespace util;
 using namespace util::io;
 using namespace util::math;
 using namespace rnn::wordrep;
 using namespace rnn::config;
 using namespace rnn::simple_model::optimizer;
 using namespace rnn::simple_model;
-using namespace rnn::simple_model::test;
 
+namespace{
+
+template<typename T>
+struct Node{
+    using prop_t = T;
+    Node(T &&property) : prop{std::move(property)} {}
+    Node(T const &property) : prop{property} {}
+
+    static auto blank_node(){}
+    bool is_combined() const {return (left!=nullptr)&(right!=nullptr);}
+    bool is_leaf() const {return (left==nullptr)&(right==nullptr);}
+
+    Node const *left=nullptr;
+    Node const *right=nullptr;
+
+    T prop;
+};
+
+
+}//nameless namespace
 
 namespace rnn{
 namespace context_model{
 
+template<int LEN_CTX>
+struct Context{
+    using node_t = Node<Context>;
+    static constexpr auto len_context = LEN_CTX;
+
+    Context(util::cstring_span<> name)
+    : name{name} {
+        for(auto &x:left_ctxs) x=nullptr;
+        for(auto &x:right_ctxs) x=nullptr;
+    }
+
+    void set_context(util::span_dyn<node_t> lefts,
+                     util::span_1d<node_t,1> self_node,
+                     util::span_dyn<node_t> rights){
+        self = &self_node[0];
+        auto m = lefts.length();
+        for(decltype(m)i=0; i<m; ++i) left_ctxs[i]  = &lefts[i];
+        auto n = rights.length();
+        for(decltype(n)i=0; i<n; ++i) right_ctxs[i] = &rights[i];
+    }
+
+    util::cstring_span<> name;
+    node_t* self;
+    std::array<node_t const*, LEN_CTX> left_ctxs;
+    std::array<node_t const*, LEN_CTX> right_ctxs;
+};
+
+using Node = ::Node<Context<2>>;
+
+
+struct UninializedLeafNodes{
+    UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
+    std::vector<Node> val;
+};
+auto construct_nodes_with_reserve=[](auto const &voca, auto const &idxs){
+    std::vector<Node> nodes;
+    nodes.reserve(idxs.size()*2-1);
+    for(auto idx : idxs){
+        Node::prop_t prop{voca.getWordSpan(idx)};
+        Node node{std::move(prop)};
+        nodes.push_back(node);
+    }
+    return UninializedLeafNodes{std::move(nodes)};;
+};
+
+
+struct InializedNodes{
+    InializedNodes(UninializedLeafNodes &&leafs)
+            : val{std::move(leafs.val)}, nodes{val} {
+        auto len_context = Node::prop_t::len_context;
+//        auto nodes=util::span_dyn<Node>{val};
+        auto n=nodes.length();
+        assert(&nodes[0]==&val[0]);
+        for(decltype(n)i=0; i!=n; ++i){
+            auto left_beg=i>len_context?i-len_context:0;
+            auto right_end=i+len_context+1<n?i+len_context+1:n;
+            auto lefts = nodes.subspan(left_beg,i-left_beg);
+            auto rights= nodes.subspan(i+1,right_end-(i+1));
+            if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
+            nodes[i].prop.set_context(lefts, nodes[i], rights);
+            if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
+        }
+    }
+    std::vector<Node> val;
+    util::span_dyn<Node> nodes;
+};
+
+//
+//void set_cnode_property(rnn::context_model::Param const &param, NodeContext &node) {
+////    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
+////    node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
+////    node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
+////    node.score= scoring_node(param, node);
+////    node.set_name();
+//}
+//NodeContext merge_cnode(rnn::context_model::Param const &param,
+//                        NodeContext const &left, NodeContext const &right) {
+////    NodeContext new_node{detail::merge_node(left.self, right.self)};
+//    NodeContext new_node{left};
+////    detail::set_node_property(param, new_node.self);
+//    new_node.lefts=left.lefts;
+//    new_node.rights=right.rights;
+//    return new_node;
+//}
+//
+void print(util::cstring_span<> word){
+    for (auto e:word)
+        fmt::print("{}", e);
+    fmt::print(" ");
+}
+void print_cnode(Node const &cnode) {
+    for(auto left : cnode.prop.left_ctxs) if(left!= nullptr) print(left->prop.name);
+    fmt::print(" __ ");
+    print(cnode.prop.name);
+    fmt::print(" __ ");
+    for(auto right : cnode.prop.right_ctxs) if(right!= nullptr) print(right->prop.name);
+    fmt::print("\n");
+//    for (auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
+//    fmt::print("__ {} __ ", cnode.self.name.val);
+//    for (auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
+//    fmt::print("\n");
+}
 struct Param{
     static constexpr auto dim = rnn::config::word_dim;
+    static constexpr auto len_context = 2;
     static constexpr auto d_ext =util::dim<dim>();
-    static constexpr auto len_context = 0;
     static constexpr auto lc_ext = util::dim<len_context>();
+
     using val_t = rnn::type::float_t;
     using raw_t = std::vector<val_t>;
     using raw_span_t = util::span_dyn<val_t>;
-    using ws_t  = util::span_3d<val_t, len_context*2+2, dim,dim>;
     using mats_t= util::span_3d<val_t, len_context, dim,dim>;
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
     Param()
     : _val(dim*dim*(2+2*len_context)+dim*2), span{_val},
-      w_context_left{gsl::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
-      w_left{ gsl::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
-      w_right{gsl::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
-      w_context_right{gsl::as_span(span.subspan((2+len_context)*dim*dim, len_context*dim*dim),lc_ext,d_ext,d_ext)},
-      bias{gsl::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
-      u_score{gsl::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
+      w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
+      w_left{ util::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
+      w_right{util::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
+      w_context_right{util::as_span(span.subspan((2+len_context)*dim*dim, len_context*dim*dim),lc_ext,d_ext,d_ext)},
+      bias{util::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
+      u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
     {}
 
     raw_t serialize() const {return _val;};
@@ -62,53 +182,10 @@ struct Param{
     vec_t u_score;
 };
 
+
 }//namespace rnn::context_model
 }//namespace rnn
 namespace {
-
-struct NodeContext{
-    static constexpr auto len_context = 2;
-    using idx_t = std::ptrdiff_t;
-    using node_t = tree::Node;
-//    using span_t = util::span_1d<node_t, len_context>;
-    using span_t = util::span_dyn<node_t>;
-//    NodeContext(node_t &&node) : self{std::move(node)} {}
-    NodeContext(node_t const &node, span_t lefts, span_t rights)
-    : self{node},  lefts{lefts}, rights{rights} {}
-//    NodeContext(span_t nodes, idx_t idx_self)
-//    : self{nodes[idx_self]} {
-//        auto n=nodes.length();
-//        auto i = idx_self;
-//        auto left_beg=i>len_context?i-len_context:0;
-//        auto right_end=i+len_context+1<n?i+len_context+1:n;
-//        lefts= nodes.subspan(left_beg,i-left_beg);
-//        rights=nodes.subspan(i+1,right_end-(i+1));
-////        lefts=gsl::as_span(nodes.subspan(left_beg,i-left_beg), util::dim<len_context>());
-////        rights=gsl::as_span(nodes.subspan(i+1,right_end-(i+1)), util::dim<len_context>());
-//    }
-    node_t self;
-    span_t lefts;
-    span_t rights;
-};
-
-struct InializedNodesContext{
-    InializedNodesContext(InializedLeafNodes &init_nodes)
-    : nodes{init_nodes.val} {
-        auto len_context = NodeContext::len_context;
-        auto n=nodes.length();
-        for(decltype(n)i=0; i!=n; ++i){
-            auto left_beg=i>len_context?i-len_context:0;
-            auto right_end=i+len_context+1<n?i+len_context+1:n;
-            auto lefts = nodes.subspan(left_beg,i-left_beg);
-            auto rights= nodes.subspan(i+1,right_end-(i+1));
-//            NodeContext cnode{nodes, i};
-            NodeContext cnode{nodes[i], lefts, rights};
-            cnodes.push_back(cnode);
-        }
-    }
-    util::span_dyn<tree::Node> nodes;
-    std::vector<NodeContext> cnodes;
-};
 
 void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
     std::copy(ori.w_left.span.cbegin(), ori.w_left.span.cend(), dest.w_left.begin());
@@ -117,42 +194,18 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
     std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
 }
 
-void set_cnode_property(rnn::context_model::Param const &param, NodeContext &node) {
-//    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
-//    node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
-//    node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
-//    node.score= scoring_node(param, node);
-//    node.set_name();
-}
-NodeContext merge_cnode(rnn::context_model::Param const &param,
-                       NodeContext const &left, NodeContext const &right) {
-//    NodeContext new_node{detail::merge_node(left.self, right.self)};
-    NodeContext new_node{left};
-//    detail::set_node_property(param, new_node.self);
-    new_node.lefts=left.lefts;
-    new_node.rights=right.rights;
-    return new_node;
-}
-
-void print_cnode(NodeContext const &cnode) {
-    for (auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
-    fmt::print("__ {} __ ", cnode.self.name.val);
-    for (auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
-    fmt::print("\n");
-}
-
 }//nameless namespace
 
-namespace rnn{
-namespace simple_model{
-namespace test{
 
+namespace rnn{
+namespace context_model{
+namespace test{
+Word operator"" _w (const char* word, size_t /*length*/)
+{
+    return Word{word};
+}
 void test_context_node(){
-    constexpr auto dim=util::dim<2>();
-    std::vector<float> vec(1000000);
-    util::span_dyn<float> aa{vec};
-    auto bb = gsl::as_span(aa.subspan(0, 2*2*2),util::dim<2>(),dim,dim);
-    util::span_3d<float,1,2,2> cc = gsl::as_span(bb.subspan(0, 1*2*2),util::dim<1>(),dim,dim);
+    using namespace rnn::simple_model;
     rnn::context_model::Param cparam;
     auto param = randomParam(0.05);
     param.bias.span *= rnn::type::float_t{0.0};
@@ -163,26 +216,25 @@ void test_context_node(){
     std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
-    auto sentence = u8"A symbol of British pound is £ .";
+    std::string sentence = u8"A of British pound is £ .";
     auto idxs = word2idx.getIndex(sentence);
     auto word_block = voca_vecs.getWordVec(idxs);
 
-    auto words = util::string::split(sentence);
-    auto leaf_nodes = construct_nodes_with_reserve(words, idxs);
-    //Nodes are initialized if word vectors are set.
-    InializedLeafNodes nodes{std::move(leaf_nodes), word_block};
-    //NodeCcontexts are initailized if context words of initialized nodes are set
-    InializedNodesContext cnodes{nodes};
+    auto leaf_nodes = construct_nodes_with_reserve(voca, idxs);
+    auto nodes = InializedNodes(std::move(leaf_nodes));
+    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+//    print_cnode(*nodes.val[0].prop.left_ctxs[0]);
+    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+    for(auto& node: nodes.val)
+        print_cnode(node);
+    fmt::print("\n");
 
-    for(auto const &cnode: cnodes.cnodes){
-        print_cnode(cnode);
-    }
-
-    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
-    auto new_cnode = ::merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
-    print_cnode(new_cnode);
+//    auto word_views = util::string::unpack_tokenized_sentence(sentence);
+//    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
+//    auto new_cnode = merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
+//    print_cnode(new_cnode);
 }
 
-}//namespace rnn::simple_model::test
-}//namespace rnn::simple_model
+}//namespace rnn::context_model::test
+}//namespace rnn::context_model
 }//namespace rnn

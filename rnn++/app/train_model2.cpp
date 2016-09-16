@@ -24,7 +24,7 @@ using namespace rnn::wordrep;
 using namespace rnn::config;
 using namespace rnn::simple_model::optimizer;
 using namespace rnn::simple_model;
-using namespace rnn::simple_model::test;
+using namespace rnn::context_model::test;
 
 namespace rnn_t = rnn::type;
 
