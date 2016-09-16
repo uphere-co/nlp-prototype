@@ -30,7 +30,7 @@ struct Node{
     Node(T &&property) : prop{std::move(property)} {}
     Node(T const &property) : prop{property} {}
 
-    static auto blank_node(){}
+    static auto blank_node(){return Node{T{}};}
     bool is_combined() const {return (left!=nullptr)&(right!=nullptr);}
     bool is_leaf() const {return (left==nullptr)&(right==nullptr);}
 
@@ -50,11 +50,17 @@ template<typename FLOAT, int WORD_DIM, int LEN_CTX>
 struct Context{
     using val_t = FLOAT;
     using node_t = Node<Context>;
-    using vec_span_t = util::span_1d<val_t,WORD_DIM>;
+    using vec_t = util::span_1d<val_t,WORD_DIM>;
     static constexpr auto len_context = LEN_CTX;
+    static constexpr auto word_dim = WORD_DIM;
 
-    Context(util::cstring_span<> name, vec_span_t word_vec)
-    : name{name}, vecs(3*WORD_DIM), vspan{vecs},
+    Context()
+    : vecs(3*WORD_DIM), vspan{vecs}, name{},
+      vec{       vspan.subspan(0,          WORD_DIM)},
+      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
+      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {}
+    Context(util::cstring_span<> name, vec_t word_vec)
+    : vecs(3*WORD_DIM), vspan{vecs}, name{name},
       vec{       vspan.subspan(0,          WORD_DIM)},
       vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
       vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)}
@@ -74,15 +80,16 @@ struct Context{
         for(decltype(n)i=0; i<n; ++i) right_ctxs[i] = &rights[i];
     }
 
-    util::cstring_span<> name;
     std::vector<val_t> vecs;
     util::span_1d <val_t,  3*WORD_DIM> vspan;
-    vec_span_t vec;
-    vec_span_t vec_wsum;
-    vec_span_t vec_update;
-    node_t* self;
     std::array<node_t const*, LEN_CTX> left_ctxs;
     std::array<node_t const*, LEN_CTX> right_ctxs;
+    node_t* self;
+    util::cstring_span<> name;
+    vec_t vec;
+    vec_t vec_wsum;
+    vec_t vec_update;
+    val_t score;
 };
 
 using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
@@ -126,24 +133,7 @@ struct InitializedNodes{
     util::span_dyn<Node> nodes;
 };
 
-//
-//void set_cnode_property(rnn::context_model::Param const &param, NodeContext &node) {
-////    auto vecloop_vec = util::math::VecLoop_vec<Param::value_type,Param::dim>{};
-////    node.vec_wsum  = weighted_sum_word_pair(param, node.left->vec, node.right->vec);
-////    node.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
-////    node.score= scoring_node(param, node);
-////    node.set_name();
-//}
-//NodeContext merge_cnode(rnn::context_model::Param const &param,
-//                        NodeContext const &left, NodeContext const &right) {
-////    NodeContext new_node{detail::merge_node(left.self, right.self)};
-//    NodeContext new_node{left};
-////    detail::set_node_property(param, new_node.self);
-//    new_node.lefts=left.lefts;
-//    new_node.rights=right.rights;
-//    return new_node;
-//}
-//
+
 void print(util::cstring_span<> word){
     for (auto e:word)
         fmt::print("{}", e);
@@ -168,8 +158,6 @@ struct Param{
     static constexpr auto lc_ext = util::dim<len_context>();
 
     using val_t = rnn::type::float_t;
-    using raw_t = std::vector<val_t>;
-    using raw_span_t = util::span_dyn<val_t>;
     using mats_t= util::span_3d<val_t, len_context, dim,dim>;
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
@@ -183,10 +171,10 @@ struct Param{
       u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
     {}
 
-    raw_t serialize() const {return _val;};
+    std::vector<val_t> serialize() const {return _val;};
 
-    raw_t _val;
-    raw_span_t span;
+    std::vector<val_t> _val;
+    util::span_1d<val_t, dim*dim*(2+2*len_context)+dim*2> span;
     mats_t w_context_left;
     mat_t w_left;
     mat_t w_right;
@@ -195,6 +183,76 @@ struct Param{
     vec_t u_score;
 };
 
+auto weighted_sum=[](int64_t i, auto &word_vec,
+                     auto const &w_left, auto const &w_right,
+                     auto const &bias,
+                     auto const &word_left, auto const &word_right) {
+    using util::math::dot;
+    word_vec[i] = dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
+};
+auto accumulate_context_weights=[](int64_t i, auto &word_vec,
+                                   auto const &w_context_left, auto const &w_context_right,
+                                   auto const &left_ctxs, auto const &right_ctxs) {
+    using util::math::dot;
+    assert(left_ctxs.size()==right_ctxs.size());
+    auto n_left=left_ctxs.size();
+    for(decltype(n_left)k=0; k!=n_left; ++k) {
+        if (left_ctxs[k])
+            word_vec[i] += dot(w_context_left[k][i], left_ctxs[k]->prop.vec);
+        if (right_ctxs[k])
+            word_vec[i] += dot(w_context_right[k][i], right_ctxs[k]->prop.vec);
+    }
+};
+
+void weighted_sum_word_pair(Param const &param, Node &node) {
+    auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
+    vecloop_void(weighted_sum, node.prop.vec,
+                 param.w_left, param.w_right, param.bias,
+                 node.left->prop.vec, node.right->prop.vec);
+    vecloop_void(accumulate_context_weights, node.prop.vec,
+                 param.w_context_left, param.w_context_right,
+                 node.prop.left_ctxs, node.prop.right_ctxs);
+}
+Node compose_node(Param const &param,
+                Node const &left, Node const &right) {
+    Node new_node = Node::blank_node();
+    new_node.left=&left;
+    new_node.right=&right;
+    new_node.prop.left_ctxs=left.prop.left_ctxs;
+    new_node.prop.right_ctxs=right.prop.right_ctxs;
+
+    weighted_sum_word_pair(param, new_node);
+//    new_node.prop.vec  = vecloop_vec(activation_fun, node.vec_wsum.span);
+//    new_node.prop.score= scoring_node(param, node);
+//    node.set_name();
+    return new_node;
+}
+
+
+std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &leaves)  {
+    std::vector<Node*> top_node;
+    auto n_leaf = leaves.size();
+    if(n_leaf==1) return top_node;
+    auto last_leaf = leaves.cend()-1;
+    for(auto it=leaves.cbegin(); it!=last_leaf;)
+        leaves.push_back( compose_node(param, *it,*++it ));
+
+    for(auto it=leaves.data()+n_leaf; it!=leaves.data()+leaves.size(); ++it)
+        top_node.push_back(it);
+    return top_node;
+}
+Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
+    auto& all_nodes = nodes.val;
+    auto top_nodes = compose_leaf_nodes(param, all_nodes);
+    for(auto node: top_nodes) print_cnode(*node);
+    return 0.0;
+//    foward_path(param, top_nodes);
+//    Param::value_type score{};
+//    for(auto node: top_nodes){
+//        score+= node->score;
+//    }
+//    return score;
+}
 
 }//namespace rnn::context_model
 }//namespace rnn
@@ -219,10 +277,10 @@ Word operator"" _w (const char* word, size_t /*length*/)
 }
 void test_context_node(){
     using namespace rnn::simple_model;
-    rnn::context_model::Param cparam;
-    auto param = randomParam(0.05);
-    param.bias.span *= rnn::type::float_t{0.0};
-    copy(param, cparam);
+    rnn::context_model::Param param;
+    auto param_rnn1 = randomParam(0.05);
+    param_rnn1.bias.span *= rnn::type::float_t{0.0};
+    copy(param_rnn1, param);
 
     Voca voca =load_voca("data.h5", "1b.model.voca");
     auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
@@ -236,12 +294,11 @@ void test_context_node(){
     auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
     auto nodes = InitializedNodes(std::move(leaf_nodes));
     assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-//    print_cnode(*nodes.val[0].prop.left_ctxs[0]);
     assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
-    for(auto& node: nodes.val)
-        print_cnode(node);
+    for(auto& node: nodes.val) print_cnode(node);
     fmt::print("\n");
 
+    get_full_greedy_score(param, nodes);
 //    auto word_views = util::string::unpack_tokenized_sentence(sentence);
 //    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
 //    auto new_cnode = merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
