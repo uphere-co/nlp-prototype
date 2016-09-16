@@ -46,13 +46,20 @@ struct Node{
 namespace rnn{
 namespace context_model{
 
-template<int LEN_CTX>
+template<typename FLOAT, int WORD_DIM, int LEN_CTX>
 struct Context{
+    using val_t = FLOAT;
     using node_t = Node<Context>;
+    using vec_span_t = util::span_1d<val_t,WORD_DIM>;
     static constexpr auto len_context = LEN_CTX;
 
-    Context(util::cstring_span<> name)
-    : name{name} {
+    Context(util::cstring_span<> name, vec_span_t word_vec)
+    : name{name}, vecs(3*WORD_DIM), vspan{vecs},
+      vec{       vspan.subspan(0,          WORD_DIM)},
+      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
+      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)}
+    {
+        std::copy(word_vec.cbegin(), word_vec.cend(), vec.begin());
         for(auto &x:left_ctxs) x=nullptr;
         for(auto &x:right_ctxs) x=nullptr;
     }
@@ -68,32 +75,38 @@ struct Context{
     }
 
     util::cstring_span<> name;
+    std::vector<val_t> vecs;
+    util::span_1d <val_t,  3*WORD_DIM> vspan;
+    vec_span_t vec;
+    vec_span_t vec_wsum;
+    vec_span_t vec_update;
     node_t* self;
     std::array<node_t const*, LEN_CTX> left_ctxs;
     std::array<node_t const*, LEN_CTX> right_ctxs;
 };
 
-using Node = ::Node<Context<2>>;
+using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
 
 
 struct UninializedLeafNodes{
     UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
     std::vector<Node> val;
 };
-auto construct_nodes_with_reserve=[](auto const &voca, auto const &idxs){
+
+auto construct_nodes_with_reserve=[](auto const &voca, auto const &word_block,
+                                     auto const &idxs){
     std::vector<Node> nodes;
     nodes.reserve(idxs.size()*2-1);
     for(auto idx : idxs){
-        Node::prop_t prop{voca.getWordSpan(idx)};
+        Node::prop_t prop{voca.getWordSpan(idx), word_block[idx]};
         Node node{std::move(prop)};
         nodes.push_back(node);
     }
     return UninializedLeafNodes{std::move(nodes)};;
 };
 
-
-struct InializedNodes{
-    InializedNodes(UninializedLeafNodes &&leafs)
+struct InitializedNodes{
+    InitializedNodes(UninializedLeafNodes &&leafs)
             : val{std::move(leafs.val)}, nodes{val} {
         auto len_context = Node::prop_t::len_context;
 //        auto nodes=util::span_dyn<Node>{val};
@@ -218,10 +231,10 @@ void test_context_node(){
 
     std::string sentence = u8"A of British pound is £ .";
     auto idxs = word2idx.getIndex(sentence);
-    auto word_block = voca_vecs.getWordVec(idxs);
+//    auto word_block = voca_vecs.getWordVec(idxs);
 
-    auto leaf_nodes = construct_nodes_with_reserve(voca, idxs);
-    auto nodes = InializedNodes(std::move(leaf_nodes));
+    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+    auto nodes = InitializedNodes(std::move(leaf_nodes));
     assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
 //    print_cnode(*nodes.val[0].prop.left_ctxs[0]);
     assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
