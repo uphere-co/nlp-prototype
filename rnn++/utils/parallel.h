@@ -5,6 +5,8 @@
 #include "tbb/parallel_reduce.h"
 #include "tbb/blocked_range.h"
 
+#include "tbb/task_group.h"
+
 namespace util {
 
 template<typename IT, typename OP, typename TVAL>

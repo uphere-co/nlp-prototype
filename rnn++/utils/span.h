@@ -14,8 +14,11 @@ template<typename T, int64_t L, int64_t M, int64_t N>
 using span_3d = gsl::span<T,L,M,N>;
 
 //Not works and param.cpp directly uses gsl.h
-// template<typename... Args>
-// using as_span = gsl::as_span<Args...>;
+template<typename... Args>
+auto as_span(Args&&... args){
+    return gsl::as_span(std::forward<Args>(args)...);
+}
+
 template<int64_t T> 
 using dim = gsl::dim<T>;
 
