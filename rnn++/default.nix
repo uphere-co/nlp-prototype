@@ -15,6 +15,8 @@ stdenv.mkDerivation rec {
                   toolz_cpp.msgsl
                   toolz_cpp.spdlog
 		  toolz_cpp.fmt
+		  toolz_cpp.json
+		  cppzmq
                 ];
   enableParallelBuilding = true;
 }
