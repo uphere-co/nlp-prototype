@@ -158,3 +158,8 @@ json SimilaritySearch::process_queries(json ask) const {
     json answer=collect_queries_results(queries, phrase_voca);
     return answer;
 }
+
+void querytest( void )
+{
+    std::cout << "query test" << std::endl; 
+}
