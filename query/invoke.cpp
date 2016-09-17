@@ -1,17 +1,38 @@
 #include "similarity/similarity.h"
 
 extern "C" {
-  void querytest( void );
+    void query_init( char* configfile );
+    void query( char* queryfile );
+    void query_finalize( void );
 }
 
+using json = nlohmann::json;
+json config; 
+SimilaritySearch* engine;
 
-void querytest( void )
+Timer timer{};
+
+
+void query_init( char* configfile )
 {
-    Timer timer{};
-    auto config = load_json("config.json");
-    SimilaritySearch engine{config};
+    config = load_json(configfile);// ("config.json");
+    engine = new SimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded.");    
     
-    std::cout << "query test" << std::endl; 
 }
+
+void query( char* queryfile )
+{
+    std::cout << "query is called" << std::endl;
+    auto input = load_json(queryfile);
+    auto answer = engine->process_queries(input);
+    timer.here_then_reset("Query is answered.");
+    std::cout << answer.dump(4) << std::endl;
+}
+
+void query_finalize( void )
+{
+    delete engine;
+}
+
