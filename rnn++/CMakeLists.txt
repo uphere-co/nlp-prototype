@@ -64,11 +64,22 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb )
 #add_executable(regex boilerplate/regex)
 #target_link_libraries(bfgs lbfgs)
 
-add_library(similarity STATIC src/similarity/similarity)
+add_library(parser STATIC ${parser_files} ${util_files})
+
+add_library(similarity STATIC src/similarity/similarity ${util_files})
+
+add_library(util STATIC ${util_files})
+#target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
 
 install(TARGETS train_model0 train_model1 train_model4 parser_model1 parser_model4 phrases_model4 parser_similarity RUNTIME DESTINATION bin)
 
 install(TARGETS similarity DESTINATION lib) 
 
+install(TARGETS util DESTINATION lib) 
+
+install(TARGETS parser DESTINATION lib) 
+
+
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/parser" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/similarity" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
