@@ -144,11 +144,8 @@ void print_cnode(Node const &cnode) {
     fmt::print(" __ ");
     for(auto right : cnode.prop.right_ctxs) if(right!= nullptr) print(right->prop.name);
     fmt::print(" , {}\n", cnode.prop.score);
-//    for (auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
-//    fmt::print("__ {} __ ", cnode.self.name.val);
-//    for (auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
-//    fmt::print("\n");
 }
+
 struct Param{
     static constexpr auto dim = rnn::config::word_dim;
     static constexpr auto len_context = 2;
@@ -168,6 +165,8 @@ struct Param{
       bias{util::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
       u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
     {}
+    //TODO: Remove this temporal restriction
+    Param(Param const &orig) = delete;
 
     std::vector<val_t> serialize() const {return _val;};
 
@@ -225,16 +224,22 @@ Param::val_t scoring_node(Param const &param, Node::prop_t const &node) {
     return dot(param.u_score, node.vec) / norm_L2(param.u_score);
 }
 
-Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
-    Node::prop_t self{};
+
+void update_node_prop(Node::prop_t &self, Param const &param,
+                      Node::prop_t const &left, Node::prop_t const &right){
     self.left_ctxs = left.left_ctxs;
     self.right_ctxs = right.right_ctxs;
     weighted_sum_word_pair(param, self, left, right);
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
     vecloop_void(activation_fun, self.vec, self.vec_wsum);
     self.score= scoring_node(param, self);
+}
+Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
+    Node::prop_t self{};
+    update_node_prop(self, param, left, right);
     return self;
 }
+
 Node compose_node(Param const &param, Node const &left, Node const &right) {
     auto prop = compose_node_prop(param, left.prop, right.prop);
     Node new_node{prop};
@@ -243,19 +248,13 @@ Node compose_node(Param const &param, Node const &left, Node const &right) {
     return new_node;
 }
 
-void set_node_property(Param const &param, Node &node) {
+void update_node(Param const &param, Node &node) {
     auto& self = node.prop;
     auto& left = node.left->prop;
     auto& right= node.right->prop;
-
-    self.left_ctxs = left.left_ctxs;
-    self.right_ctxs = right.right_ctxs;
-    weighted_sum_word_pair(param, self, left, right);
-    auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
-    vecloop_void(activation_fun, self.vec, self.vec_wsum);
-    node.prop.score= scoring_node(param, node.prop);
-    return;
+    update_node_prop(self, param, left, right);
 }
+
 auto foward_path(Param const &param, std::vector<Node*> top_nodes) ->
 std::vector<decltype(top_nodes.size())> {
     std::vector<decltype(top_nodes.size())> merge_history;
@@ -269,12 +268,12 @@ std::vector<decltype(top_nodes.size())> {
         if(it_max!=top_nodes.cbegin()){
             auto it_left = *(it_max-1);
             it_left->right=*it_max;
-            set_node_property(param, *it_left);
+            update_node(param, *it_left);
         }
         if(it_max!=top_nodes.cend()-1){
             auto it_right= *(it_max+1);
             it_right->left=*it_max;
-            set_node_property(param, *it_right);
+            update_node(param, *it_right);
         }
         std::copy(it_max+1,top_nodes.cend(),
                   top_nodes.begin()+i_max);
@@ -298,15 +297,9 @@ std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &lea
 Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
     auto& all_nodes = nodes.val;
     auto top_nodes = compose_leaf_nodes(param, all_nodes);
-    Param::val_t score2{};
-    for(auto node: top_nodes) score2+= node->prop.score;
-
-    for(auto node: top_nodes) print_cnode(*node);
     auto merge_history = foward_path(param, top_nodes);
     Param::val_t score{};
-    for(auto node: top_nodes){
-        score+= node->prop.score;
-    }
+    for(auto node: top_nodes) score+= node->prop.score;
     return score;
 }
 
