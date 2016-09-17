@@ -51,37 +51,38 @@ template<typename FLOAT, int WORD_DIM, int LEN_CTX>
 struct Context{
     using val_t = FLOAT;
     using node_t = Node<Context>;
+    using raw_t = std::vector<val_t>;
     using vec_t = util::span_1d<val_t,WORD_DIM>;
     static constexpr auto len_context = LEN_CTX;
     static constexpr auto word_dim = WORD_DIM;
 
-    Context(std::vector<val_t> &&raw, util::cstring_span<> name)
-            : vecs{std::move(raw)}, vspan{vecs}, name{name},
-              vec{       vspan.subspan(0,          WORD_DIM)},
-              vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
-              vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {
+    Context(raw_t &&vec, util::cstring_span<> name)
+    : raw{std::move(vec)}, vspan{raw}, name{name},
+      vec{       vspan.subspan(0,          WORD_DIM)},
+      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
+      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {
         for(auto &x:left_ctxs) x=nullptr;
         for(auto &x:right_ctxs) x=nullptr;
-        assert(vecs.size()==3*WORD_DIM);
+        assert(raw.size()==3*WORD_DIM);
     }
-    Context(std::vector<val_t> const &raw, util::cstring_span<> name)
-    : Context(std::vector<val_t>{raw}, name) {}
+    Context(raw_t const &raw, util::cstring_span<> name)
+    : Context(raw_t{raw}, name) {}
     Context()
-    : Context(std::move(std::vector<val_t>(3*WORD_DIM)), {}) {}
+    : Context(std::move(raw_t(3*WORD_DIM)), {}) {}
     Context(util::cstring_span<> name, vec_t word_vec)
-    : Context(std::move(std::vector<val_t>(3*WORD_DIM)), name)
+    : Context(std::move(raw_t(3*WORD_DIM)), name)
     {
-        std::copy(word_vec.cbegin(), word_vec.cend(), vec.begin());
+        std::copy(word_vec.cbegin(), word_vec.cend(), raw.begin());
     }
     Context(Context const &orig)
-    : Context(orig.vecs, orig.name) {
+    : Context(orig.raw, orig.name) {
         std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
         std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
         score=orig.score;
     }
     Context& operator=(Context const& orig){
-        assert(vecs.size()==3*WORD_DIM);
-        std::copy(orig.vecs.cbegin(), orig.vecs.cend(), vecs.begin());
+        assert(raw.size()==3*WORD_DIM);
+        std::copy(orig.raw.cbegin(), orig.raw.cend(), raw.begin());
         std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
         std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
         name=orig.name;
@@ -89,7 +90,7 @@ struct Context{
         return *this;
     }
     Context(Context &&orig)
-    : Context(std::move(orig.vecs), orig.name) {
+    : Context(std::move(orig.raw), orig.name) {
         std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
         std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
         score=orig.score;
@@ -104,7 +105,7 @@ struct Context{
         for(decltype(n)i=0; i<n; ++i) right_ctxs[i] = &rights[i];
     }
 
-    std::vector<val_t> vecs;
+    raw_t raw;
     util::span_1d <val_t,  3*WORD_DIM> vspan;
     std::array<node_t const*, LEN_CTX> left_ctxs;
     std::array<node_t const*, LEN_CTX> right_ctxs;
@@ -425,7 +426,7 @@ private:
 
 std::string parsed_binary_tree_string(Node const &node){
     if(node.is_leaf()) return node.prop.name.data();
-    return "("+full_name(*node.left) +" " + full_name(*node.right)+")";
+    return "("+parsed_binary_tree_string(*node.left) +" " + parsed_binary_tree_string(*node.right)+")";
 }
 
 void print_all_descents(Node const &node) {
