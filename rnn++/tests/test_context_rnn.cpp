@@ -92,7 +92,7 @@ struct Context{
     val_t score{0.0};
 };
 
-using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
+using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
 
 
 struct UninializedLeafNodes{
@@ -333,11 +333,11 @@ auto test_rnn1_score(rnn::simple_model::Param &param){
     for(auto x : nodes[0].vec.span) vec_sum += x;
     fmt::print("vec sum = {}\n", vec_sum);
 
+    util::Timer timer{};
     auto top_nodes = merge_leaf_nodes(param, nodes);
-    auto score0{0.0};
-    for(auto const & node:nodes) score0+= node.score;
-    fmt::print("Model1 before forward path: {}\n", score0);
     auto merge_history = foward_path(param, top_nodes);
+    timer.here_then_reset("RNN greedy forward path.");
+
     auto score{0.0};
     for(auto const & node:nodes) score+= node.score;
     fmt::print("Model1 : {}\n", score);
@@ -383,7 +383,9 @@ void test_context_node(){
 //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
 //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
 
+    util::Timer timer{};
     auto score=get_full_greedy_score(param, nodes);
+    timer.here_then_reset("CRNN greedy forward path.");
     fmt::print("CRNN score : {}\n", score);
     for(auto& node: nodes.val) print_cnode(node);
     fmt::print("\n");
