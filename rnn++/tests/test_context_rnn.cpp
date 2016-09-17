@@ -21,6 +21,18 @@ struct Node{
     using prop_t = T;
     Node(T &&property) : prop{std::move(property)} {}
     Node(T const &property) : prop{property} {}
+    Node(Node const &orig)
+    : left{orig.left}, right{orig.right},
+      prop{orig.prop} {}
+    Node(Node &&orig)
+    : left{orig.left}, right{orig.right},
+      prop{std::move(orig.prop)} {}
+    Node& operator=(Node const& orig) {
+        prop=orig.prop;
+        left=orig.left;
+        right=orig.right;
+        return *this;
+    }
 
     static auto blank_node(){return Node{T{}};}
     bool is_combined() const {return (left!=nullptr)&(right!=nullptr);}
@@ -28,7 +40,6 @@ struct Node{
 
     Node const *left=nullptr;
     Node const *right=nullptr;
-
     T prop;
 };
 }
@@ -64,6 +75,21 @@ struct Context{
     }
     Context(Context const &orig)
     : Context(orig.vecs, orig.name) {
+        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
+        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
+        score=orig.score;
+    }
+    Context& operator=(Context const& orig){
+        assert(vecs.size()==3*WORD_DIM);
+        std::copy(orig.vecs.cbegin(), orig.vecs.cend(), vecs.begin());
+        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
+        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
+        name=orig.name;
+        score=orig.score;
+        return *this;
+    }
+    Context(Context &&orig)
+    : Context(std::move(orig.vecs), orig.name) {
         std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
         std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
         score=orig.score;
@@ -398,8 +424,8 @@ private:
 };
 
 
-void print_all_descents(Node const & node) {
-    std::cerr<< node.prop.score << " : "<< node.prop.name.data() << std::endl;
+void print_all_descents(Node const &node) {
+    std::cerr<< node.prop.score << std::endl;
     if(node.left != nullptr) print_all_descents(*node.left);
     if(node.right!= nullptr) print_all_descents(*node.right);
 }
