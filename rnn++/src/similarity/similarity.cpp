@@ -159,7 +159,3 @@ json SimilaritySearch::process_queries(json ask) const {
     return answer;
 }
 
-void querytest( void )
-{
-    std::cout << "query test" << std::endl; 
-}

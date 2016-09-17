@@ -67,6 +67,3 @@ struct SimilaritySearch{
     VocaInfo rnn;
 };
 
-extern "C" {
-  void querytest( void );
-}
