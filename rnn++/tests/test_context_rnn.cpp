@@ -54,24 +54,33 @@ struct Context{
     static constexpr auto len_context = LEN_CTX;
     static constexpr auto word_dim = WORD_DIM;
 
-    Context()
-    : vecs(3*WORD_DIM), vspan{vecs}, name{},
-      vec{       vspan.subspan(0,          WORD_DIM)},
-      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
-      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {}
-    Context(util::cstring_span<> name, vec_t word_vec)
-    : vecs(3*WORD_DIM), vspan{vecs}, name{name},
-      vec{       vspan.subspan(0,          WORD_DIM)},
-      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
-      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)}
-    {
-        std::copy(word_vec.cbegin(), word_vec.cend(), vec.begin());
+    Context(std::vector<val_t> &&raw, util::cstring_span<> name)
+            : vecs{std::move(raw)}, vspan{vecs}, name{name},
+              vec{       vspan.subspan(0,          WORD_DIM)},
+              vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
+              vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {
         for(auto &x:left_ctxs) x=nullptr;
         for(auto &x:right_ctxs) x=nullptr;
+        assert(vecs.size()==3*WORD_DIM);
+    }
+    Context(std::vector<val_t> const &raw, util::cstring_span<> name)
+    : Context(std::vector<val_t>{raw}, name) {}
+    Context()
+    : Context(std::move(std::vector<val_t>(3*WORD_DIM)), {}) {}
+    Context(util::cstring_span<> name, vec_t word_vec)
+    : Context(std::move(std::vector<val_t>(3*WORD_DIM)), name)
+    {
+        std::copy(word_vec.cbegin(), word_vec.cend(), vec.begin());
+    }
+    Context(Context const &orig)
+    : Context(orig.vecs, orig.name) {
+        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
+        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
     }
 
     void set_context(util::span_dyn<node_t> lefts,
                      util::span_dyn<node_t> rights){
+        //TODO:Simplify this
         auto m = lefts.length();
         for(decltype(m)i=0; i<m; ++i) left_ctxs[i]  = &lefts[i];
         auto n = rights.length();
@@ -86,10 +95,10 @@ struct Context{
     vec_t vec;
     vec_t vec_wsum;
     vec_t vec_update;
-    val_t score;
+    val_t score{0.0};
 };
 
-using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
+using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
 
 
 struct UninializedLeafNodes{
@@ -106,7 +115,7 @@ auto construct_nodes_with_reserve=[](auto const &voca, auto const &word_block,
         Node node{std::move(prop)};
         nodes.push_back(node);
     }
-    return UninializedLeafNodes{std::move(nodes)};;
+    return UninializedLeafNodes{std::move(nodes)};
 };
 
 struct InitializedNodes{
@@ -121,9 +130,7 @@ struct InitializedNodes{
             auto right_end=i+len_context+1<n?i+len_context+1:n;
             auto lefts = nodes.subspan(left_beg,i-left_beg);
             auto rights= nodes.subspan(i+1,right_end-(i+1));
-            if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
             nodes[i].prop.set_context(lefts, rights);
-            if(i==0) assert(nodes[i].prop.left_ctxs[0]== nullptr);
         }
     }
     std::vector<Node> val;
@@ -159,7 +166,7 @@ struct Param{
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
     Param()
-    : _val(dim*dim*(2+2*len_context)+dim*2), span{_val},
+    : _val(dim*dim*(2+2*len_context)+dim*2, 0), span{_val},
       w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
       w_left{ util::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
       w_right{util::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
@@ -232,7 +239,6 @@ Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Nod
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
     vecloop_void(activation_fun, self.vec, self.vec_wsum);
     self.score= scoring_node(param, self);
-
     return self;
 }
 Node compose_node(Param const &param, Node const &left, Node const &right) {
@@ -240,34 +246,7 @@ Node compose_node(Param const &param, Node const &left, Node const &right) {
     Node new_node{prop};
     new_node.left=&left;
     new_node.right=&right;
-
     return new_node;
-}
-
-
-std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &leaves)  {
-    std::vector<Node*> top_node;
-    auto n_leaf = leaves.size();
-    if(n_leaf==1) return top_node;
-    auto last_leaf = leaves.cend()-1;
-    for(auto it=leaves.cbegin(); it!=last_leaf;)
-        leaves.push_back( compose_node(param, *it,*++it ));
-
-    for(auto it=leaves.data()+n_leaf; it!=leaves.data()+leaves.size(); ++it)
-        top_node.push_back(it);
-    return top_node;
-}
-Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
-    auto& all_nodes = nodes.val;
-    auto top_nodes = compose_leaf_nodes(param, all_nodes);
-    for(auto node: top_nodes) print_cnode(*node);
-    return 0.0;
-//    foward_path(param, top_nodes);
-//    Param::value_type score{};
-//    for(auto node: top_nodes){
-//        score+= node->score;
-//    }
-//    return score;
 }
 
 }//namespace rnn::context_model
@@ -283,7 +262,6 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
 
 }//nameless namespace
 
-
 namespace rnn{
 namespace context_model{
 namespace test{
@@ -293,7 +271,7 @@ Word operator"" _w (const char* word, size_t /*length*/)
 }
 void test_context_node(){
     using namespace rnn::simple_model;
-    rnn::context_model::Param param;
+    rnn::context_model::Param param{};
     auto param_rnn1 = randomParam(0.05);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
     copy(param_rnn1, param);
@@ -303,18 +281,25 @@ void test_context_node(){
     std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
     VocaIndexMap word2idx = voca.indexing();
 
-    std::string sentence = u8"A of British pound is £ .";
+    std::string sentence = u8"A symbol of British pound is £ .";
     auto idxs = word2idx.getIndex(sentence);
 //    auto word_block = voca_vecs.getWordVec(idxs);
 
     auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+    for(auto idx : idxs) fmt::print("{} ", idx);
+    fmt::print(": idxs\n");
     auto nodes = InitializedNodes(std::move(leaf_nodes));
-    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+    assert(nodes.val.size()==8);
+    auto vec_sum{0.0};
+//    for(auto const &node:nodes.val)
+//        for(auto x : node.prop.vec) vec_sum += x;
+    for(auto x : nodes.val[0].prop.vec) vec_sum += x;
+    fmt::print("vec sum = {}\n", vec_sum);
+//    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+//    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
     for(auto& node: nodes.val) print_cnode(node);
     fmt::print("\n");
 
-    get_full_greedy_score(param, nodes);
 //    auto word_views = util::string::unpack_tokenized_sentence(sentence);
 //    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
 //    auto new_cnode = merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
