@@ -15,13 +15,6 @@
 #include "parser/optimizers.h"
 #include "parser/parser.h"
 
-using namespace util::io;
-using namespace util::math;
-using namespace rnn::wordrep;
-using namespace rnn::config;
-using namespace rnn::simple_model::optimizer;
-using namespace rnn::simple_model;
-
 namespace{
 
 template<typename T>
@@ -328,11 +321,8 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
     std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
 }
 
-}//nameless namespace
-
-namespace rnn{
-namespace simple_model{
-void test_dummy(rnn::simple_model::Param &param){
+auto test_rnn1_score(rnn::simple_model::Param &param){
+    using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
@@ -360,13 +350,19 @@ void test_dummy(rnn::simple_model::Param &param){
     fmt::print("Model1 : {}\n", score);
     for(auto x : merge_history) fmt::print("{} ", x);
     fmt::print(": merge history\n");
+    return score;
 }
-}
-}
+
+}//nameless namespace
+
 
 namespace rnn{
 namespace context_model{
 namespace test{
+
+using namespace rnn::wordrep;
+using namespace rnn::config;
+
 Word operator"" _w (const char* word, size_t /*length*/)
 {
     return Word{word};
@@ -377,7 +373,7 @@ void test_context_node(){
     auto param_rnn1 = randomParam(0.05);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
     copy(param_rnn1, param);
-    rnn::simple_model::test_dummy(param_rnn1);
+    auto rnn1_score = test_rnn1_score(param_rnn1);
 
     Voca voca =load_voca("data.h5", "1b.model.voca");
     auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
@@ -393,11 +389,11 @@ void test_context_node(){
     assert(nodes.val.size()==8);
 //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
 //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
-    for(auto& node: nodes.val) print_cnode(node);
-    fmt::print("\n");
 
     auto score=get_full_greedy_score(param, nodes);
     fmt::print("CRNN score : {}\n", score);
+    for(auto& node: nodes.val) print_cnode(node);
+    fmt::print("\n");
 }
 
 }//namespace rnn::context_model::test
