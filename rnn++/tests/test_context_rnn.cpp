@@ -76,6 +76,7 @@ struct Context{
     : Context(orig.vecs, orig.name) {
         std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
         std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
+        score=orig.score;
     }
 
     void set_context(util::span_dyn<node_t> lefts,
@@ -98,7 +99,7 @@ struct Context{
     val_t score{0.0};
 };
 
-using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
+using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
 
 
 struct UninializedLeafNodes{
@@ -149,7 +150,7 @@ void print_cnode(Node const &cnode) {
     print(cnode.prop.name);
     fmt::print(" __ ");
     for(auto right : cnode.prop.right_ctxs) if(right!= nullptr) print(right->prop.name);
-    fmt::print("\n");
+    fmt::print(" , {}\n", cnode.prop.score);
 //    for (auto const &node : cnode.lefts) fmt::print("{} ", node.name.val);
 //    fmt::print("__ {} __ ", cnode.self.name.val);
 //    for (auto const &node : cnode.rights) fmt::print("{} ", node.name.val);
@@ -249,6 +250,73 @@ Node compose_node(Param const &param, Node const &left, Node const &right) {
     return new_node;
 }
 
+void set_node_property(Param const &param, Node &node) {
+    auto& self = node.prop;
+    auto& left = node.left->prop;
+    auto& right= node.right->prop;
+
+    self.left_ctxs = left.left_ctxs;
+    self.right_ctxs = right.right_ctxs;
+    weighted_sum_word_pair(param, self, left, right);
+    auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
+    vecloop_void(activation_fun, self.vec, self.vec_wsum);
+    node.prop.score= scoring_node(param, node.prop);
+    return;
+}
+auto foward_path(Param const &param, std::vector<Node*> top_nodes) ->
+std::vector<decltype(top_nodes.size())> {
+    std::vector<decltype(top_nodes.size())> merge_history;
+    while(top_nodes.size()){
+        auto it_max=std::max_element(top_nodes.cbegin(), top_nodes.cend(),
+                                     [](auto const x, auto const y){
+                                         return x->prop.score < y->prop.score;
+                                     });
+        auto i_max = it_max - top_nodes.cbegin();
+        merge_history.push_back(i_max);
+        if(it_max!=top_nodes.cbegin()){
+            auto it_left = *(it_max-1);
+            it_left->right=*it_max;
+            set_node_property(param, *it_left);
+        }
+        if(it_max!=top_nodes.cend()-1){
+            auto it_right= *(it_max+1);
+            it_right->left=*it_max;
+            set_node_property(param, *it_right);
+        }
+        std::copy(it_max+1,top_nodes.cend(),
+                  top_nodes.begin()+i_max);
+        top_nodes.pop_back();
+    }
+    return merge_history;
+}
+
+std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &leaves)  {
+    std::vector<Node*> top_node;
+    auto n_leaf = leaves.size();
+    if(n_leaf==1) return top_node;
+    auto last_leaf = leaves.cend()-1;
+    for(auto it=leaves.cbegin(); it!=last_leaf;)
+        leaves.push_back( compose_node(param, *it,*++it ));
+
+    for(auto it=leaves.data()+n_leaf; it!=leaves.data()+leaves.size(); ++it)
+        top_node.push_back(it);
+    return top_node;
+}
+Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
+    auto& all_nodes = nodes.val;
+    auto top_nodes = compose_leaf_nodes(param, all_nodes);
+    Param::val_t score2{};
+    for(auto node: top_nodes) score2+= node->prop.score;
+
+    for(auto node: top_nodes) print_cnode(*node);
+    auto merge_history = foward_path(param, top_nodes);
+    Param::val_t score{};
+    for(auto node: top_nodes){
+        score+= node->prop.score;
+    }
+    return score;
+}
+
 }//namespace rnn::context_model
 }//namespace rnn
 namespace {
@@ -270,7 +338,8 @@ void test_dummy(rnn::simple_model::Param &param){
 
     auto sentence_test = u8"A symbol of British pound is £ .";
     auto idxs = rnn.word2idx.getIndex(sentence_test);
-gi    fmt::print(": idxs.\n");
+    for(auto idx : idxs) fmt::print("{} ", idx);
+    fmt::print(": idxs.\n");
     auto initial_nodes = rnn.initialize_tree(sentence_test);
     auto &nodes = initial_nodes.val;
     auto n_words=nodes.size();
@@ -320,24 +389,15 @@ void test_context_node(){
 //    auto word_block = voca_vecs.getWordVec(idxs);
 
     auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-    for(auto idx : idxs) fmt::print("{} ", idx);
-    fmt::print(": idxs\n");
     auto nodes = InitializedNodes(std::move(leaf_nodes));
     assert(nodes.val.size()==8);
-    auto vec_sum{0.0};
-//    for(auto const &node:nodes.val)
-//        for(auto x : node.prop.vec) vec_sum += x;
-    for(auto x : nodes.val[0].prop.vec) vec_sum += x;
-    fmt::print("vec sum = {}\n", vec_sum);
 //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
 //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
     for(auto& node: nodes.val) print_cnode(node);
     fmt::print("\n");
 
-//    auto word_views = util::string::unpack_tokenized_sentence(sentence);
-//    auto new_node = detail::merge_node(param, nodes.val[1], nodes.val[2]);
-//    auto new_cnode = merge_cnode(cparam, cnodes.cnodes[1], cnodes.cnodes[2]);
-//    print_cnode(new_cnode);
+    auto score=get_full_greedy_score(param, nodes);
+    fmt::print("CRNN score : {}\n", score);
 }
 
 }//namespace rnn::context_model::test
