@@ -263,6 +263,39 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
 }//nameless namespace
 
 namespace rnn{
+namespace simple_model{
+void test_dummy(rnn::simple_model::Param &param){
+    using namespace rnn::simple_model::detail;
+    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
+
+    auto sentence_test = u8"A symbol of British pound is £ .";
+    auto idxs = rnn.word2idx.getIndex(sentence_test);
+gi    fmt::print(": idxs.\n");
+    auto initial_nodes = rnn.initialize_tree(sentence_test);
+    auto &nodes = initial_nodes.val;
+    auto n_words=nodes.size();
+    assert(n_words==8);
+    auto vec_sum{0.0};
+//    for(auto const &node:nodes)
+//        for(auto x : node.vec.span) vec_sum += x;
+    for(auto x : nodes[0].vec.span) vec_sum += x;
+    fmt::print("vec sum = {}\n", vec_sum);
+
+    auto top_nodes = merge_leaf_nodes(param, nodes);
+    auto score0{0.0};
+    for(auto const & node:nodes) score0+= node.score;
+    fmt::print("Model1 before forward path: {}\n", score0);
+    auto merge_history = foward_path(param, top_nodes);
+    auto score{0.0};
+    for(auto const & node:nodes) score+= node.score;
+    fmt::print("Model1 : {}\n", score);
+    for(auto x : merge_history) fmt::print("{} ", x);
+    fmt::print(": merge history\n");
+}
+}
+}
+
+namespace rnn{
 namespace context_model{
 namespace test{
 Word operator"" _w (const char* word, size_t /*length*/)
@@ -275,6 +308,7 @@ void test_context_node(){
     auto param_rnn1 = randomParam(0.05);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
     copy(param_rnn1, param);
+    rnn::simple_model::test_dummy(param_rnn1);
 
     Voca voca =load_voca("data.h5", "1b.model.voca");
     auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
