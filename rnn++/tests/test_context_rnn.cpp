@@ -423,9 +423,13 @@ private:
     std::vector<val_t> penalties;
 };
 
+std::string parsed_binary_tree_string(Node const &node){
+    if(node.is_leaf()) return node.prop.name.data();
+    return "("+full_name(*node.left) +" " + full_name(*node.right)+")";
+}
 
 void print_all_descents(Node const &node) {
-    std::cerr<< node.prop.score << std::endl;
+    std::cerr<< parsed_binary_tree_string(node) << " " <<node.prop.score << std::endl;
     if(node.left != nullptr) print_all_descents(*node.left);
     if(node.right!= nullptr) print_all_descents(*node.right);
 }
