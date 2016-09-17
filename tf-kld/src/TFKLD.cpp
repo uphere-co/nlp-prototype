@@ -54,13 +54,14 @@ void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::ve
         
     }
 
-    for(auto &x : values) x.val *= kld[x.row];
+    float_t lambda = -1.0;
+    for(auto &x : values) x.val *= pow(kld[x.row],lambda);
         
 }
 
 void MakeTFKLD(std::vector<float_t> &kld, std::vector<SpValue> &values) {
-
-    for(auto &x : values) x.val *= kld[x.row];
+    float_t lambda = -1.0;
+    for(auto &x : values) x.val *= pow(kld[x.row],lambda);
         
 }
     

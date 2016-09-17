@@ -7,6 +7,29 @@ using namespace tfkld::type;
 
 namespace tfkld{
 
+std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
+    std::vector<std::string> result;
+    std::string word{""};
+    if(words.size() < n) {
+        std::cout << "ERROR! " << n << "-gram model is not valid here.\n";
+        exit(1);
+    }
+
+    for(int i = 0; i < words.size() - n + 1; i++) {
+        for(int j = 0; j < n; j++) {
+            if(j == 0) {
+                word = words[i+j];
+            } else {
+                word = word + " " + words[i+j];
+            }
+        }
+        result.push_back(word);
+        word = "";
+    }
+
+    return result;
+}
+    
 vocab_t LearnVocab(MSParaFile &file) {
   std::string line;
   vocab_t vocab;
@@ -22,8 +45,11 @@ vocab_t LearnVocab(MSParaFile &file) {
     std::istringstream iss{line};
     boost::split(items, line, boost::is_any_of("\t"));
 
-    auto words = util::string::split(items[3]+" "+items[4]);
-    for(auto x : words) {
+    std::vector<std::string> words = util::string::split(items[3]);
+    std::vector<std::string> unigram_words = MakeNGrams(words,1);
+    std::vector<std::string> bigram_words = MakeNGrams(words,2);
+    
+    for(auto x : unigram_words) {
         auto isin = vocab.find(x);
         if(isin == vocab.end()) {
             vocab[x] = word_idx;
@@ -31,6 +57,35 @@ vocab_t LearnVocab(MSParaFile &file) {
         }
     }
 
+    for(auto x : bigram_words) {
+        auto isin = vocab.find(x);
+        if(isin == vocab.end()) {
+            vocab[x] = word_idx;
+            word_idx++;
+        }
+    }
+
+    
+    words = util::string::split(items[4]);
+    unigram_words = MakeNGrams(words,1);
+    bigram_words = MakeNGrams(words,2);
+    
+    for(auto x : unigram_words) {
+        auto isin = vocab.find(x);
+        if(isin == vocab.end()) {
+            vocab[x] = word_idx;
+            word_idx++;
+        }
+    }
+    
+    for(auto x : bigram_words) {
+        auto isin = vocab.find(x);
+        if(isin == vocab.end()) {
+            vocab[x] = word_idx;
+            word_idx++;
+        }
+    }
+    
   }
   // return sorted vocabulary with ascending order
   return vocab;
@@ -51,25 +106,49 @@ doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
         std::istringstream iss{line};
         boost::split(items, line, boost::is_any_of("\t"));
         
-        auto words = util::string::split(items[3]);
-        for(auto x : words) {
+        std::vector<std::string> words = util::string::split(items[3]);
+        std::vector<std::string> unigram_words = MakeNGrams(words,1);
+        std::vector<std::string> bigram_words = MakeNGrams(words,2);
+        
+        for(auto x : unigram_words) {
             auto it = vocab.find(x);
             if(it != vocab.end()) {   
                 auto word_idx = it -> second;
                 doc[word_idx] += 1;
             }
         }
+        
+        for(auto x : bigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+
         docs.push_back(doc);
         doc.clear();
 
         words = util::string::split(items[4]);
-        for(auto x : words) {
+        unigram_words = MakeNGrams(words,1);
+        bigram_words = MakeNGrams(words,2);
+        
+        for(auto x : unigram_words) {
             auto it = vocab.find(x);
             if(it != vocab.end()) {   
                 auto word_idx = it -> second;
                 doc[word_idx] += 1;
             }
         }
+        
+        for(auto x : bigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+        
         docs.push_back(doc);
         doc.clear();
 

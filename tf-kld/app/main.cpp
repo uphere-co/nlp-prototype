@@ -3,6 +3,7 @@
 #include "src/TFKLD.h"
 
 #include "tests/test01.h"
+#include "tests/test02.h"
 
 int main(){
     
@@ -12,7 +13,7 @@ int main(){
     using namespace arma;
 
 
-    runTFKLD_test01();
-    
+    //runTFKLD_test01(); // Inductive Learning
+    runTFKLD_test02(); // Transductive Learning
     return 0;
 }
