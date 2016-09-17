@@ -24,7 +24,7 @@ FILE(GLOB all_rnn_files src/parser/*cpp)
 FILE(GLOB parser_files
     src/parser/parser.cpp src/parser/voca.cpp src/parser/wordvec.cpp
     src/parser/compute.cpp src/parser/config.cpp src/parser/node.cpp src/parser/param.cpp)
-FILE(GLOB util_files utils/*cpp utils/*h)
+FILE(GLOB util_files utils/*cpp)
 
 add_executable(train_model0 app/train_model0 tests/test_simple_model
                ${all_rnn_files} ${util_files})
