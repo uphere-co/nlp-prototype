@@ -15,8 +15,7 @@
 #include "parser/optimizers.h"
 #include "parser/parser.h"
 
-namespace{
-
+namespace rnn{
 template<typename T>
 struct Node{
     using prop_t = T;
@@ -32,9 +31,7 @@ struct Node{
 
     T prop;
 };
-
-
-}//nameless namespace
+}
 
 namespace rnn{
 namespace context_model{
@@ -92,7 +89,7 @@ struct Context{
     val_t score{0.0};
 };
 
-using Node = ::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
+using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
 
 
 struct UninializedLeafNodes{
@@ -303,6 +300,110 @@ Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes )
     return score;
 }
 
+class DPtable{
+public:
+    using idx_t = std::size_t;
+    using node_t = Node;
+    using val_t= node_t::prop_t::val_t;
+
+    DPtable(std::vector<node_t> const &nodes)
+    : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()),
+      score_sums(raw.size(), std::numeric_limits<val_t>::lowest()),
+      penalties(0) {
+        for(decltype(n_words)i=0; i<n_words; ++i){
+            get(i,i)=nodes[i];
+            score_sum(i,i)=0.0;
+        }
+    }
+    node_t& get(idx_t i, idx_t j)  {return raw[i*n_words+j];}
+    node_t& root_node() {return get(0,n_words-1);}
+    val_t&  score_sum(idx_t i, idx_t j) {return score_sums[i*n_words+j];}
+    val_t&  penalty(idx_t i, idx_t j) {return penalties[i*n_words+j];}
+    void search_best(Param const &param, idx_t i, idx_t j){
+        auto& node=get(i,j);
+        for(idx_t k=i; k<j; ++k){
+            auto& left =get(i,k);
+            auto& right=get(k+1,j);
+            auto phrase=compose_node(param, left,right);
+            auto score_total=phrase.prop.score+score_sum(i,k)+score_sum(k+1,j);
+            auto& current_best_score=score_sum(i,j);
+            if(score_total>current_best_score){
+                node=phrase;
+                current_best_score=score_total;
+            }
+        }
+    }
+    void search_best_with_penalty(Param const &param, idx_t i, idx_t j){
+        auto& node=get(i,j);
+        for(idx_t k=i; k<j; ++k){
+            auto& left =get(i,k);
+            auto& right=get(k+1,j);
+            auto phrase=compose_node(param, left,right);
+            auto score_total=phrase.prop.score+penalty(i,j)+score_sum(i,k)+score_sum(k+1,j);
+            auto& current_best_score=score_sum(i,j);
+            if(score_total>current_best_score){
+                node=phrase;
+                current_best_score=score_total;
+            }
+        }
+    }
+    void compute(Param const &param){
+        for(idx_t len=1; len<n_words;++len){
+            for(idx_t left=0; left<n_words-len;++left){
+                search_best(param,left,left+len);
+            }
+        }
+    }
+    void compute(Param const &param, val_t lambda, std::string parsed_sentence){
+        set_penalty(lambda, parsed_sentence);
+        for(idx_t len=1; len<n_words;++len){
+            for(idx_t left=0; left<n_words-len;++left){
+                search_best_with_penalty(param,left,left+len);
+            }
+        }
+    }
+    void set_penalty(val_t lambda, std::string parsed_sentence){
+        using namespace util;
+        penalties=std::vector<val_t>(score_sums.size(), -lambda);
+        auto label_nodes = deserialize_binary_tree<util::Node>(parsed_sentence);
+        auto spans=get_span_hashes(label_nodes);
+        for(auto hash:spans) {
+            auto left=hash/label_nodes.size();
+            auto right=hash%label_nodes.size();
+            penalty(left,right)=0.0;
+        }
+    }
+    std::vector<const node_t*> get_phrases(){
+        std::vector<const node_t*> phrases;
+        collect_phrases(&get(0,n_words-1), phrases);
+        return phrases;
+    }
+    std::vector<const node_t*> get_leafs(){
+        std::vector<const node_t*> nodes;
+        for(decltype(n_words)i=0;i<n_words; ++i) nodes.push_back(&get(i,i));
+        return nodes;
+    }
+
+private:
+    void collect_phrases(const node_t* node, std::vector<const node_t*> &phrases){
+        if(node->is_leaf()) return;
+        phrases.push_back(node);
+        if(node->left != nullptr) collect_phrases(node->left, phrases);
+        if(node->right!= nullptr) collect_phrases(node->right, phrases);
+    }
+    idx_t n_words;
+    std::vector<node_t> raw;
+    std::vector<val_t> score_sums;
+    std::vector<val_t> penalties;
+};
+
+
+void print_all_descents(Node const & node) {
+    std::cerr<< node.prop.score << " : "<< node.prop.name.data() << std::endl;
+    if(node.left != nullptr) print_all_descents(*node.left);
+    if(node.right!= nullptr) print_all_descents(*node.right);
+}
+
 }//namespace rnn::context_model
 }//namespace rnn
 namespace {
@@ -314,10 +415,10 @@ void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
     std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
 }
 
-auto test_rnn1_score(rnn::simple_model::Param &param){
+auto test_rnn_greedy_score(rnn::simple_model::Param &param,
+                     rnn::simple_model::VocaInfo &rnn){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
-    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
     auto sentence_test = u8"A symbol of British pound is £ .";
     auto idxs = rnn.word2idx.getIndex(sentence_test);
@@ -345,6 +446,40 @@ auto test_rnn1_score(rnn::simple_model::Param &param){
     fmt::print(": merge history\n");
     return score;
 }
+auto test_rnn_dp_score(rnn::simple_model::Param &param,
+                     rnn::simple_model::VocaInfo &rnn){
+    using namespace rnn::simple_model;
+    using namespace rnn::simple_model::detail;
+    util::Timer timer{};
+
+    auto sentence_test = u8"A symbol of British pound is £ .";
+    auto idxs = rnn.word2idx.getIndex(sentence_test);
+    auto initial_nodes = rnn.initialize_tree(sentence_test);
+    auto &nodes = initial_nodes.val;
+    auto n_words=nodes.size();
+    assert(n_words==8);
+    assert(nodes.capacity()==15);
+    timer.here_then_reset("Setup word2vecs & nodes");
+    DPtable table{nodes};
+    table.compute(param);
+    auto phrases = table.get_phrases();
+    timer.here_then_reset("RNN DP Forward path.");
+    auto score_dp{0.0};
+    for(auto phrase : phrases) score_dp += phrase->score;
+    fmt::print("{}:RNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+    auto root_node=table.get(0,n_words-1);
+    print_all_descents(root_node);
+
+    auto top_nodes = merge_leaf_nodes(param, nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    auto score{0.0};
+    for(auto const &node:nodes){
+        if(node.is_leaf()) continue;
+        score+=node.score;
+    }
+    fmt::print("{}:RNN greedy score.\n", score);
+    return score_dp;
+}
 
 }//nameless namespace
 
@@ -365,8 +500,10 @@ void test_context_node(){
     rnn::context_model::Param param{};
     auto param_rnn1 = randomParam(0.05);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
+    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     copy(param_rnn1, param);
-    auto rnn1_score = test_rnn1_score(param_rnn1);
+    auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
+    auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
 
     Voca voca =load_voca("data.h5", "1b.model.voca");
     auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
@@ -377,18 +514,35 @@ void test_context_node(){
     auto idxs = word2idx.getIndex(sentence);
 //    auto word_block = voca_vecs.getWordVec(idxs);
 
-    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-    auto nodes = InitializedNodes(std::move(leaf_nodes));
-    assert(nodes.val.size()==8);
-//    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-//    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+    {
+        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        assert(nodes.val.size() == 8);
+        //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+        //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
 
-    util::Timer timer{};
-    auto score=get_full_greedy_score(param, nodes);
-    timer.here_then_reset("CRNN greedy forward path.");
-    fmt::print("CRNN score : {}\n", score);
-    for(auto& node: nodes.val) print_cnode(node);
-    fmt::print("\n");
+        util::Timer timer{};
+        auto score = get_full_greedy_score(param, nodes);
+        timer.here_then_reset("CRNN greedy forward path.");
+        fmt::print("CRNN score : {}\n", score);
+        for (auto &node: nodes.val) print_cnode(node);
+        fmt::print("\n");
+    }
+    {
+        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        util::Timer timer{};
+
+        DPtable table{nodes.val};
+        table.compute(param);
+        auto phrases = table.get_phrases();
+        timer.here_then_reset("CRNN DP Forward path.");
+        auto score_dp{0.0};
+        for(auto phrase : phrases) score_dp += phrase->prop.score;
+        fmt::print("{}:CRNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+        auto root_node = table.root_node();
+        print_all_descents(root_node);
+    }
 }
 
 }//namespace rnn::context_model::test
