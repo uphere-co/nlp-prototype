@@ -56,5 +56,21 @@ std::vector<const char *> unpack_word_views(std::vector<char> const &concat_word
     return words;
 }
 
+std::vector<util::cstring_span<>> unpack_tokenized_sentence(util::cstring_span<> sentence){
+    util::cstring_span<> sent{sentence};
+    std::vector<util::cstring_span<>> words;
+    auto beg = sent.cbegin();
+    auto end = sent.cend();
+    auto it=beg;
+    while(it!=end){
+        auto word_beg=it-beg;
+        it=std::find(it, end, ' ');
+        auto word_end=it-beg;
+        words.push_back(sent.subspan(word_beg, word_end-word_beg));
+        it=std::find_if_not(it, end, [](auto x){return x==' ';});
+    }
+    return words;
+}
+
 }//namespace util::string
 }//namespace util

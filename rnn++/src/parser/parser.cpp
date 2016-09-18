@@ -181,6 +181,7 @@ Gradient get_greedy_gradient(Param const &param, InializedLeafNodes &nodes ) {
     // timer.here_then_reset("backward path");
     return grad;
 }
+
 Gradient get_dp_gradient(Param const &param, rnn::type::float_t lambda,
                          InializedLeafNodes &init_nodes,
                          SentencePair const &sent_pair) {

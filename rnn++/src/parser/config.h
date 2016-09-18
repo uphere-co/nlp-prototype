@@ -26,14 +26,6 @@ constexpr util::DataType param_f_type = util::DataType::dp;
 extern std::string trainset_name;
 extern std::string testset_name;
 
-//voca_size can be read using `h5dump -H` command.
-//It can be directly read from a H5File,
-//but it needs knowledge of low level details of HDF5.
-//So they are set by runtime configuration for now.
-constexpr size_t voca_size=607027;
-// constexpr size_t voca_size=552402;
-// constexpr size_t voca_size=50002;
-// constexpr size_t voca_size=400001;
 constexpr int word_dim=100;
 
 // constexpr auto activation = util::math::FunName::ax;

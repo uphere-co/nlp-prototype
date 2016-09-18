@@ -88,7 +88,15 @@ struct Matrix{
 template<typename T, int64_t M, int64_t N>
 struct MatrixView{
     MatrixView(gsl::span<T, M,N> const vals) : span{vals} {}
+//    MatrixView(gsl::span<T> const vals) : span{vals.as_array_view<T,M,N>()} {}
     gsl::span<T, M, N> span;
+};
+
+template<typename T, int64_t L,int64_t M,int64_t N>
+struct ThirdTensorView{
+    ThirdTensorView(gsl::span<T, L,M,N> const vals) : span{vals} {}
+//    MatrixView(gsl::span<T> const vals) : span{vals.as_array_view<T,M,N>()} {}
+    gsl::span<T, L, M, N> span;
 };
 
 namespace factory{
