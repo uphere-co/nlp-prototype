@@ -5,23 +5,25 @@ import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Network.Transport.ZMQ (createTransport, defaultZMQParameters)
-
 import           System.Environment
+--
+import           Type
 
-client :: Int -> Process ()
-client msg = do
+client :: Maybe Query -> Process ()
+client mmsgs = do
   pid <- getSelfPid
   them <- readProcessId
   liftIO $ print them
-  send them msg
+  send them mmsgs
 
 readProcessId :: Process ProcessId
 readProcessId = liftIO $ Bi.decode <$> BL.readFile "server.pid"
   
 main :: IO ()
 main = do
-  [host,msgstr] <- getArgs
-  let msg = read msgstr :: Int
+  (host:msgs) <- getArgs
+  let mmsgs = if null msgs then Nothing else Just (Query msgs)
+  -- let msg = read msgstr :: Int
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
-  runProcess node (client msg)
+  runProcess node (client mmsgs)

@@ -16,10 +16,16 @@ import qualified Data.Text              as T
 import           Foreign.C.String
 import           Network.Transport.ZMQ       (createTransport, defaultZMQParameters)
 import           System.Environment
+--
+import           Type
+
+
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
+
+
 
 --rtable :: RemoteTable
 -- rtable = __remoteTable initRemoteTable
@@ -34,7 +40,9 @@ writeProcessId = do
 server :: CString -> Process ()
 server queryfile = do
   writeProcessId
-  whileM_ ((/=999) <$> (expect :: Process Int)) $ do
+  whileJust_ expect $ \q -> do
+    (mapM_ (liftIO . putStrLn) .  querySentences) q 
+    --    (/=999) <$> (expect :: Process (Int)) $ do
     liftIO $ c_query queryfile
       
 
