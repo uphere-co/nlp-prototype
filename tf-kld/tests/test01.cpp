@@ -9,6 +9,8 @@ void runTFKLD_test01(){
 
     auto timer = Timer{};
 
+    Param params;
+    
     int K_dim = 100;
     
     std::string fin_name = "Tk_msr_paraphrase_train.txt";
@@ -32,11 +34,10 @@ void runTFKLD_test01(){
     std::vector<SpValue> values;
     std::vector<float_t> idf;
     std::vector<float_t> kld;
-    int64_t count = 0;
 
-    fillValue(values, count, vocab, docs);
-    MakeTFKLD(kld, tag, values, count, vocab, docs);
-    fillMat(values, count, vocab, docs, inMat);
+    fillValue(values, vocab, docs);
+    MakeTFKLD(params, kld, tag, values, vocab, docs);
+    fillMat(values, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
     
@@ -54,7 +55,7 @@ void runTFKLD_test01(){
     
     std::ofstream fout{"train_KLD.dat"};
 
-    count = 0;
+    int64_t count{0};
     int lcount = 1;
     for(auto x : svec) {
         fout << tag[count] << " ";
@@ -108,11 +109,10 @@ void runTFKLD_test01(){
     sp_mat inMat2(n_rows2, n_cols2);
 
     std::vector<SpValue> values2;
-    int64_t count2 = 0;
 
-    fillValue(values2, count2, vocab2, docs2);
-    MakeTFKLD(kld, values2);
-    fillMat(values2, count2, vocab2, docs2, inMat2);
+    fillValue(values2, vocab2, docs2);
+    MakeTFKLD(params, kld, values2);
+    fillMat(values2, vocab2, docs2, inMat2);
     
     timer.here_then_reset("Filled the Matrix.\n");
 

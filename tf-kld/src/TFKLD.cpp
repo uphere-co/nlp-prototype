@@ -7,7 +7,7 @@ using namespace tfkld::type;
 
 namespace tfkld{
 
-void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFKLD(Param const &params, std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
 
     float_t ep=0.05;
     float_t p=ep;
@@ -54,14 +54,12 @@ void MakeTFKLD(std::vector<float_t> &kld, std::vector<std::string> &tag, std::ve
         
     }
 
-    float_t lambda = -1.0;
-    for(auto &x : values) x.val *= pow(kld[x.row],lambda);
+    for(auto &x : values) x.val *= pow(kld[x.row],params.power);
         
 }
 
-void MakeTFKLD(std::vector<float_t> &kld, std::vector<SpValue> &values) {
-    float_t lambda = -1.0;
-    for(auto &x : values) x.val *= pow(kld[x.row],lambda);
+void MakeTFKLD(Param const &params, std::vector<float_t> &kld, std::vector<SpValue> &values) {
+    for(auto &x : values) x.val *= pow(kld[x.row],params.power);
         
 }
     

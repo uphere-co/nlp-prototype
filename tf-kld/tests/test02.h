@@ -3,4 +3,4 @@
 #include "src/Vocab.h"
 #include "src/TFKLD.h"
 
-void runTFKLD_test02();
+void runTFKLD_test02(tfkld::Param const &params);

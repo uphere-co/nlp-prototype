@@ -1,6 +1,6 @@
 #include "tests/test02.h"
 
-void runTFKLD_test02(){
+void runTFKLD_test02(tfkld::Param const &params){
 
     using namespace util;
     using namespace util::io;
@@ -9,12 +9,12 @@ void runTFKLD_test02(){
 
     auto timer = Timer{};
 
-    int K_dim = 300;
-    
-    std::string fin_name = "Tk_msr_paraphrase_train.txt";
+    int K_dim = params.kdim;
+
+    std::string fin_name = params.trainFile;
     MSParaFile fin{fin_name};
 
-    std::string fin_name2 = "Tk_msr_paraphrase_test.txt";
+    std::string fin_name2 = params.testFile;
     MSParaFile fin2{fin_name2};
     
     auto vocab = LearnVocab(fin);
@@ -36,19 +36,16 @@ void runTFKLD_test02(){
     timer.here_then_reset("\nConstructed Tag.\n");
 
     std::vector<SpValue> values;
-    std::vector<float_t> idf;
     std::vector<float_t> kld;
-    int64_t count = 0;
 
-    fillValue(values, count, vocab, docs);
-    MakeTFKLD(kld, tag, values, count, vocab, docs);
+    fillValue(values, vocab, docs);
+    MakeTFKLD(params, kld, tag, values, vocab, docs);
 
     docs.insert( docs.end(), docs2.begin(), docs2.end() );
 
     values.clear();
-    count = 0;
-    fillValue(values, count, vocab, docs);
-    MakeTFKLD(kld, values);
+    fillValue(values, vocab, docs);
+    MakeTFKLD(params, kld, values);
 
     int64_t n_rows, n_cols;
     n_rows = vocab.size();
@@ -56,7 +53,7 @@ void runTFKLD_test02(){
 
     sp_mat inMat(n_rows, n_cols);
 
-    fillMat(values, count, vocab, docs, inMat);
+    fillMat(values, vocab, docs, inMat);
 
     timer.here_then_reset("Filled the Matrix.\n");
     
@@ -74,8 +71,9 @@ void runTFKLD_test02(){
     
     std::ofstream fout{"train_KLD.dat"};
 
-    count = 0;
+    int64_t count{0};
     int lcount = 1;
+    
     std::cout << tdocs/2 << std::endl;
     std::cout << tag.size() << std::endl;
     for(int i = 0; i < tdocs/2; i++) {
@@ -102,7 +100,7 @@ void runTFKLD_test02(){
     }
 
     for(auto x : kld) {
-        kld_out << x << std::endl;
+        kld_out << pow(x,params.power) << std::endl;
     }    
     
     vocab_out.close();
@@ -115,11 +113,10 @@ void runTFKLD_test02(){
     sp_mat inMat2(n_rows2, n_cols2);
 
     std::vector<SpValue> values2;
-    int64_t count2 = 0;
 
-    fillValue(values2, count2, vocab2, docs2);
-    MakeTFKLD(kld, values2);
-    fillMat(values2, count2, vocab2, docs2, inMat2);
+    fillValue(values2, vocab2, docs2);
+    MakeTFKLD(params, kld, values2);
+    fillMat(values2, vocab2, docs2, inMat2);
     
     timer.here_then_reset("Filled the Matrix.\n");
 

@@ -44,9 +44,31 @@ struct SpValue{
     float_t val;
 };
 
-void fillValue(std::vector<SpValue> &values, tfkld::type::int64_t &count, vocab_t const &vocab, doc_t const &docs);
+struct Param{
+    Param() :
+        trainFile(""),
+        testFile(""),
+        kdim(100),
+        power(1.0),
+        inductive(1) {}
+    
+    Param(std::string p_trainFile, std::string p_testFile, int p_kdim, float_t p_power, int p_inductive) :
+        trainFile{p_trainFile},
+        testFile{p_testFile},
+        kdim{p_kdim},
+        power{p_power},
+        inductive{p_inductive} {}
+    
+    std::string trainFile, testFile;
+    int kdim;
+    float_t power;
+    int inductive;
+};
 
-void fillMat(std::vector<SpValue> &values, tfkld::type::int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat);
+ 
+void fillValue(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs);
+
+void fillMat(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat);
     
 std::vector<std::vector<tfkld::type::float_t>> makeSimMat(arma::mat const &V);
 

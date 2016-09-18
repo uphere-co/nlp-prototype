@@ -7,7 +7,7 @@ using namespace tfkld::type;
 
 namespace tfkld{
 
-void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {    
+void fillValue(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {    
     SpValue value;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
         value.reset();
@@ -16,13 +16,13 @@ void fillValue(std::vector<SpValue> &values, int64_t &count, vocab_t const &voca
             value.col = std::distance(docs.begin(),it);
             value.val = (*itt).second;
             values.push_back(value);
-            count++;
         }
     }   
 }
 
-void fillMat(std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
+void fillMat(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
 
+    int64_t count{static_cast<int64_t>(values.size())};
     
     arma::umat location(2,count);
     arma::vec value(count);
