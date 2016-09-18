@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -8,6 +9,7 @@ import           Control.Monad.Loops
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Closure
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
+import           Data.Aeson
 import qualified Data.Binary                         as Bi (encode)
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
@@ -48,7 +50,10 @@ server = do
   whileJust_ expect $ \q -> do
     (mapM_ (liftIO . putStrLn) .  querySentences) q 
     withTempFile $ \fp -> liftIO $ do
-      writeFile fp (makeJsonString q)
+      -- let json = makeJson q
+      BL.writeFile fp (encode (makeJson q))
+
+      -- writeFile fp (makeJsonString q)
       withCString fp $ \queryfile -> liftIO $ c_query queryfile
       removeFile fp
 
@@ -61,8 +66,19 @@ withTempFile f = do
   f tmpfile
   -- removeFile tmpfile
 
-makeJsonString :: Query -> String
-makeJsonString (Query qs) = "{ \"phrase_store\" : \"/data/groups/uphere/parsers/rnn_model4/phrases.h5\", \"phrase_vec\" : \"news_wsj.text.vecs\", \"phrase_word\" : \"news_wsj.test.words\", \"rnn_param_store\" : \"/data/groups/uphere/data/groups/uphere/parsers/rnn_model4/rnn_params.h5\",\"rnn_param_uid\" : \"model4.d877053.2000\",\"wordvec_store\" : \"/data/groups/uphere/parsers/rnn_model4/news_wsj.h5\",\"voca_name\" : \"news_wsj.voca\",\"w2vmodel_name\" : \"news_wsj\",\"queries\" : " ++ show qs ++ " }"
+makeJson :: Query -> Value
+makeJson (Query qs) =
+  object [ "phrase_store"    .= ("/data/groups/uphere/parsers/rnn_model4/phrases.h5" :: Text)
+         , "phrase_vec"      .= ("news_wsj.text.vecs" :: Text)
+         , "phrase_word"     .= ("news_wsj.test.words" :: Text)
+         , "rnn_param_store" .= ("/data/groups/uphere/data/groups/uphere/parsers/rnn_model4/rnn_params.h5" :: Text)
+         , "rnn_param_uid"   .= ("model4.d877053.2000" :: Text)
+         , "wordvec_store"   .= ("/data/groups/uphere/parsers/rnn_model4/news_wsj.h5" :: Text)
+         , "voca_name"       .= ("news_wsj.voca" :: Text)
+         , "w2vmodel_name"   .= ("news_wsj" :: Text)
+         , "queries"         .= toJSON qs
+         ] 
+
 
 main = do
   [host] <- getArgs
