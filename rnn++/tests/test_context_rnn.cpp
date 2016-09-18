@@ -177,11 +177,12 @@ struct Param{
     static constexpr auto lc_ext = util::dim<len_context>();
 
     using val_t = rnn::type::float_t;
+    using raw_t = std::vector<val_t>;
     using mats_t= util::span_3d<val_t, len_context, dim,dim>;
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
-    Param()
-    : _val(dim*dim*(2+2*len_context)+dim*2, 0), span{_val},
+    Param(raw_t &&raw)
+    : _val(std::move(raw)), span{_val},
       w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
       w_left{ util::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
       w_right{util::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
@@ -189,12 +190,14 @@ struct Param{
       bias{util::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
       u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
     {}
-    //TODO: Remove this temporal restriction
-    Param(Param const &orig) = delete;
+    Param()
+    : Param(std::move(raw_t(dim*dim*(2+2*len_context)+dim*2, 0))) {}
+    Param(Param const &orig)
+    : Param(std::move(raw_t{orig._val})) {}
 
-    std::vector<val_t> serialize() const {return _val;};
+    raw_t serialize() const {return _val;};
 
-    std::vector<val_t> _val;
+    raw_t _val;
     util::span_1d<val_t, dim*dim*(2+2*len_context)+dim*2> span;
     mats_t w_context_left;
     mat_t w_left;
@@ -203,6 +206,34 @@ struct Param{
     vec_t bias;
     vec_t u_score;
 };
+
+Param& operator+=(Param &out, Param const &x){
+    out.span += x.span;
+    return out;
+}
+Param& operator-=(Param &out, Param const &x){
+    out.span -= x.span;
+    return out;
+}
+Param& operator*=(Param &out, Param::val_t x){
+    out.span *= x;
+    return out;
+}
+Param operator+(Param const &x, Param const &y){
+    Param out{x};
+    out.span += y.span;
+    return out;
+}
+Param operator-(Param const &x, Param const &y){
+    Param out{x};
+    out.span -= y.span;
+    return out;
+}
+Param operator*(Param const &x, Param::val_t y){
+    Param out{x};
+    out.span *= y;
+    return out;
+}
 
 auto weighted_sum=[](int64_t i, auto &word_vec,
                      auto const &w_left, auto const &w_right,
@@ -528,11 +559,17 @@ Word operator"" _w (const char* word, size_t /*length*/)
 }
 void test_context_node(){
     using namespace rnn::simple_model;
-    rnn::context_model::Param param{};
-    auto param_rnn1 = randomParam(0.05);
+    rnn::context_model::Param param1{};
+    rnn::context_model::Param param2{};
+    auto param_rnn1 = randomParam(0.01);
+    auto param_rnn2 = randomParam(0.01);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
+    param_rnn2.bias.span *= rnn::type::float_t{0.0};
+    copy(param_rnn1, param1);
+    copy(param_rnn2, param2);
+    param1 += param2;
+    param_rnn1 += param_rnn2;
     VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
-    copy(param_rnn1, param);
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
     auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
 
@@ -553,7 +590,7 @@ void test_context_node(){
         //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
 
         util::Timer timer{};
-        auto score = get_full_greedy_score(param, nodes);
+        auto score = get_full_greedy_score(param1, nodes);
         timer.here_then_reset("CRNN greedy forward path.");
         fmt::print("CRNN score : {}\n", score);
         for (auto &node: nodes.val) print_cnode(node);
@@ -565,7 +602,7 @@ void test_context_node(){
         util::Timer timer{};
 
         DPtable table{nodes.val};
-        table.compute(param);
+        table.compute(param1);
         auto phrases = table.get_phrases();
         timer.here_then_reset("CRNN DP Forward path.");
         auto score_dp{0.0};
