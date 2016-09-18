@@ -116,7 +116,7 @@ struct Context{
     val_t score{0.0};
 };
 
-using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
+using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
 
 
 struct UninializedLeafNodes{
@@ -321,7 +321,7 @@ void backward_path(Param &grad, Param const &param, Node const &phrase){
     grad_u_score_L2norm(grad.u_score, param.u_score, phrase.prop.vec);
     auto factor = Param::val_t{1}/util::math::norm_L2(param.u_score);
     Param::mesg_t mesg{param.u_score};
-    mesg.span *=factor;
+    mesg *=factor;
     backward_path_detail(param, grad, phrase, mesg);
 }
 
@@ -565,6 +565,7 @@ auto test_rnn_greedy_score(rnn::simple_model::Param &param,
                      rnn::simple_model::VocaInfo &rnn){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
+    using namespace util::math;
 
     auto sentence_test = u8"A symbol of British pound is £ .";
     auto idxs = rnn.word2idx.getIndex(sentence_test);
@@ -590,6 +591,21 @@ auto test_rnn_greedy_score(rnn::simple_model::Param &param,
     fmt::print("Model1 : {}\n", score);
     for(auto x : merge_history) fmt::print("{} ", x);
     fmt::print(": merge history\n");
+
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }
+    rnn::type::float_t ds_grad{};
+    auto matloop_void=MatLoop_void<Param::value_type, Param::dim, Param::dim>{};
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, param.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, param.w_right.span);
+    ds_grad += dot(grad.bias.span, param.bias.span);
+    ds_grad += dot(grad.u_score.span, param.u_score.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
     return score;
 }
 auto test_rnn_dp_score(rnn::simple_model::Param &param,
@@ -616,6 +632,20 @@ auto test_rnn_dp_score(rnn::simple_model::Param &param,
     auto root_node=table.get(0,n_words-1);
     print_all_descents(root_node);
 
+    rnn::simple_model::Param grad{};
+    for(auto node : phrases){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    Param::value_type ds_grad{};
+    using namespace util::math;
+    auto matloop_void=MatLoop_void<Param::value_type, Param::dim, Param::dim>{};
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, param.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, param.w_right.span);
+    ds_grad += dot(grad.bias.span, param.bias.span);
+    ds_grad += dot(grad.u_score.span, param.u_score.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
+
     auto top_nodes = merge_leaf_nodes(param, nodes);
     auto merge_history = foward_path(param, top_nodes);
     auto score{0.0};
@@ -624,6 +654,7 @@ auto test_rnn_dp_score(rnn::simple_model::Param &param,
         score+=node.score;
     }
     fmt::print("{}:RNN greedy score.\n", score);
+
     return score_dp;
 }
 
@@ -643,15 +674,15 @@ Word operator"" _w (const char* word, size_t /*length*/)
 }
 void test_context_node(){
     using namespace rnn::simple_model;
-    rnn::context_model::Param param1{};
+    rnn::context_model::Param param{};
     rnn::context_model::Param param2{};
     auto param_rnn1 = randomParam(0.01);
     auto param_rnn2 = randomParam(0.01);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
     param_rnn2.bias.span *= rnn::type::float_t{0.0};
-    copy(param_rnn1, param1);
+    copy(param_rnn1, param);
     copy(param_rnn2, param2);
-    param1 += param2;
+    param += param2;
     param_rnn1 += param_rnn2;
     VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
@@ -674,11 +705,24 @@ void test_context_node(){
         //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
 
         util::Timer timer{};
-        auto score = get_full_greedy_score(param1, nodes);
+        auto score = get_full_greedy_score(param, nodes);
         timer.here_then_reset("CRNN greedy forward path.");
         fmt::print("CRNN score : {}\n", score);
         for (auto &node: nodes.val) print_cnode(node);
         fmt::print("\n");
+        Param grad{};
+        for(auto const &node : nodes.val){
+            if(!node.is_combined()) continue;
+            backward_path(grad, param, node);
+        }
+        Param::val_t ds_grad{};
+        using namespace util::math;
+        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
+        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
+        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
+        ds_grad += dot(grad.bias, param.bias);
+        ds_grad += dot(grad.u_score, param.u_score);
+        fmt::print("{} : ds_grad\n", ds_grad);
     }
     {
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
@@ -686,7 +730,7 @@ void test_context_node(){
         util::Timer timer{};
 
         DPtable table{nodes.val};
-        table.compute(param1);
+        table.compute(param);
         auto phrases = table.get_phrases();
         timer.here_then_reset("CRNN DP Forward path.");
         auto score_dp{0.0};
@@ -694,6 +738,20 @@ void test_context_node(){
         fmt::print("{}:CRNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
         auto root_node = table.root_node();
         print_all_descents(root_node);
+
+        Param grad{};
+        for(auto node : phrases){
+            assert(node->is_combined());
+            backward_path(grad, param, *node);
+        }
+        Param::val_t ds_grad{};
+        using namespace util::math;
+        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
+        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
+        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
+        ds_grad += dot(grad.bias, param.bias);
+        ds_grad += dot(grad.u_score, param.u_score);
+        fmt::print("{} : ds_grad\n", ds_grad);
     }
 }
 
