@@ -7,26 +7,21 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Network.Transport.ZMQ (createTransport, defaultZMQParameters)
 
 import           System.Environment
--- rtable :: RemoteTable
--- rtable = __remoteTable initRemoteTable
 
-client :: Process ()
-client = do
+client :: Int -> Process ()
+client msg = do
   pid <- getSelfPid
   them <- readProcessId
   liftIO $ print them
-  -- (sc,rc) <- newChan :: Process (SendPort Int, ReceivePort Int)
-  -- send them (pid,sc)
-  send them ("abc" :: String)
-  send them (100 :: Int)
+  send them msg
 
 readProcessId :: Process ProcessId
 readProcessId = liftIO $ Bi.decode <$> BL.readFile "server.pid"
   
-
 main :: IO ()
 main = do
-  [host] <- getArgs
+  [host,msgstr] <- getArgs
+  let msg = read msgstr :: Int
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
-  runProcess node client
+  runProcess node (client msg)

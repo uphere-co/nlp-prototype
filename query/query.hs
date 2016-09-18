@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import Control.Monad
+import Control.Monad.Loops
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node      (initRemoteTable,newLocalNode,runProcess)
@@ -30,32 +31,20 @@ writeProcessId = do
   liftIO $ print us
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
-server :: Process ()
-server = do
+server :: CString -> Process ()
+server queryfile = do
   writeProcessId
-  -- (theirpid :: ProcessId, them) <- expect
-  -- say $ "establish connection to " ++ show theirpid
-  forever $ do
-    n :: Int <- expect
-    liftIO $ print n
-    return ()
-
+  whileM_ ((/=999) <$> (expect :: Process Int)) $ do
+    liftIO $ c_query queryfile
+      
 
 main = do
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
-  runProcess node server
-
-  {- 
-
-initialClient 
   
   withCString "config.json" $ \configfile -> do
     withCString "/data/groups/uphere/similarity_test/input.json" $ \queryfile -> do
       c_query_init configfile
-      c_query queryfile
+      runProcess node (server queryfile)
       c_query_finalize
-
-
--}

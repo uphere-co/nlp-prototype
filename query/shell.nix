@@ -8,6 +8,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
     hsenv = haskellPackages.ghcWithPackages (p: with p; [
               distributed-process
 	      network-transport-zeromq
+	      monad-loops
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
