@@ -26,17 +26,9 @@ import           System.FilePath
 --
 import           Type
 
-
-
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
-
-
-
---rtable :: RemoteTable
--- rtable = __remoteTable initRemoteTable
-
 
 writeProcessId :: Process ()
 writeProcessId = do
@@ -44,16 +36,13 @@ writeProcessId = do
   liftIO $ print us
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
-server :: {- CString -> -} Process ()
+server :: Process ()
 server = do
   writeProcessId
   whileJust_ expect $ \q -> do
     (mapM_ (liftIO . putStrLn) .  querySentences) q 
     withTempFile $ \fp -> liftIO $ do
-      -- let json = makeJson q
       BL.writeFile fp (encode (makeJson q))
-
-      -- writeFile fp (makeJsonString q)
       withCString fp $ \queryfile -> liftIO $ c_query queryfile
       removeFile fp
 
@@ -64,7 +53,6 @@ withTempFile f = do
   liftIO $ print uuid
   let tmpfile = tmp </> (toString uuid) <.> "json"
   f tmpfile
-  -- removeFile tmpfile
 
 makeJson :: Query -> Value
 makeJson (Query qs) =

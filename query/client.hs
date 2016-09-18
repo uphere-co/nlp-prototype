@@ -23,7 +23,6 @@ main :: IO ()
 main = do
   (host:msgs) <- getArgs
   let mmsgs = if null msgs then Nothing else Just (Query msgs)
-  -- let msg = read msgstr :: Int
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   runProcess node (client mmsgs)
