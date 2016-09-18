@@ -181,6 +181,7 @@ struct Param{
     using mats_t= util::span_3d<val_t, len_context, dim,dim>;
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
+    using mesg_t = util::math::Vector<val_t, dim>;
     Param(raw_t &&raw)
     : _val(std::move(raw)), span{_val},
       w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
@@ -235,6 +236,95 @@ Param operator*(Param const &x, Param::val_t y){
     return out;
 }
 
+auto activation_fun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation>(x[i]);
+};
+auto apply_activation_fun=[](int64_t i, auto &out, auto const &x) {
+    out[i] = activation_fun(i,x);;
+};
+auto activation_dfun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation_df>(x[i]);
+};
+
+auto update_mesg_common_part=[](int64_t i, auto &mesg, auto const &weighted_sum) {
+    mesg[i]*=activation_dfun(i, weighted_sum);
+};
+auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
+                             auto const &mesg, auto const &w)  {
+    out[j]+=mesg[i]*w[i][j];
+};
+
+auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad,
+                         auto const &mesg, auto const &weighted_sum)  {
+    grad[i][j]+=mesg[i]*weighted_sum[j];
+};
+auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
+                            auto const &mesg, auto const &w)  {
+    grad[j]+=mesg[i]*w[i][j];
+};
+
+void backward_path_detail(Param const &param,
+                        Param &grad_sum,
+                        Node const &phrase, Param::mesg_t mesg) {
+    constexpr auto dim = Param::dim;
+    using val_t =Param::val_t;
+    using namespace util::math;
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    auto matloop_void = MatLoop_void<val_t,dim,dim>{};
+
+    vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
+    grad_sum.bias += mesg.span;
+    matloop_void(back_prop_grad_W,
+                 grad_sum.w_left, mesg.span, phrase.left->prop.vec);
+    matloop_void(back_prop_grad_W,
+                 grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+    if(phrase.left->is_combined()){
+        Param::mesg_t left_mesg;
+        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left);
+        backward_path_detail(param, grad_sum, *phrase.left, left_mesg);
+    } else if(phrase.left->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.left->prop.vec_update,
+                     mesg.span, param.w_left);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN.
+    }
+    if(phrase.right->is_combined()){
+        Param::mesg_t right_mesg;
+        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right);
+        backward_path_detail(param, grad_sum, *phrase.right, right_mesg);
+    } else if(phrase.right->is_leaf()){
+        matloop_void(back_prop_grad_word, phrase.right->prop.vec_update,
+                     mesg.span, param.w_right);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN.
+    }
+}
+
+auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score,
+                              auto factor_p, auto const &phrase)  {
+    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
+};
+auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
+    using namespace util::math;
+    constexpr auto dim = Param::dim;
+    using val_t = Param::val_t;
+    auto norm = norm_L2(u_score);
+    auto score = dot(u_score, phrase);
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+
+    vecloop_void(grad_u_score_L2norm_i, grad,
+                 -score/(norm*norm*norm), u_score,
+                 val_t{1}/norm, phrase);
+};
+void backward_path(Param &grad, Param const &param, Node const &phrase){
+    grad_u_score_L2norm(grad.u_score, param.u_score, phrase.prop.vec);
+    auto factor = Param::val_t{1}/util::math::norm_L2(param.u_score);
+    Param::mesg_t mesg{param.u_score};
+    mesg.span *=factor;
+    backward_path_detail(param, grad, phrase, mesg);
+}
+
 auto weighted_sum=[](int64_t i, auto &word_vec,
                      auto const &w_left, auto const &w_right,
                      auto const &bias,
@@ -256,12 +346,6 @@ auto accumulate_context_weights=[](int64_t i, auto &word_vec,
     }
 };
 
-auto activation_fun=[](int64_t i, auto &out, auto const &x) {
-    out[i] = util::math::Fun<rnn::config::activation>(x[i]);
-};
-auto activation_dfun=[](int64_t i, auto &out, auto const &x) {
-    out[i] =  util::math::Fun<rnn::config::activation_df>(x[i]);
-};
 
 void weighted_sum_word_pair(Param const &param, Node::prop_t &self,
                             Node::prop_t const &left, Node::prop_t const &right) {
@@ -286,7 +370,7 @@ void update_node_prop(Node::prop_t &self, Param const &param,
     self.right_ctxs = right.right_ctxs;
     weighted_sum_word_pair(param, self, left, right);
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
-    vecloop_void(activation_fun, self.vec, self.vec_wsum);
+    vecloop_void(apply_activation_fun, self.vec, self.vec_wsum);
     self.score= scoring_node(param, self);
 }
 Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
