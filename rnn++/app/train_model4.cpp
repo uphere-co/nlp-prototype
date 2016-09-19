@@ -76,7 +76,7 @@ int main(){
             auto score_label = scoring_parsed_dataset(rnn, param, testset);
             auto score_dp= dp_scoring_dataset(rnn, param, lambda, testset);
             return score_label-score_dp;
-        };        
+        };
 
         logger.info("Prepared data.");
 

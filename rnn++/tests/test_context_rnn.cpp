@@ -681,12 +681,80 @@ void test_crnn_backward() {
     }
 }
 
+Param get_dp_gradient(VocaInfo const &crnn, Param const &param, Param::val_t lambda,
+                     SentencePair const &sent_pair){
+    auto nodes = crnn.initialize_tree(sent_pair.original);
+    DPtable table{nodes};
+    table.compute(param, lambda, sent_pair.parsed);
+    auto phrases = table.get_phrases();
+    Param grad{};
+    for(auto node : phrases){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    return grad;
+}
+Param get_directed_grad(VocaInfo const &crnn, Param const &param,
+                        SentencePair const &sent_pair){
+    auto nodes = crnn.initialize_tree(sent_pair.original);
+    auto top_nodes = compose_leaf_nodes(param, nodes);
+    auto merge_history = get_merge_history(sent_pair.parsed);
+    directed_forward_path(param, top_nodes, merge_history);
+    Param grad{};
+    for(auto node : top_nodes){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    return grad;
+}
+
+Param::val_t parsed_scoring_sentence(VocaInfo const &rnn, Param const &param,
+                                     SentencePair const &sent_pair){
+    auto parsed_sentence=sent_pair.parsed;
+    auto merge_history = util::get_merge_history(parsed_sentence);
+    auto nodes = rnn.initialize_tree(sent_pair.original);
+    auto top_nodes = compose_leaf_nodes(param, nodes);
+    directed_forward_path(param, top_nodes, merge_history);
+    auto score{0.0};
+    for(auto phrase : top_nodes) score += phrase->prop.score;
+    return score;
+}
+Param::val_t parsed_scoring_dataset(VocaInfo const &rnn, Param const &param,
+                                    SentencePairs const &dataset){
+    auto &lines = dataset.val;
+    auto get_score=[&](auto const &sent_pair){
+        return parsed_scoring_sentence(rnn, param, sent_pair);
+    };
+    auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, Param::val_t{});
+    return score_accum;
+}
+Param::val_t dp_scoring_sentence(VocaInfo const &rnn, Param const &param,
+                                 DPtable::val_t lambda, SentencePair const &sent_pair) {
+    auto nodes = rnn.initialize_tree(sent_pair.original);
+    DPtable table{nodes};
+    table.compute(param, lambda, sent_pair.parsed);
+    auto phrases = table.get_phrases();
+    auto score_dp{0.0};
+    for(auto phrase : phrases) score_dp += phrase->prop.score;
+    return score_dp;
+}
+Param::val_t dp_scoring_dataset(VocaInfo const &rnn, Param const &param,
+                                DPtable::val_t lambda, SentencePairs const &dataset){
+    auto &lines = dataset.val;
+    auto get_score=[&rnn,&param,&lambda](auto sent_pair){
+        return dp_scoring_sentence(rnn, param, lambda, sent_pair);
+    };
+    auto score_accum = util::parallel_reducer(lines.cbegin(), lines.cend(), get_score, Param::val_t{});
+    return score_accum;
+}
+
+
 void test_crnn_directed_backward() {
     auto param = Param::random(0.05);
     auto dParam = Param::random(0.001);
     auto param1 = param+dParam;
 
-    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
+    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::datatype_from_string("float32")};
 
     auto sentence_orig = u8"A symbol of British pound is £ .";
     auto sentence_parsed = u8"(((((A symbol) of) (British pound)) (is £)) .)";
@@ -727,6 +795,7 @@ void write_to_disk(Param const &param, std::string param_name){
     h5store.writeRawData(H5name{param_name}, param_raw);
 }
 
+
 void train_crnn(){
     Logger logger{"crnn", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){
@@ -735,14 +804,12 @@ void train_crnn(){
         write_to_disk(param, ss.str());
     };
 
-    auto lambda=0.05;
     auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
     auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
     auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
     auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto trainset = SentencePairs{trainset_parsed,trainset_orig};
-
 
 }
 
