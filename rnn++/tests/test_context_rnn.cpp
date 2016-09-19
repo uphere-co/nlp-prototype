@@ -1,5 +1,7 @@
 #include "tests/test_context_rnn.h"
 
+#include <random>
+
 #include "fmt/printf.h"
 
 #include "utils/hdf5.h"
@@ -116,7 +118,7 @@ struct Context{
     val_t score{0.0};
 };
 
-using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 0>>;
+using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
 
 
 struct UninializedLeafNodes{
@@ -162,11 +164,11 @@ void print(util::cstring_span<> word){
     fmt::print(" ");
 }
 void print_cnode(Node const &cnode) {
-    for(auto left : cnode.prop.left_ctxs) if(left!= nullptr) print(left->prop.name);
+    for(auto left : cnode.prop.left_ctxs) if(left) print(left->prop.name);
     fmt::print(" __ ");
     print(cnode.prop.name);
     fmt::print(" __ ");
-    for(auto right : cnode.prop.right_ctxs) if(right!= nullptr) print(right->prop.name);
+    for(auto right : cnode.prop.right_ctxs) if(right) print(right->prop.name);
     fmt::print(" , {}\n", cnode.prop.score);
 }
 
@@ -177,11 +179,24 @@ struct Param{
     static constexpr auto lc_ext = util::dim<len_context>();
 
     using val_t = rnn::type::float_t;
+    using raw_t = std::vector<val_t>;
     using mats_t= util::span_3d<val_t, len_context, dim,dim>;
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
-    Param()
-    : _val(dim*dim*(2+2*len_context)+dim*2, 0), span{_val},
+    using mesg_t = util::math::Vector<val_t, dim>;
+
+    static Param random(val_t scale){
+//        std::random_device rd;
+//        std::mt19937 e{rd()};
+        std::mt19937 e{}; //fixed seed for testing.
+        std::uniform_real_distribution<val_t>  uniform_dist{-scale, scale};
+        raw_t param_raw(dim*dim*(2+2*len_context)+dim*2);
+        for(auto &x : param_raw) x=uniform_dist(e);
+        return Param{std::move(param_raw)};
+    }
+
+    Param(raw_t &&raw)
+    : _val(std::move(raw)), span{_val},
       w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
       w_left{ util::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
       w_right{util::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
@@ -189,12 +204,14 @@ struct Param{
       bias{util::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
       u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
     {}
-    //TODO: Remove this temporal restriction
-    Param(Param const &orig) = delete;
+    Param()
+    : Param(std::move(raw_t(dim*dim*(2+2*len_context)+dim*2, 0))) {}
+    Param(Param const &orig)
+    : Param(std::move(raw_t{orig._val})) {}
 
-    std::vector<val_t> serialize() const {return _val;};
+    raw_t serialize() const {return _val;};
 
-    std::vector<val_t> _val;
+    raw_t _val;
     util::span_1d<val_t, dim*dim*(2+2*len_context)+dim*2> span;
     mats_t w_context_left;
     mat_t w_left;
@@ -203,6 +220,131 @@ struct Param{
     vec_t bias;
     vec_t u_score;
 };
+
+Param& operator+=(Param &out, Param const &x){
+    out.span += x.span;
+    return out;
+}
+Param& operator-=(Param &out, Param const &x){
+    out.span -= x.span;
+    return out;
+}
+Param& operator*=(Param &out, Param::val_t x){
+    out.span *= x;
+    return out;
+}
+Param operator+(Param const &x, Param const &y){
+    Param out{x};
+    out.span += y.span;
+    return out;
+}
+Param operator-(Param const &x, Param const &y){
+    Param out{x};
+    out.span -= y.span;
+    return out;
+}
+Param operator*(Param const &x, Param::val_t y){
+    Param out{x};
+    out.span *= y;
+    return out;
+}
+
+auto activation_fun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation>(x[i]);
+};
+auto apply_activation_fun=[](int64_t i, auto &out, auto const &x) {
+    out[i] = activation_fun(i,x);;
+};
+auto activation_dfun=[](int64_t i, auto const &x) {
+    return util::math::Fun<rnn::config::activation_df>(x[i]);
+};
+
+auto update_mesg_common_part=[](int64_t i, auto &mesg, auto const &weighted_sum) {
+    mesg[i]*=activation_dfun(i, weighted_sum);
+};
+auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
+                             auto const &mesg, auto const &w)  {
+    out[j]+=mesg[i]*w[i][j];
+};
+
+auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad,
+                         auto const &mesg, auto const &weighted_sum)  {
+    grad[i][j]+=mesg[i]*weighted_sum[j];
+};
+auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
+                            auto const &mesg, auto const &w)  {
+    grad[j]+=mesg[i]*w[i][j];
+};
+
+void backward_path_detail(Param const &param,
+                        Param &grad_sum,
+                        Node const &phrase, Param::mesg_t mesg) {
+    constexpr auto dim = Param::dim;
+    using val_t =Param::val_t;
+    using namespace util::math;
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+    auto matloop_void = MatLoop_void<val_t,dim,dim>{};
+
+    vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
+    grad_sum.bias += mesg.span;
+    matloop_void(back_prop_grad_W, grad_sum.w_left, mesg.span, phrase.left->prop.vec);
+    matloop_void(back_prop_grad_W, grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+    auto lenctx = Param::len_context;
+    for(decltype(lenctx)i=0; i!= lenctx; ++i) {
+        auto w_left_ctx=grad_sum.w_context_left[i];
+        auto left_ctx = phrase.prop.left_ctxs[i];
+        auto w_right_ctx=grad_sum.w_context_right[i];
+        auto right_ctx = phrase.prop.right_ctxs[i];
+        if(left_ctx!= nullptr) matloop_void(back_prop_grad_W, w_left_ctx,  mesg.span, left_ctx->prop.vec);
+        if(right_ctx!= nullptr) matloop_void(back_prop_grad_W, w_right_ctx,  mesg.span, right_ctx->prop.vec);
+    }
+
+    if(phrase.left->is_combined()){
+        Param::mesg_t left_mesg;
+        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left);
+        backward_path_detail(param, grad_sum, *phrase.left, left_mesg);
+    } else if(phrase.left->is_leaf()){
+        //update word_vec of leaf node
+        matloop_void(back_prop_grad_word, phrase.left->prop.vec_update,
+                     mesg.span, param.w_left);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN.
+    }
+    if(phrase.right->is_combined()){
+        Param::mesg_t right_mesg;
+        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right);
+        backward_path_detail(param, grad_sum, *phrase.right, right_mesg);
+    } else if(phrase.right->is_leaf()){
+        matloop_void(back_prop_grad_word, phrase.right->prop.vec_update,
+                     mesg.span, param.w_right);
+    } else{
+        assert(0);//it cannot happen on shape of tree constructed RNN.
+    }
+}
+
+auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score,
+                              auto factor_p, auto const &phrase)  {
+    grad[i] += u_score[i]*factor_u + phrase[i]*factor_p;
+};
+auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phrase){
+    using namespace util::math;
+    constexpr auto dim = Param::dim;
+    using val_t = Param::val_t;
+    auto norm = norm_L2(u_score);
+    auto score = dot(u_score, phrase);
+    auto vecloop_void = VecLoop_void<val_t,dim>{};
+
+    vecloop_void(grad_u_score_L2norm_i, grad,
+                 -score/(norm*norm*norm), u_score,
+                 val_t{1}/norm, phrase);
+};
+void backward_path(Param &grad, Param const &param, Node const &phrase){
+    grad_u_score_L2norm(grad.u_score, param.u_score, phrase.prop.vec);
+    auto factor = Param::val_t{1}/util::math::norm_L2(param.u_score);
+    Param::mesg_t mesg{param.u_score};
+    mesg *=factor;
+    backward_path_detail(param, grad, phrase, mesg);
+}
 
 auto weighted_sum=[](int64_t i, auto &word_vec,
                      auto const &w_left, auto const &w_right,
@@ -225,12 +367,6 @@ auto accumulate_context_weights=[](int64_t i, auto &word_vec,
     }
 };
 
-auto activation_fun=[](int64_t i, auto &out, auto const &x) {
-    out[i] = util::math::Fun<rnn::config::activation>(x[i]);
-};
-auto activation_dfun=[](int64_t i, auto &out, auto const &x) {
-    out[i] =  util::math::Fun<rnn::config::activation_df>(x[i]);
-};
 
 void weighted_sum_word_pair(Param const &param, Node::prop_t &self,
                             Node::prop_t const &left, Node::prop_t const &right) {
@@ -255,7 +391,7 @@ void update_node_prop(Node::prop_t &self, Param const &param,
     self.right_ctxs = right.right_ctxs;
     weighted_sum_word_pair(param, self, left, right);
     auto vecloop_void = util::math::VecLoop_void<Param::val_t, Param::dim>{};
-    vecloop_void(activation_fun, self.vec, self.vec_wsum);
+    vecloop_void(apply_activation_fun, self.vec, self.vec_wsum);
     self.score= scoring_node(param, self);
 }
 Node::prop_t compose_node_prop(Param const &param, Node::prop_t const &left, Node::prop_t const &right){
@@ -450,6 +586,7 @@ auto test_rnn_greedy_score(rnn::simple_model::Param &param,
                      rnn::simple_model::VocaInfo &rnn){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
+    using namespace util::math;
 
     auto sentence_test = u8"A symbol of British pound is £ .";
     auto idxs = rnn.word2idx.getIndex(sentence_test);
@@ -475,6 +612,21 @@ auto test_rnn_greedy_score(rnn::simple_model::Param &param,
     fmt::print("Model1 : {}\n", score);
     for(auto x : merge_history) fmt::print("{} ", x);
     fmt::print(": merge history\n");
+
+    rnn::simple_model::Param grad{};
+    for(auto i=n_words; i<nodes.size(); ++i){
+        auto const &node=nodes[i];
+        assert(node.is_combined());
+        // print_all_descents(node);
+        backward_path(grad, param, node);
+    }
+    rnn::type::float_t ds_grad{};
+    auto matloop_void=MatLoop_void<Param::value_type, Param::dim, Param::dim>{};
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, param.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, param.w_right.span);
+    ds_grad += dot(grad.bias.span, param.bias.span);
+    ds_grad += dot(grad.u_score.span, param.u_score.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
     return score;
 }
 auto test_rnn_dp_score(rnn::simple_model::Param &param,
@@ -501,6 +653,20 @@ auto test_rnn_dp_score(rnn::simple_model::Param &param,
     auto root_node=table.get(0,n_words-1);
     print_all_descents(root_node);
 
+    rnn::simple_model::Param grad{};
+    for(auto node : phrases){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    Param::value_type ds_grad{};
+    using namespace util::math;
+    auto matloop_void=MatLoop_void<Param::value_type, Param::dim, Param::dim>{};
+    matloop_void(mul_sum_mat, ds_grad, grad.w_left.span, param.w_left.span);
+    matloop_void(mul_sum_mat, ds_grad, grad.w_right.span, param.w_right.span);
+    ds_grad += dot(grad.bias.span, param.bias.span);
+    ds_grad += dot(grad.u_score.span, param.u_score.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
+
     auto top_nodes = merge_leaf_nodes(param, nodes);
     auto merge_history = foward_path(param, top_nodes);
     auto score{0.0};
@@ -509,6 +675,7 @@ auto test_rnn_dp_score(rnn::simple_model::Param &param,
         score+=node.score;
     }
     fmt::print("{}:RNN greedy score.\n", score);
+
     return score_dp;
 }
 
@@ -529,10 +696,16 @@ Word operator"" _w (const char* word, size_t /*length*/)
 void test_context_node(){
     using namespace rnn::simple_model;
     rnn::context_model::Param param{};
-    auto param_rnn1 = randomParam(0.05);
+    rnn::context_model::Param param2{};
+    auto param_rnn1 = randomParam(0.01);
+    auto param_rnn2 = randomParam(0.01);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
-    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
+    param_rnn2.bias.span *= rnn::type::float_t{0.0};
     copy(param_rnn1, param);
+    copy(param_rnn2, param2);
+    param += param2;
+    param_rnn1 += param_rnn2;
+    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
     auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
 
@@ -549,8 +722,10 @@ void test_context_node(){
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
         auto nodes = InitializedNodes(std::move(leaf_nodes));
         assert(nodes.val.size() == 8);
-        //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-        //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+        assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+        assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+        assert(nodes.val[2].prop.left_ctxs[0]==&nodes.val[0]);
+        assert(nodes.val[2].prop.left_ctxs[1]==&nodes.val[1]);
 
         util::Timer timer{};
         auto score = get_full_greedy_score(param, nodes);
@@ -558,6 +733,19 @@ void test_context_node(){
         fmt::print("CRNN score : {}\n", score);
         for (auto &node: nodes.val) print_cnode(node);
         fmt::print("\n");
+        Param grad{};
+        for(auto const &node : nodes.val){
+            if(!node.is_combined()) continue;
+            backward_path(grad, param, node);
+        }
+        Param::val_t ds_grad{};
+        using namespace util::math;
+        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
+        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
+        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
+        ds_grad += dot(grad.bias, param.bias);
+        ds_grad += dot(grad.u_score, param.u_score);
+        fmt::print("{} : ds_grad\n", ds_grad);
     }
     {
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
@@ -573,8 +761,69 @@ void test_context_node(){
         fmt::print("{}:CRNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
         auto root_node = table.root_node();
         print_all_descents(root_node);
+
+        Param grad{};
+        for(auto node : phrases){
+            assert(node->is_combined());
+            backward_path(grad, param, *node);
+        }
+        Param::val_t ds_grad{};
+        using namespace util::math;
+        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
+        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
+        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
+        ds_grad += dot(grad.bias, param.bias);
+        ds_grad += dot(grad.u_score, param.u_score);
+        fmt::print("{} : ds_grad\n", ds_grad);
     }
 }
+
+void test_crnn_backward() {
+    auto param = Param::random(0.05);
+    auto dParam = Param::random(0.001);
+    auto param1 = param+dParam;
+
+    Voca voca =load_voca("data.h5", "1b.model.voca");
+    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
+    VocaIndexMap word2idx = voca.indexing();
+
+    std::string sentence = u8"A symbol of British pound is £ .";
+    auto idxs = word2idx.getIndex(sentence);
+
+    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+    auto nodes = InitializedNodes(std::move(leaf_nodes));
+    util::Timer timer{};
+
+    DPtable table{nodes.val};
+    table.compute(param);
+    auto phrases = table.get_phrases();
+    timer.here_then_reset("CRNN DP Forward path.");
+    auto score_dp{0.0};
+    for(auto phrase : phrases) score_dp += phrase->prop.score;
+    fmt::print("{}:CRNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+
+    Param grad{};
+    for(auto node : phrases){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    auto ds_grad = util::math::dot(grad.span, dParam.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
+    fmt::print("{} : expected score\n", ds_grad+score_dp);
+
+    {
+        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        DPtable table{nodes.val};
+        table.compute(param1);
+        auto phrases = table.get_phrases();
+        auto score_dp{0.0};
+        for(auto phrase : phrases) score_dp += phrase->prop.score;
+        fmt::print("{}: CRNN DP score with param1. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+    }
+
+}
+
 
 }//namespace rnn::context_model::test
 }//namespace rnn::context_model
