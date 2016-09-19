@@ -21,7 +21,7 @@
 
 
 namespace rnn{
-constexpr int len_context=2;
+constexpr int len_context=0;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
@@ -790,11 +790,10 @@ void test_crnn_directed_backward() {
 void write_to_disk(Param const &param, std::string param_name){
     using namespace util::io;
     auto param_raw = param.serialize();
-    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::create};
-//    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::rw_exist};
+//    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::create};
+    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::rw_exist};
     h5store.writeRawData(H5name{param_name}, param_raw);
 }
-
 
 void train_crnn(){
     Logger logger{"crnn", "logs/basic.txt"};
@@ -811,6 +810,55 @@ void train_crnn(){
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto trainset = SentencePairs{trainset_parsed,trainset_orig};
 
+    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+    auto lambda=0.05;
+    auto param = Param::random(0.05);
+    param.bias *= 0.0;
+
+    auto get_label_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+    auto get_dp_grad=[&](auto const &sent_pair){
+        return get_dp_gradient(rnn, param, lambda, sent_pair);
+    };
+    auto score_diff=[&](){
+        auto score_label = parsed_scoring_dataset(rnn, param, testset);
+        auto score_dp= dp_scoring_dataset(rnn, param, lambda, testset);
+        return score_label-score_dp;
+    };
+
+
+    logger.info("Prepared data.");
+
+    logger.info("Begin training");
+    int64_t i_minibatch{};
+    logger.log_testscore(i_minibatch, score_diff());
+    fmt::print("{} :voca size.\n", rnn.voca_vecs.size());
+    write_param(i_minibatch,param);
+
+    RMSprop optimizer{0.01};
+    auto &pairs = trainset.val;
+    for(auto epoch=0; epoch<n_epoch; ++epoch){
+        for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
+            auto beg=it;
+            auto end=beg+n_minibatch;
+            end=end<pairs.cend()?end:pairs.cend();
+
+            auto grad_label = util::parallel_reducer(beg, end, get_label_grad, Param{});
+            optimizer.update(param, grad_label);
+
+            auto grad_dp = util::parallel_reducer(beg, end, get_dp_grad, Param{});
+            grad_dp *=-1.0;
+            optimizer.update(param, grad_dp);
+
+            ++i_minibatch;
+            if(i_minibatch%100==0) {
+                logger.log_testscore(i_minibatch,score_diff());
+                write_param(i_minibatch,param);
+            }
+        }
+    }
+    logger.info("Finish one iteration");
 }
 
 

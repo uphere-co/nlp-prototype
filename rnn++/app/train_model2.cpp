@@ -27,10 +27,11 @@ using namespace rnn::test;
 
 int main(){
     try {
-        test_context_node();
-        test_crnn_backward();
-        test_crnn_directed_backward();
-        return 0;
+//        test_context_node();
+//        test_crnn_backward();
+//        test_crnn_directed_backward();
+//        return 0;
+        train_crnn();
         
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
