@@ -1,8 +1,11 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "similarity/similarity.h"
 
 extern "C" {
     void query_init( char* configfile );
-    void query( char* queryfile );
+  void query( int fd /* char* queryfile */ );
     void query_finalize( void );
 }
 
@@ -23,9 +26,12 @@ void query_init( char* configfile )
     */
 }
 
-void query( char* queryfile )
+void query( int fd /* char* queryfile */  )
 {
     std::cout << "fake query" << std::endl;
+
+    char string[] = "hello world\n";
+    write(fd, string, strlen(string)+1);
     /*
     std::cout << "query is called" << std::endl;
     auto input = load_json(queryfile);

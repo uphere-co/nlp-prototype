@@ -70,6 +70,7 @@ Executable query
                         network-transport-zeromq,
                         stm,
                         text,
+                        unix,
                         uuid,
                         --
                         query

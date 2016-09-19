@@ -20,15 +20,19 @@ import qualified Data.Text                           as T
 import           Data.UUID                                 (toString)
 import           Data.UUID.V4                              (nextRandom)
 import           Foreign.C.String
+import           Foreign.C.Types                           (CInt(..))
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
 import           System.Directory
 import           System.Environment
 import           System.FilePath
+import           System.IO                                 (hGetContents)
+import           System.Posix.IO                           (createPipe, fdToHandle)
+import           System.Posix.Types                        (Fd(..))
 --
 import           Type
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query"          c_query          :: CString -> IO ()
+foreign import ccall "query"          c_query          :: CInt  -> IO () -- :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: Process ()
@@ -39,11 +43,20 @@ writeProcessId = do
 
 
 queryWorker :: Query -> IO ()
-queryWorker q = do 
-  withTempFile $ \fp -> liftIO $ do
-    BL.writeFile fp (encode (makeJson q))
-    withCString fp $ \queryfile -> liftIO $ c_query queryfile
-    removeFile fp
+queryWorker q = do
+  (fin,fout) <- createPipe
+  let Fd fd_out = fout
+  h <- fdToHandle fin
+  
+  c_query (fd_out :: CInt) -- fin
+
+  str <- hGetContents h
+  putStrLn "haskell side:"
+  putStrLn str
+  -- withTempFile $ \fp -> liftIO $ do
+   --  BL.writeFile fp (encode (makeJson q))
+    -- withCString fp $ \queryfile -> liftIO $ c_query queryfile
+    -- removeFile fp
 
 
 server :: Process ()
