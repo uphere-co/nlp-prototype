@@ -90,6 +90,7 @@ template<typename FLOAT, int WORD_DIM, int LEN_CTX>
 struct Param {
     static constexpr auto dim = WORD_DIM;
     static constexpr auto len_context = LEN_CTX;
+    static constexpr auto len_raw = dim * dim * (2 + 2 * len_context) + dim * 2;
     static constexpr auto d_ext = util::dim<dim>();
     static constexpr auto lc_ext = util::dim<len_context>();
 
@@ -105,7 +106,7 @@ struct Param {
 //        std::mt19937 e{rd()};
         std::mt19937 e{}; //fixed seed for testing.
         std::uniform_real_distribution <val_t> uniform_dist{-scale, scale};
-        raw_t param_raw(dim * dim * (2 + 2 * len_context) + dim * 2);
+        raw_t param_raw(len_raw);
         for (auto &x : param_raw) x = uniform_dist(e);
         return Param{std::move(param_raw)};
     }
@@ -122,7 +123,7 @@ struct Param {
       u_score{util::as_span(span.subspan((2 + 2 * len_context) * dim * dim + dim, dim), d_ext)} {}
 
     Param()
-    : Param(std::move(raw_t(dim*dim*(2+2*len_context)+dim*2, val_t{0.0}))) {for(auto x :span) assert(x==0.0);}
+    : Param(std::move(raw_t(len_raw, val_t{0.0}))) {for(auto x :span) assert(x==0.0);}
 
     Param(Param const &orig)
     : Param(std::move(raw_t{orig._val})) {}

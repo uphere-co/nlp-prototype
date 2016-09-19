@@ -30,9 +30,9 @@ int main(){
 //        test_context_node();
 //        test_crnn_backward();
 //        test_crnn_directed_backward();
-        test_grad_parallel_reduce();
+//        test_grad_parallel_reduce();
 //        test_minibatch_crnn();
-        return 0;
+//        return 0;
         train_crnn();
         
     } catch (H5::Exception &ex) {

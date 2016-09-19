@@ -21,7 +21,7 @@
 
 
 namespace rnn{
-constexpr int len_context=0;
+constexpr int len_context=1;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
@@ -444,7 +444,7 @@ class RMSprop{
 public:
     using param_t = Param;
     using val_t = param_t::val_t;
-    static const int word_dim=param_t::dim;
+    static const int dim_param=param_t::len_raw;
     RMSprop(val_t scale): ada_scale{scale} {}
     void update(Param &param, Param const &grad){
         vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.span, grad.span);
@@ -453,8 +453,7 @@ public:
 
 private:
     param_t ada_factor_param{};
-    util::math::VecLoop_void<val_t,word_dim> vecloop_void{};
-    util::math::MatLoop_void<val_t,word_dim,word_dim> matloop_void{};
+    util::math::VecLoop_void<val_t,dim_param> vecloop_void{};
     val_t ada_scale;
 };
 
@@ -925,6 +924,7 @@ void train_crnn(){
         write_to_disk(param, ss.str());
     };
 
+    auto n_minibatch=rnn::config::n_minibatch;
     auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
     auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
     auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
@@ -961,7 +961,7 @@ void train_crnn(){
     RMSprop optimizer{0.001};
     auto &pairs = trainset.val;
     for(auto epoch=0; epoch<n_epoch; ++epoch){
-        for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
+        for(auto it=pairs.cbegin();it <pairs.cend(); it+= n_minibatch){
             auto beg=it;
             auto end=beg+n_minibatch;
             end=end<pairs.cend()?end:pairs.cend();
