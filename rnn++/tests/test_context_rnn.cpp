@@ -25,30 +25,34 @@ constexpr int len_context=2;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
-struct UninializedLeafNodes{
-    UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
-    std::vector<Node> val;
-};
-
-auto construct_nodes_with_reserve=[](auto const &voca, auto const &word_block,
-                                     auto const &idxs){
-    std::vector<Node> nodes;
-    nodes.reserve(idxs.size()*2-1);
-    for(auto idx : idxs){
-        Node::prop_t prop{voca.getWordSpan(idx), word_block[idx]};
-        Node node{std::move(prop)};
-        nodes.push_back(node);
-    }
-    return UninializedLeafNodes{std::move(nodes)};
-};
 
 struct InitializedNodes{
-    InitializedNodes(UninializedLeafNodes &&leafs)
-            : val{std::move(leafs.val)}, nodes{val} {
+    InitializedNodes(std::vector<Node> &&leaf_nodes_with_reserve)
+    : val{std::move(leaf_nodes_with_reserve)}, nodes{val} {assert(val.size()*2-1==val.capacity());}
+    std::vector<Node> val;
+    util::span_dyn<Node> nodes;
+};
+
+struct VocaInfo{
+    using voca_vecs_t = rnn::wordrep::WordBlock_base<Node::prop_t::word_dim>;
+    VocaInfo(std::string vocafile, std::string voca_dataset,
+             std::string w2vmodel_dataset, util::DataType float_type)
+    : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
+      voca_vecs{rnn::wordrep::load_voca_vecs<voca_vecs_t::dim>(vocafile,w2vmodel_dataset,float_type)} {}
+    InitializedNodes initialize_tree(std::string sentence) const{
+        auto idxs = word2idx.getIndex(sentence);
+        std::vector<Node> val;
+        val.reserve(idxs.size()*2-1);
+        for(auto idx : idxs){
+            Node::prop_t prop{voca.getWordSpan(idx), voca_vecs[idx]};
+            Node node{std::move(prop)};
+            val.push_back(node);
+        }
+
+        util::span_dyn<Node> nodes{val};
         auto len_context = Node::prop_t::len_context;
-//        auto nodes=util::span_dyn<Node>{val};
         auto n=nodes.length();
-        assert(&nodes[0]==&val[0]);
+        assert(val.data() == nodes.data());
         for(decltype(n)i=0; i!=n; ++i){
             auto left_beg=i>len_context?i-len_context:0;
             auto right_end=i+len_context+1<n?i+len_context+1:n;
@@ -56,9 +60,11 @@ struct InitializedNodes{
             auto rights= nodes.subspan(i+1,right_end-(i+1));
             nodes[i].prop.set_context(lefts, rights);
         }
+        return InitializedNodes{std::move(val)};
     }
-    std::vector<Node> val;
-    util::span_dyn<Node> nodes;
+    rnn::wordrep::Voca voca;
+    rnn::wordrep::VocaIndexMap word2idx;
+    voca_vecs_t voca_vecs;
 };
 
 
@@ -295,7 +301,8 @@ void directed_forward_path(Param const &param, std::vector<Node*> top_nodes,
     }
 }
 
-std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &leaves)  {
+std::vector<Node*> compose_leaf_nodes(Param const &param, InitializedNodes &nodes)  {
+    auto& leaves = nodes.val;
     std::vector<Node*> top_node;
     auto n_leaf = leaves.size();
     if(n_leaf==1) return top_node;
@@ -307,14 +314,6 @@ std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &lea
         top_node.push_back(it);
     return top_node;
 }
-Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
-    auto& all_nodes = nodes.val;
-    auto top_nodes = compose_leaf_nodes(param, all_nodes);
-    auto merge_history = foward_path(param, top_nodes);
-    Param::val_t score{};
-    for(auto node: top_nodes) score+= node->prop.score;
-    return score;
-}
 
 class DPtable{
 public:
@@ -322,12 +321,12 @@ public:
     using node_t = Node;
     using val_t= node_t::prop_t::val_t;
 
-    DPtable(std::vector<node_t> const &nodes)
-    : n_words{nodes.size()}, raw(n_words*n_words, node_t::blank_node()),
+    DPtable(InitializedNodes const &nodes)
+    : n_words{nodes.val.size()}, raw(n_words*n_words, node_t::blank_node()),
       score_sums(raw.size(), std::numeric_limits<val_t>::lowest()),
       penalties(0) {
         for(decltype(n_words)i=0; i<n_words; ++i){
-            get(i,i)=nodes[i];
+            get(i,i)=nodes.val[i];
             score_sum(i,i)=0.0;
         }
     }
@@ -570,6 +569,15 @@ Word operator"" _w (const char* word, size_t /*length*/)
 {
     return Word{word};
 }
+
+Param::val_t get_full_greedy_score(Param const &param, InitializedNodes &nodes ) {
+    auto top_nodes = compose_leaf_nodes(param, nodes);
+    auto merge_history = foward_path(param, top_nodes);
+    Param::val_t score{};
+    for(auto node: top_nodes) score+= node->prop.score;
+    return score;
+}
+
 void test_context_node(){
     rnn::Param param{};
     rnn::Param param2{};
@@ -585,18 +593,11 @@ void test_context_node(){
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
     auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
 
-    Voca voca =load_voca("data.h5", "1b.model.voca");
-    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
-    std::cerr << voca_vecs.size() << " " << voca.size() <<std::endl;
-    VocaIndexMap word2idx = voca.indexing();
+    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
     std::string sentence = u8"A symbol of British pound is £ .";
-    auto idxs = word2idx.getIndex(sentence);
-//    auto word_block = voca_vecs.getWordVec(idxs);
-
     {
-        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes{std::move(leaf_nodes)};
+        auto nodes = crnn.initialize_tree(sentence);
         assert(nodes.val.size() == 8);
         assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
         assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
@@ -618,11 +619,10 @@ void test_context_node(){
         fmt::print("{} : ds_grad\n", ds_grad);
     }
     {
-        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes{std::move(leaf_nodes)};
+        auto nodes = crnn.initialize_tree(sentence);
         util::Timer timer{};
 
-        DPtable table{nodes.val};
+        DPtable table{nodes};
         table.compute(param);
         auto phrases = table.get_phrases();
         timer.here_then_reset("CRNN DP Forward path.");
@@ -647,18 +647,14 @@ void test_crnn_backward() {
     auto dParam = Param::random(0.001);
     auto param1 = param+dParam;
 
-    Voca voca =load_voca("data.h5", "1b.model.voca");
-    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
-    VocaIndexMap word2idx = voca.indexing();
+    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
     std::string sentence = u8"A symbol of British pound is £ .";
-    auto idxs = word2idx.getIndex(sentence);
 
-    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-    auto nodes = InitializedNodes{std::move(leaf_nodes)};
+    auto nodes = crnn.initialize_tree(sentence);
     util::Timer timer{};
 
-    DPtable table{nodes.val};
+    DPtable table{nodes};
     table.compute(param);
     auto phrases = table.get_phrases();
     timer.here_then_reset("CRNN DP Forward path.");
@@ -676,36 +672,28 @@ void test_crnn_backward() {
     fmt::print("{} : expected score\n", ds_grad+score_dp);
 
     {
-        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes{std::move(leaf_nodes)};
-        DPtable table{nodes.val};
+        DPtable table{nodes};
         table.compute(param1);
         auto phrases = table.get_phrases();
         auto score_dp{0.0};
         for(auto phrase : phrases) score_dp += phrase->prop.score;
         fmt::print("{}: CRNN DP score with param1. {} : score_sum.\n", score_dp, table.score_sum(0,7));
     }
-
 }
 
-
-void test_crnn_directed_forward_path() {
+void test_crnn_directed_backward() {
     auto param = Param::random(0.05);
     auto dParam = Param::random(0.001);
     auto param1 = param+dParam;
 
-    Voca voca =load_voca("data.h5", "1b.model.voca");
-    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
-    VocaIndexMap word2idx = voca.indexing();
+    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
     auto sentence_orig = u8"A symbol of British pound is £ .";
     auto sentence_parsed = u8"(((((A symbol) of) (British pound)) (is £)) .)";
     auto merge_history = get_merge_history(sentence_parsed);
 
-    auto idxs = word2idx.getIndex(sentence_orig);
-    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-    auto nodes = InitializedNodes{std::move(leaf_nodes)};
-    auto top_nodes = compose_leaf_nodes(param, nodes.val);
+    auto nodes = crnn.initialize_tree(sentence_orig);
+    auto top_nodes = compose_leaf_nodes(param, nodes);
     directed_forward_path(param, top_nodes, merge_history);
     auto score_label{0.0};
     for(auto phrase : top_nodes) score_label += phrase->prop.score;
@@ -721,9 +709,8 @@ void test_crnn_directed_forward_path() {
     fmt::print("{} : expected score\n", ds_grad+score_label);
 
     {
-        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes{std::move(leaf_nodes)};
-        auto top_nodes = compose_leaf_nodes(param1, nodes.val);
+        auto nodes = crnn.initialize_tree(sentence_orig);
+        auto top_nodes = compose_leaf_nodes(param1, nodes);
         directed_forward_path(param1, top_nodes, merge_history);
         auto score_label{0.0};
         for(auto phrase : top_nodes) score_label += phrase->prop.score;
