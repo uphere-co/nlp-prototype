@@ -597,6 +597,32 @@ void print_all_descents(Node const &node) {
     if(node.right!= nullptr) print_all_descents(*node.right);
 }
 
+auto adaptive_update_vec = [](int64_t i, auto &out, auto x, auto const &grad, auto const &adagrad_factor){
+    out[i] += x *grad[i]/std::sqrt(adagrad_factor[i]+0.0000001);
+};
+auto accum_rmsprop_factor_vec = [](int64_t i, auto &out, auto const &vec){
+    out[i] *=0.98;
+    out[i] += 0.02*vec[i]*vec[i];
+};
+class RMSprop{
+public:
+    using param_t = Param;
+    using val_t = param_t::val_t;
+    static const int word_dim=param_t::dim;
+    RMSprop(val_t scale): ada_scale{scale} {}
+    void update(Param &param, Param const &grad){
+        vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.span, grad.span);
+        vecloop_void(adaptive_update_vec, ada_factor_param.span, grad.span);
+    }
+
+private:
+    param_t ada_factor_param{};
+    util::math::VecLoop_void<val_t,word_dim> vecloop_void{};
+    util::math::MatLoop_void<val_t,word_dim,word_dim> matloop_void{};
+    val_t ada_scale;
+};
+
+
 }//namespace rnn::context_model
 }//namespace rnn
 namespace {
@@ -879,6 +905,10 @@ void test_crnn_directed_forward_path() {
         for(auto phrase : top_nodes) score_label += phrase->prop.score;
         fmt::print("{}:CRNN label score with param1.\n", score_label);
     }
+
+}
+
+void train_crnn(){
 
 }
 
