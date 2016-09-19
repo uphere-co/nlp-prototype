@@ -162,11 +162,11 @@ void print(util::cstring_span<> word){
     fmt::print(" ");
 }
 void print_cnode(Node const &cnode) {
-    for(auto left : cnode.prop.left_ctxs) if(left!= nullptr) print(left->prop.name);
+    for(auto left : cnode.prop.left_ctxs) if(left) print(left->prop.name);
     fmt::print(" __ ");
     print(cnode.prop.name);
     fmt::print(" __ ");
-    for(auto right : cnode.prop.right_ctxs) if(right!= nullptr) print(right->prop.name);
+    for(auto right : cnode.prop.right_ctxs) if(right) print(right->prop.name);
     fmt::print(" , {}\n", cnode.prop.score);
 }
 
@@ -274,10 +274,18 @@ void backward_path_detail(Param const &param,
 
     vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
     grad_sum.bias += mesg.span;
-    matloop_void(back_prop_grad_W,
-                 grad_sum.w_left, mesg.span, phrase.left->prop.vec);
-    matloop_void(back_prop_grad_W,
-                 grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+    matloop_void(back_prop_grad_W, grad_sum.w_left, mesg.span, phrase.left->prop.vec);
+    matloop_void(back_prop_grad_W, grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+    auto lenctx = Param::len_context;
+    for(decltype(lenctx)i=0; i!= lenctx; ++i) {
+        auto w_left_ctx=grad_sum.w_context_left[i];
+        auto left_ctx = phrase.prop.left_ctxs[i];
+        auto w_right_ctx=grad_sum.w_context_right[i];
+        auto right_ctx = phrase.prop.right_ctxs[i];
+        if(left_ctx!= nullptr) matloop_void(back_prop_grad_W, w_left_ctx,  mesg.span, left_ctx->prop.vec);
+        if(right_ctx!= nullptr) matloop_void(back_prop_grad_W, w_right_ctx,  mesg.span, right_ctx->prop.vec);
+    }
+
     if(phrase.left->is_combined()){
         Param::mesg_t left_mesg;
         matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left);
@@ -701,8 +709,10 @@ void test_context_node(){
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
         auto nodes = InitializedNodes(std::move(leaf_nodes));
         assert(nodes.val.size() == 8);
-        //    assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-        //    assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+        assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+        assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+        assert(nodes.val[2].prop.left_ctxs[0]==&nodes.val[0]);
+        assert(nodes.val[2].prop.left_ctxs[1]==&nodes.val[1]);
 
         util::Timer timer{};
         auto score = get_full_greedy_score(param, nodes);
