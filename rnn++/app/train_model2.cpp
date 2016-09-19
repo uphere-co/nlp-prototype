@@ -30,8 +30,8 @@ int main(){
 //        test_context_node();
 //        test_crnn_backward();
 //        test_crnn_directed_backward();
-//        test_grad_parallel_reduce();
-        test_minibatch_crnn();
+        test_grad_parallel_reduce();
+//        test_minibatch_crnn();
         return 0;
         train_crnn();
         

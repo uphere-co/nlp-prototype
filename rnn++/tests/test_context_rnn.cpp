@@ -21,7 +21,7 @@
 
 
 namespace rnn{
-constexpr int len_context=2;
+constexpr int len_context=0;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
@@ -799,22 +799,37 @@ void test_crnn_directed_backward() {
 
 
 void test_grad_parallel_reduce(){
-    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::datatype_from_string("float32")};
+    VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::datatype_from_string("float32")};
     auto testset_parsed=ParsedSentences{"a.sample.stanford"};
     auto testset_orig=TokenizedSentences{"a.sample"};
+    rnn::simple_model::VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::datatype_from_string("float32")};
+//    rnn::simple_model::VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+//    VocaInfo crnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+//    auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
+//    auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
     auto testset = SentencePairs{testset_parsed,testset_orig};
-
-    auto param = Param::random(0.05);
-    param.bias *= 0.0;
-    {Param param{};
-    for(auto x : param.span) assert(x==0.0);}
-
-    auto get_label_grad=[&](auto const &sent_pair){
-        return get_directed_grad(rnn, param, sent_pair);
-    };
-
     auto beg=testset.val.cbegin();
     auto end=testset.val.cend();
+
+    auto param_rnn = rnn::simple_model::randomParam(0.05);
+    {
+        auto get_label_grad=[&](auto const &sent_pair){
+            return rnn::simple_model::get_directed_grad(rnn, param_rnn, sent_pair);
+        };
+        auto gradient_rnn = util::parallel_reducer(beg, end, get_label_grad, rnn::simple_model::Gradient{});
+        auto grad_rnn = gradient_rnn.param;
+        fmt::print("{} : RNN\n", util::math::sum(grad_rnn.bias.span)+util::math::sum(grad_rnn.u_score.span)
+        +util::math::sum(grad_rnn.w_left.span)+util::math::sum(grad_rnn.w_right.span));
+    }
+
+//    auto param = Param::random(0.05);
+//    param.bias *= 0.0;
+    Param param{};
+    copy(param_rnn, param);
+
+    auto get_label_grad=[&](auto const &sent_pair){
+        return get_directed_grad(crnn, param, sent_pair);
+    };
 
     auto grad0 = util::parallel_reducer(beg, end, get_label_grad, Param{});
     auto n = testset.val.size();
