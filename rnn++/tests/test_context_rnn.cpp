@@ -96,10 +96,6 @@ auto activation_dfun=[](int64_t i, auto const &x) {
 auto update_mesg_common_part=[](int64_t i, auto &mesg, auto const &weighted_sum) {
     mesg[i]*=activation_dfun(i, weighted_sum);
 };
-auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
-                             auto const &mesg, auto const &w)  {
-    out[j]+=mesg[i]*w[i][j];
-};
 
 auto back_prop_grad_W=[](int64_t i,int64_t j, auto &grad,
                          auto const &mesg, auto const &weighted_sum)  {
@@ -110,26 +106,6 @@ auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
     grad[j]+=mesg[i]*w[i][j];
 };
 
-auto check_nan=[](auto const &x, auto tag){
-    if(!(x[0]==x[0])) std::cerr<< "Assert fails in " <<tag << std::endl;
-};
-
-Param::mesg_t left_message(Param::mesg_t const &mesg, Param const &param){
-    constexpr auto dim = Param::dim;
-    using val_t =Param::val_t;
-    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
-    Param::mesg_t new_mesg;
-    matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, param.w_left);
-    return new_mesg;
-}
-Param::mesg_t right_message(Param::mesg_t const &mesg, Param const &param){
-    constexpr auto dim = Param::dim;
-    using val_t =Param::val_t;
-    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
-    Param::mesg_t new_mesg;
-    matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, param.w_right);
-    return new_mesg;
-}
 void backward_path_detail(Param const &param,
                         Param &grad_sum,
                         Node const &phrase, Param::mesg_t mesg) {
@@ -154,11 +130,7 @@ void backward_path_detail(Param const &param,
     }
 
     if(phrase.left->is_combined()){
-        check_nan(mesg.span, "mesg");
-        check_nan(param.w_left, "w_left");
-        Param::mesg_t left_mesg = left_message(mesg, param);
-        check_nan(left_mesg.span, "left_mesg");
-        backward_path_detail(param, grad_sum, *phrase.left, left_mesg);
+        backward_path_detail(param, grad_sum, *phrase.left, param.left_message(mesg));
     } else if(phrase.left->is_leaf()){
         //update word_vec of leaf node
         matloop_void(back_prop_grad_word, phrase.left->prop.vec_update,
@@ -167,11 +139,7 @@ void backward_path_detail(Param const &param,
         assert(0);//it cannot happen on shape of tree constructed RNN.
     }
     if(phrase.right->is_combined()){
-        check_nan(mesg.span, "mesg");
-        check_nan(param.w_right, "w_right");
-        Param::mesg_t right_mesg = right_message(mesg, param);
-        check_nan(right_mesg.span, "right_mesg");
-        backward_path_detail(param, grad_sum, *phrase.right, right_mesg);
+        backward_path_detail(param, grad_sum, *phrase.right, param.right_message(mesg));
     } else if(phrase.right->is_leaf()){
         matloop_void(back_prop_grad_word, phrase.right->prop.vec_update,
                      mesg.span, param.w_right);

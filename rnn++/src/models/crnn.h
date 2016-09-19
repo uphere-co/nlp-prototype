@@ -86,6 +86,10 @@ struct Context {
     val_t score{0.0};
 };
 
+auto update_mesg_finalize=[](int64_t i,int64_t j, auto &out,
+                             auto const &mesg, auto const &w)  {
+    out[j]+=mesg[i]*w[i][j];
+};
 template<typename FLOAT, int WORD_DIM, int LEN_CTX>
 struct Param {
     static constexpr auto dim = WORD_DIM;
@@ -136,6 +140,17 @@ struct Param {
 
     raw_t serialize() const { return _val; };
 
+    mesg_t left_message(mesg_t const &mesg) const {
+        mesg_t new_mesg;
+        matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, w_left);
+        return new_mesg;
+    }
+    mesg_t right_message(mesg_t const &mesg) const {
+        mesg_t new_mesg;
+        matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, w_right);
+        return new_mesg;
+    }
+
     Param &operator+=(Param const &x) {
         span += x.span;
         return *this;
@@ -159,6 +174,7 @@ struct Param {
     mats_t w_context_right;
     vec_t bias;
     vec_t u_score;
+    util::math::MatLoop_void<val_t,dim,dim> matloop_void{};
 };
 
 template<typename FLOAT, int WORD_DIM, int LEN_CTX>
