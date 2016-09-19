@@ -20,6 +20,7 @@
 using namespace util;
 using namespace util::io;
 using namespace util::math;
+using namespace rnn;
 using namespace rnn::wordrep;
 using namespace rnn::config;
 using namespace rnn::simple_model::optimizer;

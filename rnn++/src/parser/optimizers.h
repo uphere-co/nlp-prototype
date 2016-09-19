@@ -11,12 +11,14 @@
 #include "parser/config.h"
 
 namespace rnn{
+//forward declarations
+struct TokenizedSentences;
+
 namespace simple_model{
 
 //forward declarations
 struct Param;
 struct VocaInfo;
-struct TokenizedSentences;
 
 namespace optimizer{
 

@@ -2,6 +2,8 @@
 
 #include <utility>
 #include <unordered_map>
+
+#include "dataset.h"
 #include "parser/param.h"
 #include "parser/compute.h"
 #include "parser/node.h"
@@ -65,35 +67,6 @@ Gradient operator +(const Gradient& x, const Gradient& y);
 Gradient operator -(const Gradient& x, const Gradient& y);
 
 
-struct TokenizedSentences{
-    using c_iter = std::vector<std::string>::const_iterator;
-    TokenizedSentences(std::string tokenized_file);
-    std::vector<std::string> val;
-};
-struct ParsedSentences{
-    using c_iter = std::vector<std::string>::const_iterator;
-    ParsedSentences(std::string parsed_file);
-    std::vector<std::string> val;
-};
-
-struct SentencePair{
-    SentencePair(std::string const &parsed, std::string const &original)
-    :parsed{parsed},original{original} {}
-    std::string parsed=parsed;
-    std::string original=original;
-};
-struct SentencePairs{
-    using val_t = std::vector<SentencePair>;
-    using c_iter = val_t::const_iterator;
-    SentencePairs(ParsedSentences const & sentences1, TokenizedSentences const &sentences2){
-        auto n = sentences1.val.size();
-        assert(n==sentences2.val.size());
-        for(decltype(n)i=0; i<n; ++i){
-            val.push_back(SentencePair{sentences1.val[i],sentences2.val[i]});
-        }
-    }
-    val_t val;
-};
 
 using detail::DPtable;
 DPtable dp_merging(Param const &param, InializedLeafNodes &initialized_nodes);
