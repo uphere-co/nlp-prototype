@@ -442,8 +442,13 @@ std::vector<decltype(top_nodes.size())> {
     return merge_history;
 }
 
+auto get_merge_history = [](auto const &parsed_sentence){
+    auto tree = util::deserialize_binary_tree<util::Node>(parsed_sentence);
+    auto merge_history=util::reconstruct_merge_history(std::move(tree));
+    return merge_history;
+};
 
-void directed_merge(Param const &param, std::vector<Node*> top_nodes,
+void directed_forward_path(Param const &param, std::vector<Node*> top_nodes,
                     std::vector<size_t> const &merge_history) {
     for(auto idx_max : merge_history){
         auto it_new  = top_nodes[idx_max];
@@ -741,7 +746,7 @@ void test_context_node(){
 
     {
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        auto nodes = InitializedNodes{std::move(leaf_nodes)};
         assert(nodes.val.size() == 8);
         assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
         assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
@@ -764,7 +769,7 @@ void test_context_node(){
     }
     {
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        auto nodes = InitializedNodes{std::move(leaf_nodes)};
         util::Timer timer{};
 
         DPtable table{nodes.val};
@@ -800,7 +805,7 @@ void test_crnn_backward() {
     auto idxs = word2idx.getIndex(sentence);
 
     auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-    auto nodes = InitializedNodes(std::move(leaf_nodes));
+    auto nodes = InitializedNodes{std::move(leaf_nodes)};
     util::Timer timer{};
 
     DPtable table{nodes.val};
@@ -822,13 +827,57 @@ void test_crnn_backward() {
 
     {
         auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
-        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        auto nodes = InitializedNodes{std::move(leaf_nodes)};
         DPtable table{nodes.val};
         table.compute(param1);
         auto phrases = table.get_phrases();
         auto score_dp{0.0};
         for(auto phrase : phrases) score_dp += phrase->prop.score;
         fmt::print("{}: CRNN DP score with param1. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+    }
+
+}
+
+
+void test_crnn_directed_forward_path() {
+    auto param = Param::random(0.05);
+    auto dParam = Param::random(0.001);
+    auto param1 = param+dParam;
+
+    Voca voca =load_voca("data.h5", "1b.model.voca");
+    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
+    VocaIndexMap word2idx = voca.indexing();
+
+    auto sentence_orig = u8"A symbol of British pound is £ .";
+    auto sentence_parsed = u8"(((((A symbol) of) (British pound)) (is £)) .)";
+    auto merge_history = get_merge_history(sentence_parsed);
+
+    auto idxs = word2idx.getIndex(sentence_orig);
+    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+    auto nodes = InitializedNodes{std::move(leaf_nodes)};
+    auto top_nodes = compose_leaf_nodes(param, nodes.val);
+    directed_forward_path(param, top_nodes, merge_history);
+    auto score_label{0.0};
+    for(auto phrase : top_nodes) score_label += phrase->prop.score;
+    fmt::print("{}:CRNN label score.\n", score_label);
+
+    Param grad{};
+    for(auto node : top_nodes){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    auto ds_grad = util::math::dot(grad.span, dParam.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
+    fmt::print("{} : expected score\n", ds_grad+score_label);
+
+    {
+        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+        auto nodes = InitializedNodes{std::move(leaf_nodes)};
+        auto top_nodes = compose_leaf_nodes(param1, nodes.val);
+        directed_forward_path(param1, top_nodes, merge_history);
+        auto score_label{0.0};
+        for(auto phrase : top_nodes) score_label += phrase->prop.score;
+        fmt::print("{}:CRNN label score with param1.\n", score_label);
     }
 
 }

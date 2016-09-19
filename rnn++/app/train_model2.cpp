@@ -32,6 +32,7 @@ int main(){
     try {
         test_context_node();
         test_crnn_backward();
+        test_crnn_directed_forward_path();
         return 0;
         
     } catch (H5::Exception &ex) {
