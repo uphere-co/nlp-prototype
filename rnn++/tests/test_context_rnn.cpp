@@ -1,5 +1,7 @@
 #include "tests/test_context_rnn.h"
 
+#include <random>
+
 #include "fmt/printf.h"
 
 #include "utils/hdf5.h"
@@ -182,6 +184,17 @@ struct Param{
     using mat_t = util::span_2d<val_t, dim,dim>;
     using vec_t = util::span_1d<val_t, dim>;
     using mesg_t = util::math::Vector<val_t, dim>;
+
+    static Param random(val_t scale){
+//        std::random_device rd;
+//        std::mt19937 e{rd()};
+        std::mt19937 e{}; //fixed seed for testing.
+        std::uniform_real_distribution<val_t>  uniform_dist{-scale, scale};
+        raw_t param_raw(dim*dim*(2+2*len_context)+dim*2);
+        for(auto &x : param_raw) x=uniform_dist(e);
+        return Param{std::move(param_raw)};
+    }
+
     Param(raw_t &&raw)
     : _val(std::move(raw)), span{_val},
       w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
@@ -764,6 +777,53 @@ void test_context_node(){
         fmt::print("{} : ds_grad\n", ds_grad);
     }
 }
+
+void test_crnn_backward() {
+    auto param = Param::random(0.05);
+    auto dParam = Param::random(0.001);
+    auto param1 = param+dParam;
+
+    Voca voca =load_voca("data.h5", "1b.model.voca");
+    auto voca_vecs = load_voca_vecs<100>("data.h5", "1b.model", util::DataType::sp);
+    VocaIndexMap word2idx = voca.indexing();
+
+    std::string sentence = u8"A symbol of British pound is £ .";
+    auto idxs = word2idx.getIndex(sentence);
+
+    auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+    auto nodes = InitializedNodes(std::move(leaf_nodes));
+    util::Timer timer{};
+
+    DPtable table{nodes.val};
+    table.compute(param);
+    auto phrases = table.get_phrases();
+    timer.here_then_reset("CRNN DP Forward path.");
+    auto score_dp{0.0};
+    for(auto phrase : phrases) score_dp += phrase->prop.score;
+    fmt::print("{}:CRNN DP score. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+
+    Param grad{};
+    for(auto node : phrases){
+        assert(node->is_combined());
+        backward_path(grad, param, *node);
+    }
+    auto ds_grad = util::math::dot(grad.span, dParam.span);
+    fmt::print("{} : ds_grad\n", ds_grad);
+    fmt::print("{} : expected score\n", ds_grad+score_dp);
+
+    {
+        auto leaf_nodes = construct_nodes_with_reserve(voca, voca_vecs, idxs);
+        auto nodes = InitializedNodes(std::move(leaf_nodes));
+        DPtable table{nodes.val};
+        table.compute(param1);
+        auto phrases = table.get_phrases();
+        auto score_dp{0.0};
+        for(auto phrase : phrases) score_dp += phrase->prop.score;
+        fmt::print("{}: CRNN DP score with param1. {} : score_sum.\n", score_dp, table.score_sum(0,7));
+    }
+
+}
+
 
 }//namespace rnn::context_model::test
 }//namespace rnn::context_model
