@@ -51,6 +51,12 @@ target_link_libraries(parser_model1 hdf5_cpp hdf5_hl_cpp tbb)
 add_executable(parser_model4 app/parser_model4  tests/test_voca_wordvec
               ${simple_model_parsers} ${util_files})
 target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
+
+add_executable(parser_crnn app/parser_crnn tests/test_context_rnn
+        ${rnn_files} ${rnn_simple_model_files} ${util_files})
+target_link_libraries(parser_crnn hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
+
+
 add_executable(phrases_model4 app/phrases_model4  tests/test_voca_wordvec
                ${simple_model_parsers} ${util_files})
 target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)

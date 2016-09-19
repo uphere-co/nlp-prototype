@@ -861,6 +861,47 @@ void train_crnn(){
     logger.info("Finish one iteration");
 }
 
+Param load_param(std::string const &h5_name,
+                 std::string const &param_name, util::DataType param_type) {
+    using namespace util::io;
+    H5file param_storage{H5name{h5_name}, hdf5::FileMode::read_exist};
+    if(param_type == util::DataType::sp){
+        return Param{param_storage.getRawData<double>(H5name{param_name})};
+    } else if(param_type == util::DataType::dp){
+        return Param{param_storage.getRawData<double>(H5name{param_name})};
+    }
+    assert(0);
+}
+
+void crnn_parser(char **argv){
+    Logger logger{"crnn", "logs/basic.txt"};
+
+    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+
+    auto param = load_param("crnn_params.h5", argv[1], util::DataType::dp);
+//    auto param = Param::random(0.05);
+//    param.bias *= 0.0;
+    auto inputset =TokenizedSentences{argv[2]};
+    auto n_sents=inputset.val.size();
+    std::vector<std::string> parsed_sents(n_sents);
+
+    tbb::parallel_for(decltype(n_sents){0}, n_sents, [&](auto i) {
+        auto line=inputset.val[i];
+        auto nodes = rnn.initialize_tree(line);
+        DPtable table{nodes};
+        table.compute(param);
+        auto phrases = table.get_phrases();
+        if(phrases.size()) {
+            auto root_node=table.root_node();
+            parsed_sents[i]=parsed_binary_tree_string(root_node);
+        } else {
+            //std::cout << line << std::endl;
+            parsed_sents[i]=line;
+        }
+    });
+    for(auto sent:parsed_sents)
+        std::cout<<sent<<std::endl;
+}
 
 }//namespace rnn::test
 }//namespace rnn

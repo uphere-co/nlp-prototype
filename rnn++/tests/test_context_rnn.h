@@ -8,6 +8,7 @@ void test_crnn_backward();
 void test_crnn_directed_backward();
 
 void train_crnn();
+void crnn_parser(char** argv);
 
 }//namespace rnn::test
 }//namespace rnn
