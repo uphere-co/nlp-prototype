@@ -442,6 +442,27 @@ std::vector<decltype(top_nodes.size())> {
     return merge_history;
 }
 
+
+void directed_merge(Param const &param, std::vector<Node*> top_nodes,
+                    std::vector<size_t> const &merge_history) {
+    for(auto idx_max : merge_history){
+        auto it_new  = top_nodes[idx_max];
+        if(idx_max!=0){
+            auto it_left = top_nodes[idx_max-1];
+            it_left->right=it_new;
+            update_node(param, *it_left);
+        }
+        if(idx_max!=top_nodes.size()-1){
+            auto it_right= top_nodes[idx_max+1];
+            it_right->left=it_new;
+            update_node(param, *it_right);
+        }
+        std::copy(top_nodes.cbegin()+idx_max+1,top_nodes.cend(),
+                  top_nodes.begin()+idx_max);
+        top_nodes.pop_back();
+    }
+}
+
 std::vector<Node*> compose_leaf_nodes(Param const &param, std::vector<Node> &leaves)  {
     std::vector<Node*> top_node;
     auto n_leaf = leaves.size();
@@ -738,13 +759,7 @@ void test_context_node(){
             if(!node.is_combined()) continue;
             backward_path(grad, param, node);
         }
-        Param::val_t ds_grad{};
-        using namespace util::math;
-        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
-        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
-        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
-        ds_grad += dot(grad.bias, param.bias);
-        ds_grad += dot(grad.u_score, param.u_score);
+        auto ds_grad = util::math::dot(grad.span, param.span);
         fmt::print("{} : ds_grad\n", ds_grad);
     }
     {
@@ -767,13 +782,7 @@ void test_context_node(){
             assert(node->is_combined());
             backward_path(grad, param, *node);
         }
-        Param::val_t ds_grad{};
-        using namespace util::math;
-        auto matloop_void=MatLoop_void<Param::val_t  , Param::dim, Param::dim>{};
-        matloop_void(mul_sum_mat, ds_grad, grad.w_left, param.w_left);
-        matloop_void(mul_sum_mat, ds_grad, grad.w_right, param.w_right);
-        ds_grad += dot(grad.bias, param.bias);
-        ds_grad += dot(grad.u_score, param.u_score);
+        auto ds_grad = util::math::dot(grad.span, param.span);
         fmt::print("{} : ds_grad\n", ds_grad);
     }
 }

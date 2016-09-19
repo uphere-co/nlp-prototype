@@ -30,7 +30,7 @@ namespace rnn_t = rnn::type;
 
 int main(){
     try {
-//        test_context_node();
+        test_context_node();
         test_crnn_backward();
         return 0;
         
