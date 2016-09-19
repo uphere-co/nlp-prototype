@@ -25,6 +25,10 @@ struct Vector{
     }
     //CAUTION: careful to correctly implement non-default constructor if necessary.
     Vector(Vector const & vec) : _val{vec._val} {
+        if(!(span[0]==_val[0])) {
+            std::cerr<<_val.size()<<" Copy construct Vector{gsl::span<M>}\n";
+            std::cerr<<"Assert fails : " << span[0] << " vs " << _val[0] <<std::endl;
+        }
         assert(span[0]==_val[0]);
         // std::cerr<<_val.size()<<" Copy construct Vector{gsl::span<M>}\n";
     };

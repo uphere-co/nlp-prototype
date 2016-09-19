@@ -111,24 +111,29 @@ struct Param {
     }
 
     Param(raw_t &&raw)
-            : _val(std::move(raw)), span{_val},
-              w_context_left{util::as_span(span.subspan(0, len_context * dim * dim), lc_ext, d_ext, d_ext)},
-              w_left{util::as_span(span.subspan(len_context * dim * dim, dim * dim), d_ext, d_ext)},
-              w_right{util::as_span(span.subspan((1 + len_context) * dim * dim, dim * dim), d_ext, d_ext)},
-              w_context_right{
-                      util::as_span(span.subspan((2 + len_context) * dim * dim, len_context * dim * dim), lc_ext, d_ext,
-                                    d_ext)},
-              bias{util::as_span(span.subspan((2 + 2 * len_context) * dim * dim, dim), d_ext)},
-              u_score{util::as_span(span.subspan((2 + 2 * len_context) * dim * dim + dim, dim), d_ext)} {}
+    : _val(std::move(raw)), span{_val},
+      w_context_left{util::as_span(span.subspan(0, len_context * dim * dim), lc_ext, d_ext, d_ext)},
+      w_left{util::as_span(span.subspan(len_context * dim * dim, dim * dim), d_ext, d_ext)},
+      w_right{util::as_span(span.subspan((1 + len_context) * dim * dim, dim * dim), d_ext, d_ext)},
+      w_context_right{
+              util::as_span(span.subspan((2 + len_context) * dim * dim, len_context * dim * dim), lc_ext, d_ext,
+                            d_ext)},
+      bias{util::as_span(span.subspan((2 + 2 * len_context) * dim * dim, dim), d_ext)},
+      u_score{util::as_span(span.subspan((2 + 2 * len_context) * dim * dim + dim, dim), d_ext)} {}
 
     Param()
-            : Param(std::move(raw_t(dim * dim * (2 + 2 * len_context) + dim * 2, 0))) {}
+    : Param(std::move(raw_t(dim*dim*(2+2*len_context)+dim*2, val_t{0.0}))) {for(auto x :span) assert(x==0.0);}
 
     Param(Param const &orig)
-            : Param(std::move(raw_t{orig._val})) {}
+    : Param(std::move(raw_t{orig._val})) {}
+
+    Param &operator=(Param const &orig) {
+        assert(_val.size() == dim*dim*(2+2*len_context)+dim*2);
+        std::copy(orig._val.cbegin(), orig._val.cend(), _val.begin());
+        return *this;
+    }
 
     raw_t serialize() const { return _val; };
-
 
     Param &operator+=(Param const &x) {
         span += x.span;
@@ -171,13 +176,6 @@ Param<FLOAT,WORD_DIM,LEN_CTX> operator-(Param<FLOAT,WORD_DIM,LEN_CTX> const &x,
     return out;
 }
 
-template<typename FLOAT, int WORD_DIM, int LEN_CTX>
-Param<FLOAT,WORD_DIM,LEN_CTX> operator*(Param<FLOAT,WORD_DIM,LEN_CTX> const &x,
-                                        typename Param<FLOAT,WORD_DIM,LEN_CTX>::val_t y) {
-    Param<FLOAT,WORD_DIM,LEN_CTX> out{x};
-    out.span *= y;
-    return out;
-}
 }//namespace rnn::model::crnn
 }//namespace rnn::model
 }//namespace rnn

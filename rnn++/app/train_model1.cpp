@@ -46,8 +46,8 @@ int main(){
         write_to_disk(param, ss.str());
     };
     try {
-        // test_supervised_rnn_full_step();
-        // return 0;
+         test_supervised_rnn_full_step();
+         return 0;
         logger.info("Process begins.");
 
         // auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};

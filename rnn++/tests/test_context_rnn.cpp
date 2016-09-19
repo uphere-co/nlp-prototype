@@ -21,7 +21,7 @@
 
 
 namespace rnn{
-constexpr int len_context=0;
+constexpr int len_context=2;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
@@ -109,6 +109,9 @@ auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
     grad[j]+=mesg[i]*w[i][j];
 };
 
+auto check_nan=[](auto const &x, auto tag){
+    if(!(x[0]==x[0])) std::cerr<< "Assert fails in " <<tag << std::endl;
+};
 void backward_path_detail(Param const &param,
                         Param &grad_sum,
                         Node const &phrase, Param::mesg_t mesg) {
@@ -133,7 +136,10 @@ void backward_path_detail(Param const &param,
     }
 
     if(phrase.left->is_combined()){
+        check_nan(mesg.span, "mesg");
+        check_nan(param.w_left, "w_left");
         Param::mesg_t left_mesg;
+        check_nan(left_mesg.span, "left_mesg");
         matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left);
         backward_path_detail(param, grad_sum, *phrase.left, left_mesg);
     } else if(phrase.left->is_leaf()){
@@ -144,7 +150,10 @@ void backward_path_detail(Param const &param,
         assert(0);//it cannot happen on shape of tree constructed RNN.
     }
     if(phrase.right->is_combined()){
+        check_nan(mesg.span, "mesg");
+        check_nan(param.w_right, "w_right");
         Param::mesg_t right_mesg;
+        check_nan(right_mesg.span, "right_mesg");
         matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right);
         backward_path_detail(param, grad_sum, *phrase.right, right_mesg);
     } else if(phrase.right->is_leaf()){
@@ -174,6 +183,7 @@ auto grad_u_score_L2norm = [](auto &grad, auto const &u_score, auto const &phras
 void backward_path(Param &grad, Param const &param, Node const &phrase){
     grad_u_score_L2norm(grad.u_score, param.u_score, phrase.prop.vec);
     auto factor = Param::val_t{1}/util::math::norm_L2(param.u_score);
+    assert(factor==factor);
     Param::mesg_t mesg{param.u_score};
     mesg *=factor;
     backward_path_detail(param, grad, phrase, mesg);
@@ -599,10 +609,10 @@ void test_context_node(){
     {
         auto nodes = crnn.initialize_tree(sentence);
         assert(nodes.val.size() == 8);
-        assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
-        assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
-        assert(nodes.val[2].prop.left_ctxs[0]==&nodes.val[0]);
-        assert(nodes.val[2].prop.left_ctxs[1]==&nodes.val[1]);
+//        assert(nodes.val[0].prop.right_ctxs[0]==&nodes.val[1]);
+//        assert(nodes.val[0].prop.left_ctxs[0]== nullptr);
+//        assert(nodes.val[2].prop.left_ctxs[0]==&nodes.val[0]);
+//        assert(nodes.val[2].prop.left_ctxs[1]==&nodes.val[1]);
 
         util::Timer timer{};
         auto score = get_full_greedy_score(param, nodes);
@@ -787,6 +797,103 @@ void test_crnn_directed_backward() {
 
 }
 
+
+void test_grad_parallel_reduce(){
+    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::datatype_from_string("float32")};
+    auto testset_parsed=ParsedSentences{"a.sample.stanford"};
+    auto testset_orig=TokenizedSentences{"a.sample"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
+
+    auto param = Param::random(0.05);
+    param.bias *= 0.0;
+    {Param param{};
+    for(auto x : param.span) assert(x==0.0);}
+
+    auto get_label_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+
+    auto beg=testset.val.cbegin();
+    auto end=testset.val.cend();
+
+    auto grad0 = util::parallel_reducer(beg, end, get_label_grad, Param{});
+    auto n = testset.val.size();
+    std::vector<Param> grads(n);
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+        grads[i]=get_label_grad(testset.val[i]);
+    });
+    Param grad1{};
+    for(auto &grad_i : grads) grad1+=grad_i;
+
+    std::vector<Param> grads2(n);
+    for(decltype(n) i=0; i!=n; ++i){
+        grads2[i]=get_label_grad(testset.val[i]);
+    };
+    Param grad2{};
+    for(auto &grad_i : grads2) grad2+=grad_i;
+
+    Param grad_serial{};
+    for(auto &sent_pair:testset.val) grad_serial+=get_label_grad(sent_pair);
+    fmt::print("{} vs {} vs {} vs {}\n", util::math::sum(grad0.span), util::math::sum(grad1.span),
+               util::math::sum(grad2.span), util::math::sum(grad_serial.span));
+    assert(grad1.span == grad_serial.span);
+}
+
+void test_minibatch_crnn(){
+    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+    auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
+    auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
+
+    auto lambda=0.05;
+    auto param = Param::random(0.05);
+    param.bias *= 0.0;
+    auto dParam = Param::random(0.001);
+
+    auto get_label_grad=[&](auto const &sent_pair){
+        return get_directed_grad(rnn, param, sent_pair);
+    };
+    auto get_dp_grad=[&](auto const &sent_pair){
+        return get_dp_gradient(rnn, param, lambda, sent_pair);
+    };
+    auto score_diff=[&](){
+        auto score_label = parsed_scoring_dataset(rnn, param, testset);
+        auto score_dp= dp_scoring_dataset(rnn, param, lambda, testset);
+        return score_label-score_dp;
+    };
+
+
+    auto beg=testset.val.cbegin();
+    auto end=testset.val.cend();
+
+    {
+    auto grad_label = util::parallel_reducer(beg, end, get_label_grad, Param{});
+//    Param grad_label{};
+//    for(auto &sent_pair:testset.val) grad_label+=get_label_grad(sent_pair);
+    auto param1{param}; param1 += dParam;
+    auto param2{param}; param2 -= dParam;
+    auto score_label1 = parsed_scoring_dataset(rnn, param1, testset);
+    auto score_label2 = parsed_scoring_dataset(rnn, param2, testset);
+    auto ds_score = 2*util::math::dot(grad_label.span, dParam.span);
+    fmt::print("Label Score difference : {} vs {} = {} - {}\n",
+               ds_score, score_label1-score_label2, score_label1, score_label2);}
+
+
+    {
+        auto grad_dp = util::parallel_reducer(beg, end, get_dp_grad, Param{});
+//    Param grad_dp{};
+//    for(auto &sent_pair:testset.val) grad_dp+=get_dp_grad(sent_pair);
+    auto param1{param}; param1 += dParam;
+    auto param2{param}; param2 -= dParam;
+    auto score_label1 = dp_scoring_dataset(rnn, param1, lambda, testset);
+    auto score_label2 = dp_scoring_dataset(rnn, param2, lambda, testset);
+    auto ds_score = 2*util::math::dot(grad_dp.span, dParam.span);
+    fmt::print("DP Score difference : {} vs {} = {} - {}\n",
+               ds_score, score_label1-score_label2, score_label1, score_label2);}
+
+}
+
+
 void write_to_disk(Param const &param, std::string param_name){
     using namespace util::io;
     auto param_raw = param.serialize();
@@ -836,7 +943,7 @@ void train_crnn(){
     fmt::print("{} :voca size.\n", rnn.voca_vecs.size());
     write_param(i_minibatch,param);
 
-    RMSprop optimizer{0.01};
+    RMSprop optimizer{0.001};
     auto &pairs = trainset.val;
     for(auto epoch=0; epoch<n_epoch; ++epoch){
         for(auto it=pairs.cbegin();it <pairs.cend(); it+= rnn::config::n_minibatch){
