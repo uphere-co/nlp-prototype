@@ -16,7 +16,8 @@ in stdenv.mkDerivation {
   buildInputs = [ hsenv hdf5 hdf5-cpp liblbfgs cppzmq zeromq
 		  rnnpp tbb
                   toolz_cpp.msgsl
-		  toolz_cpp.json 
+		  toolz_cpp.json
+		  #boost
                 ];
   shellHook = ''
   '';
