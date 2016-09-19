@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+import           Control.Concurrent.STM.TQueue
 import           Control.Monad
 import           Control.Monad.IO.Class 
 import           Control.Monad.Loops
@@ -36,15 +37,35 @@ writeProcessId = do
   liftIO $ print us
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
+
+queryWorker :: Query -> IO ()
+queryWorker q = do 
+  withTempFile $ \fp -> liftIO $ do
+    BL.writeFile fp (encode (makeJson q))
+    withCString fp $ \queryfile -> liftIO $ c_query queryfile
+    removeFile fp
+
+
 server :: Process ()
 server = do
   writeProcessId
+{-  
+  forkIO $ do
+    threadDelay 10000
+    qs <- read var
+    let enumqs = zip [1..] qs
+    when ((not.null) qs) $ queryWorker
+    
+    rs' <- getresult
+    zip qs rs' 
+    flush var 
+-}  
   whileJust_ expect $ \q -> do
-    (mapM_ (liftIO . putStrLn) .  querySentences) q 
-    withTempFile $ \fp -> liftIO $ do
-      BL.writeFile fp (encode (makeJson q))
-      withCString fp $ \queryfile -> liftIO $ c_query queryfile
-      removeFile fp
+    (mapM_ (liftIO . putStrLn) .  querySentences) q
+    liftIO $ queryWorker q
+    -- save var q 
+
+
 
 withTempFile :: (MonadIO m) => (FilePath -> m a) -> m a
 withTempFile f = do
