@@ -16,7 +16,7 @@ int main(int /*argc*/, char** argv){
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
     socket.bind(protocol);
-    while(0){
+    while(1){
         zmq::message_t request;
         socket.recv (&request);
         auto query = json::parse((const char*)request.data());

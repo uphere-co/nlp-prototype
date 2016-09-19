@@ -180,4 +180,3 @@ Param<FLOAT,WORD_DIM,LEN_CTX> operator-(Param<FLOAT,WORD_DIM,LEN_CTX> const &x,
 }//namespace rnn::model::crnn
 }//namespace rnn::model
 }//namespace rnn
-

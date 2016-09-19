@@ -21,7 +21,7 @@
 
 
 namespace rnn{
-constexpr int len_context=1;
+constexpr int len_context=2;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
@@ -34,23 +34,24 @@ struct InitializedNodes{
 };
 
 struct VocaInfo{
-    using voca_vecs_t = rnn::wordrep::WordBlock_base<Node::prop_t::word_dim>;
+    using node_t = Node;
+    using voca_vecs_t = rnn::wordrep::WordBlock_base<node_t::prop_t::word_dim>;
     VocaInfo(std::string vocafile, std::string voca_dataset,
              std::string w2vmodel_dataset, util::DataType float_type)
     : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
       voca_vecs{rnn::wordrep::load_voca_vecs<voca_vecs_t::dim>(vocafile,w2vmodel_dataset,float_type)} {}
     InitializedNodes initialize_tree(std::string sentence) const{
         auto idxs = word2idx.getIndex(sentence);
-        std::vector<Node> val;
+        std::vector<node_t> val;
         val.reserve(idxs.size()*2-1);
         for(auto idx : idxs){
-            Node::prop_t prop{voca.getWordSpan(idx), voca_vecs[idx]};
-            Node node{std::move(prop)};
+            node_t::prop_t prop{voca.getWordSpan(idx), voca_vecs[idx]};
+            node_t node{std::move(prop)};
             val.push_back(node);
         }
 
-        util::span_dyn<Node> nodes{val};
-        auto len_context = Node::prop_t::len_context;
+        util::span_dyn<node_t> nodes{val};
+        auto len_context = node_t::prop_t::len_context;
         auto n=nodes.length();
         assert(val.data() == nodes.data());
         for(decltype(n)i=0; i!=n; ++i){
@@ -112,20 +113,37 @@ auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
 auto check_nan=[](auto const &x, auto tag){
     if(!(x[0]==x[0])) std::cerr<< "Assert fails in " <<tag << std::endl;
 };
+
+Param::mesg_t left_message(Param::mesg_t const &mesg, Param const &param){
+    constexpr auto dim = Param::dim;
+    using val_t =Param::val_t;
+    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
+    Param::mesg_t new_mesg;
+    matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, param.w_left);
+    return new_mesg;
+}
+Param::mesg_t right_message(Param::mesg_t const &mesg, Param const &param){
+    constexpr auto dim = Param::dim;
+    using val_t =Param::val_t;
+    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
+    Param::mesg_t new_mesg;
+    matloop_void(update_mesg_finalize, new_mesg.span, mesg.span, param.w_right);
+    return new_mesg;
+}
 void backward_path_detail(Param const &param,
                         Param &grad_sum,
                         Node const &phrase, Param::mesg_t mesg) {
     constexpr auto dim = Param::dim;
     using val_t =Param::val_t;
-    using namespace util::math;
-    auto vecloop_void = VecLoop_void<val_t,dim>{};
-    auto matloop_void = MatLoop_void<val_t,dim,dim>{};
+    auto vecloop_void = util::math::VecLoop_void<val_t,dim>{};
+    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
 
     vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
     grad_sum.bias += mesg.span;
     matloop_void(back_prop_grad_W, grad_sum.w_left, mesg.span, phrase.left->prop.vec);
     matloop_void(back_prop_grad_W, grad_sum.w_right, mesg.span, phrase.right->prop.vec);
-    auto lenctx = Param::len_context;
+
+    auto lenctx = Node::prop_t::len_context;
     for(decltype(lenctx)i=0; i!= lenctx; ++i) {
         auto w_left_ctx=grad_sum.w_context_left[i];
         auto left_ctx = phrase.prop.left_ctxs[i];
@@ -138,9 +156,8 @@ void backward_path_detail(Param const &param,
     if(phrase.left->is_combined()){
         check_nan(mesg.span, "mesg");
         check_nan(param.w_left, "w_left");
-        Param::mesg_t left_mesg;
+        Param::mesg_t left_mesg = left_message(mesg, param);
         check_nan(left_mesg.span, "left_mesg");
-        matloop_void(update_mesg_finalize, left_mesg.span, mesg.span, param.w_left);
         backward_path_detail(param, grad_sum, *phrase.left, left_mesg);
     } else if(phrase.left->is_leaf()){
         //update word_vec of leaf node
@@ -152,9 +169,8 @@ void backward_path_detail(Param const &param,
     if(phrase.right->is_combined()){
         check_nan(mesg.span, "mesg");
         check_nan(param.w_right, "w_right");
-        Param::mesg_t right_mesg;
+        Param::mesg_t right_mesg = right_message(mesg, param);
         check_nan(right_mesg.span, "right_mesg");
-        matloop_void(update_mesg_finalize, right_mesg.span, mesg.span, param.w_right);
         backward_path_detail(param, grad_sum, *phrase.right, right_mesg);
     } else if(phrase.right->is_leaf()){
         matloop_void(back_prop_grad_word, phrase.right->prop.vec_update,
