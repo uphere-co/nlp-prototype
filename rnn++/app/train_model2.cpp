@@ -20,14 +20,10 @@
 using namespace util;
 using namespace util::io;
 using namespace util::math;
-using namespace rnn;
-using namespace rnn::wordrep;
-using namespace rnn::config;
-using namespace rnn::simple_model::optimizer;
-using namespace rnn::simple_model;
-using namespace rnn::context_model::test;
 
-namespace rnn_t = rnn::type;
+using namespace rnn;
+using namespace rnn::test;
+
 
 int main(){
     try {
@@ -43,8 +39,6 @@ int main(){
     } catch (...) {
         std::cerr << "Unknown exception" << std::endl;
     }
-    static_assert(std::is_nothrow_destructible<H5file>::value == true, "");
-    static_assert(sizeof(WordBlock::idx_t) == 8, "");
 
     return 0;
 }

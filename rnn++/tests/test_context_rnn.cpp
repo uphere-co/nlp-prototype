@@ -1,6 +1,7 @@
 #include "tests/test_context_rnn.h"
 
 #include <random>
+#include <sstream>
 
 #include "fmt/printf.h"
 
@@ -16,110 +17,13 @@
 
 #include "parser/optimizers.h"
 #include "parser/parser.h"
+#include "models/crnn.h"
+
 
 namespace rnn{
-template<typename T>
-struct Node{
-    using prop_t = T;
-    Node(T &&property) : prop{std::move(property)} {}
-    Node(T const &property) : prop{property} {}
-    Node(Node const &orig)
-    : left{orig.left}, right{orig.right},
-      prop{orig.prop} {}
-    Node(Node &&orig)
-    : left{orig.left}, right{orig.right},
-      prop{std::move(orig.prop)} {}
-    Node& operator=(Node const& orig) {
-        prop=orig.prop;
-        left=orig.left;
-        right=orig.right;
-        return *this;
-    }
-
-    static auto blank_node(){return Node{T{}};}
-    bool is_combined() const {return (left!=nullptr)&(right!=nullptr);}
-    bool is_leaf() const {return (left==nullptr)&(right==nullptr);}
-
-    Node const *left=nullptr;
-    Node const *right=nullptr;
-    T prop;
-};
-}
-
-namespace rnn{
-namespace context_model{
-
-template<typename FLOAT, int WORD_DIM, int LEN_CTX>
-struct Context{
-    using val_t = FLOAT;
-    using node_t = Node<Context>;
-    using raw_t = std::vector<val_t>;
-    using vec_t = util::span_1d<val_t,WORD_DIM>;
-    static constexpr auto len_context = LEN_CTX;
-    static constexpr auto word_dim = WORD_DIM;
-
-    Context(raw_t &&vec, util::cstring_span<> name)
-    : raw{std::move(vec)}, vspan{raw}, name{name},
-      vec{       vspan.subspan(0,          WORD_DIM)},
-      vec_wsum{  vspan.subspan(WORD_DIM,   WORD_DIM)},
-      vec_update{vspan.subspan(2*WORD_DIM, WORD_DIM)} {
-        for(auto &x:left_ctxs) x=nullptr;
-        for(auto &x:right_ctxs) x=nullptr;
-        assert(raw.size()==3*WORD_DIM);
-    }
-    Context(raw_t const &raw, util::cstring_span<> name)
-    : Context(raw_t{raw}, name) {}
-    Context()
-    : Context(std::move(raw_t(3*WORD_DIM)), {}) {}
-    Context(util::cstring_span<> name, vec_t word_vec)
-    : Context(std::move(raw_t(3*WORD_DIM)), name)
-    {
-        std::copy(word_vec.cbegin(), word_vec.cend(), raw.begin());
-    }
-    Context(Context const &orig)
-    : Context(orig.raw, orig.name) {
-        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
-        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
-        score=orig.score;
-    }
-    Context& operator=(Context const& orig){
-        assert(raw.size()==3*WORD_DIM);
-        std::copy(orig.raw.cbegin(), orig.raw.cend(), raw.begin());
-        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
-        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
-        name=orig.name;
-        score=orig.score;
-        return *this;
-    }
-    Context(Context &&orig)
-    : Context(std::move(orig.raw), orig.name) {
-        std::copy(orig.left_ctxs.cbegin(), orig.left_ctxs.cend(), left_ctxs.begin());
-        std::copy(orig.right_ctxs.cbegin(), orig.right_ctxs.cend(), right_ctxs.begin());
-        score=orig.score;
-    }
-
-    void set_context(util::span_dyn<node_t> lefts,
-                     util::span_dyn<node_t> rights){
-        //TODO:Simplify this
-        auto m = lefts.length();
-        for(decltype(m)i=0; i<m; ++i) left_ctxs[i]  = &lefts[i];
-        auto n = rights.length();
-        for(decltype(n)i=0; i<n; ++i) right_ctxs[i] = &rights[i];
-    }
-
-    raw_t raw;
-    util::span_1d <val_t,  3*WORD_DIM> vspan;
-    std::array<node_t const*, LEN_CTX> left_ctxs;
-    std::array<node_t const*, LEN_CTX> right_ctxs;
-    util::cstring_span<> name;
-    vec_t vec;
-    vec_t vec_wsum;
-    vec_t vec_update;
-    val_t score{0.0};
-};
-
-using Node = rnn::Node<Context<rnn::type::float_t, rnn::config::word_dim, 2>>;
-
+constexpr int len_context=2;
+using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
+using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
 
 struct UninializedLeafNodes{
     UninializedLeafNodes(std::vector<Node> &&nodes) : val(std::move(nodes)) {}
@@ -170,83 +74,6 @@ void print_cnode(Node const &cnode) {
     fmt::print(" __ ");
     for(auto right : cnode.prop.right_ctxs) if(right) print(right->prop.name);
     fmt::print(" , {}\n", cnode.prop.score);
-}
-
-struct Param{
-    static constexpr auto dim = rnn::config::word_dim;
-    static constexpr auto len_context = 2;
-    static constexpr auto d_ext =util::dim<dim>();
-    static constexpr auto lc_ext = util::dim<len_context>();
-
-    using val_t = rnn::type::float_t;
-    using raw_t = std::vector<val_t>;
-    using mats_t= util::span_3d<val_t, len_context, dim,dim>;
-    using mat_t = util::span_2d<val_t, dim,dim>;
-    using vec_t = util::span_1d<val_t, dim>;
-    using mesg_t = util::math::Vector<val_t, dim>;
-
-    static Param random(val_t scale){
-//        std::random_device rd;
-//        std::mt19937 e{rd()};
-        std::mt19937 e{}; //fixed seed for testing.
-        std::uniform_real_distribution<val_t>  uniform_dist{-scale, scale};
-        raw_t param_raw(dim*dim*(2+2*len_context)+dim*2);
-        for(auto &x : param_raw) x=uniform_dist(e);
-        return Param{std::move(param_raw)};
-    }
-
-    Param(raw_t &&raw)
-    : _val(std::move(raw)), span{_val},
-      w_context_left{util::as_span(span.subspan(0, len_context*dim*dim), lc_ext,d_ext,d_ext)},
-      w_left{ util::as_span(span.subspan(len_context*dim*dim, dim*dim),     d_ext,d_ext)},
-      w_right{util::as_span(span.subspan((1+len_context)*dim*dim, dim*dim), d_ext, d_ext)},
-      w_context_right{util::as_span(span.subspan((2+len_context)*dim*dim, len_context*dim*dim),lc_ext,d_ext,d_ext)},
-      bias{util::as_span(span.subspan((2+2*len_context)*dim*dim, dim), d_ext)},
-      u_score{util::as_span(span.subspan((2+2*len_context)*dim*dim+dim, dim), d_ext)}
-    {}
-    Param()
-    : Param(std::move(raw_t(dim*dim*(2+2*len_context)+dim*2, 0))) {}
-    Param(Param const &orig)
-    : Param(std::move(raw_t{orig._val})) {}
-
-    raw_t serialize() const {return _val;};
-
-    raw_t _val;
-    util::span_1d<val_t, dim*dim*(2+2*len_context)+dim*2> span;
-    mats_t w_context_left;
-    mat_t w_left;
-    mat_t w_right;
-    mats_t w_context_right;
-    vec_t bias;
-    vec_t u_score;
-};
-
-Param& operator+=(Param &out, Param const &x){
-    out.span += x.span;
-    return out;
-}
-Param& operator-=(Param &out, Param const &x){
-    out.span -= x.span;
-    return out;
-}
-Param& operator*=(Param &out, Param::val_t x){
-    out.span *= x;
-    return out;
-}
-Param operator+(Param const &x, Param const &y){
-    Param out{x};
-    out.span += y.span;
-    return out;
-}
-Param operator-(Param const &x, Param const &y){
-    Param out{x};
-    out.span -= y.span;
-    return out;
-}
-Param operator*(Param const &x, Param::val_t y){
-    Param out{x};
-    out.span *= y;
-    return out;
 }
 
 auto activation_fun=[](int64_t i, auto const &x) {
@@ -612,7 +439,7 @@ public:
     RMSprop(val_t scale): ada_scale{scale} {}
     void update(Param &param, Param const &grad){
         vecloop_void(accum_rmsprop_factor_vec, ada_factor_param.span, grad.span);
-        vecloop_void(adaptive_update_vec, ada_factor_param.span, grad.span);
+        vecloop_void(adaptive_update_vec, param.span, ada_scale, grad.span ,  ada_factor_param.span);
     }
 
 private:
@@ -622,12 +449,11 @@ private:
     val_t ada_scale;
 };
 
-
-}//namespace rnn::context_model
 }//namespace rnn
+
 namespace {
 
-void copy(rnn::simple_model::Param const &ori, rnn::context_model::Param &dest){
+void copy(rnn::simple_model::Param const &ori, rnn::Param &dest){
     std::copy(ori.w_left.span.cbegin(), ori.w_left.span.cend(), dest.w_left.begin());
     std::copy(ori.w_right.span.cbegin(),ori.w_right.span.cend(),dest.w_right.begin());
     std::copy(ori.bias.span.cbegin(),   ori.bias.span.cend(),   dest.bias.begin());
@@ -735,7 +561,6 @@ auto test_rnn_dp_score(rnn::simple_model::Param &param,
 
 
 namespace rnn{
-namespace context_model{
 namespace test{
 
 using namespace rnn::wordrep;
@@ -746,18 +571,17 @@ Word operator"" _w (const char* word, size_t /*length*/)
     return Word{word};
 }
 void test_context_node(){
-    using namespace rnn::simple_model;
-    rnn::context_model::Param param{};
-    rnn::context_model::Param param2{};
-    auto param_rnn1 = randomParam(0.01);
-    auto param_rnn2 = randomParam(0.01);
+    rnn::Param param{};
+    rnn::Param param2{};
+    auto param_rnn1 = rnn::simple_model::randomParam(0.01);
+    auto param_rnn2 = rnn::simple_model::randomParam(0.01);
     param_rnn1.bias.span *= rnn::type::float_t{0.0};
     param_rnn2.bias.span *= rnn::type::float_t{0.0};
     copy(param_rnn1, param);
     copy(param_rnn2, param2);
     param += param2;
     param_rnn1 += param_rnn2;
-    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
+    rnn::simple_model::VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
     auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
 
@@ -908,11 +732,34 @@ void test_crnn_directed_forward_path() {
 
 }
 
+void write_to_disk(Param const &param, std::string param_name){
+    using namespace util::io;
+    auto param_raw = param.serialize();
+    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::create};
+//    H5file h5store{H5name{"crnn_params.h5"}, hdf5::FileMode::rw_exist};
+    h5store.writeRawData(H5name{param_name}, param_raw);
+}
+
 void train_crnn(){
+    Logger logger{"crnn", "logs/basic.txt"};
+    auto write_param=[&logger](auto i_minibatch, auto const &param){
+        std::stringstream ss;
+        ss << "crnn." << logger.uid_str() <<"."<<i_minibatch;
+        write_to_disk(param, ss.str());
+    };
+
+    auto lambda=0.05;
+    auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
+    auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
+    auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
+    auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
+    auto testset = SentencePairs{testset_parsed,testset_orig};
+    auto trainset = SentencePairs{trainset_parsed,trainset_orig};
+
 
 }
 
 
-}//namespace rnn::context_model::test
-}//namespace rnn::context_model
+}//namespace rnn::test
 }//namespace rnn
+
