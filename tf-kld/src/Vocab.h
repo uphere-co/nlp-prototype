@@ -37,7 +37,5 @@ void PrintVocab(vocab_t &vocab);
 auto getVocabWord(vocab_t &vocab);
 
 auto getVocabIndex(vocab_t &vocab);
-
-auto Concat(std::vector<std::string> const &words);
     
 }//namespace tfkld

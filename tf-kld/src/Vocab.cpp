@@ -209,15 +209,5 @@ auto getVocabIndex(vocab_t &vocab) {
     for(auto x : vocab) result.push_back(x.second);
     return result;
 }
-
-auto Concat(std::vector<std::string> const &words){
-    std::vector<char> vec;
-    for(auto const &x:words){
-        std::copy(x.cbegin(),x.cend(),std::back_inserter(vec));
-        vec.push_back('\0');
-    }
-    return vec;
-}
-
     
 }//namespace tfkld
