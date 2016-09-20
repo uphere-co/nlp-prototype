@@ -21,6 +21,7 @@ message(${CMAKE_CXX_FLAGS})
 find_package (Threads)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../word2vec/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/src)
@@ -31,5 +32,7 @@ add_executable(main app/main
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
                ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
-               src/TFKLD)
+               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF
+               tests/test01 tests/test02
+               utils/help)
 target_link_libraries(main hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)

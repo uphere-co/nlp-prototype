@@ -26,6 +26,8 @@ for line in fin:
     for i in xrange(len(item4)):
         if(all(96 < ord(char) < 123 for char in item4[i]) == False):
             item4[i]=""
+    item3[:] = filter(lambda a: a != "", item3)
+    item4[:] = filter(lambda a: a != "", item4)
     sen1 = ' '.join(item3)
     sen2 = ' '.join(item4)
     #sen1 = ' '.join(nltk.word_tokenize(items[3]))
@@ -51,6 +53,8 @@ for line in fin2:
     for i in xrange(len(item4)):
         if(all(96 < ord(char) < 123 for char in item4[i]) == False):
             item4[i]=""
+    item3[:] = filter(lambda a: a != "", item3)
+    item4[:] = filter(lambda a: a != "", item4)
     sen1 = ' '.join(item3)
     sen2 = ' '.join(item4)
     #sen1 = ' '.join(nltk.word_tokenize(items[3]))
