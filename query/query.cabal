@@ -63,6 +63,8 @@ Executable query
                         aeson,
                         binary,
                         bytestring,
+                        conduit,
+                        conduit-extra,
                         directory,
                         distributed-process,
                         filepath,

@@ -9,7 +9,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
               distributed-process
 	      network-transport-zeromq
 	      monad-loops uuid aeson
-	      cabal-install
+	      cabal-install conduit conduit-extra
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
