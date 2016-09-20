@@ -50,19 +50,22 @@ struct Param{
         testFile(""),
         kdim(100),
         power(1.0),
-        inductive(1) {}
+        mode(1),
+        verbose(0) {}
     
-    Param(std::string p_trainFile, std::string p_testFile, int p_kdim, float_t p_power, int p_inductive) :
+    Param(std::string p_trainFile, std::string p_testFile, int p_kdim, float_t p_power, int p_mode, int p_verbose) :
         trainFile{p_trainFile},
         testFile{p_testFile},
         kdim{p_kdim},
         power{p_power},
-        inductive{p_inductive} {}
+        mode{p_mode},
+        verbose(p_verbose) {}
     
     std::string trainFile, testFile;
     int kdim;
     float_t power;
-    int inductive;
+    int mode;
+    int verbose;
 };
 
  

@@ -6,7 +6,7 @@
 namespace tfkld{
 namespace test{
 
-void runTFKLD_test01();
+void runTFKLD_test01(Param const &params);
 
 }//namespace test
 }//namespace tfkld

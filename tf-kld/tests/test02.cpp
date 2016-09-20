@@ -3,7 +3,7 @@
 namespace tfkld{
 namespace test{
     
-void runTFKLD_test02(tfkld::Param const &params){
+void runTFKLD_test02(Param const &params){
 
     using namespace util;
     using namespace util::io;
@@ -77,8 +77,6 @@ void runTFKLD_test02(tfkld::Param const &params){
     int64_t count{0};
     int lcount = 1;
     
-    std::cout << tdocs/2 << std::endl;
-    std::cout << tag.size() << std::endl;
     for(int i = 0; i < tdocs/2; i++) {
         fout << tag[count] << " ";
         for(auto y : svec[i]) {

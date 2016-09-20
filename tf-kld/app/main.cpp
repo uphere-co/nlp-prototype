@@ -28,9 +28,6 @@ int main(int argc, char **argv){
     } else {
         ArgPass(argc, argv, params);
     }
-    
-    //runTFKLD_test01(); // Inductive Learning
-    //runTFKLD_test02(params); // Transductive Learning
 
     ////////////////////////////////////////////
 
@@ -64,8 +61,6 @@ int main(int argc, char **argv){
         nr_w=1;
     else
         nr_w=mparams->nr_class;
-
-    ///////////////////////////////////////////
 
     mainPredict(tag, svec, mparams);
     return 0;

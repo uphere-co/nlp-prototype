@@ -3,7 +3,7 @@
 namespace tfkld{
 namespace test{
 
-void runTFKLD_test01(){
+void runTFKLD_test01(Param const &params){
 
     using namespace util;
     using namespace util::io;
@@ -12,11 +12,9 @@ void runTFKLD_test01(){
 
     auto timer = Timer{};
 
-    Param params;
+    int K_dim = params.kdim;
     
-    int K_dim = 100;
-    
-    std::string fin_name = "Tk_msr_paraphrase_train.txt";
+    std::string fin_name = params.trainFile;
     MSParaFile fin{fin_name};
 
     auto vocab = LearnVocab(fin);
@@ -84,13 +82,13 @@ void runTFKLD_test01(){
     }
 
     for(auto x : kld) {
-        kld_out << x << std::endl;
+        kld_out << pow(x,params.power) << std::endl;
     }    
     
     vocab_out.close();
     kld_out.close();
 
-    std::string fin_name2 = "Tk_msr_paraphrase_test.txt";
+    std::string fin_name2 = params.testFile;
     MSParaFile fin2{fin_name2};
 
     std::string vocabread_filename = "vocab.dat";
