@@ -25,24 +25,23 @@ Timer timer{};
 
 void query_init( char* configfile )
 {
-  std::cout << "fake init" << std::endl;
-  /* 
+  //std::cout << "fake init" << std::endl;
+   
     config = load_json(configfile);
     engine = new SimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
-    timer.here_then_reset("Search engine loaded.");     */
+    timer.here_then_reset("Search engine loaded.");     
 }
 
 //void query( int fq, int fr )
 void query( istream* is, ostream* os )
 {
-  std::cout << "fake query" << std::endl;
+  /* std::cout << "fake query" << std::endl;
   std::string str; 
   (*is) >> str ;
   std::cout << str << std::endl;
-  (*os) << str << str << std::endl;
+  (*os) << str << str << std::endl; */
   
-  /*
     json input; 
     (*is) >> input ;
     std::cout << "j.size() = " << input.size() << std::endl;
@@ -52,12 +51,15 @@ void query( istream* is, ostream* os )
     auto answer = engine->process_queries(input);
     timer.here_then_reset("Query is answered.");
     (*os) << answer.dump(4) << std::endl;
-  */
+    delete os->rdbuf();
+    delete os;
+    // os->setstate(std::ios::eofbit);
+    //delete os;
 }
 
 void query_finalize( void )
 {
-  std::cout << "fake finalize" << std::endl;
-  //    delete engine;
+  //std::cout << "fake finalize" << std::endl;
+      delete engine;
 }
 

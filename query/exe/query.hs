@@ -47,15 +47,15 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   duplex <- liftIO mkDuplex
   withStreamPairFromDuplex duplex $ \(is,os) -> void $ do
-    liftIO $ forkIO $ c_query is os --  ((pp_out.hereToThere) duplex) ((pp_in.thereToHere) duplex)
-    liftIO $ putStrLn "here"
-    liftIO (pipeTransmit duplex (encode (makeJson q))) >>= sendChan sc
-
+    liftIO $ forkIO $ c_query is os
+    r <- liftIO (transmit duplex (encode (makeJson q)))
+    liftIO $ print r
+    sendChan sc r
     
 server :: Process ()
 server = do
   writeProcessId
-  whileJust_ expect $ \(q,sc) -> {- spawnLocal -} (queryWorker sc q)
+  whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
   
 withTempFile :: (MonadIO m) => (FilePath -> m a) -> m a
 withTempFile f = do
