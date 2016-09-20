@@ -106,47 +106,47 @@ auto back_prop_grad_word=[](int64_t i,int64_t j, auto &grad,
     grad[j]+=mesg[i]*w[i][j];
 };
 
-void backward_path_detail(Param const &param,
-                        Param &grad_sum,
-                        Node const &phrase, Param::mesg_t mesg) {
-    constexpr auto dim = Param::dim;
-    using val_t =Param::val_t;
-    auto vecloop_void = util::math::VecLoop_void<val_t,dim>{};
-    auto matloop_void = util::math::MatLoop_void<val_t,dim,dim>{};
+class CRNN{
+public:
+    using param_t = Param;
+    using val_t   = param_t::val_t;
+    using mesg_t  = Param::mesg_t;
+    using node_t  = Node;
+    using prop_t  = Node::prop_t;
 
-    vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
-    grad_sum.bias += mesg.span;
-    matloop_void(back_prop_grad_W, grad_sum.w_left, mesg.span, phrase.left->prop.vec);
-    matloop_void(back_prop_grad_W, grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+    static constexpr auto dim = param_t::dim;
 
-    auto lenctx = Node::prop_t::len_context;
-    for(decltype(lenctx)i=0; i!= lenctx; ++i) {
-        auto w_left_ctx=grad_sum.w_context_left[i];
-        auto left_ctx = phrase.prop.left_ctxs[i];
-        auto w_right_ctx=grad_sum.w_context_right[i];
-        auto right_ctx = phrase.prop.right_ctxs[i];
-        if(left_ctx!= nullptr) matloop_void(back_prop_grad_W, w_left_ctx,  mesg.span, left_ctx->prop.vec);
-        if(right_ctx!= nullptr) matloop_void(back_prop_grad_W, w_right_ctx,  mesg.span, right_ctx->prop.vec);
+    static void update_message(mesg_t &mesg, node_t const &phrase){
+        util::math::VecLoop_void<val_t,dim> vecloop_void{};
+        vecloop_void(update_mesg_common_part, mesg.span, phrase.prop.vec_wsum);
     }
+    static void accum_param_gradient(param_t &grad_sum, mesg_t const &mesg, node_t const &phrase){
+        util::math::MatLoop_void<val_t,dim,dim> matloop_void{};
 
-    if(phrase.left->is_combined()){
-        backward_path_detail(param, grad_sum, *phrase.left, param.left_message(mesg));
-    } else if(phrase.left->is_leaf()){
-        //update word_vec of leaf node
-        matloop_void(back_prop_grad_word, phrase.left->prop.vec_update,
-                     mesg.span, param.w_left);
-    } else{
-        assert(0);//it cannot happen on shape of tree constructed RNN.
+        grad_sum.bias += mesg.span;
+        matloop_void(back_prop_grad_W, grad_sum.w_left, mesg.span, phrase.left->prop.vec);
+        matloop_void(back_prop_grad_W, grad_sum.w_right, mesg.span, phrase.right->prop.vec);
+
+        auto lenctx = prop_t::len_context;
+        for(decltype(lenctx)i=0; i!= lenctx; ++i) {
+            auto w_left_ctx=grad_sum.w_context_left[i];
+            auto left_ctx = phrase.prop.left_ctxs[i];
+            auto w_right_ctx=grad_sum.w_context_right[i];
+            auto right_ctx = phrase.prop.right_ctxs[i];
+            if(left_ctx!= nullptr) matloop_void(back_prop_grad_W, w_left_ctx,  mesg.span, left_ctx->prop.vec);
+            if(right_ctx!= nullptr) matloop_void(back_prop_grad_W, w_right_ctx,  mesg.span, right_ctx->prop.vec);
+        }
     }
-    if(phrase.right->is_combined()){
-        backward_path_detail(param, grad_sum, *phrase.right, param.right_message(mesg));
-    } else if(phrase.right->is_leaf()){
-        matloop_void(back_prop_grad_word, phrase.right->prop.vec_update,
-                     mesg.span, param.w_right);
-    } else{
-        assert(0);//it cannot happen on shape of tree constructed RNN.
+    static void accum_left_wordvec_gradient(node_t const &phrase, mesg_t const &mesg, param_t const &param){
+        util::math::MatLoop_void<val_t,dim,dim> matloop_void{};
+        matloop_void(back_prop_grad_word, phrase.left->prop.vec_update, mesg.span, param.w_left);
     }
-}
+    static void accum_right_wordvec_gradient(node_t const &phrase, mesg_t const &mesg, param_t const &param){
+        util::math::MatLoop_void<val_t,dim,dim> matloop_void{};
+        matloop_void(back_prop_grad_word, phrase.right->prop.vec_update, mesg.span, param.w_right);
+    }
+};
+
 
 auto grad_u_score_L2norm_i=[](int64_t i, auto &grad, auto factor_u, auto const &u_score,
                               auto factor_p, auto const &phrase)  {
@@ -170,7 +170,7 @@ void backward_path(Param &grad, Param const &param, Node const &phrase){
     assert(factor==factor);
     Param::mesg_t mesg{param.u_score};
     mesg *=factor;
-    backward_path_detail(param, grad, phrase, mesg);
+    detail::backward_path_detail<CRNN>(param, grad, phrase, mesg);
 }
 
 auto weighted_sum=[](int64_t i, auto &word_vec,
@@ -193,7 +193,6 @@ auto accumulate_context_weights=[](int64_t i, auto &word_vec,
             word_vec[i] += dot(w_context_right[k][i], right_ctxs[k]->prop.vec);
     }
 };
-
 
 void weighted_sum_word_pair(Param const &param, Node::prop_t &self,
                             Node::prop_t const &left, Node::prop_t const &right) {
