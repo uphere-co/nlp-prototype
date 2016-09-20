@@ -63,6 +63,8 @@ Executable query
                         aeson,
                         binary,
                         bytestring,
+                        conduit,
+                        conduit-extra,
                         directory,
                         distributed-process,
                         filepath,
@@ -70,6 +72,7 @@ Executable query
                         network-transport-zeromq,
                         stm,
                         text,
+                        unix,
                         uuid,
                         --
                         query

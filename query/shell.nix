@@ -9,14 +9,15 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
               distributed-process
 	      network-transport-zeromq
 	      monad-loops uuid aeson
-	      cabal-install
+	      cabal-install conduit conduit-extra
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
   buildInputs = [ hsenv hdf5 hdf5-cpp liblbfgs cppzmq zeromq
 		  rnnpp tbb
                   toolz_cpp.msgsl
-		  toolz_cpp.json 
+		  toolz_cpp.json
+		  #boost
                 ];
   shellHook = ''
   '';
