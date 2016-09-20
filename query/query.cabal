@@ -28,11 +28,17 @@ Library
   hs-source-dirs:       lib
   Build-depends:        base,
                         --
-                        binary
+                        binary,
+                        bytestring,
+                        conduit,
+                        conduit-extra,
+                        unix
 
   Exposed-modules:
-                        -- Symbolic.CodeGen.C               -- for the time being
+                        Util.FStream
+                        Util.Pipe
                         Type
+                  
 
   Other-modules:        
 
@@ -57,6 +63,7 @@ Executable query
   ghc-prof-options:     -auto-all
   extra-libraries:      similarity, parser, tbb, hdf5_cpp, stdc++
   c-sources:            csrc/invoke.cpp
+                        csrc/fstream.cpp
   cc-options:           -std=c++14
   build-depends:        base,
                         --

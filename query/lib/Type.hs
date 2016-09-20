@@ -2,6 +2,7 @@ module Type where
 
 import qualified Data.Binary as Bi
 
+
 data Query = Query { querySentences :: [ String ] } -- deriving Typeable
 
 instance Bi.Binary Query where
