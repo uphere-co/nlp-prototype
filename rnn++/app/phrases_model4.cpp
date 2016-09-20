@@ -6,6 +6,7 @@
 
 #include "tests/test_voca_wordvec.h"
 
+using namespace rnn;
 using namespace rnn::config;
 using namespace rnn::simple_model;
 using namespace rnn::simple_model::detail;

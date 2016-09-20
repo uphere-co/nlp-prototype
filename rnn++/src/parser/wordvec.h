@@ -17,10 +17,11 @@ namespace wordrep{
 template<int32_t word_dim>
 class WordBlock_base{
 public:
+    static constexpr int32_t dim = word_dim;
     using float_t    = rnn::type::float_t;
     using data_t     = std::vector<float_t>;
     using raw_span_t = util::span_dyn<float_t>;
-    using span_t     = util::span_1d<float_t,word_dim>;
+    using span_t     = util::span_1d<float_t,dim>;
     using idx_t      = data_t::size_type;
     //TODO: fix bug! WordVec should be defined by WordBlock::word_dim.
     // using WordVec=const util::math::VectorView<rnn::type::float_t, rnn::config::word_dim>;

@@ -325,7 +325,7 @@ void test_supervised_rnn_full_step(){
     auto testset_orig=TokenizedSentences{"1b.s2010.testset"};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto &lines = testset.val;
-    VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
+    VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     // auto param = load_param(rnn_param_store_name, rnn_param_name, param_f_type);
     auto param = randomParam(0.1);
     timer.here_then_reset("Preparing data");

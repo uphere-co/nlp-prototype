@@ -1,7 +1,5 @@
 #include "parser/parser.h"
-
 #include "utils/parallel.h"
-#include "utils/string.h"
 #include "utils/binary_tree.h"
 
 namespace rnn{
@@ -53,12 +51,6 @@ Gradient operator -(const Gradient& x, const Gradient& y){
     out-=y;
     return out;
 }
-
-
-TokenizedSentences::TokenizedSentences(std::string tokenized_file)
-    : val{util::string::readlines(tokenized_file)} {}
-ParsedSentences::ParsedSentences(std::string parsed_file)
-    : val{util::string::readlines(parsed_file)} {}
 
 DPtable dp_merging(Param const &param, InializedLeafNodes &initialized_nodes){
     auto &nodes = initialized_nodes.val;

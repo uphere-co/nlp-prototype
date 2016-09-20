@@ -20,6 +20,7 @@
 using namespace util;
 using namespace util::io;
 using namespace util::math;
+using namespace rnn;
 using namespace rnn::wordrep;
 using namespace rnn::config;
 using namespace rnn::simple_model::optimizer;
@@ -45,8 +46,8 @@ int main(){
         write_to_disk(param, ss.str());
     };
     try {
-        // test_supervised_rnn_full_step();
-        // return 0;
+         test_supervised_rnn_full_step();
+         return 0;
         logger.info("Process begins.");
 
         // auto testset_parsed=ParsedSentences{"1b.testset.sample.stanford"};

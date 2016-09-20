@@ -20,19 +20,20 @@
 using namespace util;
 using namespace util::io;
 using namespace util::math;
-using namespace rnn::wordrep;
-using namespace rnn::config;
-using namespace rnn::simple_model::optimizer;
-using namespace rnn::simple_model;
-using namespace rnn::context_model::test;
 
-namespace rnn_t = rnn::type;
+using namespace rnn;
+using namespace rnn::test;
+
 
 int main(){
     try {
 //        test_context_node();
-        test_crnn_backward();
+//        test_crnn_backward();
+//        test_crnn_directed_backward();
+        test_grad_parallel_reduce();
+        test_minibatch_crnn();
         return 0;
+        train_crnn();
         
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
@@ -41,8 +42,6 @@ int main(){
     } catch (...) {
         std::cerr << "Unknown exception" << std::endl;
     }
-    static_assert(std::is_nothrow_destructible<H5file>::value == true, "");
-    static_assert(sizeof(WordBlock::idx_t) == 8, "");
 
     return 0;
 }
