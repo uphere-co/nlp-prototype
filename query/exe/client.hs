@@ -1,3 +1,5 @@
+import           Control.Applicative
+
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node (initRemoteTable,newLocalNode,runProcess)
 import qualified Data.Binary            as Bi (decode)
@@ -14,7 +16,12 @@ client mmsgs = do
   pid <- getSelfPid
   them <- readProcessId
   liftIO $ print them
-  send them mmsgs
+  (sc,rc) <- newChan :: Process (SendPort String, ReceivePort String)
+  send them ((,) <$> mmsgs <*> pure sc)
+  str <- receiveChan rc
+  liftIO $ putStrLn ("message received: " ++ str)
+  
+
 
 readProcessId :: Process ProcessId
 readProcessId = liftIO $ Bi.decode <$> BL.readFile "server.pid"

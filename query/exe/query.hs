@@ -43,9 +43,9 @@ writeProcessId = do
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
 
-queryWorker :: Query -> Process ()
-queryWorker q = do
-  liftIO $ do 
+queryWorker :: SendPort String -> Query -> Process ()
+queryWorker sc q = do
+  (str,hr) <- liftIO $ do 
     (foq,fiq) <- createPipe
     (for,fir) <- createPipe
     hq <- fdToHandle fiq
@@ -53,20 +53,19 @@ queryWorker q = do
     forkIO $ c_query foq fir 
     BL.hPutStrLn hq (encode (makeJson q))
     hClose hq
-    str <- BL.hGetContents hr
-    BL.putStrLn "result:"
-    BL.putStrLn str
-    hClose hr
+    str <- hGetContents hr
+    return (str,hr)
+  sendChan sc str
+  liftIO $ hClose hr
 
 
 server :: Process ()
 server = do
   writeProcessId
-  whileJust_ expect $ \q -> do
+  whileJust_ expect $ \(q,sc) -> do
     -- (mapM_ (liftIO . putStrLn) .  querySentences) q
-    queryWorker q
-
-
+    queryWorker sc q
+    -- sendChan (sc :: SendPort String)  "hello there"
 
 
 withTempFile :: (MonadIO m) => (FilePath -> m a) -> m a
