@@ -15,7 +15,7 @@ using namespace std;
 
 extern "C" {
     void query_init( char* configfile );
-  void query( int fd /* char* queryfile */ );
+  void query( int fq, int fr /* char* queryfile */ );
     void query_finalize( void );
 }
 
@@ -36,21 +36,20 @@ void query_init( char* configfile )
     */
 }
 
-void query( int fd /* char* queryfile */  )
+void query( int fq, int fr /* char* queryfile */  )
 {
  
     std::cout << "fake query" << std::endl;
-    __gnu_cxx::stdio_filebuf<char> filebuf(fd, ios::out);
-    ostream os(&filebuf);
+    __gnu_cxx::stdio_filebuf<char> buf_query (fq, ios::in);
+    __gnu_cxx::stdio_filebuf<char> buf_result(fr, ios::out);
 
-    //boost::iostreams::stream_buffer<boost::iostreams::file_descriptor_source> fpstream(fd);
-    //std::ostream out (&fpstream);
-    os << "hello world !!!" << std::endl;
-    
-    
-    
-    //char string[] = "hello world\n";
-    //write(fd, string, strlen(string)+1);
+    istream is(&buf_query);
+    ostream os(&buf_result);
+
+    std::string str;
+    is >> str;
+    std::cout << str <<std::endl;
+    os << str << str << std::endl;
     /*
     std::cout << "query is called" << std::endl;
     auto input = load_json(queryfile);

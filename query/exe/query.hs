@@ -25,14 +25,14 @@ import           Network.Transport.ZMQ                     (createTransport, def
 import           System.Directory
 import           System.Environment
 import           System.FilePath
-import           System.IO                                 (hGetContents)
-import           System.Posix.IO                           (createPipe, fdToHandle)
+import           System.IO                                 (hClose, hGetContents, hPutStrLn)
+import           System.Posix.IO                           (closeFd, createPipe, fdToHandle, fdWrite)
 import           System.Posix.Types                        (Fd(..))
 --
 import           Type
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query"          c_query          :: CInt  -> IO () -- :: CString -> IO ()
+foreign import ccall "query"          c_query          :: Fd -> Fd -> IO () -- :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: Process ()
@@ -44,19 +44,18 @@ writeProcessId = do
 
 queryWorker :: Query -> IO ()
 queryWorker q = do
-  (fin,fout) <- createPipe
-  let Fd fd_out = fout
-  h <- fdToHandle fin
-  
-  c_query (fd_out :: CInt) -- fin
+  (foq,fiq) <- createPipe
+  (for,fir) <- createPipe
+  hq <- fdToHandle fiq
+  hr <- fdToHandle for
+  hPutStrLn hq "23ssdlfkj"
+  hClose hq
+  c_query foq fir 
 
-  str <- hGetContents h
-  putStrLn "haskell side:"
+  str <- hGetContents hr
+  putStrLn "result:"
   putStrLn str
-  -- withTempFile $ \fp -> liftIO $ do
-   --  BL.writeFile fp (encode (makeJson q))
-    -- withCString fp $ \queryfile -> liftIO $ c_query queryfile
-    -- removeFile fp
+  hClose hr
 
 
 server :: Process ()
