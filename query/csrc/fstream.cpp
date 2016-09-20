@@ -12,15 +12,18 @@ extern "C" {
 
 std::istream* make_istream_from_fd ( int fd )
 {
-  __gnu_cxx::stdio_filebuf<char> buf (fd, std::ios::in);
-  std::istream* is = new std::istream(&buf);
+  __gnu_cxx::stdio_filebuf<char>* buf = new __gnu_cxx::stdio_filebuf<char>(fd, std::ios::in); // this should cause a memory leak. 
+  std::istream* is = new std::istream(buf); 
+  std::cout << "make_istream_from_fd called" << std::endl;
   return is;
 }
 
 std::ostream* make_ostream_from_fd ( int fd )
 {
-  __gnu_cxx::stdio_filebuf<char> buf(fd, std::ios::out);
-  std::ostream* os = new std::ostream(&buf);
+  __gnu_cxx::stdio_filebuf<char>* buf = new __gnu_cxx::stdio_filebuf<char>(fd, std::ios::out);
+  std::ostream* os = new std::ostream(buf);
+  std::cout << "make_ostream_from_fd called" << std::endl;
+  
   return os;
 }
 

@@ -14,11 +14,14 @@ import           Util.Pipe
 data RawIStream
 data RawOStream
 
-newtype IStream = IStream (Ptr RawIStream)
-newtype OStream = OStream (Ptr RawOStream)
+-- newtype IStream = IStream (Ptr RawIStream)
+-- newtype OStream = OStream (Ptr RawOStream)
 
-foreign import ccall "make_istream_from_fd" c_make_istream_from_fd :: Fd -> IO IStream
-foreign import ccall "make_ostream_from_fd" c_make_ostream_from_fd :: Fd -> IO OStream
+type IStream = Ptr RawIStream
+type OStream = Ptr RawOStream
+
+foreign import ccall "make_istream_from_fd" c_make_istream_from_fd :: Fd -> IO (Ptr RawIStream)
+foreign import ccall "make_ostream_from_fd" c_make_ostream_from_fd :: Fd -> IO (Ptr RawOStream)
 foreign import ccall "delete_istream" c_delete_istream :: IStream -> IO ()
 foreign import ccall "delete_ostream" c_delete_ostream :: OStream -> IO ()
 
