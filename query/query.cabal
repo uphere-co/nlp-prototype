@@ -1,0 +1,102 @@
+Name:                   query
+Version:                0.1
+Cabal-version:          >=1.8
+Tested-with:            GHC >= 7.10
+Build-type:             Simple
+Synopsis:               querying result
+Description:            querying result
+License:                OtherLicense
+License-file:           LICENSE
+Author:                 UpHere, Inc.
+Maintainer:             Ian-Woo Kim <ianwookim@gmail.com>
+Homepage:               https://github.com/uphere-co/nlp-prototype
+Bug-reports:            https://github.com/uphere-co/nlp-prototype
+
+Category:               Query
+Stability:              Experimental
+
+Extra-source-files:     
+
+source-repository HEAD
+  type:                 git
+  location:             https://github.com/uphere-co/nlp-prototype
+  branch:               master
+
+-------------------------------------------------------
+  
+Library
+  hs-source-dirs:       lib
+  Build-depends:        base,
+                        --
+                        binary
+
+  Exposed-modules:
+                        -- Symbolic.CodeGen.C               -- for the time being
+                        Type
+
+  Other-modules:        
+
+  ghc-options:          -O2 -Wall
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+                        -fno-warn-orphans
+
+  ghc-prof-options:     -caf-all -auto-all
+
+-------------------------------------------------------
+
+Executable query
+  Main-is:              query.hs
+  hs-source-dirs:       exe
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:      similarity, parser, tbb, hdf5_cpp, stdc++
+  c-sources:            csrc/invoke.cpp
+  cc-options:           -std=c++14
+  build-depends:        base,
+                        --
+                        aeson,
+                        binary,
+                        bytestring,
+                        directory,
+                        distributed-process,
+                        filepath,
+                        monad-loops,
+                        network-transport-zeromq,
+                        stm,
+                        text,
+                        uuid,
+                        --
+                        query
+
+-------------------------------------------------------
+
+                        
+Executable client
+  Main-is:              client.hs
+  hs-source-dirs:       exe
+
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:     
+  c-sources:            
+                        
+  build-depends:        base,
+                        --
+                        binary,                        
+                        bytestring,
+                        distributed-process,
+                        network-transport-zeromq,
+                        --
+                        query
+                        
