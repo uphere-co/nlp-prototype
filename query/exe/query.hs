@@ -43,49 +43,29 @@ writeProcessId = do
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
 
-queryWorker :: Query -> IO ()
+queryWorker :: Query -> Process ()
 queryWorker q = do
-  (foq,fiq) <- createPipe
-  (for,fir) <- createPipe
-  hq <- fdToHandle fiq
-  hr <- fdToHandle for
-  forkIO $ c_query foq fir 
-
-
-  let bstr = encode (makeJson q)
-  BL.putStrLn bstr
-  BL.hPutStrLn hq bstr
-  -- threadDelay 100000    
-  hClose hq
-
-
-
-  str <- BL.hGetContents hr
-  BL.putStrLn "result:"
-  BL.putStrLn str
-
-
-  hClose hr
+  liftIO $ do 
+    (foq,fiq) <- createPipe
+    (for,fir) <- createPipe
+    hq <- fdToHandle fiq
+    hr <- fdToHandle for
+    forkIO $ c_query foq fir 
+    BL.hPutStrLn hq (encode (makeJson q))
+    hClose hq
+    str <- BL.hGetContents hr
+    BL.putStrLn "result:"
+    BL.putStrLn str
+    hClose hr
 
 
 server :: Process ()
 server = do
   writeProcessId
-{-  
-  forkIO $ do
-    threadDelay 10000
-    qs <- read var
-    let enumqs = zip [1..] qs
-    when ((not.null) qs) $ queryWorker
-    
-    rs' <- getresult
-    zip qs rs' 
-    flush var 
--}  
   whileJust_ expect $ \q -> do
-    (mapM_ (liftIO . putStrLn) .  querySentences) q
-    liftIO $ queryWorker q
-    -- save var q 
+    -- (mapM_ (liftIO . putStrLn) .  querySentences) q
+    queryWorker q
+
 
 
 
