@@ -1,5 +1,8 @@
 #include "tests/test02.h"
 
+namespace tfkld{
+namespace test{
+    
 void runTFKLD_test02(tfkld::Param const &params){
 
     using namespace util;
@@ -154,3 +157,6 @@ void runTFKLD_test02(tfkld::Param const &params){
     fout2.close();
     
 }
+
+}//namespace test
+}//namespace tfkld

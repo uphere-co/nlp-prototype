@@ -13,6 +13,7 @@ int main(int argc, char **argv){
     using namespace util;
     using namespace util::io;
     using namespace tfkld;
+    using namespace tfkld::test;
     using namespace tfkld::util;
     using namespace arma;
     using namespace tfkld::svm;
