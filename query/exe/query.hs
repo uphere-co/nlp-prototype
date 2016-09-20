@@ -62,9 +62,10 @@ queryWorker sc q = do
 server :: Process ()
 server = do
   writeProcessId
-  whileJust_ expect $ \(q,sc) -> do
-    -- (mapM_ (liftIO . putStrLn) .  querySentences) q
-    queryWorker sc q
+  whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
+  
+
+  -- (mapM_ (liftIO . putStrLn) .  querySentences) q
     -- sendChan (sc :: SendPort String)  "hello there"
 
 
