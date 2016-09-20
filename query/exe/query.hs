@@ -42,7 +42,6 @@ writeProcessId = do
   liftIO $ print us
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
-
 queryWorker :: SendPort String -> Query -> Process ()
 queryWorker sc q = do
   (str,hr) <- liftIO $ do 
@@ -58,17 +57,11 @@ queryWorker sc q = do
   sendChan sc str
   liftIO $ hClose hr
 
-
 server :: Process ()
 server = do
   writeProcessId
   whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
   
-
-  -- (mapM_ (liftIO . putStrLn) .  querySentences) q
-    -- sendChan (sc :: SendPort String)  "hello there"
-
-
 withTempFile :: (MonadIO m) => (FilePath -> m a) -> m a
 withTempFile f = do
   tmp <- liftIO getTemporaryDirectory
@@ -89,7 +82,6 @@ makeJson (Query qs) =
          , "w2vmodel_name"   .= ("news_wsj" :: Text)
          , "queries"         .= toJSON qs
          ] 
-
 
 main = do
   [host] <- getArgs

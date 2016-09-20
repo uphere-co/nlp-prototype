@@ -18,11 +18,11 @@ client mmsgs = do
   liftIO $ print them
   (sc,rc) <- newChan :: Process (SendPort String, ReceivePort String)
   send them ((,) <$> mmsgs <*> pure sc)
-  str <- receiveChan rc
-  liftIO $ putStrLn ("message received: " ++ str)
+  case mmsgs of
+    Just _ -> do str <- receiveChan rc
+                 liftIO $ putStrLn ("message received: " ++ str)
+    Nothing -> return ()
   
-
-
 readProcessId :: Process ProcessId
 readProcessId = liftIO $ Bi.decode <$> BL.readFile "server.pid"
   
