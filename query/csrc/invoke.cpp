@@ -46,10 +46,11 @@ void query( int fq, int fr /* char* queryfile */  )
     istream is(&buf_query);
     ostream os(&buf_result);
 
-    std::string str;
-    is >> str;
-    std::cout << str <<std::endl;
-    os << str << str << std::endl;
+    while( !is.eof() ) { 
+      std::string str;
+      is >> str;
+      os << str ;
+    }
     /*
     std::cout << "query is called" << std::endl;
     auto input = load_json(queryfile);

@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+import           Control.Concurrent                        (forkIO, threadDelay)
 import           Control.Concurrent.STM.TQueue
 import           Control.Monad
 import           Control.Monad.IO.Class 
@@ -48,13 +49,22 @@ queryWorker q = do
   (for,fir) <- createPipe
   hq <- fdToHandle fiq
   hr <- fdToHandle for
-  hPutStrLn hq "23ssdlfkj"
-  hClose hq
-  c_query foq fir 
+  forkIO $ c_query foq fir 
 
-  str <- hGetContents hr
-  putStrLn "result:"
-  putStrLn str
+
+  let bstr = encode (makeJson q)
+  BL.putStrLn bstr
+  BL.hPutStrLn hq bstr
+  -- threadDelay 100000    
+  hClose hq
+
+
+
+  str <- BL.hGetContents hr
+  BL.putStrLn "result:"
+  BL.putStrLn str
+
+
   hClose hr
 
 
