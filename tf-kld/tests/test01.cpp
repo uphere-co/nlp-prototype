@@ -8,6 +8,7 @@ void runTFKLD_test01(Param const &params){
     using namespace util;
     using namespace util::io;
     using namespace tfkld;
+    using namespace tfkld::type;
     using namespace arma;
 
     auto timer = Timer{};
@@ -33,8 +34,8 @@ void runTFKLD_test01(Param const &params){
     sp_mat inMat(n_rows, n_cols);
 
     std::vector<SpValue> values;
-    std::vector<float_t> idf;
-    std::vector<float_t> kld;
+    std::vector<real_t> idf;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);

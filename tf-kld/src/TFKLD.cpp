@@ -9,15 +9,15 @@ using namespace arma;
 
 namespace tfkld{
 
-void MakeTFKLD(Param const &params, std::vector<float_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
 
-    float_t ep=0.05;
-    float_t p=ep;
-    float_t q=ep;
-    float_t np=ep;
-    float_t nq=ep;
+    real_t ep=0.05;
+    real_t p=ep;
+    real_t q=ep;
+    real_t np=ep;
+    real_t nq=ep;
     
-    float_t div;
+    real_t div;
     for(int64_t a = 0; a < vocab.size(); ++a) {
         for(int i = 0; i < tag.size(); ++i) {
             
@@ -60,7 +60,7 @@ void MakeTFKLD(Param const &params, std::vector<float_t> &kld, std::vector<std::
         
 }
 
-void MakeTFKLD(Param const &params, std::vector<float_t> &kld, std::vector<SpValue> &values) {
+void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<SpValue> &values) {
     for(auto &x : values) x.val *= pow(kld[x.row],params.power);
         
 }
@@ -95,7 +95,7 @@ void runTransductive(Param const &params) {
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Tag.\n");
 
     std::vector<SpValue> values;
-    std::vector<float_t> kld;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);
@@ -237,8 +237,8 @@ void runInductive(Param const &params) {
     sp_mat inMat(n_rows, n_cols);
 
     std::vector<SpValue> values;
-    std::vector<float_t> idf;
-    std::vector<float_t> kld;
+    std::vector<real_t> idf;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);

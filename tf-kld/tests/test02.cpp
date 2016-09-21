@@ -8,6 +8,7 @@ void runTFKLD_test02(Param const &params){
     using namespace util;
     using namespace util::io;
     using namespace tfkld;
+    using namespace tfkld::type;
     using namespace arma;
 
     auto timer = Timer{};
@@ -39,7 +40,7 @@ void runTFKLD_test02(Param const &params){
     timer.here_then_reset("\nConstructed Tag.\n");
 
     std::vector<SpValue> values;
-    std::vector<float_t> kld;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);
