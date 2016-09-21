@@ -198,13 +198,13 @@ void PrintVocab(vocab_t &vocab){
     for(auto x : vocab) std::cout << x.first << std::endl;
 }
 
-auto getVocabWord(vocab_t &vocab) {
+std::vector<std::string> getVocabWord(vocab_t &vocab) {
     std::vector<std::string> result;
     for(auto x : vocab) result.push_back(x.first);
     return result;
 }
 
-auto getVocabIndex(vocab_t &vocab) {
+std::vector<int64_t> getVocabIndex(vocab_t &vocab) {
     std::vector<int64_t> result;
     for(auto x : vocab) result.push_back(x.second);
     return result;

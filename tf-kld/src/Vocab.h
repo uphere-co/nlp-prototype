@@ -34,8 +34,8 @@ vocab_t ReadVocab(std::ifstream &vocab_file);
     
 void PrintVocab(vocab_t &vocab);
 
-auto getVocabWord(vocab_t &vocab);
+std::vector<std::string> getVocabWord(vocab_t &vocab);
 
-auto getVocabIndex(vocab_t &vocab);
+std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
     
 }//namespace tfkld

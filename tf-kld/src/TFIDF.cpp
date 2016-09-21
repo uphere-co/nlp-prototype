@@ -11,7 +11,7 @@ real_t val_idf(int64_t D, int_t Dt) {
     return log(D/(real_t)Dt);
 }
     
-void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values, int64_t &count, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
 
     hashmap_t df;
     int64_t D = docs.size();

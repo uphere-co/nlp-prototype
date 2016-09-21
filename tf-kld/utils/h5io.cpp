@@ -13,14 +13,28 @@ auto Concat(std::vector<std::string> const &words){
 }
 
 void writeH5File() {
-    
-    H5file file{H5name{"data.h5"}, hdf5::FileMode::create};
-    auto vocab_word = getVocabWord(vocab);
-    auto vocab_index = getVocabIndex(vocab);
-    std::vector<char> concat_words = Concat(vocab_word);
-    file.writeRawData(H5name{"MSR.training.vocab.word"},concat_words);
-    file.writeRawData(H5name{"MSR.training.vocab.index"},vocab_index);
 
+    using namespace ::util::io;
+
+    vocab_t vocab;
+
+    std::ifstream f{"data.h5"};
+    
+    if(f.good()) {
+        H5file file{H5name{"data.h5"}, hdf5::FileMode::replace};
+        auto vocab_word = getVocabWord(vocab);
+        auto vocab_index = getVocabIndex(vocab);
+        std::vector<char> concat_words = Concat(vocab_word);
+        file.writeRawData(H5name{"MSR.training.vocab.word"},concat_words);
+        file.writeRawData(H5name{"MSR.training.vocab.index"},vocab_index);
+    } else {
+        H5file file{H5name{"data.h5"}, hdf5::FileMode::create};
+        auto vocab_word = getVocabWord(vocab);
+        auto vocab_index = getVocabIndex(vocab);
+        std::vector<char> concat_words = Concat(vocab_word);
+        file.writeRawData(H5name{"MSR.training.vocab.word"},concat_words);
+        file.writeRawData(H5name{"MSR.training.vocab.index"},vocab_index);
+    }
 }
 
 }//namespace util

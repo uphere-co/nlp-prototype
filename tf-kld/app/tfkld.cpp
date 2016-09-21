@@ -6,12 +6,11 @@
 #include "tests/test01.h"
 #include "tests/test02.h"
 
+#include "utils/h5io.h"
 #include "utils/help.h"
 
 int main(int argc, char **argv){
-    
-    using namespace util;
-    using namespace util::io;
+
     using namespace tfkld;
     using namespace tfkld::test;
     using namespace tfkld::util;
@@ -63,5 +62,6 @@ int main(int argc, char **argv){
         nr_w=mparams->nr_class;
 
     mainPredict(tag, svec, mparams);
+
     return 0;
 }
