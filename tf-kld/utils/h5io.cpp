@@ -49,14 +49,18 @@ void writeDocsH5(doc_t &docs) {
     }
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::rw_exist};
-    auto doc_word_idx = getDocsIndex(docs);
-    auto doc_word_count = getDocsCount(docs);
+    auto docs_word_idx = getDocsIndex(docs);
+    auto docs_word_count = getDocsCount(docs);
     //std::vector<char> concat_words = Concat(vocab_word);
     
-    file.overwriteRawData(H5name{"MSR.training.vocab.word"},concat_words);
-    file.overwriteRawData(H5name{"MSR.training.vocab.index"},vocab_index);
+    file.writeRawData(H5name{"MSR.training.docs.index"},docs_word_idx);
+    file.writeRawData(H5name{"MSR.training.docs.count"},docs_word_count);
 
+    auto docs_word_idx_H5 = file.getRawData<int64_t>(H5name{"MSR.training.docs.index"});
+    auto docs_word_count_H5 = file.getRawData<int>(H5name{"MSR.training.docs.coutn"});
 
+    for(auto x : docs_word_idx_H5) std::cout << x << " ";
+    for(auto x : docs_word_count_H5) std::cout << x << " ";
 }
 
 }//namespace util

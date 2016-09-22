@@ -26,7 +26,7 @@ std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n);
  
 vocab_t LearnVocab(MSParaFile &file);
     
-doc_t LearnPara(vocab_t &vocab, MSParaFile &file);
+doc_t LearnDocs(vocab_t &vocab, MSParaFile &file);
 
 std::vector<std::string> LearnTag(MSParaFile &file);
 

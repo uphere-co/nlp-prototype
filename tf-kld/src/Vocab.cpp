@@ -91,7 +91,7 @@ vocab_t LearnVocab(MSParaFile &file) {
   return vocab;
 }
     
-doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
+doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
