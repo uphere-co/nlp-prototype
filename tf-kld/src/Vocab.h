@@ -37,5 +37,9 @@ void PrintVocab(vocab_t &vocab);
 std::vector<std::string> getVocabWord(vocab_t &vocab);
 
 std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
-    
+
+std::vector<std::vector<type::int64_t>> getDocsIndex(doc_t &docs);
+
+std::vector<std::vector<int>> getDocsCount(doc_t &docs);
+ 
 }//namespace tfkld

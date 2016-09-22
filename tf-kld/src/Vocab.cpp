@@ -209,5 +209,37 @@ std::vector<int64_t> getVocabIndex(vocab_t &vocab) {
     for(auto x : vocab) result.push_back(x.second);
     return result;
 }
+
+std::vector<std::vector<int64_t>> getDocsIndex(doc_t &docs) {
+    std::vector<std::vector<int64_t>> result;
+    std::vector<int64_t> doc;
+
+    for(auto x : docs) {
+        for(auto y : x) {
+            doc.push_back(y.first);
+        }
+        result.push_back(doc);
+        doc.clear();
+    }
+
+    return result;
+}
+
+
+
+std::vector<std::vector<int>> getDocsCount(doc_t &docs) {
+    std::vector<std::vector<int>> result;
+    std::vector<int> doc;
+
+    for(auto x : docs) {
+        for(auto y : x) {
+            doc.push_back(y.second);
+        }
+        result.push_back(doc);
+        doc.clear();
+    }
+
+    return result;
+}
     
 }//namespace tfkld

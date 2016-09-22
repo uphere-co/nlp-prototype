@@ -8,7 +8,7 @@ namespace util{
 
 auto Concat(std::vector<std::string> const &words);
 
-void writeH5File();
+void writeVocabH5(vocab_t &vocab);
     
 }//namespace util
 }//namespace tfkld
