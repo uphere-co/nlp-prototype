@@ -48,9 +48,7 @@ queryWorker sc q = do
   duplex <- liftIO mkDuplex
   withStreamPairFromDuplex duplex $ \(is,os) -> void $ do
     liftIO $ forkIO $ c_query is os
-    r <- liftIO (transmit duplex (encode (makeJson q)))
-    liftIO $ print r
-    sendChan sc r
+    liftIO (transmit duplex (encode (makeJson q))) >>= sendChan sc
     
 server :: Process ()
 server = do

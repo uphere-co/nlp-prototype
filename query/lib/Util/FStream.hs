@@ -43,5 +43,5 @@ withStreamPairFromDuplex duplex f = do
   (is,os) <- liftIO $ mkStreamPairFromDuplex duplex
   r <- f (is,os)
   liftIO $ c_delete_istream is
-  --  liftIO $ c_delete_ostream os
+  liftIO $ c_delete_ostream os
   return r

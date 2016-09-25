@@ -51,8 +51,9 @@ void query( istream* is, ostream* os )
     auto answer = engine->process_queries(input);
     timer.here_then_reset("Query is answered.");
     (*os) << answer.dump(4) << std::endl;
-    delete os->rdbuf();
-    delete os;
+    os->rdbuf()->close();
+    //delete os->rdbuf();
+    //delete os;
     // os->setstate(std::ios::eofbit);
     //delete os;
 }
