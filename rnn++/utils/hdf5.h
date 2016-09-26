@@ -96,6 +96,43 @@ struct H5file {
     	H5dataset data{val, dataset_name};
         data.pimpl->val.write(data_raw.data(), h5PredType, space);
     }
+    template<typename T>
+    void writeRawData(H5name dataset_name, std::vector<std::vector<T>> const &data_raw){
+        std::vector<T> data_raw_1d;
+
+        for(auto x : data_raw) {
+            for(auto y : x) {
+                data_raw_1d.push_back(y);
+            }
+        }
+        
+        T fillvalue{0};
+        hsize_t fdim[] = {data_raw_1d.size()};
+        H5::DataSpace space(1, fdim);
+        H5::DSetCreatPropList plist;
+        auto h5PredType = hdf5::ToH5PredType<T>();
+    	plist.setFillValue(h5PredType, &fillvalue);
+    	val.createDataSet(dataset_name.val, h5PredType, space, plist);
+    	H5dataset data{val, dataset_name};
+        data.pimpl->val.write(data_raw_1d.data(), h5PredType, space);
+    }
+    
+    template<typename T>
+    void overwriteRawData(H5name dataset_name, std::vector<std::vector<T>> const &data_raw){
+        std::vector<T> data_raw_1d;
+
+        for(auto x : data_raw) {
+            for(auto y : x) {
+                data_raw_1d.push_back(y);
+            }
+        }
+        
+        hsize_t fdim[] = {data_raw_1d.size()};
+        H5::DataSpace space(1, fdim);
+        auto h5PredType = hdf5::ToH5PredType<T>();
+        H5dataset data{val, dataset_name};
+        data.pimpl->val.write(data_raw_1d.data(), h5PredType, space);
+    }    
     H5::H5File val;
     H5name name;
 };
