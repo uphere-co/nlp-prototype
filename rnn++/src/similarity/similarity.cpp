@@ -146,12 +146,16 @@ json SimilaritySearch::process_queries(json ask) const {
     std::vector<Query> queries;
     for(auto const &line : ask["queries"]){        
         auto init_nodes = rnn.initialize_tree(line);
-	DPtable table=dp_merging(param, init_nodes);
-	auto phrases = table.get_phrases();
-	for(auto const &phrase:phrases){
-	    auto parsed_tree_str = phrase->name.val;
-	    queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
-	}
+        if(init_nodes.val.size()==1){
+            auto& node=init_nodes.val[0];
+            queries.emplace_back(node.name.val, node.vec.span, phrase_voca);
+        }
+        DPtable table=dp_merging(param, init_nodes);
+        auto phrases = table.get_phrases();
+        for(auto const &phrase:phrases){
+            auto parsed_tree_str = phrase->name.val;
+            queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
+        }
     }
     //process_queries_innerdot(queries, sent_vecs);
     process_queries_angle(queries, sent_vecs);
