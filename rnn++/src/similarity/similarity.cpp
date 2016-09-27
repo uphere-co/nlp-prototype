@@ -6,7 +6,6 @@
 
 #include "parser/parser.h"
 #include "parser/wordvec.h"
-#include "utils/profiling.h"
 #include "utils/parallel.h"
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
@@ -24,6 +23,21 @@ using namespace util::io;
 
 using json = nlohmann::json;
 
+using val_t = SimilaritySearch::param_t::value_type ;
+using idx_t = SimilaritySearch::voca_info_t::voca_idx_map_t::idx_t;
+constexpr int word_dim=SimilaritySearch::param_t::dim;
+
+struct Query{
+    using word_block_t = SimilaritySearch::voca_info_t::voca_vecs_t;
+    using vec_view_t = word_block_t::span_t;
+    using vec_t = Vector<word_block_t::float_t, word_dim>;
+    Query(std::string word, vec_view_t vec, Voca const &voca)
+            :query_word{word}, query_vec{vec}, distances(voca.size())
+    {}
+    std::string query_word;
+    vec_t query_vec;
+    std::vector<val_t> distances;
+};
 
 auto process_query_angle=[](Query &query, auto const& voca_vecs){
     auto n=voca_vecs.size();

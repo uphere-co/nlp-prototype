@@ -28,7 +28,10 @@ using InitializedNodes = rnn::detail::InitializedNodes<Node>;
 
 struct VocaInfo{
     using node_t = Node;
+    using voca_t = rnn::wordrep::Voca;
+    using voca_idx_map_t = rnn::wordrep::VocaIndexMap;
     using voca_vecs_t = rnn::wordrep::WordBlock_base<node_t::prop_t::word_dim>;
+
     VocaInfo(std::string vocafile, std::string voca_dataset,
              std::string w2vmodel_dataset, util::DataType float_type)
     : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
@@ -56,8 +59,8 @@ struct VocaInfo{
         }
         return InitializedNodes{std::move(val)};
     }
-    rnn::wordrep::Voca voca;
-    rnn::wordrep::VocaIndexMap word2idx;
+    voca_t voca;
+    voca_idx_map_t word2idx;
     voca_vecs_t voca_vecs;
 };
 

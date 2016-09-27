@@ -29,6 +29,9 @@ struct InializedLeafNodes{
 };
 
 struct VocaInfo{
+    using voca_t = rnn::wordrep::Voca;
+    using voca_idx_map_t = rnn::wordrep::VocaIndexMap;
+    using voca_vecs_t = WordBlock;
     VocaInfo(std::string vocafile, std::string voca_dataset, 
              std::string w2vmodel_dataset, util::DataType float_type)
     : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
@@ -40,9 +43,9 @@ struct VocaInfo{
         auto nodes = construct_nodes_with_reserve(words, idxs);
         return InializedLeafNodes{std::move(nodes), word_block};
     }
-    rnn::wordrep::Voca voca;
-    rnn::wordrep::VocaIndexMap word2idx;
-    WordBlock voca_vecs;
+    voca_t voca;
+    voca_idx_map_t word2idx;
+    voca_vecs_t voca_vecs;
 };
 
 struct SparseGrad{
