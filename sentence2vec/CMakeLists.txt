@@ -21,9 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${RNNPP_PATH}/src/)
 include_directories(${RNNPP_PATH})
 
-FILE(GLOB parser_files
-    ${RNNPP_PATH}/src/parser/parser.cpp ${RNNPP_PATH}/src/parser/voca.cpp ${RNNPP_PATH}/src/parser/wordvec.cpp
-    ${RNNPP_PATH}/src/parser/compute.cpp ${RNNPP_PATH}/src/parser/config.cpp ${RNNPP_PATH}/src/parser/node.cpp ${RNNPP_PATH}/src/parser/param.cpp)
+FILE(GLOB parser_files ${RNNPP_PATH}/src/parser/*cpp ${RNNPP_PATH}/src/*cpp)
 FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 
 add_executable(trainer app/trainer wordrep/sentence2vec
@@ -31,8 +29,9 @@ add_executable(trainer app/trainer wordrep/sentence2vec
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
 add_executable(query_similarity app/query_similarity wordrep/sentence2vec
-               ${parser_files} ${util_files})
-target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb zmq similarity)
+               ${parser_files} ${util_files}
+               ${RNNPP_PATH}/src/similarity/similarity)
+target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb zmq)
 
 add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
                ${parser_files} ${util_files})

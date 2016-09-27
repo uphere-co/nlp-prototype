@@ -6,6 +6,7 @@
 #include "utils/parallel.h"
 #include "utils/print.h"
 
+using namespace rnn;
 using namespace rnn::simple_model;
 using namespace rnn::wordrep;
 using namespace util::math;

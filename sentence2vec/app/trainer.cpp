@@ -14,7 +14,7 @@ namespace sent2vec  {
 
 
 
-
+using namespace rnn;
 using namespace rnn::simple_model;
 using namespace rnn::wordrep;
 using namespace util::math;
