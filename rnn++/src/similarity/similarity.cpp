@@ -21,6 +21,8 @@ using namespace util;
 using namespace util::math;
 using namespace util::io;
 
+
+namespace{
 using json = nlohmann::json;
 
 using val_t = SimilaritySearch::param_t::value_type ;
@@ -39,7 +41,36 @@ struct Query{
     std::vector<val_t> distances;
 };
 
-auto process_query_angle=[](Query &query, auto const& voca_vecs){
+enum class measure{
+    angle,
+    inner,
+    euclidean,
+};
+template<measure T>
+val_t similarity(Query::vec_view_t v, Query::vec_view_t q);
+
+template<>
+val_t similarity<measure::angle>(Query::vec_view_t v, Query::vec_view_t q){
+    return dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));
+}
+template<>
+val_t similarity<measure::inner>(Query::vec_view_t v, Query::vec_view_t q){
+    return dot(v,q);
+}
+auto euclidean_distance_i=[](int64_t i, auto &out, auto const &x, auto const &y){
+    auto tmp=x[i]-y[i];
+    out += tmp*tmp;
+};
+template<>
+val_t similarity<measure::euclidean>(Query::vec_view_t v, Query::vec_view_t q){
+    VecLoop_void<val_t,word_dim> vecloop_void{};
+    val_t distance{};
+    vecloop_void(euclidean_distance_i, distance, v, q);
+    return distance;
+}
+
+template<measure T>
+void process_query(Query &query, SimilaritySearch::voca_info_t::voca_vecs_t const& voca_vecs){
     auto n=voca_vecs.size();
     assert(n==query.distances.size());
     auto q=query.query_vec.span;
@@ -47,37 +78,13 @@ auto process_query_angle=[](Query &query, auto const& voca_vecs){
                       [&](tbb::blocked_range<decltype(n)> const &r){
         for(decltype(n) i=r.begin(); i!=r.end(); ++i){
             auto const& v=voca_vecs[i];
-            query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
+            query.distances[i] =similarity<T>(v,q);
         }
     });
 };
 
-auto euclidean_distance_i=[](int64_t i, auto &out, auto const &x, auto const &y){
-    auto tmp=x[i]-y[i];
-    out += tmp*tmp;
-};
-auto euclidean_distance=[](auto const &x, auto const &y){
-    // pa||pb == pa[i] log(pb[i]/pa[i]) 
-    VecLoop_void<val_t,word_dim> vecloop_void{};
-    val_t distance{};
-    vecloop_void(euclidean_distance_i, distance, x, y);
-    return distance;
-};
-
-auto process_query_euclidean=[](Query &query, auto const& voca_vecs){
-    auto n=voca_vecs.size();
-    assert(n==query.distances.size());
-    auto q=query.query_vec;
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
-                      [&](tbb::blocked_range<decltype(n)> const &r){
-        for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-            auto const& v=voca_vecs[i];
-            query.distances[i] = -euclidean_distance(v,q);
-        }
-    });
-};
-
-auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs){    
+template<measure T>
+void process_queries(std::vector<Query> &queries, SimilaritySearch::voca_info_t::voca_vecs_t const& voca_vecs){
     auto n=voca_vecs.size();
     tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
                       [&](tbb::blocked_range<decltype(n)> const &r){
@@ -85,37 +92,7 @@ auto process_queries_angle=[](std::vector<Query> &queries, auto const& voca_vecs
             for(auto &query:queries){
                 auto q=query.query_vec.span;
                 auto const& v=voca_vecs[i];
-                query.distances[i] =dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));//sigmoid(v,q);
-            }            
-        }
-    });
-};
-
-auto process_queries_innerdot=[](std::vector<Query> &queries, auto const& voca_vecs){
-    auto n=voca_vecs.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
-                      [&](tbb::blocked_range<decltype(n)> const &r){
-                          for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-                              for(auto &query:queries){
-                                  auto q=query.query_vec;
-                                  auto const& v=voca_vecs[i];
-                                  query.distances[i] = dot(v,q);
-                              }
-                          }
-                      });
-};
-
-auto process_queries_euclidean=[](std::vector<Query> &queries, auto const& voca_vecs){    
-    auto n=voca_vecs.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000), 
-                      [&](tbb::blocked_range<decltype(n)> const &r){
-        for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-            for(auto &query:queries){
-                auto q=query.query_vec;
-                auto const& v=voca_vecs[i];
-                auto tmp{q};
-                tmp-=v;
-                query.distances[i] = -euclidean_distance(v,q);
+                query.distances[i] =similarity<T>(v,q);
             }            
         }
     });
@@ -151,11 +128,7 @@ json collect_queries_results(std::vector<Query> const &queries, Voca const &voca
     return output;
 }
 
-void KLdistance(){
-    // pa||pb == pa[i] log(pb[i]/pa[i]) 
-    VecLoop_void<val_t,word_dim> vecloop_void{};
-}
-
+}//nameless namespace
 json SimilaritySearch::process_queries(json ask) const {
     std::vector<Query> queries;
     for(auto const &line : ask["queries"]){        
@@ -171,8 +144,7 @@ json SimilaritySearch::process_queries(json ask) const {
             queries.emplace_back(parsed_tree_str, phrase->vec.span, phrase_voca);
         }
     }
-    //process_queries_innerdot(queries, sent_vecs);
-    process_queries_angle(queries, sent_vecs);
+    ::process_queries<measure::angle>(queries, sent_vecs);
     json answer=collect_queries_results(queries, phrase_voca);
     return answer;
 }
