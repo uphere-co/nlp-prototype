@@ -53,10 +53,10 @@ void KLdistance();
 
 struct SimilaritySearch{
     SimilaritySearch(json const &config)
-    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], util::DataType::dp)},
+    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], util::datatype_from_string(config["float_t"]))},
         phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
-        param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
-        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
+        param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::datatype_from_string(config["float_t"]))},
+        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])}
     {}
 
     json process_queries(json ask) const;
