@@ -1,8 +1,9 @@
 #include "zmq.hpp"
 #include "similarity/similarity.h"
-
+#include "utils/profiling.h"
 
 int main(int /*argc*/, char** argv){
+    using namespace util;
     Timer timer{};
     tbb::task_group g;
 
@@ -19,7 +20,7 @@ int main(int /*argc*/, char** argv){
     while(1){
         zmq::message_t request;
         socket.recv (&request);
-        auto query = json::parse((const char*)request.data());
+        auto query = SimilaritySearch::parse((const char*)request.data());
         std::cerr << query.dump(4) << std::endl;
 
         auto answer = engine.process_queries(query);

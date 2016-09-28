@@ -8,13 +8,10 @@ struct Node {
     using prop_t = T;
 
     Node(T &&property) : prop{std::move(property)} {}
-
     Node(T const &property) : prop{property} {}
-
     Node(Node const &orig)
             : left{orig.left}, right{orig.right},
               prop{orig.prop} {}
-
     Node(Node &&orig)
             : left{orig.left}, right{orig.right},
               prop{std::move(orig.prop)} {}
@@ -27,14 +24,20 @@ struct Node {
     }
 
     static auto blank_node() { return Node{T{}}; }
-
     bool is_combined() const { return (left != nullptr) & (right != nullptr); }
-
     bool is_leaf() const { return (left == nullptr) & (right == nullptr); }
 
     Node const *left = nullptr;
     Node const *right = nullptr;
     T prop;
+};
+
+template<typename NODE>
+struct InitializedNodes{
+    InitializedNodes(std::vector<NODE> &&leaf_nodes_with_reserve)
+            : val{std::move(leaf_nodes_with_reserve)}, nodes{val} {assert(val.size()*2-1==val.capacity());}
+    std::vector<NODE> val;
+    util::span_dyn<NODE> nodes;
 };
 
 
