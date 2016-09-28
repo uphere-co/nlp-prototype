@@ -43,10 +43,10 @@ int main(int /*argc*/, char** argv){
         serialized.push_back(sep);
     }
 
-    H5file h5store{H5name{"indexed_text.h5"}, hdf5::FileMode::replace};
+//    H5file h5store{H5name{"indexed_text.h5"}, hdf5::FileMode::replace};
+//    h5store.writeRawData(H5name{input_name}, serialized);
+    H5file h5store{H5name{"indexed_text.h5"}, hdf5::FileMode::rw_exist};
     h5store.writeRawData(H5name{input_name}, serialized);
-//    H5file h5store{H5name{"indexed_text.h5"}, hdf5::FileMode::rw_exist};
-//    h5store.overwriteRawData(H5name{input_name}, serialized);
     timer.here_then_reset("Wrote to HDF5.");
     return 0;
 }

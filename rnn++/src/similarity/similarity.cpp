@@ -128,6 +128,8 @@ json collect_queries_results(std::vector<Query> const &queries, Voca const &voca
 }
 
 }//nameless namespace
+
+
 SimilaritySearch::json_t SimilaritySearch::process_queries(json_t ask) const {
     std::vector<Query> queries;
     for(auto const &line : ask["queries"]){        
@@ -171,10 +173,9 @@ struct BoWVQuery{
                           });
     }
 
-    bool is_similar(std::vector<idx_t> widxs){
+    bool is_similar(util::span_dyn<const int32_t> widxs){
         auto n = idxs.size();
         for(decltype(n)i=0; i!=n; ++i){
-            auto idx= idxs[i];
             auto cut= cutoffs[i];
             auto end=std::cend(widxs);
             auto result = std::find_if(std::cbegin(widxs), end, [&](auto widx){
@@ -209,13 +210,20 @@ BoWVSimilaritySearch::json_t BoWVSimilaritySearch::process_queries(json_t ask) c
         timer.here_then_reset("Construct query.");
     }
     json_t answer{};
-    for(auto sent : rows){
-        auto sent_widxs = rnn.word2idx.getIndex(sent);
+    auto n = text.sents.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        auto sent_widxs = text.sents[i];
         for(auto &query : queries){
             bool is_similar = query.is_similar(sent_widxs);
-            if(is_similar) answer[query.str].push_back(sent);
+            if(is_similar) answer[query.str].push_back(lines.val[i]);
         }
     }
     timer.here_then_reset("Queries are answered.");
     return answer;
+}
+
+std::vector<int32_t> load_data(std::string datset_name) {
+    using namespace util::io;
+    H5file h5store{H5name{"indexed_text.h5"}, hdf5::FileMode::read_exist};
+    return h5store.getRawData<int32_t>(H5name{datset_name});
 }

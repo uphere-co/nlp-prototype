@@ -4,6 +4,10 @@
 #include "parser/wordvec.h"
 #include "utils/json.h"
 
+#include <vector>
+#include "utils/hdf5.h"
+#include "utils/span.h"
+
 struct SimilaritySearch{
     using json_t = nlohmann::json;
     using voca_info_t = rnn::simple_model::VocaInfo;
@@ -26,16 +30,42 @@ struct SimilaritySearch{
 };
 
 
+constexpr auto sep = -1;//  std::numeric_limits<idx_t>::max();
+
+std::vector<int32_t> load_data(std::string datset_name);
+
+struct IndexedSentences{
+    IndexedSentences(std::string filename)
+            : val{load_data(filename)} {
+        auto beg=val.cbegin();
+        auto end=std::find(beg, val.cend(), sep);
+        while(end!=val.cend()){
+            sents.push_back(util::as_span(&(*beg),&(*end)));
+            beg=end+1;
+            end=std::find(beg, val.cend(), sep);
+        }
+    }
+    IndexedSentences(const char* filename) : IndexedSentences(std::string{filename}) {}
+
+    std::vector<int32_t> val;
+    std::vector<util::span_dyn<const int32_t>> sents;
+};
+
+auto get_string_val=[](nlohmann::json const &json, std::string field)->std::string {
+    return json[field];
+};
+
 struct BoWVSimilaritySearch{
     using json_t = nlohmann::json;
     using voca_info_t = rnn::simple_model::VocaInfo;
     BoWVSimilaritySearch(json_t const &config)
     : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])},
-      rows{util::string::readlines(config["phrase_rawdata"])}
+      text{get_string_val(config,"textset")}, lines{get_string_val(config,"textset")}
     {}
     json_t process_queries(json_t ask) const;
 
     voca_info_t rnn;
-    std::vector<std::string> rows;
+    IndexedSentences text;
+    rnn::ParsedSentences lines;
 };
 

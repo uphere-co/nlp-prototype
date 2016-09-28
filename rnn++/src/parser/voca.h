@@ -48,7 +48,7 @@ public:
     // typedef std::unordered_map<Word, idx_t> data_t;
     // typedef std::map<Word, idx_t> data_t;
     //typedef std::map<std::string, size_t> data_t;
-    typedef std::unordered_map<std::string, size_t> data_t;
+    typedef std::unordered_map<std::string, idx_t> data_t;
     // typedef std::map<char const *, size_t, cmp_str> data_t;
     // typedef std::unordered_map<char const *, size_t, cmp_str> data_t;
     VocaIndexMap(data_t const &word2idxs) : val{word2idxs}{}
