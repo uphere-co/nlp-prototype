@@ -216,7 +216,8 @@ liblinear = stdenv.mkDerivation rec {
       '';
       installPhase = ''
       mkdir -p $out/liblinear
-      cp -a train predict $out/liblinear
+      cp -a * $out/liblinear
+      cp -a liblinear.so.3 $out/liblinear/liblinear.so
       '';
 
     };
