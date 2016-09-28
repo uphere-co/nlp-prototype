@@ -1,7 +1,18 @@
 #include "SVM.h"
 
 namespace tfkld{
+namespace svm{
 
+static const char *solver_type_table[]=
+{
+	"L2R_LR", "L2R_L2LOSS_SVC_DUAL", "L2R_L2LOSS_SVC", "L2R_L1LOSS_SVC_DUAL", "MCSVM_CS",
+	"L1R_L2LOSS_SVC", "L1R_LR", "L2R_LR_DUAL",
+	"", "", "",
+	"L2R_L2LOSS_SVR", "L2R_L2LOSS_SVR_DUAL", "L2R_L1LOSS_SVR_DUAL", NULL
+};
+
+
+namespace training{        
 static char *line = NULL;
 static int max_line_len;
 
@@ -15,14 +26,6 @@ int flag_C_specified;
 int flag_solver_specified;
 int nr_fold;
 double bias;
-
-static const char *solver_type_table[]=
-{
-	"L2R_LR", "L2R_L2LOSS_SVC_DUAL", "L2R_L2LOSS_SVC", "L2R_L1LOSS_SVC_DUAL", "MCSVM_CS",
-	"L1R_L2LOSS_SVC", "L1R_LR", "L2R_LR_DUAL",
-	"", "", "",
-	"L2R_L2LOSS_SVR", "L2R_L2LOSS_SVR_DUAL", "L2R_L1LOSS_SVR_DUAL", NULL
-};
 
 void print_null(const char *s) {}
     
@@ -423,9 +426,314 @@ void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<flo
 
 }
 
-    
-void Predict() {
-        
+}//namespace train
+
+namespace predicting{
+int print_null(const char *s,...) {return 0;}
+
+static int (*info)(const char *fmt,...) = &printf;
+
+struct feature_node *x;
+int max_nr_attr = 64;
+
+struct model* pmodel_;
+int flag_predict_probability=0;
+
+void exit_input_error(int line_num)
+{
+	fprintf(stderr,"Wrong input format at line %d\n", line_num);
+	exit(1);
 }
 
-}//namespace tfkld;
+static char *line = NULL;
+static int max_line_len;
+
+static char* readline(FILE *input)
+{
+	int len;
+
+	if(fgets(line,max_line_len,input) == NULL)
+		return NULL;
+
+	while(strrchr(line,'\n') == NULL)
+	{
+		max_line_len *= 2;
+		line = (char *) realloc(line,max_line_len);
+		len = (int) strlen(line);
+		if(fgets(line+len,max_line_len-len,input) == NULL)
+			break;
+	}
+	return line;
+}
+
+void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec)
+{
+
+    FILE *output;
+    int correct = 0;
+	int total = 0;
+	double error = 0;
+	double sump = 0, sumt = 0, sumpp = 0, sumtt = 0, sumpt = 0;
+
+    output = fopen("KLD.output","w");
+    
+	int nr_class=get_nr_class(pmodel_);
+	double *prob_estimates=NULL;
+	int j, n;
+	int nr_feature=get_nr_feature(pmodel_);
+	if(pmodel_->bias>=0)
+		n=nr_feature+1;
+	else
+		n=nr_feature;
+
+
+	if(flag_predict_probability)
+	{
+		int *labels;
+
+		if(!check_probability_model(pmodel_))
+		{
+			fprintf(stderr, "probability output is only supported for logistic regression\n");
+			exit(1);
+		}
+
+		labels=(int *) malloc(nr_class*sizeof(int));
+		get_labels(pmodel_,labels);
+		prob_estimates = (double *) malloc(nr_class*sizeof(double));
+		fprintf(output,"labels");
+		for(j=0;j<nr_class;j++)
+			fprintf(output," %d",labels[j]);
+		fprintf(output,"\n");
+		free(labels);
+	}
+
+	max_line_len = 1024;
+	line = (char *)malloc(max_line_len*sizeof(char));
+    int p = 0;
+    int q = 1;
+    for(p = 0; p< tag.size(); p++)
+	{
+		int i = 0;
+		double target_label, predict_label;
+		char *idx, *val, *label, *endptr;
+		int inst_max_index = 0; // strtol gives 0 if wrong format
+
+		label = strtok(line," \t\n");
+		if(label == NULL) // empty line
+			exit_input_error(total+1);
+
+        target_label = atof(tag[p].c_str()); 
+		//target_label = strtod(label,&endptr);
+		//if(endptr == label || *endptr != '\0')
+		//	exit_input_error(total+1);
+
+		while(1)
+		{
+			if(i>=max_nr_attr-2)	// need one more for index = -1
+			{
+				max_nr_attr *= 2;
+				x = (struct feature_node *) realloc(x,max_nr_attr*sizeof(struct feature_node));
+			}
+
+            
+			sprintf(idx, "%d", (i % nr_feature));
+			//val = svec[p][q-1];//strtok(NULL," \t");
+
+			if(val == NULL)
+				break;
+			errno = 0;
+			x[i].index = (int) strtol(idx,&endptr,10);
+			if(endptr == idx || errno != 0 || *endptr != '\0' || x[i].index <= inst_max_index)
+				exit_input_error(total+1);
+			else
+				inst_max_index = x[i].index;
+
+			errno = 0;
+			x[i].value = svec[p][(i % nr_feature)];//val;//strtod(val,&endptr);
+			//if(errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+			//	exit_input_error(total+1);
+
+			// feature indices larger than those in training are not used
+            i++;
+            if((i % nr_feature) == 0) break;
+            
+		}
+
+		if(pmodel_->bias>=0)
+		{
+			x[i].index = n;
+			x[i].value = pmodel_->bias;
+			i++;
+		}
+		x[i].index = -1;
+
+		if(flag_predict_probability)
+		{
+			int j;
+			predict_label = predict_probability(pmodel_,x,prob_estimates);
+			fprintf(output,"%g",predict_label);
+			for(j=0;j<pmodel_->nr_class;j++)
+				fprintf(output," %g",prob_estimates[j]);
+			fprintf(output,"\n");
+		}
+		else
+		{
+			predict_label = predict(pmodel_,x);
+			fprintf(output,"%g\n",predict_label);
+		}
+
+		if(predict_label == target_label)
+			++correct;
+		error += (predict_label-target_label)*(predict_label-target_label);
+		sump += predict_label;
+		sumt += target_label;
+		sumpp += predict_label*predict_label;
+		sumtt += target_label*target_label;
+		sumpt += predict_label*target_label;
+		++total;
+	}
+	if(check_regression_model(pmodel_))
+	{
+		info("Mean squared error = %g (regression)\n",error/total);
+		info("Squared correlation coefficient = %g (regression)\n",
+			((total*sumpt-sump*sumt)*(total*sumpt-sump*sumt))/
+			((total*sumpp-sump*sump)*(total*sumtt-sumt*sumt))
+			);
+	}
+	else
+		info("Accuracy = %g%% (%d/%d)\n",(double) correct/total*100,correct,total);
+	if(flag_predict_probability)
+		free(prob_estimates);
+}
+
+void exit_with_help()
+{
+	printf(
+	"Usage: predict [options] test_file pmodel_file output_file\n"
+	"options:\n"
+	"-b probability_estimates: whether to output probability estimates, 0 or 1 (default 0); currently for logistic regression only\n"
+	"-q : quiet mode (no outputs)\n"
+	);
+	exit(1);
+}
+
+
+struct model *load_model_mem(mParam *mparams)
+{
+	int i;
+	int nr_feature;
+	int n;
+	int nr_class;
+	double bias;
+	model *pmodel_;
+    pmodel_ = Malloc(model,1);
+	parameter& param = pmodel_->param;
+
+	pmodel_->label = NULL;
+
+	char *old_locale = setlocale(LC_ALL, NULL);
+	if (old_locale)
+	{
+		old_locale = strdup(old_locale);
+	}
+	setlocale(LC_ALL, "C");
+
+    for(int i=0;solver_type_table[i];i++) {
+        if(strcmp(solver_type_table[i],mparams -> solver_type.c_str()) == 0)
+            {
+                param.solver_type = i;
+                break;
+            }
+    }
+    pmodel_ -> nr_class = mparams -> nr_class;
+    pmodel_ -> nr_feature = mparams -> nr_feature;
+    pmodel_ -> bias = mparams -> bias;
+    nr_class = pmodel_->nr_class;
+    pmodel_->label = Malloc(int,nr_class);
+    for(int i=0;i<nr_class;i++)
+        pmodel_->label[i] = mparams -> label[i];
+
+
+	nr_feature=pmodel_->nr_feature;
+	if(pmodel_->bias>=0)
+		n=nr_feature+1;
+	else
+		n=nr_feature;
+	int w_size = n;
+	int nr_w;
+	if(nr_class==2 && param.solver_type != MCSVM_CS)
+		nr_w = 1;
+	else
+		nr_w = nr_class;
+
+	pmodel_->w=Malloc(double, w_size*nr_w);
+	for(i=0; i<w_size; i++)
+	{
+		int j;
+		for(j=0; j<nr_w; j++)
+			pmodel_ -> w[i*nr_w+j] = mparams -> w[i*nr_w+j];
+	}
+
+	setlocale(LC_ALL, old_locale);
+	free(old_locale);
+
+	return pmodel_;
+}
+
+
+
+
+    
+
+void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
+{
+    int cargc;
+    char *cargv[100];
+
+    std::cout << "mainPredict" << std::endl;
+    cargv[0] = (char *)"./test";
+    cargv[1] = (char *)"test_train.txt";
+    cargv[2] = (char *)"KLD.model";
+    cargv[3] = (char *)"KLD.output";
+    cargc = 4;
+
+
+    FILE *input, *output;
+	int i;
+
+	// parse options
+	for(i=1;i<cargc;i++)
+	{
+		if(cargv[i][0] != '-') break;
+		++i;
+		switch(cargv[i-1][1])
+		{
+			case 'b':
+				flag_predict_probability = atoi(cargv[i]);
+				break;
+			case 'q':
+				info = &print_null_p;
+				i--;
+				break;
+			default:
+				fprintf(stderr,"unknown option: -%c\n", cargv[i-1][1]);
+				exit_with_help();
+				break;
+		}
+	}
+	if(i>=cargc)
+		exit_with_help();
+
+	x = (struct feature_node *) malloc(max_nr_attr*sizeof(struct feature_node));
+    pmodel_=load_model_mem(mparams);
+	do_predict(tag, svec);
+	free_and_destroy_model(&pmodel_);
+	free(line);
+	free(x);
+	fclose(input);
+	fclose(output);
+}
+
+}//namespace predict
+}//namespace svm
+}//namespace tfkld

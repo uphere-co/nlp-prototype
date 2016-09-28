@@ -28,7 +28,7 @@ struct mParam
     double *w;
 };
 
-namespace train{
+namespace training{
 
 void print_null(const char *s);
 struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
@@ -38,8 +38,16 @@ void do_cross_validation();
 void do_find_parameter_C();
 }//namespace train
 
-namespace predict{
+namespace predicting{
 
+int print_null_p(const char *s,...);
+void exit_input_error_p(int line_num);
+static char* readline(FILE *input);
+void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
+void exit_with_help_p();
+struct model *load_model_mem(mParam *mparams);
+void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
+    
 }//namespace predict
 }//namespace svm
 }//namespace tfkld

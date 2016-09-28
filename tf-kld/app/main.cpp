@@ -15,6 +15,9 @@ int main(int argc, char **argv){
     using namespace tfkld;
     using namespace tfkld::util;
     using namespace arma;
+    using namespace tfkld::svm;
+    using namespace tfkld::svm::training;
+    using namespace tfkld::svm::predicting;
 
     Param params;
 
