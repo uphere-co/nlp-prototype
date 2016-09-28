@@ -12,12 +12,12 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
-#include "/home/mo/repo/srcp/exercises/linear.h"
+#include "liblinear/linear.h"
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 #define INF HUGE_VAL
 
 namespace tfkld{
-
+namespace svm{
 struct mParam
 {
     std::string solver_type;
@@ -28,11 +28,18 @@ struct mParam
     double *w;
 };
 
+namespace train{
+
 void print_null(const char *s);
 struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name);
 void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
 void do_cross_validation();
 void do_find_parameter_C();
-    
-}//namespace tfkld;
+}//namespace train
+
+namespace predict{
+
+}//namespace predict
+}//namespace svm
+}//namespace tfkld

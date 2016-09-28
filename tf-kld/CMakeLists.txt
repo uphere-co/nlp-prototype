@@ -27,7 +27,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../rnn++/src)
 include_directories($ENV{MS_GSL}/GSL/include)
 include_directories($ENV{SPDLOG}/spdlog/include)
-include_directories($ENV{LIBLINEAR}/liblinear)
+include_directories($ENV{LIBLINEAR})
 
 add_executable(main app/main
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
