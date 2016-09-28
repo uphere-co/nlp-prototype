@@ -19,7 +19,7 @@ int main(int /*argc*/, char** argv){
     std::cerr << config.dump(4) << std::endl;
     timer.here_then_reset("BoWVSimilaritySearch engine loaded.");
     auto answer = engine.process_queries(query);
-    timer.here_then_reset("Queries are answered.");
+    timer.here_then_reset("Finished to answer.");
     std::cout << answer.dump(4) << std::endl;
 
     return 0;

@@ -1,4 +1,5 @@
 #include <fstream>
+#include <utils/profiling.h>
 
 #include "tbb/task_group.h"
 
@@ -198,12 +199,14 @@ BoWVSimilaritySearch::json_t BoWVSimilaritySearch::process_queries(json_t ask) c
     auto const& query_strs=ask["queries"];
     auto const& cutoffs=ask["cutoffs"];
     auto n_queries = std::cend(cutoffs) - std::cbegin(cutoffs);
+    util::Timer timer{};
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         std::string words=query_strs[i];
         std::cerr<<"Words: "<<words << std::endl;
         auto cutoff = cutoffs[i];
         BoWVQuery query{words, cutoff, rnn};
         queries.push_back(query);
+        timer.here_then_reset("Construct query.");
     }
     json_t answer{};
     for(auto sent : rows){
@@ -213,5 +216,6 @@ BoWVSimilaritySearch::json_t BoWVSimilaritySearch::process_queries(json_t ask) c
             if(is_similar) answer[query.str].push_back(sent);
         }
     }
+    timer.here_then_reset("Queries are answered.");
     return answer;
 }
