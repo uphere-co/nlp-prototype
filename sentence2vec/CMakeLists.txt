@@ -36,3 +36,6 @@ target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb zmq)
 add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
                ${parser_files} ${util_files})
 target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)
+
+add_executable(indexing_text app/indexing_text ${parser_files} ${util_files})
+target_link_libraries(indexing_text hdf5_cpp hdf5_hl_cpp tbb)
