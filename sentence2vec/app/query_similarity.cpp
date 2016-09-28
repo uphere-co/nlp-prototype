@@ -9,10 +9,21 @@ int main(int /*argc*/, char** argv){
 
 //    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     auto config = load_json(argv[1]);
-    SimilaritySearch engine{config};
-    std::cout << config.dump(4) << std::endl;
-    timer.here_then_reset("Search engine loaded.");
 
+    auto query = load_json(argv[2]);
+    for(auto cutoff : query["cutoffs"]){
+        for(double x : cutoff) std::cerr<<x << " ";
+        std::cerr<<":Cut-off\n";
+    }
+    BoWVSimilaritySearch engine{config};
+    std::cerr << config.dump(4) << std::endl;
+    timer.here_then_reset("BoWVSimilaritySearch engine loaded.");
+    auto answer = engine.process_queries(query);
+    timer.here_then_reset("Queries are answered.");
+    std::cout << answer.dump(4) << std::endl;
+
+    return 0;
+//    SimilaritySearch engine{config};
     const char * protocol = "tcp://*:5555";
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
