@@ -78,5 +78,7 @@ int main(int argc, char **argv){
     }
 
     ///////////////////////////////////////////
+
+    mainPredict(tag, svec, mparams);
     return 0;
 }

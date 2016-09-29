@@ -426,7 +426,7 @@ void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<flo
 
 }
 
-}//namespace train
+}//namespace training
 
 namespace predicting{
 int print_null(const char *s,...) {return 0;}
@@ -436,7 +436,7 @@ static int (*info)(const char *fmt,...) = &printf;
 struct feature_node *x;
 int max_nr_attr = 64;
 
-struct model* pmodel_;
+struct model* model_;
 int flag_predict_probability=0;
 
 void exit_input_error(int line_num)
@@ -477,28 +477,26 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 
     output = fopen("KLD.output","w");
     
-	int nr_class=get_nr_class(pmodel_);
+	int nr_class=get_nr_class(model_);
 	double *prob_estimates=NULL;
 	int j, n;
-	int nr_feature=get_nr_feature(pmodel_);
-	if(pmodel_->bias>=0)
+	int nr_feature=get_nr_feature(model_);
+	if(model_->bias>=0)
 		n=nr_feature+1;
 	else
 		n=nr_feature;
-
-
 	if(flag_predict_probability)
 	{
 		int *labels;
 
-		if(!check_probability_model(pmodel_))
+		if(!check_probability_model(model_))
 		{
 			fprintf(stderr, "probability output is only supported for logistic regression\n");
 			exit(1);
 		}
 
 		labels=(int *) malloc(nr_class*sizeof(int));
-		get_labels(pmodel_,labels);
+		get_labels(model_,labels);
 		prob_estimates = (double *) malloc(nr_class*sizeof(double));
 		fprintf(output,"labels");
 		for(j=0;j<nr_class;j++)
@@ -518,11 +516,7 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 		char *idx, *val, *label, *endptr;
 		int inst_max_index = 0; // strtol gives 0 if wrong format
 
-		label = strtok(line," \t\n");
-		if(label == NULL) // empty line
-			exit_input_error(total+1);
-
-        target_label = atof(tag[p].c_str()); 
+        target_label = atof(tag[p].c_str());
 		//target_label = strtod(label,&endptr);
 		//if(endptr == label || *endptr != '\0')
 		//	exit_input_error(total+1);
@@ -535,15 +529,15 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 				x = (struct feature_node *) realloc(x,max_nr_attr*sizeof(struct feature_node));
 			}
 
-            
-			sprintf(idx, "%d", (i % nr_feature));
+            //std::cout << "i / nr_feature = " << i % nr_feature << std::endl;
+            //std::string idx_i = std::to_string(i % nr_feature);
+            //idx = idx_i.c_str();
+            //std::cout << "idx = " << idx << std::endl;
 			//val = svec[p][q-1];//strtok(NULL," \t");
 
-			if(val == NULL)
-				break;
 			errno = 0;
-			x[i].index = (int) strtol(idx,&endptr,10);
-			if(endptr == idx || errno != 0 || *endptr != '\0' || x[i].index <= inst_max_index)
+			x[i].index = (i % nr_feature) + 1; // (int) strtol(idx,&endptr,10);
+			if(x[i].index <= inst_max_index)
 				exit_input_error(total+1);
 			else
 				inst_max_index = x[i].index;
@@ -552,17 +546,17 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 			x[i].value = svec[p][(i % nr_feature)];//val;//strtod(val,&endptr);
 			//if(errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 			//	exit_input_error(total+1);
-
+ 
 			// feature indices larger than those in training are not used
             i++;
             if((i % nr_feature) == 0) break;
             
 		}
 
-		if(pmodel_->bias>=0)
+		if(model_->bias>=0)
 		{
 			x[i].index = n;
-			x[i].value = pmodel_->bias;
+			x[i].value = model_->bias;
 			i++;
 		}
 		x[i].index = -1;
@@ -570,15 +564,15 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 		if(flag_predict_probability)
 		{
 			int j;
-			predict_label = predict_probability(pmodel_,x,prob_estimates);
+			predict_label = predict_probability(model_,x,prob_estimates);
 			fprintf(output,"%g",predict_label);
-			for(j=0;j<pmodel_->nr_class;j++)
+			for(j=0;j<model_->nr_class;j++)
 				fprintf(output," %g",prob_estimates[j]);
 			fprintf(output,"\n");
 		}
 		else
 		{
-			predict_label = predict(pmodel_,x);
+			predict_label = predict(model_,x);
 			fprintf(output,"%g\n",predict_label);
 		}
 
@@ -592,7 +586,7 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 		sumpt += predict_label*target_label;
 		++total;
 	}
-	if(check_regression_model(pmodel_))
+	if(check_regression_model(model_))
 	{
 		info("Mean squared error = %g (regression)\n",error/total);
 		info("Squared correlation coefficient = %g (regression)\n",
@@ -609,7 +603,7 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 void exit_with_help()
 {
 	printf(
-	"Usage: predict [options] test_file pmodel_file output_file\n"
+	"Usage: predict [options] test_file model_file output_file\n"
 	"options:\n"
 	"-b probability_estimates: whether to output probability estimates, 0 or 1 (default 0); currently for logistic regression only\n"
 	"-q : quiet mode (no outputs)\n"
@@ -625,11 +619,11 @@ struct model *load_model_mem(mParam *mparams)
 	int n;
 	int nr_class;
 	double bias;
-	model *pmodel_;
-    pmodel_ = Malloc(model,1);
-	parameter& param = pmodel_->param;
+	model *model_;
+    model_ = Malloc(model,1);
+	parameter& param = model_->param;
 
-	pmodel_->label = NULL;
+	model_->label = NULL;
 
 	char *old_locale = setlocale(LC_ALL, NULL);
 	if (old_locale)
@@ -645,17 +639,14 @@ struct model *load_model_mem(mParam *mparams)
                 break;
             }
     }
-    pmodel_ -> nr_class = mparams -> nr_class;
-    pmodel_ -> nr_feature = mparams -> nr_feature;
-    pmodel_ -> bias = mparams -> bias;
-    nr_class = pmodel_->nr_class;
-    pmodel_->label = Malloc(int,nr_class);
-    for(int i=0;i<nr_class;i++)
-        pmodel_->label[i] = mparams -> label[i];
+    model_ -> nr_class = mparams -> nr_class;
+    model_ -> nr_feature = mparams -> nr_feature;
+    model_ -> bias = mparams -> bias;
+    nr_class = model_->nr_class;
+    model_->label = Malloc(int,nr_class);
 
-
-	nr_feature=pmodel_->nr_feature;
-	if(pmodel_->bias>=0)
+	nr_feature=model_->nr_feature;
+	if(model_->bias>=0)
 		n=nr_feature+1;
 	else
 		n=nr_feature;
@@ -666,24 +657,19 @@ struct model *load_model_mem(mParam *mparams)
 	else
 		nr_w = nr_class;
 
-	pmodel_->w=Malloc(double, w_size*nr_w);
+	model_->w=Malloc(double, w_size*nr_w);
 	for(i=0; i<w_size; i++)
 	{
 		int j;
 		for(j=0; j<nr_w; j++)
-			pmodel_ -> w[i*nr_w+j] = mparams -> w[i*nr_w+j];
+			model_ -> w[i*nr_w+j] = mparams -> w[i*nr_w+j];
 	}
-
 	setlocale(LC_ALL, old_locale);
 	free(old_locale);
 
-	return pmodel_;
+	return model_;
 }
 
-
-
-
-    
 
 void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
 {
@@ -725,15 +711,15 @@ void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> 
 		exit_with_help();
 
 	x = (struct feature_node *) malloc(max_nr_attr*sizeof(struct feature_node));
-    pmodel_=load_model_mem(mparams);
+    model_=load_model_mem(mparams);
 	do_predict(tag, svec);
-	free_and_destroy_model(&pmodel_);
+	free_and_destroy_model(&model_);
 	free(line);
 	free(x);
 	fclose(input);
 	fclose(output);
 }
 
-}//namespace predict
+}//namespace predicting
 }//namespace svm
 }//namespace tfkld
