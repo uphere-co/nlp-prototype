@@ -684,7 +684,6 @@ void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> 
     cargc = 4;
 
 
-    FILE *input, *output;
 	int i;
 
 	// parse options
@@ -716,8 +715,6 @@ void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> 
 	free_and_destroy_model(&model_);
 	free(line);
 	free(x);
-	fclose(input);
-	fclose(output);
 }
 
 }//namespace predicting
