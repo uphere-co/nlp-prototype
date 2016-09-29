@@ -481,6 +481,7 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 	double *prob_estimates=NULL;
 	int j, n;
 	int nr_feature=get_nr_feature(model_);
+    std::cout << "nr_feature = " << nr_feature << std::endl;
 	if(model_->bias>=0)
 		n=nr_feature+1;
 	else
@@ -517,6 +518,7 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 		int inst_max_index = 0; // strtol gives 0 if wrong format
 
         target_label = atof(tag[p].c_str());
+
 		//target_label = strtod(label,&endptr);
 		//if(endptr == label || *endptr != '\0')
 		//	exit_input_error(total+1);
@@ -536,12 +538,14 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 			//val = svec[p][q-1];//strtok(NULL," \t");
 
 			errno = 0;
-			x[i].index = (i % nr_feature) + 1; // (int) strtol(idx,&endptr,10);
+			x[i].index = (i % nr_feature)+1; // (int) strtol(idx,&endptr,10);
 			if(x[i].index <= inst_max_index)
 				exit_input_error(total+1);
 			else
 				inst_max_index = x[i].index;
 
+            std::cout << "x[i].index = " << x[i].index << std::endl;
+            
 			errno = 0;
 			x[i].value = svec[p][(i % nr_feature)];//val;//strtod(val,&endptr);
 			//if(errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
@@ -576,6 +580,8 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 			fprintf(output,"%g\n",predict_label);
 		}
 
+        std::cout << "target_label = " << target_label << std::endl;
+        std::cout << "predict_label = " << predict_label << std::endl;
 		if(predict_label == target_label)
 			++correct;
 		error += (predict_label-target_label)*(predict_label-target_label);
@@ -657,6 +663,9 @@ struct model *load_model_mem(mParam *mparams)
 	else
 		nr_w = nr_class;
 
+    for(int i=0;i<nr_class;i++)
+        model_ -> label[i] = mparams -> label[i];
+    
 	model_->w=Malloc(double, w_size*nr_w);
 	for(i=0; i<w_size; i++)
 	{
