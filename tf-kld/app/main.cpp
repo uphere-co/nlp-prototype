@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 
     ////////////////////////////////////////////
 
-        std::vector<std::string> tag{"+1","-1","+1","-1"};
+    std::vector<std::string> tag{"+1","-1","+1","-1"};
     std::vector<std::vector<float>> svec;
     std::vector<float> vec;
     mParam *mparams;
@@ -63,19 +63,6 @@ int main(int argc, char **argv){
         nr_w=1;
     else
         nr_w=mparams->nr_class;
-
-    std::cout << "\n\nMain function read!!!\n";
-    std::cout << "solver_type = " << mparams -> solver_type << std::endl;
-    std::cout << "nr_class = " << mparams -> nr_class << std::endl;
-    for(int q=0; q<mparams->nr_class;q++) std::cout << mparams -> label[q] << std::endl;
-    std::cout << "nr_feature = " << mparams -> nr_feature << std::endl;
-    std::cout << "bias = " << mparams -> bias << std::endl;
-
-    for(int q=0; q<w_size; q++)
-    {
-        for(int p=0; p<nr_w; p++)
-            std::cout << mparams -> w[q*nr_w+p] << std::endl;
-    }
 
     ///////////////////////////////////////////
 

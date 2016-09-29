@@ -119,18 +119,6 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	free(x_space);
 	free(line);
 
-    std::cout << "solver_type = " << solver_type << std::endl;
-    std::cout << "nr_class = " << nr_class << std::endl;
-    for(int q=0; q<nr_class;q++) std::cout << label[q] << std::endl;
-    std::cout << "nr_feature = " << nr_feature << std::endl;
-    std::cout << "bias = " << bias << std::endl;
-
-    for(int q=0; q<w_size; q++)
-    {
-        for(int p=0; p<nr_w; p++)
-            std::cout << w[q*nr_w+p] << std::endl;
-    }
-
     mparams -> solver_type = solver_type;
     mparams -> nr_class = nr_class;
     mparams -> nr_feature = nr_feature;
@@ -481,7 +469,6 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 	double *prob_estimates=NULL;
 	int j, n;
 	int nr_feature=get_nr_feature(model_);
-    std::cout << "nr_feature = " << nr_feature << std::endl;
 	if(model_->bias>=0)
 		n=nr_feature+1;
 	else
@@ -531,25 +518,16 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 				x = (struct feature_node *) realloc(x,max_nr_attr*sizeof(struct feature_node));
 			}
 
-            //std::cout << "i / nr_feature = " << i % nr_feature << std::endl;
-            //std::string idx_i = std::to_string(i % nr_feature);
-            //idx = idx_i.c_str();
-            //std::cout << "idx = " << idx << std::endl;
-			//val = svec[p][q-1];//strtok(NULL," \t");
-
 			errno = 0;
-			x[i].index = (i % nr_feature)+1; // (int) strtol(idx,&endptr,10);
+			x[i].index = (i % nr_feature)+1;
+            
 			if(x[i].index <= inst_max_index)
 				exit_input_error(total+1);
 			else
 				inst_max_index = x[i].index;
 
-            std::cout << "x[i].index = " << x[i].index << std::endl;
-            
 			errno = 0;
-			x[i].value = svec[p][(i % nr_feature)];//val;//strtod(val,&endptr);
-			//if(errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-			//	exit_input_error(total+1);
+			x[i].value = svec[p][(i % nr_feature)];
  
 			// feature indices larger than those in training are not used
             i++;
@@ -580,8 +558,6 @@ void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &
 			fprintf(output,"%g\n",predict_label);
 		}
 
-        std::cout << "target_label = " << target_label << std::endl;
-        std::cout << "predict_label = " << predict_label << std::endl;
 		if(predict_label == target_label)
 			++correct;
 		error += (predict_label-target_label)*(predict_label-target_label);
