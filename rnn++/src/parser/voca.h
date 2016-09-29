@@ -55,7 +55,7 @@ public:
     //auto getIndex(Word word) const {return val.find(word.span.data())->second;}//return val[word];}
     auto getIndex(Word word) const {
         auto it = val.find(word.val);
-        if(it==val.cend()) return  std::numeric_limits<idx_t>::max();
+        if(it==val.end()) return idx_t{0};
         return it->second;
     }
     auto getIndex(std::string sentence) const {

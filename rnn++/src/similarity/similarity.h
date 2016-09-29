@@ -15,7 +15,7 @@ struct SimilaritySearch{
         rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])}
     {}
 
-    static json_t parse(const char *query) {return json_t::parse(query);}
+    json_t static parse(const char *query) {return json_t::parse(query);}
 
     json_t process_queries(json_t ask) const;
 
@@ -23,5 +23,19 @@ struct SimilaritySearch{
     voca_info_t::voca_t  phrase_voca;
     param_t param;
     voca_info_t rnn;
+};
+
+
+struct BoWVSimilaritySearch{
+    using json_t = nlohmann::json;
+    using voca_info_t = rnn::simple_model::VocaInfo;
+    BoWVSimilaritySearch(json_t const &config)
+    : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])},
+      rows{util::string::readlines(config["phrase_rawdata"])}
+    {}
+    json_t process_queries(json_t ask) const;
+
+    voca_info_t rnn;
+    std::vector<std::string> rows;
 };
 

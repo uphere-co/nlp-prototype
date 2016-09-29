@@ -21,7 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${RNNPP_PATH}/src/)
 include_directories(${RNNPP_PATH})
 
-FILE(GLOB parser_files ${RNNPP_PATH}/src/parser/*cpp ${RNNPP_PATH}/src/*cpp)
+FILE(GLOB parser_files ${RNNPP_PATH}/src/parser/* ${RNNPP_PATH}/src/*)
 FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 
 add_executable(trainer app/trainer wordrep/sentence2vec

@@ -1,18 +1,17 @@
 #include <fstream>
+#include <utils/profiling.h>
 
 #include "tbb/task_group.h"
 
-//#include "wordrep/sentence2vec.h"
+#include "similarity.h"
 
-#include "parser/parser.h"
-#include "parser/wordvec.h"
 #include "utils/parallel.h"
 #include "utils/linear_algebra.h"
 #include "utils/print.h"
 #include "utils/json.h"
 #include "utils/loop_gen.h"
 
-#include "similarity.h"
+
 
 //using namespace sent2vec;
 using namespace rnn::wordrep;
@@ -129,7 +128,7 @@ json collect_queries_results(std::vector<Query> const &queries, Voca const &voca
 }
 
 }//nameless namespace
-json SimilaritySearch::process_queries(json ask) const {
+SimilaritySearch::json_t SimilaritySearch::process_queries(json_t ask) const {
     std::vector<Query> queries;
     for(auto const &line : ask["queries"]){        
         auto init_nodes = rnn.initialize_tree(line);
@@ -145,7 +144,78 @@ json SimilaritySearch::process_queries(json ask) const {
         }
     }
     ::process_queries<measure::angle>(queries, sent_vecs);
-    json answer=collect_queries_results(queries, phrase_voca);
+    json_t answer=collect_queries_results(queries, phrase_voca);
     return answer;
 }
 
+struct BoWVQuery{
+    using word_block_t = BoWVSimilaritySearch::voca_info_t::voca_vecs_t;
+    using val_t        = word_block_t::float_t;
+    using idx_t        = word_block_t::idx_t;
+
+    BoWVQuery(std::string query, std::vector<val_t> cutoffs,
+              BoWVSimilaritySearch::voca_info_t const &rnn)
+    : idxs{rnn.word2idx.getIndex(query)}, cutoffs{cutoffs}, distances(idxs.size()), str{query}
+    {
+        auto n=rnn.voca_vecs.size();
+        auto n_queries=idxs.size();
+        for(auto& v: distances) v.resize(n);
+        tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
+                          [&](tbb::blocked_range<decltype(n)> const &r){
+                              for(decltype(n) i=r.begin(); i!=r.end(); ++i){
+                                  for(decltype(n_queries)qi=0; qi!=n_queries; ++qi){
+                                      auto q = rnn.voca_vecs[idxs[qi]];
+                                      distances[qi][i]=similarity<measure::angle>(rnn.voca_vecs[i], q);
+                                  }
+                              }
+                          });
+    }
+
+    bool is_similar(std::vector<idx_t> widxs){
+        auto n = idxs.size();
+        for(decltype(n)i=0; i!=n; ++i){
+            auto idx= idxs[i];
+            auto cut= cutoffs[i];
+            auto end=std::cend(widxs);
+            auto result = std::find_if(std::cbegin(widxs), end, [&](auto widx){
+//                    auto w=rnn.voca_vecs[widx];
+//                    return similarity<measure::angle>(w,q) >= cut;
+                return distances[i][widx] >=cut;
+            });
+            if(result==end) return false;
+        }
+        return true;
+    }
+
+    std::vector<idx_t> idxs;
+    std::vector<val_t> cutoffs;
+    std::vector<std::vector<val_t>> distances;
+    std::string str;
+};
+
+
+BoWVSimilaritySearch::json_t BoWVSimilaritySearch::process_queries(json_t ask) const{
+    std::vector<BoWVQuery> queries;
+    auto const& query_strs=ask["queries"];
+    auto const& cutoffs=ask["cutoffs"];
+    auto n_queries = std::cend(cutoffs) - std::cbegin(cutoffs);
+    util::Timer timer{};
+    for(decltype(n_queries)i=0; i!=n_queries; ++i){
+        std::string words=query_strs[i];
+        std::cerr<<"Words: "<<words << std::endl;
+        auto cutoff = cutoffs[i];
+        BoWVQuery query{words, cutoff, rnn};
+        queries.push_back(query);
+        timer.here_then_reset("Construct query.");
+    }
+    json_t answer{};
+    for(auto sent : rows){
+        auto sent_widxs = rnn.word2idx.getIndex(sent);
+        for(auto &query : queries){
+            bool is_similar = query.is_similar(sent_widxs);
+            if(is_similar) answer[query.str].push_back(sent);
+        }
+    }
+    timer.here_then_reset("Queries are answered.");
+    return answer;
+}
