@@ -84,7 +84,16 @@ struct H5file {
         H5::DSetCreatPropList plist;
         auto h5PredType = hdf5::ToH5PredType<T>();
     	plist.setFillValue(h5PredType, &fillvalue);
-    	val.createDataSet(dataset_name.val, h5PredType, space, plist);
+
+        // Set ZLIB (DEFLATE) Compression using level 6.
+        // To use SZIP compression comment out this line.
+//        plist.setDeflate(6);
+        // Uncomment these lines to set SZIP Compression
+        // unsigned szip_options_mask = H5_SZIP_NN_OPTION_MASK;
+        // unsigned szip_pixels_per_block = 16;
+        // plist->setSzip(szip_options_mask, szip_pixels_per_block);
+
+        val.createDataSet(dataset_name.val, h5PredType, space, plist);
     	H5dataset data{val, dataset_name};
         data.pimpl->val.write(data_raw.data(), h5PredType, space);
     }

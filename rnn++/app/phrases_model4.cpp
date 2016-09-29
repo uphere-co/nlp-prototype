@@ -19,7 +19,7 @@ int main(int /*argc*/, char** argv){
 
     auto param = load_param(config["rnn_param_store"], config["rnn_param_uid"], util::datatype_from_string(config["float_t"]));
     VocaInfo rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])};
-    std::string input_name = config["phrase_rawdata"];
+    std::string input_name = argv[2];
     auto dataset=TokenizedSentences{input_name};
 
     auto &lines = dataset.val;
