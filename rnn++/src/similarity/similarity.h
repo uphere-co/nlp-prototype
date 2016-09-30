@@ -1,69 +1,71 @@
 #pragma once
 
-#include "tbb/task_group.h"
-
-//#include "wordrep/sentence2vec.h"
-
 #include "parser/parser.h"
 #include "parser/wordvec.h"
-#include "utils/profiling.h"
-#include "utils/parallel.h"
-#include "utils/linear_algebra.h"
-#include "utils/print.h"
 #include "utils/json.h"
-#include "utils/loop_gen.h"
 
-#include  "parser/parser.h"
-
-using namespace rnn::wordrep;
-using namespace rnn::simple_model;
-using namespace util;
-using namespace util::math;
-using namespace util::io;
-
-using json = nlohmann::json;
-
-
-using char_t = char;
-using wcount_t = int32_t;
-using val_t = double;
-using idx_t = std::size_t;
-//constexpr int word_dim=100; //already declared in sentence2vec.h
-constexpr util::DataType w2vmodel_f_type = util::DataType::dp;
-
-constexpr int word_dim=100;
-
-struct Query{
-    using vec_view_t = WordBlock::span_t;
-    using vec_t = Vector<WordBlock::float_t, 100>;
-    Query(std::string word, vec_view_t vec, Voca const &voca)
-    :query_word{word}, query_vec{vec}, distances(voca.size())
-    {}
-    std::string query_word;
-    vec_t query_vec;
-    std::vector<val_t> distances;
-};
-
-void collect_query_result(Query const &query, Voca const &voca, json &output);
-
-
-json collect_queries_results(std::vector<Query> const &queries, Voca const &voca);
-
-void KLdistance();
+#include <vector>
+#include "utils/hdf5.h"
+#include "utils/span.h"
 
 struct SimilaritySearch{
-    SimilaritySearch(json const &config)
-    :   sent_vecs{load_voca_vecs<word_dim>(config["phrase_store"], config["phrase_vec"], util::DataType::dp)},
-        phrase_voca{load_voca(config["phrase_store"], config["phrase_word"])},
-        param{load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp)},
-        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp}
+    using json_t = nlohmann::json;
+    using voca_info_t = rnn::simple_model::VocaInfo;
+    using param_t     = rnn::simple_model::Param;
+    SimilaritySearch(json_t const &config)
+    :   sent_vecs{rnn::wordrep::load_voca_vecs<param_t::dim>(config["phrase_store"], config["phrase_vec"], util::datatype_from_string(config["float_t"]))},
+        phrase_voca{rnn::wordrep::load_voca(config["phrase_store"], config["phrase_word"])},
+        param{rnn::simple_model::load_param(config["rnn_param_store"], config["rnn_param_uid"], util::datatype_from_string(config["float_t"]))},
+        rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])}
     {}
 
-    json process_queries(json ask) const;
+    json_t static parse(const char *query) {return json_t::parse(query);}
 
-    WordBlock sent_vecs;
-    Voca phrase_voca;
-    Param param; 
-    VocaInfo rnn;
+    json_t process_queries(json_t ask) const;
+
+    voca_info_t::voca_vecs_t sent_vecs;
+    voca_info_t::voca_t  phrase_voca;
+    param_t param;
+    voca_info_t rnn;
+};
+
+
+constexpr auto sep = -1;//  std::numeric_limits<idx_t>::max();
+
+std::vector<int32_t> load_data(std::string datset_name);
+
+struct IndexedSentences{
+    IndexedSentences(std::string filename)
+            : val{load_data(filename)} {
+        auto beg=val.cbegin();
+        auto end=std::find(beg, val.cend(), sep);
+        while(end!=val.cend()){
+            sents.push_back(util::as_span(&(*beg),&(*end)));
+            beg=end+1;
+            end=std::find(beg, val.cend(), sep);
+        }
+    }
+    IndexedSentences(const char* filename) : IndexedSentences(std::string{filename}) {}
+
+    std::vector<int32_t> val;
+    std::vector<util::span_dyn<const int32_t>> sents;
+};
+
+auto get_string_val=[](nlohmann::json const &json, std::string field)->std::string {
+    return json[field];
+};
+
+struct BoWVSimilaritySearch{
+    using json_t = nlohmann::json;
+    using voca_info_t = rnn::simple_model::VocaInfo;
+    BoWVSimilaritySearch(json_t const &config)
+    : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])},
+      text{get_string_val(config,"textset")}, lines{get_string_val(config,"textset")}
+    {}
+    json_t process_queries(json_t ask) const;
+
+    voca_info_t rnn;
+    IndexedSentences text;
+    rnn::ParsedSentences lines;
 };
 

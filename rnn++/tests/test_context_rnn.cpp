@@ -24,18 +24,14 @@ namespace rnn{
 constexpr int len_context=2;
 using Node = rnn::detail::Node<rnn::model::crnn::Context<rnn::type::float_t, rnn::config::word_dim,len_context>>;
 using Param= rnn::model::crnn::Param<rnn::type::float_t,rnn::config::word_dim,len_context>;
-
-
-struct InitializedNodes{
-    InitializedNodes(std::vector<Node> &&leaf_nodes_with_reserve)
-    : val{std::move(leaf_nodes_with_reserve)}, nodes{val} {assert(val.size()*2-1==val.capacity());}
-    std::vector<Node> val;
-    util::span_dyn<Node> nodes;
-};
+using InitializedNodes = rnn::detail::InitializedNodes<Node>;
 
 struct VocaInfo{
     using node_t = Node;
+    using voca_t = rnn::wordrep::Voca;
+    using voca_idx_map_t = rnn::wordrep::VocaIndexMap;
     using voca_vecs_t = rnn::wordrep::WordBlock_base<node_t::prop_t::word_dim>;
+
     VocaInfo(std::string vocafile, std::string voca_dataset,
              std::string w2vmodel_dataset, util::DataType float_type)
     : voca{rnn::wordrep::load_voca(vocafile, voca_dataset)}, word2idx{voca.indexing()},
@@ -63,8 +59,8 @@ struct VocaInfo{
         }
         return InitializedNodes{std::move(val)};
     }
-    rnn::wordrep::Voca voca;
-    rnn::wordrep::VocaIndexMap word2idx;
+    voca_t voca;
+    voca_idx_map_t word2idx;
     voca_vecs_t voca_vecs;
 };
 
@@ -180,6 +176,7 @@ auto weighted_sum=[](int64_t i, auto &word_vec,
     using util::math::dot;
     word_vec[i] = dot(w_left[i], word_left)+dot(w_right[i], word_right) + bias[i];
 };
+
 auto accumulate_context_weights=[](int64_t i, auto &word_vec,
                                    auto const &w_context_left, auto const &w_context_right,
                                    auto const &left_ctxs, auto const &right_ctxs) {
@@ -686,6 +683,16 @@ Param get_dp_gradient(VocaInfo const &crnn, Param const &param, Param::val_t lam
     }
     return grad;
 }
+
+//struct ParsedNodes{
+//    ParsedNodes(InitializedNodes &&nodes)
+//    : val{std::move(nodes.val)}{
+//        auto top_nodes = compose_leaf_nodes(param, nodes);
+//        auto merge_history = get_merge_history(sent_pair.parsed);
+//        directed_forward_path(param, top_nodes, merge_history);
+//    }
+//    std::vector<Node> val;
+//};
 Param get_directed_grad(VocaInfo const &crnn, Param const &param,
                         SentencePair const &sent_pair){
     auto nodes = crnn.initialize_tree(sent_pair.original);
@@ -863,10 +870,10 @@ void test_minibatch_crnn(){
     auto beg=testset.val.cbegin();
     auto end=testset.val.cend();
 
+    util::Timer timer{};
     {
     auto grad_label = util::parallel_reducer(beg, end, get_label_grad, Param{});
-//    Param grad_label{};
-//    for(auto &sent_pair:testset.val) grad_label+=get_label_grad(sent_pair);
+    timer.here_then_reset("CRNN label gradient.");
     auto param1{param}; param1 += dParam;
     auto param2{param}; param2 -= dParam;
     auto score_label1 = parsed_scoring_dataset(rnn, param1, testset);
@@ -877,9 +884,8 @@ void test_minibatch_crnn(){
 
 
     {
-        auto grad_dp = util::parallel_reducer(beg, end, get_dp_grad, Param{});
-//    Param grad_dp{};
-//    for(auto &sent_pair:testset.val) grad_dp+=get_dp_grad(sent_pair);
+    auto grad_dp = util::parallel_reducer(beg, end, get_dp_grad, Param{});
+    timer.here_then_reset("CRNN DP gradient.");
     auto param1{param}; param1 += dParam;
     auto param2{param}; param2 -= dParam;
     auto score_label1 = dp_scoring_dataset(rnn, param1, lambda, testset);

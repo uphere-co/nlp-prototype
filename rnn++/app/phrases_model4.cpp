@@ -1,13 +1,10 @@
 #include "parser/parser.h"
-#include "parser/wordvec.h"
-#include "utils/binary_tree.h"
 #include "utils/parallel.h"
 #include "utils/json.h"
 
 #include "tests/test_voca_wordvec.h"
 
 using namespace rnn;
-using namespace rnn::config;
 using namespace rnn::simple_model;
 using namespace rnn::simple_model::detail;
 using namespace rnn::wordrep;
@@ -20,9 +17,9 @@ int main(int /*argc*/, char** argv){
 
     auto config = util::load_json(argv[1]);
 
-    auto param = load_param(config["rnn_param_store"], config["rnn_param_uid"], util::DataType::dp);
-    VocaInfo rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::DataType::dp};
-    std::string input_name = config["phrase_rawdata"];
+    auto param = load_param(config["rnn_param_store"], config["rnn_param_uid"], util::datatype_from_string(config["float_t"]));
+    VocaInfo rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])};
+    std::string input_name = argv[2];
     auto dataset=TokenizedSentences{input_name};
 
     auto &lines = dataset.val;
