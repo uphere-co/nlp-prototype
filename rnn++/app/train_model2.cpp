@@ -25,16 +25,16 @@ using namespace rnn;
 using namespace rnn::test;
 
 
-int main(){
+int main(int /*argc*/, char** argv){
     try {
 //        test_context_node();
 //        test_crnn_backward();
 //        test_crnn_directed_backward();
-        test_grad_parallel_reduce();
-        test_minibatch_crnn();
-        return 0;
-        train_crnn();
-        
+//        test_grad_parallel_reduce();
+//        test_minibatch_crnn();
+//        return 0;
+        auto config = util::load_json(argv[1]);
+        train_crnn(config);
     } catch (H5::Exception &ex) {
         std::cerr << ex.getCDetailMsg() << std::endl;
     } catch (std::exception &e) {

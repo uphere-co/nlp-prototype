@@ -905,7 +905,7 @@ void write_to_disk(Param const &param, std::string param_name){
     h5store.writeRawData(H5name{param_name}, param_raw);
 }
 
-void train_crnn(){
+void train_crnn(nlohmann::json const &config){
     Logger logger{"crnn", "logs/basic.txt"};
     auto write_param=[&logger](auto i_minibatch, auto const &param){
         std::stringstream ss;
@@ -914,14 +914,15 @@ void train_crnn(){
     };
 
     auto n_minibatch=rnn::config::n_minibatch;
-    auto testset_parsed=ParsedSentences{"news_wsj.s2010.test.stanford"};
-    auto testset_orig=TokenizedSentences{"news_wsj.s2010.test"};
-    auto trainset_parsed=ParsedSentences{"news_wsj.s2010.train.stanford"};
-    auto trainset_orig=TokenizedSentences{"news_wsj.s2010.train"};
+    auto testset_parsed=ParsedSentences{util::get_string_val(config,"testset_parsed")};
+    auto testset_orig=TokenizedSentences{util::get_string_val(config,"testset")};
+    auto trainset_parsed=ParsedSentences{util::get_string_val(config,"trainset_parsed")};
+    auto trainset_orig=TokenizedSentences{util::get_string_val(config,"trainset")};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto trainset = SentencePairs{trainset_parsed,trainset_orig};
 
-    VocaInfo rnn{"news_wsj.h5", "news_wsj.voca", "news_wsj", util::datatype_from_string("float64")};
+    VocaInfo rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"],
+                 util::datatype_from_string(config["float_t"])};
     auto lambda=0.05;
     auto param = Param::random(0.05);
     param.bias *= 0.0;
