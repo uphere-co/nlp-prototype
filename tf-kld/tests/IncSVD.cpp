@@ -11,10 +11,23 @@
 
 int main() {
     using namespace arma;
-
-    int K_dim = 3;
     
     mat inMat = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
+
+    mat U;
+    vec s;
+    mat V;
+
+    svd(U,s,V,inMat);
+
+    std::cout << "SVD for Dense Matrix:" << std::endl;
+    inMat.print();
+    U.print();
+    s.print();
+    V.print();
+
+    
+    int K_dim = 3;
     sp_mat insMat(4,4);
 
     for(int i = 0; i < 4; i++) {
@@ -23,27 +36,27 @@ int main() {
         }
     }
 
-    mat U;
-    vec s;
-    mat V;
+    mat sU;
+    vec ss;
+    mat sV;
 
-    svd(U,s,V,inMat);
+    svds(sU,ss,sV,insMat,K_dim);
 
-
-    std::cout << "Dense Matrix:" << std::endl;
-    inMat.print();
-    U.print();
-    s.print();
-    V.print();
-    
-    svds(U,s,V,insMat,K_dim);
-
-    std::cout << "Sparse Matrix:" << std::endl;
+    std::cout << "Truncated SVD for Sparse Matrix:" << std::endl;
     insMat.print();
-    U.print();
-    s.print();
-    V.print();
+    sU.print();
+    ss.print();
+    sV.print();
     
+    mat X = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
+    mat Q, R;
+
+    qr(Q,R,X);
+
+    std::cout << "QR Decomposition for Dense Matrix:" << std::endl;
+    X.print();
+    Q.print();
+    R.print();
     
     return 0;
 }
