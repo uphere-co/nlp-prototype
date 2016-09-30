@@ -46,3 +46,6 @@ add_executable(math app/math
                tests/test01 tests/test02 tests/testMath
                utils/h5io)
 target_link_libraries(math hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
+
+add_executable(IncSVD tests/IncSVD)
+target_link_libraries(IncSVD armadillo openblas)
