@@ -43,5 +43,6 @@ stdenv.mkDerivation {
     export LIBSVM=${toolz.libsvm}
     export LIBLINEAR=${toolz.liblinear}
     export PATH=$LIBLINEAR/liblinear:$LIBSVM/libsvm:$PATH
+    export NIX_LDFLAGS="$NIX_LDFLAGS -L$LIBLINEAR/liblinear"
   '';
 }
