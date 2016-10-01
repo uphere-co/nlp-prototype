@@ -87,22 +87,25 @@ def ToTrimmedBinaryTreeStr(tree):
 corpus_root = sys.argv[1]
 output = sys.argv[2]
 file_pattern = r".*/wsj_.*\.mrg"
+if(sys.argv>3):
+   file_pattern=sys.argv[3]
+
 ptb = BracketParseCorpusReader(corpus_root, file_pattern)
 #ptb.fileids()
 
 sents=[' '.join(words) for words in ptb.sents()]
 parsed_sents=ptb.parsed_sents()
-binary_trees=[ToBinaryTreeStr(tree) for tree in parsed_sents]
+#binary_trees=[ToBinaryTreeStr(tree) for tree in parsed_sents]
 trimmed_binary_trees=[ToTrimmedBinaryTreeStr(tree) for tree in parsed_sents]
 
-with open(output, 'w') as f:
-    for sent in sents:
-        f.write(sent+'\n')
-with open(output+'.tree', 'w') as f:
-    for sent in binary_trees:
-        f.write(sent+'\n')
+#with open(output, 'w') as f:
+#    for sent in sents:
+#        f.write(sent+'\n')
+#with open(output+'.tree', 'w') as f:
+#    for sent in binary_trees:
+#        f.write(sent+'\n')
 with open(output+'.trim', 'w') as f:
     with open(output+'.trim.tree', 'w') as f2:
         for sent, plain_sent in trimmed_binary_trees:
-            f.write(plain_sent+'\n')
-            f2.write(sent+'\n')
+            f.write(plain_sent.encode('utf-8')+'\n')
+            f2.write(sent.encode('utf-8')+'\n')
