@@ -12,7 +12,7 @@
 int main() {
     using namespace arma;
 
-    int K_dim = 3; // Reduced rank
+    int r_dim = 3; // Reduced rank r
 
     // TF matrix for the test.
     // n_dim by m_dim .
@@ -30,7 +30,7 @@ int main() {
     vec ins;
     mat inV;
 
-    svds(inU,ins,inV,inM,K_dim);
+    svds(inU,ins,inV,inM,r_dim);
 
     // incremental n_dim by c_dim matrix
     int c_dim = 1;
@@ -51,26 +51,23 @@ int main() {
 
     qr(inJ,inK,inH);
 
-    mat inQ(K_dim+n_dim,K_dim+c_dim,fill::zeros);
+    mat inQ(r_dim+n_dim,r_dim+c_dim,fill::zeros);
     
-    for(int r=0;r<K_dim;r++)
+    for(int r=0;r<r_dim;r++)
         inQ(r,r) = ins(r);
 
-    for(int i=0;i<K_dim;i++) {
+    for(int i=0;i<r_dim;i++) {
         for(int j=0;j<c_dim;j++) {
-            inQ(i,K_dim+j) = inL(i,j);
+            inQ(i,r_dim+j) = inL(i,j);
         }
     }
 
     for(int i=0;i<n_dim;i++) {
         for(int j=0;j<c_dim;j++) {
-            inQ(K_dim+i,K_dim+j)=inK(i,j);
+            inQ(r_dim+i,r_dim+j)=inK(i,j);
         }
     }
-    inL.print("inL = ");
-    inK.print("inK = ");
-    inQ.print("inQ = ");
-    /*
+    
     mat inUp;
     vec insp;
     mat inVp;
@@ -83,79 +80,33 @@ int main() {
 
     mat mapU = join_rows(inU,inJ);
 
-    mapU.print("mapU = ");
-    mat mapVzeros;
-    mapVzeros << 0 << endr << 0 << endr << 0 << endr << 0 << endr;
-    mat mapV = join_rows(inV,mapVzeros); // Accidental. Very temporary.
+    mat mapV(m_dim+c_dim,r_dim+c_dim,fill::zeros);
+    for(int i=0;i<m_dim;i++) {
+        for(int j=0;j<r_dim;j++) {
+            mapV(i,j) = inV(i,j);
+        }
+    }
+
+    for(int i=0;i<c_dim;i++) {
+        mapV(m_dim+i,r_dim+i) = 1; 
+    }
 
     inUpp = mapU * inUp;
     inspp = insp;
     inVpp = mapV * inVp;
 
-    mat diag_inspp = diagmat(inspp);
+    mat inspp_diag(r_dim+n_dim,r_dim+c_dim,fill::zeros);
 
-    */
-    //mat resMat = inUpp*diag_inspp*trans(inVpp);
-
-
-
-    /*
-    mat inMat = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
-
-    mat U;
-    vec s;
-    mat V;
-
-    svd(U,s,V,inMat);
-
-    std::cout << "SVD for Dense Matrix:" << std::endl;
-    inMat.print();
-    U.print();
-    s.print();
-    V.print();
-
-    
-    int K_dim = 3;
-    sp_mat insMat(4,4);
-
-    for(int i = 0; i < 4; i++) {
-        for(int j = 0; j < 4; j++) {
-            insMat(i,j) = 4*i + j + 1;
-        }
+    for(int i=0;i<r_dim+c_dim;i++) {
+        inspp_diag(i,i) = insp(i);
     }
 
-    mat sU;
-    vec ss;
-    mat sV;
-
-    svds(sU,ss,sV,insMat,K_dim);
-
-    std::cout << "Truncated SVD for Sparse Matrix:" << std::endl;
-    insMat.print();
-    sU.print();
-    ss.print();
-    sV.print();
     
-    mat X = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
-    mat Q, R;
+    mat resMat = inUpp*inspp_diag*trans(inVpp);
 
-    qr(Q,R,X);
+    inM.print("inM = ");
+    inC.print("inC = ");
+    resMat.print("resMat = ");
 
-    std::cout << "QR Decomposition for Dense Matrix:" << std::endl;
-    X.print();
-    Q.print();
-    R.print();
-
-    std::cout << "Matrix Multiplication:" << std::endl;
-    mat X1 = {{1,2,3},{4,5,6},{7,8,9}};
-    mat X2 = {{1,2,3},{4,5,6},{7,8,9}};
-
-    mat X3 = X1*X2;
-
-    X3.print();
-
-
-    */
-    
     return 0;
 }
