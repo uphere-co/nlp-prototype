@@ -38,6 +38,7 @@ import           Util.Pipe
 foreign import ccall "make_input"     c_make_input     :: CInt -> CString -> IO Json_t
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
+-- foreign import ccall "get_output"     c_get_output     :: Json_t -> Ptr () -> Ptr CInt -> IO () 
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: Process ()
@@ -49,11 +50,11 @@ writeProcessId = do
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
-  -- liftIO $ print r
       bstr = BL.toStrict r 
   void . liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
     json <- c_make_input (fromIntegral n) cstr
-    -- json' <- c_query json
+    json' <- c_query json
+    -- c_get_output json'
     return ()
     
 {-   duplex <- liftIO mkDuplex
@@ -78,17 +79,7 @@ withTempFile f = do
   f tmpfile
 
 makeJson :: Query -> Value
-makeJson (Query qs) =
-  object [ "phrase_store"    .= ("/data/groups/uphere/parsers/rnn_model4/phrases.h5" :: Text)
-         , "phrase_vec"      .= ("news_wsj.text.vecs" :: Text)
-         , "phrase_word"     .= ("news_wsj.test.words" :: Text)
-         , "rnn_param_store" .= ("/data/groups/uphere/data/groups/uphere/parsers/rnn_model4/rnn_params.h5" :: Text)
-         , "rnn_param_uid"   .= ("model4.d877053.2000" :: Text)
-         , "wordvec_store"   .= ("/data/groups/uphere/parsers/rnn_model4/news_wsj.h5" :: Text)
-         , "voca_name"       .= ("news_wsj.voca" :: Text)
-         , "w2vmodel_name"   .= ("news_wsj" :: Text)
-         , "queries"         .= toJSON qs
-         ] 
+makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
   [host] <- getArgs
