@@ -78,7 +78,9 @@ withTempFile f = do
   f tmpfile
 
 makeJson :: Query -> Value
-makeJson (Query qs) =
+makeJson (Query qs) = object [ "queries" .= toJSON qs ]
+  
+  {- 
   object [ "phrase_store"    .= ("/data/groups/uphere/parsers/rnn_model4/phrases.h5" :: Text)
          , "phrase_vec"      .= ("news_wsj.text.vecs" :: Text)
          , "phrase_word"     .= ("news_wsj.test.words" :: Text)
@@ -89,7 +91,7 @@ makeJson (Query qs) =
          , "w2vmodel_name"   .= ("news_wsj" :: Text)
          , "queries"         .= toJSON qs
          ] 
-
+   -}
 
 main = do
   [host] <- getArgs
