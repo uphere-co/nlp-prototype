@@ -14,7 +14,7 @@ using namespace std;
 
 
 extern "C" {
-    json_t* make_input     ( char*   str        );
+    void* make_input     ( char*   str        );
     void    query_init     ( char*   configfile );
     json_t* query          ( json_t* input      );
     void    query_finalize ( void               );
@@ -27,19 +27,36 @@ SimilaritySearch* engine;
 
 Timer timer{};
 
-json_t* make_input( char* str )
+
+auto json_deleter = [](json_t* x) {
+    cout << "deleteing json_t!" << endl;
+    delete x;
+};
+
+void* make_input( char* str )
 {
-    json_t* input = new json_t;  // very dangerous here.
+    unique_ptr<json_t,decltype(json_deleter)> p_json(new json_t,json_deleter); 
+
+    //json_t* input = new json_t;  // very dangerous here.
+    json_t* input = p_json.get();
     *input = json::parse(str);
-    return input;
+    auto pp_json = std::move(p_json);
+
+    return reinterpret_cast<void*>(&pp_json);
 }
+
+struct mydata {
+    int a;
+};
+
 
 void query_init( char* configfile )
 {
-    config = load_json(configfile);
+    
+/*    config = load_json(configfile);
     engine = new SimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
-    timer.here_then_reset("Search engine loaded.");     
+    timer.here_then_reset("Search engine loaded.");      */
 }
 
 json_t* query( json_t* input )
