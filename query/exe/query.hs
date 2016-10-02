@@ -16,7 +16,7 @@ import qualified Data.Binary                         as Bi (encode)
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
-import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen)
+import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen,unsafePackCString)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import           Data.UUID                                 (toString)
@@ -38,7 +38,7 @@ import           Util.Pipe
 foreign import ccall "make_input"     c_make_input     :: CInt -> CString -> IO Json_t
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
--- foreign import ccall "get_output"     c_get_output     :: Json_t -> Ptr () -> Ptr CInt -> IO () 
+foreign import ccall "get_output"     c_get_output     :: Json_t -> IO CString
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: Process ()
@@ -51,11 +51,12 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
-  void . liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
-    json <- c_make_input (fromIntegral n) cstr
-    json' <- c_query json
-    -- c_get_output json'
-    return ()
+  bstr <- liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
+    c_make_input (fromIntegral n) cstr >>= c_query >>= c_get_output >>= unsafePackCString
+    -- putStrLn "queryWorker:"
+    -- B.putStrLn bstr
+  sendChan sc (BL.fromStrict bstr)
+  return ()
     
 {-   duplex <- liftIO mkDuplex
   withStreamPairFromDuplex duplex $ \(is,os) -> void $ do
