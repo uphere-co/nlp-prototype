@@ -14,7 +14,7 @@ using namespace std;
 
 
 extern "C" {
-    json_t* make_input     ( int n, char*   str        );
+    json_t* make_input     ( char*   str        );
     void    query_init     ( char*   configfile );
     json_t* query          ( json_t* input      );
     void    query_finalize ( void               );
@@ -27,13 +27,10 @@ SimilaritySearch* engine;
 
 Timer timer{};
 
-json_t* make_input( int n, char* str )
+json_t* make_input( char* str )
 {
-    stringstream ss ;
-    std::string s( str, n);
     json_t* input = new json_t;  // very dangerous here.
-    ss << s;
-    ss >> (*input);
+    *input = json::parse(str);
     return input;
 }
 

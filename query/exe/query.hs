@@ -33,7 +33,7 @@ import           Type
 import           Util.Json
 
 
-foreign import ccall "make_input"     c_make_input     :: CInt -> CString -> IO Json_t
+foreign import ccall "make_input"     c_make_input     :: CString -> IO Json_t
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "get_output"     c_get_output     :: Json_t -> IO CString
@@ -49,9 +49,9 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
-  bstr <- liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> 
-    c_make_input (fromIntegral n) cstr >>= c_query >>= c_get_output >>= unsafePackCString
-  sendChan sc (BL.fromStrict bstr)
+  bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> 
+    c_make_input cstr >>= c_query >>= c_get_output >>= unsafePackCString
+  sendChan sc (BL.fromStrict bstr')
   
 server :: Process ()
 server = do
