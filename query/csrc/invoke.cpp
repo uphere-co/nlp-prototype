@@ -14,10 +14,10 @@ using namespace std;
 
 
 extern "C" {
-    json_t* make_input    ( int n, char*   str        );
-    void    query_init    ( char*   configfile );
-    json_t* query         ( json_t* input      );
-    void    query_finalize( void               );
+    json_t* make_input     ( int n, char*   str        );
+    void    query_init     ( char*   configfile );
+    json_t* query          ( json_t* input      );
+    void    query_finalize ( void               );
     const char* get_output ( json_t* output );
 }
 

@@ -49,10 +49,9 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
-  bstr <- liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
+  bstr <- liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> 
     c_make_input (fromIntegral n) cstr >>= c_query >>= c_get_output >>= unsafePackCString
   sendChan sc (BL.fromStrict bstr)
-  -- return ()
   
 server :: Process ()
 server = do
