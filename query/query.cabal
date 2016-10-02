@@ -36,10 +36,10 @@ Library
 
   Exposed-modules:
                         Util.FStream
+                        Util.Json
                         Util.Pipe
                         Type
                   
-
   Other-modules:        
 
   ghc-options:          -O2 -Wall

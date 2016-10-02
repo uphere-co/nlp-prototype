@@ -16,6 +16,7 @@ import qualified Data.Binary                         as Bi (encode)
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
+import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import           Data.UUID                                 (toString)
@@ -29,12 +30,14 @@ import           System.FilePath
 import           System.IO                                 (hClose, hGetContents, hPutStrLn)
 --
 import           Type
-import           Util.FStream
+-- import           Util.FStream
+import           Util.Json
 import           Util.Pipe
 
 
+foreign import ccall "make_input"     c_make_input     :: CInt -> CString -> IO Json_t
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query"          c_query          :: IStream -> OStream -> IO ()
+foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: Process ()
@@ -45,11 +48,22 @@ writeProcessId = do
 
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  duplex <- liftIO mkDuplex
+  let r = encode (makeJson q)
+  -- liftIO $ print r
+      bstr = BL.toStrict r 
+  void . liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
+    json <- c_make_input (fromIntegral n) cstr
+    -- json' <- c_query json
+    return ()
+    
+{-   duplex <- liftIO mkDuplex
   withStreamPairFromDuplex duplex $ \(is,os) -> void $ do
     liftIO $ forkIO $ c_query is os
     liftIO (transmit duplex (encode (makeJson q))) >>= sendChan sc
-    
+   -}
+
+
+  
 server :: Process ()
 server = do
   writeProcessId
