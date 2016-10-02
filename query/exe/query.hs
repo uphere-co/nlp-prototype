@@ -30,9 +30,7 @@ import           System.FilePath
 import           System.IO                                 (hClose, hGetContents, hPutStrLn)
 --
 import           Type
--- import           Util.FStream
 import           Util.Json
-import           Util.Pipe
 
 
 foreign import ccall "make_input"     c_make_input     :: CInt -> CString -> IO Json_t
@@ -53,18 +51,8 @@ queryWorker sc q = do
       bstr = BL.toStrict r 
   bstr <- liftIO $ unsafeUseAsCStringLen bstr $ \(cstr,n) -> do
     c_make_input (fromIntegral n) cstr >>= c_query >>= c_get_output >>= unsafePackCString
-    -- putStrLn "queryWorker:"
-    -- B.putStrLn bstr
   sendChan sc (BL.fromStrict bstr)
-  return ()
-    
-{-   duplex <- liftIO mkDuplex
-  withStreamPairFromDuplex duplex $ \(is,os) -> void $ do
-    liftIO $ forkIO $ c_query is os
-    liftIO (transmit duplex (encode (makeJson q))) >>= sendChan sc
-   -}
-
-
+  -- return ()
   
 server :: Process ()
 server = do
