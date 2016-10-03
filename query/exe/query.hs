@@ -16,8 +16,7 @@ import qualified Data.Binary                         as Bi (encode)
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
-import           Data.Conduit                              (runConduit, ($$))
-import           Data.Conduit.Binary                       (sourceLbs,sourceHandle,sinkLbs,sinkHandle) 
+import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen,unsafePackCString)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import           Data.UUID                                 (toString)
@@ -29,19 +28,16 @@ import           System.Directory
 import           System.Environment
 import           System.FilePath
 import           System.IO                                 (hClose, hGetContents, hPutStrLn)
-import           System.Posix.IO                           (closeFd, createPipe, fdToHandle, fdWrite)
-import           System.Posix.Types                        (Fd(..))
 --
 import           Type
+import           Util.Json
 
+
+foreign import ccall "make_input"     c_make_input     :: CString -> IO Json_t
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query"          c_query          :: Fd -> Fd -> IO () -- :: CString -> IO ()
+foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
+foreign import ccall "get_output"     c_get_output     :: Json_t -> IO CString
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
-
-
-data PipeDuplex = PipeDuplex { hereToThere :: (Fd,Fd)
-                             , thereToHere :: (Fd,Fd) }
-
 
 writeProcessId :: Process ()
 writeProcessId = do
@@ -49,23 +45,14 @@ writeProcessId = do
   liftIO $ print us
   liftIO $ BL.writeFile "server.pid" (Bi.encode us)
 
-pipeTransmit :: PipeDuplex -> BL.ByteString -> IO BL.ByteString
-pipeTransmit (PipeDuplex (foq,fiq) (for,fir)) bstr = do
-  hq <- fdToHandle fiq
-  hr <- fdToHandle for
-  runConduit $ sourceLbs bstr $$ sinkHandle hq
-  runConduit $ sourceHandle hr $$ sinkLbs
-
-mkDuplex :: IO PipeDuplex
-mkDuplex = PipeDuplex <$> createPipe <*> createPipe
-
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  duplex <- liftIO mkDuplex
-  liftIO $ forkIO $ c_query ((fst.hereToThere) duplex) ((snd.thereToHere) duplex)
-  liftIO (pipeTransmit duplex (encode (makeJson q))) >>= sendChan sc
-
-
+  let r = encode (makeJson q)
+      bstr = BL.toStrict r 
+  bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> 
+    c_make_input cstr >>= c_query >>= c_get_output >>= unsafePackCString
+  sendChan sc (BL.fromStrict bstr')
+  
 server :: Process ()
 server = do
   writeProcessId
@@ -80,17 +67,7 @@ withTempFile f = do
   f tmpfile
 
 makeJson :: Query -> Value
-makeJson (Query qs) =
-  object [ "phrase_store"    .= ("/data/groups/uphere/parsers/rnn_model4/phrases.h5" :: Text)
-         , "phrase_vec"      .= ("news_wsj.text.vecs" :: Text)
-         , "phrase_word"     .= ("news_wsj.test.words" :: Text)
-         , "rnn_param_store" .= ("/data/groups/uphere/data/groups/uphere/parsers/rnn_model4/rnn_params.h5" :: Text)
-         , "rnn_param_uid"   .= ("model4.d877053.2000" :: Text)
-         , "wordvec_store"   .= ("/data/groups/uphere/parsers/rnn_model4/news_wsj.h5" :: Text)
-         , "voca_name"       .= ("news_wsj.voca" :: Text)
-         , "w2vmodel_name"   .= ("news_wsj" :: Text)
-         , "queries"         .= toJSON qs
-         ] 
+makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
   [host] <- getArgs

@@ -28,12 +28,16 @@ Library
   hs-source-dirs:       lib
   Build-depends:        base,
                         --
-                        binary
+                        binary,
+                        bytestring,
+                        conduit,
+                        conduit-extra,
+                        unix
 
   Exposed-modules:
-                        -- Symbolic.CodeGen.C               -- for the time being
+                        Util.Json
                         Type
-
+                  
   Other-modules:        
 
   ghc-options:          -O2 -Wall
