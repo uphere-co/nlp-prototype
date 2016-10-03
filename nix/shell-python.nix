@@ -16,6 +16,7 @@ stdenv.mkDerivation {
                    matplotlib seaborn
                    numpy scipy pandas scikitlearn
                    pyzmq
+                   redis
                    cython
                    numba
                    toolz.gensim toolz.untangle
@@ -42,6 +43,7 @@ stdenv.mkDerivation {
                    toolz_cpp.json
                    doxygen graphviz
                    libcgroup 
+                   redis
                  ];
   shellHook = ''
      EDITOR=vim

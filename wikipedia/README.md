@@ -20,6 +20,9 @@ nix-shell shell-wiki.nix --arg pkgs "import $HOME/repo/srcc/nixpkgs {}"
 #output : 
 # - wsj.test and wsj.test.tree : contain all nodes
 # - wsj.test.trim and wsj.test.trim.tree : nodes with '-NONE-' tag is removed.
-
 ipython ptb_reader.py ~/treebank_3/parsed/mrg/wsj/test wsj.test
+#One can specify a file, if needed:
+# - input: ~/word2vec/news/news.2014.en.shuffled.ptb.stanford 
+# - output : out.trim and out.trim.tree
+ipython ptb_reader.py  ~/word2vec/news/ out news.2014.en.shuffled.ptb.stanford
 ```

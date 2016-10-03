@@ -9,21 +9,13 @@ int main(int /*argc*/, char** argv){
 
 //    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     auto config = load_json(argv[1]);
-
-    auto query = load_json(argv[2]);
-    for(auto cutoff : query["cutoffs"]){
-        for(double x : cutoff) std::cerr<<x << " ";
-        std::cerr<<":Cut-off\n";
-    }
-    BoWVSimilaritySearch engine{config};
     std::cerr << config.dump(4) << std::endl;
-    timer.here_then_reset("BoWVSimilaritySearch engine loaded.");
-    auto answer = engine.process_queries(query);
-    timer.here_then_reset("Finished to answer.");
-    std::cout << answer.dump(4) << std::endl;
 
-    return 0;
 //    SimilaritySearch engine{config};
+//    timer.here_then_reset("SimilaritySearch engine loaded.");
+    BoWVSimilaritySearch engine{config};
+    timer.here_then_reset("BoWVSimilaritySearch engine loaded.");
+
     const char * protocol = "tcp://*:5555";
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
@@ -43,6 +35,16 @@ int main(int /*argc*/, char** argv){
         std::memcpy ((void *) reply.data (), (void*)aa.data(), aa.size());
         socket.send (reply);
     }
+
+    auto query = load_json(argv[2]);
+    for(auto cutoff : query["cutoffs"]){
+        for(double x : cutoff) std::cerr<<x << " ";
+        std::cerr<<":Cut-off\n";
+    }
+    auto answer = engine.process_queries(query);
+    timer.here_then_reset("Finished to answer.");
+    std::cout << answer.dump(4) << std::endl;
+    return 0;
 
 //    auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
     auto input = load_json(argv[2]);
