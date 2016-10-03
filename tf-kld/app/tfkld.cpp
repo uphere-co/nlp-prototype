@@ -28,7 +28,6 @@ int main(int argc, char **argv){
         ArgPass(argc, argv, params);
     }
 
-<<<<<<< 3dcbfb3f4cb078227736131549a3b05596e1c6ee
     ////////////////////////////////////////////
 
     std::vector<std::string> tag{"+1","-1","+1","-1"};
@@ -54,17 +53,6 @@ int main(int argc, char **argv){
         n=(mparams -> nr_feature)+1;
     else
         n=(mparams -> nr_feature);
-=======
-    MSParaFile fin{"train.txt"};
-    vocab_t vocab = LearnVocab(fin);
-    fin.setBegin();
-    doc_t docs = LearnDocs(vocab, fin);
-
-    //runTFKLD(params);
-
-    //writeVocabH5(vocab);
-    writeDocsH5(docs);
->>>>>>> Now HDF5 can write Docs. H5-writing function for it is also implemented.
     
     int w_size = n;
     int nr_w;

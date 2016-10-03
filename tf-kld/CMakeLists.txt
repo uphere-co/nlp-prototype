@@ -36,7 +36,7 @@ add_executable(tfkld app/tfkld
                src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/SVM
                tests/test01 tests/test02
                utils/help utils/h5io)
-target_link_libraries(tfkld hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
+target_link_libraries(tfkld hdf5_cpp hdf5_hl_cpp tbb armadillo openblas linear)
 
 add_executable(math app/math
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
