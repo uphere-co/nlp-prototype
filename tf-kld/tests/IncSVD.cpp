@@ -7,8 +7,11 @@
 #include <string>
 #include <utility>
 
+#include "utils/profiling.h"
+
 #include <armadillo>
 
+using namespace util;
 using namespace arma;
 
 bool checkMat(int row, int col, mat const &mat) {
@@ -27,12 +30,15 @@ void exit_with_error(std::string error_message) {
 
 int main() {
 
-    int r_dim = 5; // Reduced rank r
+    auto timer = Timer{};
+    //timer.here_then_reset("");
+    
+    int r_dim = 3; // Reduced rank r
 
     // TF matrix for the test.
     // n_dim by m_dim .
-    int n_dim = 100;
-    int m_dim = 100;
+    int n_dim = 50;
+    int m_dim = 50;
     
     sp_mat inM(n_dim,m_dim);
     for(int i = 0; i < n_dim; i++) {
@@ -47,6 +53,8 @@ int main() {
 
     svds(inU,ins,inV,inM,r_dim);
 
+    timer.here_then_reset("Truncated SVD is done for original data matrix.\n");
+    
     if(checkMat(n_dim,r_dim,inU) == false) exit_with_error("U matrix is incorrect.");
     if(checkVec(r_dim,ins) == false) exit_with_error("s diagonal matrix is incorrect.");
     if(checkMat(m_dim,r_dim,inV) == false) exit_with_error("V matrix is incorrect.");
@@ -74,6 +82,8 @@ int main() {
 
     qr(inJ,inK,inH);
 
+    timer.here_then_reset("QR decomposition for H matrix.\n");
+    
     if(checkMat(n_dim,n_dim,inJ) == false) exit_with_error("J matrix is incorrect.");
     if(checkMat(n_dim,c_dim,inK) == false) exit_with_error("K matrix is incorrect.");
     
@@ -101,7 +111,8 @@ int main() {
     mat inVp;
     
     svd(inUp,insp,inVp,inQ);
-
+    timer.here_then_reset("SVD is done for extended Q matrix.\n");
+    
     if(checkMat(r_dim+n_dim,r_dim+n_dim,inUp) == false) exit_with_error("Up matrix is incorrect.");
     if(checkVec(r_dim+c_dim,insp) == false) exit_with_error("sp diagonal matrix is incorrect.");
     // Assuming r_dim+c_dim <= r_dim+n_dim
@@ -141,14 +152,48 @@ int main() {
     if(checkMat(n_dim,n_dim+r_dim,inUpp) == false) exit_with_error("Upp matrix is incorrect.");
     if(checkMat(n_dim+r_dim,r_dim+c_dim,inspp_diag) == false) exit_with_error("inspp_diag matrix is incorrect.");
     if(checkMat(m_dim+c_dim,r_dim+c_dim,inVpp) == false) exit_with_error("Vpp matrix is incorrect.");
-
-
     
     mat resMat = inUpp*inspp_diag*trans(inVpp);
+    timer.here_then_reset("Updated SVD is done.\n");
 
-    resMat.print("resMat = ");
-    // End of updating SVD (slow way)
+    //resMat.print("resMat = ");
+    //End of updating SVD (slow way)
 
+
+    //Begin of brute SVD
+
+
+    timer.here_then_reset("Test for brute SVD begins. First I make the matrix.\n");
     
+    mat inMb;
+
+    mat inMd(inM.n_rows, inM.n_cols);
+    for(int i=0;i<inMd.n_rows;i++) {
+        for(int j=0;j<inMd.n_cols;j++) {
+            inMd(i,j) = inM(i,j);
+        }
+    }
+    
+    inMb = join_rows(inMd,inC);
+
+    sp_mat inMbb(inMb.n_rows,inMb.n_cols);
+    for(int i=0;i< inMbb.n_rows;i++) {
+        for(int j=0;j<inMbb.n_cols;j++) {
+            inMbb(i,j) = inMb(i,j);
+        }
+    }
+    
+    timer.here_then_reset("Now begins brute SVD calculation.\n");
+    
+    mat inUb;
+    vec insb;
+    mat inVb;
+
+    svds(inUb,insb,inVb,inMbb,r_dim+1); // For the fair comparison, I added 1 to r_dim.
+
+    timer.here_then_reset("Brute SVD is done.\n");
+    
+    
+    //End of brute SVD
     return 0;
 }
