@@ -36,11 +36,11 @@ void fillMat(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &do
     mat = std::move( arma::sp_mat(location, value) );
 }
     
-std::vector<std::vector<float_t> > makeSimMat(arma::mat const &V) {
+std::vector<std::vector<real_t> > makeSimMat(arma::mat const &V) {
 
-    std::vector<float_t> svec;
-    std::vector< std::vector<float_t> > result;
-    float_t minus = 0;
+    std::vector<real_t> svec;
+    std::vector< std::vector<real_t> > result;
+    real_t minus = 0;
 
     // transpose V
     for(int a = 0; a < V.n_rows; a=a+2) {
@@ -60,9 +60,9 @@ std::vector<std::vector<float_t> > makeSimMat(arma::mat const &V) {
 }
 
 
-void normalizeSimMat(std::vector<std::vector<float_t> > &svec) {
+void normalizeSimMat(std::vector<std::vector<real_t> > &svec) {
 
-    float_t sum = 0;
+    real_t sum = 0;
     
     for(auto &x : svec) {
         for(auto &y : x) {

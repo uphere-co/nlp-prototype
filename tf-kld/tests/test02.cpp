@@ -1,10 +1,14 @@
 #include "tests/test02.h"
 
-void runTFKLD_test02(tfkld::Param const &params){
+namespace tfkld{
+namespace test{
+    
+void runTFKLD_test02(Param const &params){
 
     using namespace util;
     using namespace util::io;
     using namespace tfkld;
+    using namespace tfkld::type;
     using namespace arma;
 
     auto timer = Timer{};
@@ -20,7 +24,7 @@ void runTFKLD_test02(tfkld::Param const &params){
     auto vocab = LearnVocab(fin);
     timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
-    auto docs = LearnPara(vocab,fin);
+    auto docs = LearnDocs(vocab,fin);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
@@ -29,14 +33,14 @@ void runTFKLD_test02(tfkld::Param const &params){
     int64_t tdocs = docs.size();
     
     auto vocab2 = vocab;
-    auto docs2 = LearnPara(vocab2,fin2);
+    auto docs2 = LearnDocs(vocab2,fin2);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin2.setBegin();
     auto tag2 = LearnTag(fin2);
     timer.here_then_reset("\nConstructed Tag.\n");
 
     std::vector<SpValue> values;
-    std::vector<float_t> kld;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);
@@ -74,8 +78,6 @@ void runTFKLD_test02(tfkld::Param const &params){
     int64_t count{0};
     int lcount = 1;
     
-    std::cout << tdocs/2 << std::endl;
-    std::cout << tag.size() << std::endl;
     for(int i = 0; i < tdocs/2; i++) {
         fout << tag[count] << " ";
         for(auto y : svec[i]) {
@@ -154,3 +156,6 @@ void runTFKLD_test02(tfkld::Param const &params){
     fout2.close();
     
 }
+
+}//namespace test
+}//namespace tfkld

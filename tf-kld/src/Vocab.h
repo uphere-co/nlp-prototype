@@ -26,7 +26,7 @@ std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n);
  
 vocab_t LearnVocab(MSParaFile &file);
     
-doc_t LearnPara(vocab_t &vocab, MSParaFile &file);
+doc_t LearnDocs(vocab_t &vocab, MSParaFile &file);
 
 std::vector<std::string> LearnTag(MSParaFile &file);
 
@@ -34,10 +34,12 @@ vocab_t ReadVocab(std::ifstream &vocab_file);
     
 void PrintVocab(vocab_t &vocab);
 
-auto getVocabWord(vocab_t &vocab);
+std::vector<std::string> getVocabWord(vocab_t &vocab);
 
-auto getVocabIndex(vocab_t &vocab);
+std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
 
-auto Concat(std::vector<std::string> const &words);
-    
+std::vector<std::vector<type::int64_t>> getDocsIndex(doc_t &docs);
+
+std::vector<std::vector<int>> getDocsCount(doc_t &docs);
+ 
 }//namespace tfkld
