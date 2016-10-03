@@ -1,10 +1,8 @@
 #include "src/Matrix.h"
 #include "src/Vocab.h"
 #include "src/TFKLD.h"
+#include "src/Type.h"
 #include "src/SVM.h"
-
-#include "tests/test01.h"
-#include "tests/test02.h"
 
 #include "utils/h5io.h"
 #include "utils/help.h"
@@ -12,7 +10,7 @@
 int main(int argc, char **argv){
 
     using namespace tfkld;
-    using namespace tfkld::test;
+    using namespace tfkld::type;
     using namespace tfkld::util;
     using namespace arma;
     using namespace tfkld::svm;
@@ -28,40 +26,68 @@ int main(int argc, char **argv){
         ArgPass(argc, argv, params);
     }
 
-    ////////////////////////////////////////////
 
-    std::vector<std::string> tag{"+1","-1","+1","-1"};
-    std::vector<std::vector<float>> svec;
-    std::vector<float> vec;
-    mParam *mparams;
-    vec.push_back(3);vec.push_back(1);vec.push_back(4);
-    svec.push_back(vec);
-    vec.clear();
-    vec.push_back(3);vec.push_back(2);vec.push_back(4);
-    svec.push_back(vec);
-    vec.clear();
-    vec.push_back(2);vec.push_back(6);vec.push_back(4);
-    svec.push_back(vec);
-    vec.clear();
-    vec.push_back(1);vec.push_back(3);vec.push_back(7);
-    svec.push_back(vec);
-    vec.clear();
-
-    mparams = Do_Train(tag,svec);
-    int n;
-    if(mparams->bias>=0)
-        n=(mparams -> nr_feature)+1;
-    else
-        n=(mparams -> nr_feature);
+    MSParaFile trainFile{params.trainFile};
     
-    int w_size = n;
-    int nr_w;
-    if(mparams->nr_class==2 && mparams->solver_type != "MCSVM_CS")
-        nr_w=1;
-    else
-        nr_w=mparams->nr_class;
+    int K_dim = params.kdim;
+    
+    auto vocab = LearnVocab(trainFile);
+    trainFile.setBegin();
+    auto docs = LearnDocs(vocab,trainFile);
+    trainFile.setBegin();
+    auto tag = LearnTag(trainFile);
+    
+    std::vector<SpValue> values;
+    std::vector<real_t> kld;
 
-    mainPredict(tag, svec, mparams);
+    fillValue(values, vocab, docs);
+    MakeTFKLD(params, kld, tag, values, vocab, docs);
 
+    int64_t n_rows, n_cols;
+    n_rows = vocab.size();
+    n_cols = docs.size();
+
+    sp_mat inMat(n_rows, n_cols);
+
+    fillMat(values, vocab, docs, inMat);
+
+    mat U;
+    vec s;
+    mat V;
+
+    svds(U,s,V,inMat,K_dim);
+
+    auto svec = makeSimMat(V);
+
+
+
+    MSParaFile testFile{params.testFile};
+    auto tag2 = LearnTag(testFile);
+
+    std::vector<SpValue> values2;
+    std::vector<real_t> kld2;
+
+    fillValue(values2, vocab, docs);
+    MakeTFKLD(params, kld, tag2, values2, vocab, docs);
+
+    n_rows = vocab.size();
+    n_cols = docs.size();
+
+    sp_mat inMat2(n_rows, n_cols);
+
+    fillMat(values2, vocab, docs, inMat2);
+
+    mat U2;
+    vec s2;
+    mat V2;
+
+    svds(U2,s2,V2,inMat2,K_dim);
+
+    auto svec2 = makeSimMat(V);
+
+    mParam *mparams;
+    mparams = Do_Train(tag,svec);
+    
+    mainPredict(tag2, svec2, mparams);
     return 0;
 }
