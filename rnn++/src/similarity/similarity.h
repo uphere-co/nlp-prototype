@@ -51,16 +51,12 @@ struct IndexedSentences{
     std::vector<util::span_dyn<const int32_t>> sents;
 };
 
-auto get_string_val=[](nlohmann::json const &json, std::string field)->std::string {
-    return json[field];
-};
-
 struct BoWVSimilaritySearch{
     using json_t = nlohmann::json;
     using voca_info_t = rnn::simple_model::VocaInfo;
     BoWVSimilaritySearch(json_t const &config)
     : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"], util::datatype_from_string(config["float_t"])},
-      text{get_string_val(config,"textset")}, lines{get_string_val(config,"textset")}
+      text{util::get_string_val(config,"textset")}, lines{util::get_string_val(config,"textset")}
     {}
     json_t process_queries(json_t ask) const;
 
