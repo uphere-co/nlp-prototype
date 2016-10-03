@@ -87,7 +87,15 @@ int main(int argc, char **argv){
 
     mParam *mparams;
     mparams = Do_Train(tag,svec);
+
+    std::vector<std::string> tag3;
+    tag3.push_back("+1");
+    std::vector<std::vector<float>> svec3;
+    svec3.push_back(svec2[0]);
     
-    mainPredict(tag2, svec2, mparams);
+    //mainPredict(tag2, svec2, mparams);
+    int q = onePredict(tag3, svec3, mparams);
+    std::cout << "q = " << q << std::endl;
+    
     return 0;
 }

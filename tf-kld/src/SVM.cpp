@@ -454,6 +454,140 @@ static char* readline(FILE *input)
 	return line;
 }
 
+int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec)
+{
+    if(tag.size() != 1 || svec.size() != 1) {
+        std::cout << "Wrong use of do_one_predict function.\n";
+        exit(1);
+    }
+    FILE *output;
+    int correct = 0;
+	int total = 0;
+	double error = 0;
+	double sump = 0, sumt = 0, sumpp = 0, sumtt = 0, sumpt = 0;
+
+    output = fopen("KLD.output","w");
+    
+	int nr_class=get_nr_class(model_);
+	double *prob_estimates=NULL;
+	int j, n;
+	int nr_feature=get_nr_feature(model_);
+	if(model_->bias>=0)
+		n=nr_feature+1;
+	else
+		n=nr_feature;
+	if(flag_predict_probability)
+	{
+		int *labels;
+
+		if(!check_probability_model(model_))
+		{
+			fprintf(stderr, "probability output is only supported for logistic regression\n");
+			exit(1);
+		}
+
+		labels=(int *) malloc(nr_class*sizeof(int));
+		get_labels(model_,labels);
+		prob_estimates = (double *) malloc(nr_class*sizeof(double));
+		fprintf(output,"labels");
+		for(j=0;j<nr_class;j++)
+			fprintf(output," %d",labels[j]);
+		fprintf(output,"\n");
+		free(labels);
+	}
+
+	max_line_len = 1024;
+	line = (char *)malloc(max_line_len*sizeof(char));
+    int p = 0;
+    int q = 1;
+    for(p = 0; p< tag.size(); p++)
+	{
+		int i = 0;
+		double target_label, predict_label;
+		char *idx, *val, *label, *endptr;
+		int inst_max_index = 0; // strtol gives 0 if wrong format
+
+        target_label = atof(tag[p].c_str());
+
+		//target_label = strtod(label,&endptr);
+		//if(endptr == label || *endptr != '\0')
+		//	exit_input_error(total+1);
+
+		while(1)
+		{
+			if(i>=max_nr_attr-2)	// need one more for index = -1
+			{
+				max_nr_attr *= 2;
+				x = (struct feature_node *) realloc(x,max_nr_attr*sizeof(struct feature_node));
+			}
+
+			errno = 0;
+			x[i].index = (i % nr_feature)+1;
+            
+			if(x[i].index <= inst_max_index)
+				exit_input_error(total+1);
+			else
+				inst_max_index = x[i].index;
+
+			errno = 0;
+			x[i].value = svec[p][(i % nr_feature)];
+ 
+			// feature indices larger than those in training are not used
+            i++;
+            if((i % nr_feature) == 0) break;
+            
+		}
+
+		if(model_->bias>=0)
+		{
+			x[i].index = n;
+			x[i].value = model_->bias;
+			i++;
+		}
+		x[i].index = -1;
+
+		if(flag_predict_probability)
+		{
+			int j;
+			predict_label = predict_probability(model_,x,prob_estimates);
+			fprintf(output,"%g",predict_label);
+			for(j=0;j<model_->nr_class;j++)
+				fprintf(output," %g",prob_estimates[j]);
+			fprintf(output,"\n");
+		}
+		else
+		{
+			predict_label = predict(model_,x);
+			fprintf(output,"%g\n",predict_label);
+		}
+
+		if(predict_label == target_label)
+			++correct;
+		error += (predict_label-target_label)*(predict_label-target_label);
+		sump += predict_label;
+		sumt += target_label;
+		sumpp += predict_label*predict_label;
+		sumtt += target_label*target_label;
+		sumpt += predict_label*target_label;
+		++total;
+	}
+	if(check_regression_model(model_))
+	{
+		info("Mean squared error = %g (regression)\n",error/total);
+		info("Squared correlation coefficient = %g (regression)\n",
+			((total*sumpt-sump*sumt)*(total*sumpt-sump*sumt))/
+			((total*sumpp-sump*sump)*(total*sumtt-sumt*sumt))
+			);
+	}
+	else
+		info("Accuracy = %g%% (%d/%d)\n",(double) correct/total*100,correct,total);
+	if(flag_predict_probability)
+		free(prob_estimates);
+
+
+    return correct;
+}
+
 void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec)
 {
 
@@ -653,6 +787,54 @@ struct model *load_model_mem(mParam *mparams)
 	free(old_locale);
 
 	return model_;
+}
+
+int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
+{
+    int cargc;
+    char *cargv[100];
+
+    std::cout << "onePredict" << std::endl;
+    cargv[0] = (char *)"./test";
+    cargv[1] = (char *)"test_train.txt";
+    cargv[2] = (char *)"KLD.model";
+    cargv[3] = (char *)"KLD.output";
+    cargc = 4;
+
+
+	int i;
+
+	// parse options
+	for(i=1;i<cargc;i++)
+	{
+		if(cargv[i][0] != '-') break;
+		++i;
+		switch(cargv[i-1][1])
+		{
+			case 'b':
+				flag_predict_probability = atoi(cargv[i]);
+				break;
+			case 'q':
+				info = &print_null_p;
+				i--;
+				break;
+			default:
+				fprintf(stderr,"unknown option: -%c\n", cargv[i-1][1]);
+				exit_with_help();
+				break;
+		}
+	}
+	if(i>=cargc)
+		exit_with_help();
+
+	x = (struct feature_node *) malloc(max_nr_attr*sizeof(struct feature_node));
+    model_=load_model_mem(mparams);
+	int result = do_one_predict(tag, svec);
+	free_and_destroy_model(&model_);
+	free(line);
+	free(x);
+
+    return result;
 }
 
 
