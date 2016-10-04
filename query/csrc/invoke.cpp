@@ -32,13 +32,6 @@ SimilaritySearch* engine;
 
 Timer timer{};
 
-class myclass {
-public:
-    myclass() { cout << "created" << endl; }
-    ~myclass() { cout << "deleted" << endl; }
-    void quack( void ) { cout << "quack" << endl; }
-};
-
 template<class T> 
 struct unique_ptr_wrapper {
     unique_ptr<T> p_uniq; 
@@ -62,7 +55,7 @@ void* json_create( char* str )
 
 void json_finalize( void *p )
 {
-    auto w = reinterpret_cast<unique_ptr_wrapper<myclass>* >(p);
+    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>* >(p);
     cout << "finalize called" << endl;    
     delete w;
 }
