@@ -26,21 +26,18 @@ int main(int argc, char **argv){
         ArgPass(argc, argv, params);
     }
 
-    Documents test_doc;
-
-    test_doc.a = 1;
-    std::cout << test_doc.a << std::endl;
+    Documents document;
 
     MSParaFile trainFile{params.trainFile};
     
     int K_dim = params.kdim;
     
-    auto vocab = LearnVocab(trainFile);
+    auto vocab = document.LearnVocab(trainFile);
     trainFile.setBegin();
-    auto docs = LearnPairSentence(vocab,trainFile);
+    auto docs = document.LearnPairSentence(trainFile);
     trainFile.setBegin();
-    auto tag = LearnTag(trainFile);
-    
+    auto tag = document.LearnTag(trainFile);
+    /*
     std::vector<SpValue> values;
     std::vector<real_t> kld;
 
@@ -120,5 +117,8 @@ int main(int argc, char **argv){
     free(mparams);
 
     Documents docum;
+
+
+    */
     return 0;
 }

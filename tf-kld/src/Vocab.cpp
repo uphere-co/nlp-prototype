@@ -7,7 +7,7 @@ using namespace tfkld::type;
 
 namespace tfkld{
    
-std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
+std::vector<std::string> Documents::MakeNGrams(std::vector<std::string> &words, int n) {
     std::vector<std::string> result;
     std::string word{""};
     if(words.size() < n) {
@@ -30,7 +30,7 @@ std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
     return result;
 }
     
-vocab_t LearnVocab(MSParaFile &file) {
+vocab_t Documents::LearnVocab(MSParaFile &file) {
   std::string line;
   vocab_t vocab;
   int64_t word_idx = 0;
@@ -91,7 +91,7 @@ vocab_t LearnVocab(MSParaFile &file) {
   return vocab;
 }
     
-doc_t LearnPairSentence(vocab_t &vocab, MSParaFile &file) {
+doc_t Documents::LearnPairSentence(MSParaFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
@@ -158,7 +158,7 @@ doc_t LearnPairSentence(vocab_t &vocab, MSParaFile &file) {
     return docs;
 }
 
-doc_t LearnSentence(vocab_t &vocab, MSParaFile &file) {
+doc_t Documents::LearnSentence(MSParaFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
@@ -200,7 +200,7 @@ doc_t LearnSentence(vocab_t &vocab, MSParaFile &file) {
 }
 
     
-std::vector<std::string> LearnTag(MSParaFile &file) {
+std::vector<std::string> Documents::LearnTag(MSParaFile &file) {
     std::string line;
     int64_t count = 0;
     std::vector<std::string> items;
@@ -224,7 +224,7 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
     return tag;
 }
 
-vocab_t ReadVocab(std::ifstream &vocab_file) {
+vocab_t Documents::ReadVocab(std::ifstream &vocab_file) {
     std::string word;
     int64_t index;
     vocab_t vocab;
@@ -236,7 +236,7 @@ vocab_t ReadVocab(std::ifstream &vocab_file) {
     return vocab;
 }
     
-void PrintVocab(vocab_t &vocab){
+void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;
 }
 

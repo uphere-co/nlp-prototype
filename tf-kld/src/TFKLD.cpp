@@ -64,7 +64,8 @@ void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<SpValu
     for(auto &x : values) x.val *= pow(kld[x.row],params.power);
         
 }
- 
+
+    /*
 void runTransductive(Param const &params) {
     auto timer = Timer{};
 
@@ -362,6 +363,6 @@ void runTFKLD(Param const &params) {
     if(params.mode == 0) runInductive(params);
     if(params.mode == 1) runTransductive(params);
     
-}
+    }*/
     
 }//namespace tfkld
