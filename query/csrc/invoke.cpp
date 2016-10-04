@@ -12,18 +12,31 @@
 using json_t = nlohmann::json;
 using namespace std;
 
+template<class T> 
+class unique_ptr_wrapper {
+private:
+    unique_ptr<T> p_uniq; 
+public:
+    unique_ptr_wrapper( unique_ptr<T>& p ) { p_uniq = std::move(p); }
+    T* get() { return p_uniq.get(); }
+};
+
+//typedef unique_ptr_wrapper<json_t>* json_p;
+
+typedef unique_ptr_wrapper<json_t> unique_ptr_wrapper_json_t;
+
+// opaque pointer
+// typedef unique_ptr_wrapper_json_t* json_p;
+typedef void* json_p;
 
 extern "C" {
-    //void* create_unique_ptr 
-    // void* make_input     ( char*   str        );
-    void*   json_create     ( char*   str        );
-    //void    process        ( void* p );
-    void    json_finalize       ( void* p );
+    json_p   json_create     ( char*   str        );
+    void    json_finalize   ( json_p p );
     
     void    query_init     ( char*   configfile );
-    void* query          ( void* input      );
+    json_p   query          ( json_p input      );
     void    query_finalize ( void               );
-    const char* get_output ( void* output );
+    const char* get_output ( json_p output );
 }
 
 using json = nlohmann::json;
@@ -32,25 +45,14 @@ SimilaritySearch* engine;
 
 Timer timer{};
 
-template<class T> 
-struct unique_ptr_wrapper {
-    unique_ptr<T> p_uniq; 
-
-    unique_ptr_wrapper( T* p ) : p_uniq(p) {}
     
-    unique_ptr_wrapper( unique_ptr<T>& p ) {
-	p_uniq = std::move(p);
-    }
-    
-};
-    
-void* json_create( char* str )
+json_p json_create( char* str )
 {
-    json_t* input = new json_t; 
-    *input = json::parse(str);
+    unique_ptr<json_t> input( new json_t ) ;
+    *(input.get()) = json::parse(str);
     
     unique_ptr_wrapper<json_t>* p1 = new unique_ptr_wrapper<json_t>(input);
-    return reinterpret_cast<void*>(p1);
+    return reinterpret_cast<json_p>(p1);
 }
 
 void json_finalize( void *p )
@@ -69,17 +71,17 @@ void query_init( char* configfile )
     timer.here_then_reset("Search engine loaded."); 
 }
 
-void* query( void* input )
+json_p query( json_p input )
 {
     auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(input);
-    cout << w->p_uniq.get()->dump(4) << endl;
-    json_t *answer = new json_t;  
-    *answer = engine->process_queries(*(w->p_uniq.get()));
+    cout << w->get()->dump(4) << endl;
+    unique_ptr<json_t> answer(new json_t );
+    *(answer.get()) = engine->process_queries(*(w->get()));
     cout << answer->dump(4) << endl;
     timer.here_then_reset("Query is answered.");
 
     unique_ptr_wrapper<json_t> *p2 = new unique_ptr_wrapper<json_t>( answer ) ;
-    return reinterpret_cast<void*>(p2);  
+    return reinterpret_cast<json_p>(p2);  
 }
 
 void query_finalize( void )
@@ -87,10 +89,10 @@ void query_finalize( void )
     delete engine;
 }
 
-const char* get_output( void* p )
+const char* get_output( json_p p )
 {
     auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(p);
-    json_t* output = w->p_uniq.get();
+    json_t* output = w->get();
     stringstream ss;
     ss << output->dump(4);
     const std::string& str = ss.str();
