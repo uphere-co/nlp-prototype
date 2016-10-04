@@ -14,11 +14,16 @@ using namespace std;
 
 
 extern "C" {
-    json_t* make_input     ( char*   str        );
+    //void* create_unique_ptr 
+    // void* make_input     ( char*   str        );
+    void*   json_create     ( char*   str        );
+    //void    process        ( void* p );
+    void    json_finalize       ( void* p );
+    
     void    query_init     ( char*   configfile );
-    json_t* query          ( json_t* input      );
+    void* query          ( void* input      );
     void    query_finalize ( void               );
-    const char* get_output ( json_t* output );
+    const char* get_output ( void* output );
 }
 
 using json = nlohmann::json;
@@ -27,27 +32,54 @@ SimilaritySearch* engine;
 
 Timer timer{};
 
-json_t* make_input( char* str )
+template<class T> 
+struct unique_ptr_wrapper {
+    unique_ptr<T> p_uniq; 
+
+    unique_ptr_wrapper( T* p ) : p_uniq(p) {}
+    
+    unique_ptr_wrapper( unique_ptr<T>& p ) {
+	p_uniq = std::move(p);
+    }
+    
+};
+    
+void* json_create( char* str )
 {
-    json_t* input = new json_t;  // very dangerous here.
+    json_t* input = new json_t; 
     *input = json::parse(str);
-    return input;
+    
+    unique_ptr_wrapper<json_t>* p1 = new unique_ptr_wrapper<json_t>(input);
+    return reinterpret_cast<void*>(p1);
 }
+
+void json_finalize( void *p )
+{
+    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>* >(p);
+    cout << "finalize called" << endl;    
+    delete w;
+}
+
 
 void query_init( char* configfile )
 {
     config = load_json(configfile);
     engine = new SimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
-    timer.here_then_reset("Search engine loaded.");     
+    timer.here_then_reset("Search engine loaded."); 
 }
 
-json_t* query( json_t* input )
+void* query( void* input )
 {
-    json_t* answer = new json_t;                 // very dangerous: memory leak.
-    *answer = engine->process_queries(*input);   // very dangerous here.
+    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(input);
+    cout << w->p_uniq.get()->dump(4) << endl;
+    json_t *answer = new json_t;  
+    *answer = engine->process_queries(*(w->p_uniq.get()));
+    cout << answer->dump(4) << endl;
     timer.here_then_reset("Query is answered.");
-    return answer;  
+
+    unique_ptr_wrapper<json_t> *p2 = new unique_ptr_wrapper<json_t>( answer ) ;
+    return reinterpret_cast<void*>(p2);  
 }
 
 void query_finalize( void )
@@ -55,8 +87,10 @@ void query_finalize( void )
     delete engine;
 }
 
-const char* get_output( json_t* output )
+const char* get_output( void* p )
 {
+    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(p);
+    json_t* output = w->p_uniq.get();
     stringstream ss;
     ss << output->dump(4);
     const std::string& str = ss.str();
