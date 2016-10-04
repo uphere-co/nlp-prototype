@@ -23,6 +23,7 @@ import           Data.UUID                                 (toString)
 import           Data.UUID.V4                              (nextRandom)
 import           Foreign.C.String
 import           Foreign.C.Types                           (CInt(..))
+import           Foreign.ForeignPtr
 import           Foreign.Ptr
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
 import           System.Directory
@@ -36,9 +37,9 @@ import           Util.Json
 
 --foreign import ccall "create_unique_ptr" c_create_unique_ptr :: IO (Ptr ())
 
-foreign import ccall "make_input"     c_make_input     :: CString -> IO Json_t
+foreign import ccall "initialize"     c_initialize    :: CString -> IO Json_t
 foreign import ccall "process"        c_process        :: Json_t -> IO ()
-foreign import ccall "myclose"        c_close          :: Json_t -> IO ()
+foreign import ccall "&finalize"      c_finalize          :: FunPtr (Json_t -> IO ())
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
@@ -56,9 +57,10 @@ queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
   bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> do
-    p <- c_make_input cstr
+    p <- c_initialize cstr
+    p' <- newForeignPtr c_finalize p  
     c_process p
-    c_close p 
+    -- c_close p 
 
 
 

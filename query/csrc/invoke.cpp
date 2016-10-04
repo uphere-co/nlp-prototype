@@ -16,9 +16,9 @@ using namespace std;
 extern "C" {
     //void* create_unique_ptr 
     // void* make_input     ( char*   str        );
-    void*   make_input     ( char*   str        );
+    void*   initialize     ( char*   str        );
     void    process        ( void* p );
-    void    myclose          ( void* p );
+    void    finalize       ( void* p );
     
     void    query_init     ( char*   configfile );
     json_t* query          ( json_t* input      );
@@ -49,7 +49,7 @@ struct unique_ptr_wrapper {
     
 };
     
-void* make_input( char* str )
+void* initialize( char* str )
 {
     unique_ptr<myclass> p( new myclass ) ;
     unique_ptr_wrapper<myclass>* p1;
@@ -80,7 +80,7 @@ void process (void * p )
     w->p_uniq.get()->quack();    
 }
 
-void myclose( void *p )
+void finalize( void *p )
 {
     auto w = reinterpret_cast<unique_ptr_wrapper<myclass>* >(p);
     
