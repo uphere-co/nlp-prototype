@@ -63,19 +63,21 @@ int main(int argc, char **argv){
 
     MSParaFile testFile{params.testFile};
     auto tag2 = LearnTag(testFile);
-
+    testFile.setBegin();
+    auto docs2 = LearnDocs(vocab, testFile);
+    
     std::vector<SpValue> values2;
     std::vector<real_t> kld2;
 
-    fillValue(values2, vocab, docs);
-    MakeTFKLD(params, kld, tag2, values2, vocab, docs);
+    fillValue(values2, vocab, docs2);
+    MakeTFKLD(params, kld, tag2, values2, vocab, docs2);
 
     n_rows = vocab.size();
-    n_cols = docs.size();
+    n_cols = docs2.size();
 
     sp_mat inMat2(n_rows, n_cols);
 
-    fillMat(values2, vocab, docs, inMat2);
+    fillMat(values2, vocab, docs2, inMat2);
 
     mat U2;
     vec s2;
@@ -83,19 +85,35 @@ int main(int argc, char **argv){
 
     svds(U2,s2,V2,inMat2,K_dim);
 
-    auto svec2 = makeSimMat(V);
+    auto svec2 = makeSimMat(V2);
 
     mParam *mparams;
     mparams = Do_Train(tag,svec);
 
-    std::vector<std::string> tag3;
-    tag3.push_back("+1");
-    std::vector<std::vector<float>> svec3;
-    svec3.push_back(svec2[0]);
+    int sum = 0;
+    int correct = 0;
+    int q;
     
+    std::vector<std::string> tag3;
+    std::vector<std::vector<float>> svec3;
+    for(int j=0;j<10;j++) {
+    for(int i=0;i<tag2.size();i++) {
+    tag3.push_back(tag2[i]);
+    svec3.push_back(svec2[i]);
     //mainPredict(tag2, svec2, mparams);
-    int q = onePredict(tag3, svec3, mparams);
-    std::cout << "q = " << q << std::endl;
+    q = onePredict(tag3, svec3, mparams);
+
+    if(q!=0) correct++;
+    sum++;
+
+    std::cout << i << std::endl;
+    tag3.clear();
+    svec3.clear();
+    }
+    }
+
+    std::cout << "Accuracy is " << correct/(double)sum << std::endl;
+    free(mparams);
     
     return 0;
 }

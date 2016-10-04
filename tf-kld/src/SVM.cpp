@@ -460,13 +460,10 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
         std::cout << "Wrong use of do_one_predict function.\n";
         exit(1);
     }
-    FILE *output;
     int correct = 0;
 	int total = 0;
 	double error = 0;
-	double sump = 0, sumt = 0, sumpp = 0, sumtt = 0, sumpt = 0;
-
-    output = fopen("KLD.output","w");
+	double sump = 0, sumt = 0, sumpp = 0, sumtt = 0, sumpt = 0;    
     
 	int nr_class=get_nr_class(model_);
 	double *prob_estimates=NULL;
@@ -489,10 +486,6 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
 		labels=(int *) malloc(nr_class*sizeof(int));
 		get_labels(model_,labels);
 		prob_estimates = (double *) malloc(nr_class*sizeof(double));
-		fprintf(output,"labels");
-		for(j=0;j<nr_class;j++)
-			fprintf(output," %d",labels[j]);
-		fprintf(output,"\n");
 		free(labels);
 	}
 
@@ -504,7 +497,6 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
 	{
 		int i = 0;
 		double target_label, predict_label;
-		char *idx, *val, *label, *endptr;
 		int inst_max_index = 0; // strtol gives 0 if wrong format
 
         target_label = atof(tag[p].c_str());
@@ -550,15 +542,10 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
 		{
 			int j;
 			predict_label = predict_probability(model_,x,prob_estimates);
-			fprintf(output,"%g",predict_label);
-			for(j=0;j<model_->nr_class;j++)
-				fprintf(output," %g",prob_estimates[j]);
-			fprintf(output,"\n");
 		}
 		else
 		{
 			predict_label = predict(model_,x);
-			fprintf(output,"%g\n",predict_label);
 		}
 
 		if(predict_label == target_label)
@@ -584,7 +571,8 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
 	if(flag_predict_probability)
 		free(prob_estimates);
 
-
+    free(prob_estimates);
+    
     return correct;
 }
 
@@ -834,6 +822,7 @@ int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &s
 	free(line);
 	free(x);
 
+    free(cargv);
     return result;
 }
 
