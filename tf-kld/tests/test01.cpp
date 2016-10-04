@@ -21,7 +21,7 @@ void runTFKLD_test01(Param const &params){
     auto vocab = LearnVocab(fin);
     timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
-    auto docs = LearnDocs(vocab,fin);
+    auto docs = LearnPairSentence(vocab,fin);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
@@ -98,7 +98,7 @@ void runTFKLD_test01(Param const &params){
     //auto vocab2 = ReadVocab(vocabread_in);
     auto vocab2 = vocab;
     
-    auto docs2 = LearnDocs(vocab2,fin2);
+    auto docs2 = LearnPairSentence(vocab2,fin2);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin2.setBegin();
     auto tag2 = LearnTag(fin2);

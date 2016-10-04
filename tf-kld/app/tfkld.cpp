@@ -26,6 +26,10 @@ int main(int argc, char **argv){
         ArgPass(argc, argv, params);
     }
 
+    Documents test_doc;
+
+    test_doc.a = 1;
+    std::cout << test_doc.a << std::endl;
 
     MSParaFile trainFile{params.trainFile};
     
@@ -33,7 +37,7 @@ int main(int argc, char **argv){
     
     auto vocab = LearnVocab(trainFile);
     trainFile.setBegin();
-    auto docs = LearnDocs(vocab,trainFile);
+    auto docs = LearnPairSentence(vocab,trainFile);
     trainFile.setBegin();
     auto tag = LearnTag(trainFile);
     
@@ -64,7 +68,7 @@ int main(int argc, char **argv){
     MSParaFile testFile{params.testFile};
     auto tag2 = LearnTag(testFile);
     testFile.setBegin();
-    auto docs2 = LearnDocs(vocab, testFile);
+    auto docs2 = LearnPairSentence(vocab, testFile);
     
     std::vector<SpValue> values2;
     std::vector<real_t> kld2;
@@ -114,6 +118,7 @@ int main(int argc, char **argv){
 
     std::cout << "Accuracy is " << correct/(double)sum << std::endl;
     free(mparams);
-    
+
+    Documents docum;
     return 0;
 }

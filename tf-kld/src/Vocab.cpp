@@ -6,7 +6,7 @@ using namespace util::io;
 using namespace tfkld::type;
 
 namespace tfkld{
-
+   
 std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
     std::vector<std::string> result;
     std::string word{""};
@@ -91,7 +91,7 @@ vocab_t LearnVocab(MSParaFile &file) {
   return vocab;
 }
     
-doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
+doc_t LearnPairSentence(vocab_t &vocab, MSParaFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
@@ -158,6 +158,48 @@ doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
     return docs;
 }
 
+doc_t LearnSentence(vocab_t &vocab, MSParaFile &file) {
+    std::string line;
+    doc_t docs;
+    hashmap_t doc;
+    int64_t count = 0;
+
+    std::getline(file.val, line);
+    while (std::getline(file.val, line)) {
+        count++;
+        if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+        
+        std::istringstream iss{line};
+        
+        std::vector<std::string> words = util::string::split(line);
+        std::vector<std::string> unigram_words = MakeNGrams(words,1);
+        std::vector<std::string> bigram_words = MakeNGrams(words,2);
+        
+        for(auto x : unigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+        
+        for(auto x : bigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+
+        docs.push_back(doc);
+        doc.clear();
+
+    }
+
+    return docs;
+}
+
+    
 std::vector<std::string> LearnTag(MSParaFile &file) {
     std::string line;
     int64_t count = 0;

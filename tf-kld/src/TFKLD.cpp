@@ -79,7 +79,7 @@ void runTransductive(Param const &params) {
     auto vocab = LearnVocab(fin);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
-    auto docs = LearnDocs(vocab,fin);
+    auto docs = LearnPairSentence(vocab,fin);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
@@ -88,7 +88,7 @@ void runTransductive(Param const &params) {
     int64_t tdocs = docs.size();
     
     auto vocab2 = vocab;
-    auto docs2 = LearnDocs(vocab2,fin2);
+    auto docs2 = LearnPairSentence(vocab2,fin2);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin2.setBegin();
     auto tag2 = LearnTag(fin2);
@@ -224,7 +224,7 @@ void runInductive(Param const &params) {
     auto vocab = LearnVocab(fin);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
-    auto docs = LearnDocs(vocab,fin);
+    auto docs = LearnPairSentence(vocab,fin);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
@@ -301,7 +301,7 @@ void runInductive(Param const &params) {
     //auto vocab2 = ReadVocab(vocabread_in);
     auto vocab2 = vocab;
     
-    auto docs2 = LearnDocs(vocab2,fin2);
+    auto docs2 = LearnPairSentence(vocab2,fin2);
     if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin2.setBegin();
     auto tag2 = LearnTag(fin2);
