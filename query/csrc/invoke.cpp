@@ -24,12 +24,13 @@ public:
 //typedef unique_ptr_wrapper<json_t>* json_p;
 
 typedef unique_ptr_wrapper<json_t> unique_ptr_wrapper_json_t;
+   // opaque pointer
+//   typedef struct unique_ptr_wrapper_json_t unique_ptr_wrapper_json_t;
+   typedef unique_ptr_wrapper_json_t* json_p;
 
-// opaque pointer
-// typedef unique_ptr_wrapper_json_t* json_p;
-typedef void* json_p;
 
 extern "C" {
+    
     json_p      json_create    ( char*  str    );
     void        json_finalize  ( json_p p      );
     const char* json_serialize ( json_p output );
@@ -51,21 +52,19 @@ json_p json_create( char* str )
     unique_ptr<json_t> input( new json_t ) ;
     *(input.get()) = json::parse(str);
     
-    unique_ptr_wrapper<json_t>* p1 = new unique_ptr_wrapper<json_t>(input);
-    return reinterpret_cast<json_p>(p1);
+    return new unique_ptr_wrapper<json_t>(input);
+    //return reinterpret_cast<json_p>(p1);
+    //return p1;
 }
 
-void json_finalize( void *p )
+void json_finalize( json_p p )
 {
-    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>* >(p);
-    //cout << "finalize called" << endl;    
-    delete w;
+    delete p;
 }
 
 const char* json_serialize( json_p p )
 {
-    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(p);
-    json_t* output = w->get();
+    json_t* output = p->get();
     stringstream ss;
     ss << output->dump(4);
     const std::string& str = ss.str();
@@ -84,15 +83,11 @@ void query_init( char* configfile )
 
 json_p query( json_p input )
 {
-    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(input);
-    // cout << w->get()->dump(4) << endl;
     unique_ptr<json_t> answer(new json_t );
-    *(answer.get()) = engine->process_queries(*(w->get()));
-    // cout << answer->dump(4) << endl;
+    *(answer.get()) = engine->process_queries(*(input->get()));
+    //unique_ptr<json_t> answer( engine->process_queries(*(input->get()) )) ;
     timer.here_then_reset("Query is answered.");
-
-    unique_ptr_wrapper<json_t> *p2 = new unique_ptr_wrapper<json_t>( answer ) ;
-    return reinterpret_cast<json_p>(p2);  
+    return new unique_ptr_wrapper<json_t>( answer ) ;
 }
 
 void query_finalize( void )
