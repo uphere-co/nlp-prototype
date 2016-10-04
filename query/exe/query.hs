@@ -35,15 +35,14 @@ import           Type
 import           Util.Json
 
 
---foreign import ccall "create_unique_ptr" c_create_unique_ptr :: IO (Ptr ())
+foreign import ccall "json_create"    c_json_create   :: CString -> IO Json_t
+foreign import ccall "&json_finalize" c_json_finalize :: FunPtr (Json_t -> IO ())
+foreign import ccall "json_serialize" c_json_serialize :: Json_t -> IO CString
 
-foreign import ccall "json_create"     c_json_create    :: CString -> IO Json_t
--- foreign import ccall "process"        c_process        :: Json_t -> IO ()
-foreign import ccall "&json_finalize"      c_json_finalize          :: FunPtr (Json_t -> IO ())
+
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
-foreign import ccall "get_output"     c_get_output     :: Json_t -> IO CString
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 type Json = ForeignPtr RawJson
@@ -57,8 +56,8 @@ json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 query :: Json -> IO Json
 query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 
-getOutput :: Json -> IO CString
-getOutput p = withForeignPtr p c_get_output 
+json_serialize :: Json -> IO CString
+json_serialize p = withForeignPtr p c_json_serialize
 
 writeProcessId :: Process ()
 writeProcessId = do
@@ -70,8 +69,8 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
-  bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> 
-    json_create cstr >>= query >>= getOutput >>= unsafePackCString
+  bstr' <- liftIO $ B.useAsCString bstr $ 
+    json_create >=> query >=> json_serialize >=> unsafePackCString
   sendChan sc (BL.fromStrict bstr')
   return ()
   

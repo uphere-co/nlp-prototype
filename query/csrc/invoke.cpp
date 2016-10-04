@@ -30,13 +30,13 @@ typedef unique_ptr_wrapper<json_t> unique_ptr_wrapper_json_t;
 typedef void* json_p;
 
 extern "C" {
-    json_p   json_create     ( char*   str        );
-    void    json_finalize   ( json_p p );
+    json_p      json_create    ( char*  str    );
+    void        json_finalize  ( json_p p      );
+    const char* json_serialize ( json_p output );
     
-    void    query_init     ( char*   configfile );
-    json_p   query          ( json_p input      );
-    void    query_finalize ( void               );
-    const char* get_output ( json_p output );
+    void        query_init     ( char*   configfile );
+    json_p      query          ( json_p input      );
+    void        query_finalize ( void               );
 }
 
 using json = nlohmann::json;
@@ -58,10 +58,21 @@ json_p json_create( char* str )
 void json_finalize( void *p )
 {
     auto w = reinterpret_cast<unique_ptr_wrapper<json_t>* >(p);
-    cout << "finalize called" << endl;    
+    //cout << "finalize called" << endl;    
     delete w;
 }
 
+const char* json_serialize( json_p p )
+{
+    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(p);
+    json_t* output = w->get();
+    stringstream ss;
+    ss << output->dump(4);
+    const std::string& str = ss.str();
+    char* n_str= new char[str.size()+1];   // memory leak
+    strcpy (n_str, str.c_str() ); 
+    return n_str;
+}
 
 void query_init( char* configfile )
 {
@@ -74,10 +85,10 @@ void query_init( char* configfile )
 json_p query( json_p input )
 {
     auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(input);
-    cout << w->get()->dump(4) << endl;
+    // cout << w->get()->dump(4) << endl;
     unique_ptr<json_t> answer(new json_t );
     *(answer.get()) = engine->process_queries(*(w->get()));
-    cout << answer->dump(4) << endl;
+    // cout << answer->dump(4) << endl;
     timer.here_then_reset("Query is answered.");
 
     unique_ptr_wrapper<json_t> *p2 = new unique_ptr_wrapper<json_t>( answer ) ;
@@ -89,15 +100,4 @@ void query_finalize( void )
     delete engine;
 }
 
-const char* get_output( json_p p )
-{
-    auto w = reinterpret_cast<unique_ptr_wrapper<json_t>*>(p);
-    json_t* output = w->get();
-    stringstream ss;
-    ss << output->dump(4);
-    const std::string& str = ss.str();
-    char* n_str= new char[str.size()+1];   // memory leak
-    strcpy (n_str, str.c_str() ); 
-    return n_str;
-}
 
