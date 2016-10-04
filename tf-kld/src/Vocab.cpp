@@ -91,7 +91,7 @@ vocab_t LearnVocab(MSParaFile &file) {
   return vocab;
 }
     
-doc_t LearnPara(vocab_t &vocab, MSParaFile &file) {
+doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
     std::string line;
     doc_t docs;
     hashmap_t doc;
@@ -198,26 +198,48 @@ void PrintVocab(vocab_t &vocab){
     for(auto x : vocab) std::cout << x.first << std::endl;
 }
 
-auto getVocabWord(vocab_t &vocab) {
+std::vector<std::string> getVocabWord(vocab_t &vocab) {
     std::vector<std::string> result;
     for(auto x : vocab) result.push_back(x.first);
     return result;
 }
 
-auto getVocabIndex(vocab_t &vocab) {
+std::vector<int64_t> getVocabIndex(vocab_t &vocab) {
     std::vector<int64_t> result;
     for(auto x : vocab) result.push_back(x.second);
     return result;
 }
 
-auto Concat(std::vector<std::string> const &words){
-    std::vector<char> vec;
-    for(auto const &x:words){
-        std::copy(x.cbegin(),x.cend(),std::back_inserter(vec));
-        vec.push_back('\0');
+std::vector<std::vector<int64_t>> getDocsIndex(doc_t &docs) {
+    std::vector<std::vector<int64_t>> result;
+    std::vector<int64_t> doc;
+
+    for(auto x : docs) {
+        for(auto y : x) {
+            doc.push_back(y.first);
+        }
+        result.push_back(doc);
+        doc.clear();
     }
-    return vec;
+
+    return result;
 }
 
+
+
+std::vector<std::vector<int>> getDocsCount(doc_t &docs) {
+    std::vector<std::vector<int>> result;
+    std::vector<int> doc;
+
+    for(auto x : docs) {
+        for(auto y : x) {
+            doc.push_back(y.second);
+        }
+        result.push_back(doc);
+        doc.clear();
+    }
+
+    return result;
+}
     
 }//namespace tfkld

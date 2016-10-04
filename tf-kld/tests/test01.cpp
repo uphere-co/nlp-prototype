@@ -1,25 +1,27 @@
 #include "tests/test01.h"
 
-void runTFKLD_test01(){
+namespace tfkld{
+namespace test{
+
+void runTFKLD_test01(Param const &params){
 
     using namespace util;
     using namespace util::io;
     using namespace tfkld;
+    using namespace tfkld::type;
     using namespace arma;
 
     auto timer = Timer{};
 
-    Param params;
+    int K_dim = params.kdim;
     
-    int K_dim = 100;
-    
-    std::string fin_name = "Tk_msr_paraphrase_train.txt";
+    std::string fin_name = params.trainFile;
     MSParaFile fin{fin_name};
 
     auto vocab = LearnVocab(fin);
     timer.here_then_reset("\nConstructed Vocabulary.\n");
     fin.setBegin();
-    auto docs = LearnPara(vocab,fin);
+    auto docs = LearnDocs(vocab,fin);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin.setBegin();
     auto tag = LearnTag(fin);
@@ -32,8 +34,8 @@ void runTFKLD_test01(){
     sp_mat inMat(n_rows, n_cols);
 
     std::vector<SpValue> values;
-    std::vector<float_t> idf;
-    std::vector<float_t> kld;
+    std::vector<real_t> idf;
+    std::vector<real_t> kld;
 
     fillValue(values, vocab, docs);
     MakeTFKLD(params, kld, tag, values, vocab, docs);
@@ -81,13 +83,13 @@ void runTFKLD_test01(){
     }
 
     for(auto x : kld) {
-        kld_out << x << std::endl;
+        kld_out << pow(x,params.power) << std::endl;
     }    
     
     vocab_out.close();
     kld_out.close();
 
-    std::string fin_name2 = "Tk_msr_paraphrase_test.txt";
+    std::string fin_name2 = params.testFile;
     MSParaFile fin2{fin_name2};
 
     std::string vocabread_filename = "vocab.dat";
@@ -96,7 +98,7 @@ void runTFKLD_test01(){
     //auto vocab2 = ReadVocab(vocabread_in);
     auto vocab2 = vocab;
     
-    auto docs2 = LearnPara(vocab2,fin2);
+    auto docs2 = LearnDocs(vocab2,fin2);
     timer.here_then_reset("\nConstructed Paragraphs.\n");
     fin2.setBegin();
     auto tag2 = LearnTag(fin2);
@@ -151,3 +153,6 @@ void runTFKLD_test01(){
     fout2.close();
     
 }
+
+}//namespace test
+}//namespace tfkld

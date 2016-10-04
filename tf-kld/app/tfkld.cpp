@@ -6,13 +6,13 @@
 #include "tests/test01.h"
 #include "tests/test02.h"
 
+#include "utils/h5io.h"
 #include "utils/help.h"
 
 int main(int argc, char **argv){
-    
-    using namespace util;
-    using namespace util::io;
+
     using namespace tfkld;
+    using namespace tfkld::test;
     using namespace tfkld::util;
     using namespace arma;
     using namespace tfkld::svm;
@@ -27,10 +27,8 @@ int main(int argc, char **argv){
     } else {
         ArgPass(argc, argv, params);
     }
-    
-    //runTFKLD_test01(); // Inductive Learning
-    //runTFKLD_test02(params); // Transductive Learning
 
+<<<<<<< 3dcbfb3f4cb078227736131549a3b05596e1c6ee
     ////////////////////////////////////////////
 
     std::vector<std::string> tag{"+1","-1","+1","-1"};
@@ -56,6 +54,17 @@ int main(int argc, char **argv){
         n=(mparams -> nr_feature)+1;
     else
         n=(mparams -> nr_feature);
+=======
+    MSParaFile fin{"train.txt"};
+    vocab_t vocab = LearnVocab(fin);
+    fin.setBegin();
+    doc_t docs = LearnDocs(vocab, fin);
+
+    //runTFKLD(params);
+
+    //writeVocabH5(vocab);
+    writeDocsH5(docs);
+>>>>>>> Now HDF5 can write Docs. H5-writing function for it is also implemented.
     
     int w_size = n;
     int nr_w;
@@ -64,8 +73,7 @@ int main(int argc, char **argv){
     else
         nr_w=mparams->nr_class;
 
-    ///////////////////////////////////////////
-
     mainPredict(tag, svec, mparams);
+
     return 0;
 }
