@@ -46,6 +46,15 @@ foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "get_output"     c_get_output     :: Json_t -> IO CString
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
+type Json = ForeignPtr RawJson
+
+initialize :: CString -> IO Json
+initialize cstr = c_initialize cstr >>= newForeignPtr c_finalize
+
+process :: Json -> IO ()
+process p = withForeignPtr p c_process
+
+
 writeProcessId :: Process ()
 writeProcessId = do
   us <- getSelfPid
@@ -56,14 +65,8 @@ queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
-  bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> do
-    p <- c_initialize cstr
-    p' <- newForeignPtr c_finalize p  
-    c_process p
-    -- c_close p 
-
-
-
+  bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> 
+    initialize cstr >>= process 
     -- >>= c_query >>= c_get_output >>= unsafePackCString
   -- sendChan sc (BL.fromStrict bstr')
   return ()
