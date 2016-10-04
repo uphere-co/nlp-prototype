@@ -37,9 +37,9 @@ import           Util.Json
 
 --foreign import ccall "create_unique_ptr" c_create_unique_ptr :: IO (Ptr ())
 
-foreign import ccall "initialize"     c_initialize    :: CString -> IO Json_t
-foreign import ccall "process"        c_process        :: Json_t -> IO ()
-foreign import ccall "&finalize"      c_finalize          :: FunPtr (Json_t -> IO ())
+foreign import ccall "json_create"     c_json_create    :: CString -> IO Json_t
+-- foreign import ccall "process"        c_process        :: Json_t -> IO ()
+foreign import ccall "&json_finalize"      c_json_finalize          :: FunPtr (Json_t -> IO ())
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
@@ -48,12 +48,17 @@ foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 type Json = ForeignPtr RawJson
 
-initialize :: CString -> IO Json
-initialize cstr = c_initialize cstr >>= newForeignPtr c_finalize
+json_create :: CString -> IO Json
+json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
-process :: Json -> IO ()
-process p = withForeignPtr p c_process
+-- process :: Json -> IO ()
+-- process p = withForeignPtr p c_process
 
+query :: Json -> IO Json
+query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
+
+getOutput :: Json -> IO CString
+getOutput p = withForeignPtr p c_get_output 
 
 writeProcessId :: Process ()
 writeProcessId = do
@@ -66,9 +71,8 @@ queryWorker sc q = do
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
   bstr' <- liftIO $ B.useAsCString bstr $ \cstr -> 
-    initialize cstr >>= process 
-    -- >>= c_query >>= c_get_output >>= unsafePackCString
-  -- sendChan sc (BL.fromStrict bstr')
+    json_create cstr >>= query >>= getOutput >>= unsafePackCString
+  sendChan sc (BL.fromStrict bstr')
   return ()
   
 server :: Process ()
@@ -76,15 +80,6 @@ server = do
   writeProcessId
   whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
 
-  {- 
-withTempFile :: (MonadIO m) => (FilePath -> m a) -> m a
-withTempFile f = do
-  tmp <- liftIO getTemporaryDirectory
-  uuid <- liftIO nextRandom
-  liftIO $ print uuid
-  let tmpfile = tmp </> (toString uuid) <.> "json"
-  f tmpfile
--}
 
 makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
