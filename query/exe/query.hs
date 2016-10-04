@@ -50,9 +50,6 @@ type Json = ForeignPtr RawJson
 json_create :: CString -> IO Json
 json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
--- process :: Json -> IO ()
--- process p = withForeignPtr p c_process
-
 query :: Json -> IO Json
 query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 
