@@ -62,7 +62,10 @@ int main(int argc, char **argv){
     document2.LearnTag(testFile);
     
     fillValue(document2);
-    MakeTFKLD(params, document2);
+    document2.kld = document.kld; // This should be preceded.
+    MakeTFKLD_without_calculating_KLD(params, document2);
+    // Note that this function does not check that KLD comes from other document set.
+    // Name is just for documentation purpose.
     fillMat(document2,inMat2);
 
     svds(U2,s2,V2,inMat2,K_dim);
@@ -75,14 +78,17 @@ int main(int argc, char **argv){
     int sum = 0;
     int correct = 0;
     int q;
-    
+
+
+    //mainPredict(document2.tag, svec2, mparams);
+
+    /*
     std::vector<std::string> tag3;
     std::vector<std::vector<float>> svec3;
     for(int j=0;j<1;j++) {
     for(int i=0;i<document2.tag.size();i++) {
     tag3.push_back(document2.tag[i]);
     svec3.push_back(svec2[i]);
-    //mainPredict(tag2, svec2, mparams);
     q = onePredict(tag3, svec3, mparams);
 
     if(q!=0) correct++;
@@ -96,6 +102,6 @@ int main(int argc, char **argv){
 
     std::cout << "Accuracy is " << correct/(double)sum << std::endl;
     free(mparams);
-
+    */
     return 0;
 }

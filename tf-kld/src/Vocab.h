@@ -23,7 +23,12 @@ struct MSParaFile{
 };
 
 class Documents {
+
 public:
+  Documents():
+    K_dim(100) {};
+
+    
     vocab_t vocab;
     doc_t docs;
     tag_t tag;

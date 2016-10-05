@@ -66,6 +66,10 @@ void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<SpValu
         
 }
 
+void MakeTFKLD_without_calculating_KLD(Param const &params, Documents &document) {
+    for(auto &x : document.values) x.val *= pow(document.kld[x.row], params.power);
+}
+
     /*
 void runTransductive(Param const &params) {
     auto timer = Timer{};
