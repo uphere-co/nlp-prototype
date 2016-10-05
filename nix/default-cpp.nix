@@ -162,9 +162,9 @@ rec {
       name = "json-${version}";
       version = "2.0.4";
       src = fetchgit {
-        url = "https://github.com/nlohmann/json.git";
-        rev = "24c588cd258d7d600e4c46caee18d01092d3a212";
-        sha256 = "14a4dmgw1sz4z3w8nh40yawwx23zls73vfnd2pva0xc27hdb7xq5";
+        url = "https://github.com/jihuni/json.git";
+        rev = "62a670abbf1f9fe56fdfd02b9ae44c05b3382149";
+        sha256 = "11qsnamijjiy7w1xfzka8scy1cymxpargvpprf7fmyj881s5and5";
       };
       buildInputs = [ cmake ];
       cmakeFlags = [ ];
