@@ -46,12 +46,13 @@ void fillMat(Documents &document, arma::sp_mat &mat) {
 
 arma::mat mapSentoLatent(std::string sen, Documents &document) {
     Documents resultDocs;
+    resultDocs = document;
+
     hashmap_t doc = document.makeSentoDoc(sen);
 
-    resultDocs.K_dim = document.K_dim;
-    resultDocs.vocab = document.vocab;
     resultDocs.docs.push_back(doc);
-
+    resultDocs.values.clear();
+    
     fillValue(resultDocs);
     arma::sp_mat inMat;
     fillMat(resultDocs,inMat);
@@ -61,7 +62,8 @@ arma::mat mapSentoLatent(std::string sen, Documents &document) {
 
     arma::svds(U,s,V,inMat,resultDocs.K_dim);
 
-    return V;
+    int V_last_row = V.n_rows - 1;
+    return V.row(V_last_row);
 }
 
     

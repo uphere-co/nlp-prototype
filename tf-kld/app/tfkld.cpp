@@ -3,6 +3,7 @@
 #include "src/TFKLD.h"
 #include "src/Type.h"
 #include "src/SVM.h"
+#include "src/Query.h"
 
 #include "utils/h5io.h"
 #include "utils/help.h"
@@ -44,9 +45,8 @@ int main(int argc, char **argv){
     MakeTFKLD(params, document);
     fillMat(document, inMat);
     
-    svds(U,s,V,inMat,K_dim);
-
-    auto svec = makeSimMat(V);
+    /////////////////svds(U,s,V,inMat,K_dim);
+    /////////////////auto svec = makeSimMat(V);
 
 
 
@@ -68,9 +68,8 @@ int main(int argc, char **argv){
     // Name is just for documentation purpose.
     fillMat(document2,inMat2);
 
-    svds(U2,s2,V2,inMat2,K_dim);
-
-    auto svec2 = makeSimMat(V2);
+    //////////////svds(U2,s2,V2,inMat2,K_dim);
+    //////////////auto svec2 = makeSimMat(V2);
 
     //mParam *mparams;
     //mparams = Do_Train(document.tag,svec);
@@ -79,11 +78,10 @@ int main(int argc, char **argv){
     int correct = 0;
     int q;
 
+    //auto k_word = mapSentoLatent("hello my world", document);
 
-    auto k_word = mapSentoLatent("hello my world", document);
+    searchSentence(document, "hello my world");
 
-    k_word.print("k_word = ");
-   
     //mainPredict(document2.tag, svec2, mparams);
 
     /*
