@@ -33,7 +33,7 @@ add_executable(tfkld app/tfkld
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
                ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
-               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/SVM
+               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/SVM src/Query
                utils/help utils/h5io)
 target_link_libraries(tfkld hdf5_cpp hdf5_hl_cpp tbb armadillo openblas linear)
 
@@ -41,7 +41,7 @@ add_executable(math app/math
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
                ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
                ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
-               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF
+               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/Query
                tests/testMath
                utils/h5io)
 target_link_libraries(math hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)

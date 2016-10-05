@@ -72,14 +72,18 @@ int main(int argc, char **argv){
 
     auto svec2 = makeSimMat(V2);
 
-    mParam *mparams;
-    mparams = Do_Train(document.tag,svec);
+    //mParam *mparams;
+    //mparams = Do_Train(document.tag,svec);
 
     int sum = 0;
     int correct = 0;
     int q;
 
 
+    auto k_word = mapSentoLatent("hello my world", document);
+
+    k_word.print("k_word = ");
+   
     //mainPredict(document2.tag, svec2, mparams);
 
     /*

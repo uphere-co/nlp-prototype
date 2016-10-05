@@ -96,6 +96,7 @@ void Documents::LearnPairSentence(MSParaFile &file) {
     std::string line;
     hashmap_t doc;
     int64_t count = 0;
+    int64_t word_idx = 0;
     std::vector<std::string> items;
 
     //Reset the filestream cursor
@@ -164,6 +165,7 @@ void Documents::LearnSentence(MSParaFile &file) {
     std::string line;
     hashmap_t doc;
     int64_t count = 0;
+    int64_t word_idx = 0;
 
     //Reset the filestream cursor
     file.setBegin();
@@ -236,6 +238,35 @@ void Documents::ReadVocab(std::ifstream &vocab_file) {
         vocab[word] = index;
     }
 }
+
+hashmap_t Documents::makeSentoDoc(std::string sen) {
+    hashmap_t doc;
+
+    int64_t word_idx = 0;
+    
+    std::vector<std::string> words = util::string::split(sen);
+    std::vector<std::string> unigram_words = MakeNGrams(words,1);
+    std::vector<std::string> bigram_words = MakeNGrams(words,2);
+    
+    for(auto x : unigram_words) {
+        auto it = vocab.find(x);
+        if(it != vocab.end()) {   
+            auto word_idx = it -> second;
+            doc[word_idx] += 1;
+        }
+    }
+    
+    for(auto x : bigram_words) {
+        auto it = vocab.find(x);
+        if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+        }
+    }
+
+    return doc;
+}
+
     
 void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;

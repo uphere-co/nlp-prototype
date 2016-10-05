@@ -43,6 +43,27 @@ void fillMat(Documents &document, arma::sp_mat &mat) {
 
     mat = std::move( arma::sp_mat(location, value) );
 }
+
+arma::mat mapSentoLatent(std::string sen, Documents &document) {
+    Documents resultDocs;
+    hashmap_t doc = document.makeSentoDoc(sen);
+
+    resultDocs.K_dim = document.K_dim;
+    resultDocs.vocab = document.vocab;
+    resultDocs.docs.push_back(doc);
+
+    fillValue(resultDocs);
+    arma::sp_mat inMat;
+    fillMat(resultDocs,inMat);
+    arma::mat U;
+    arma::vec s;
+    arma::mat V;
+
+    arma::svds(U,s,V,inMat,resultDocs.K_dim);
+
+    return V;
+}
+
     
 std::vector<std::vector<real_t> > makeSimMat(arma::mat const &V) {
 

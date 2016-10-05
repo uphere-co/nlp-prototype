@@ -44,6 +44,7 @@ void LearnPairSentence(MSParaFile &file);
 void LearnSentence(MSParaFile &file);
 void LearnTag(MSParaFile &file);
 void ReadVocab(std::ifstream &vocab_file);
+hashmap_t makeSentoDoc(std::string sen);
 void PrintVocab();
 };
  

@@ -70,55 +70,21 @@ void MakeTFKLD_without_calculating_KLD(Param const &params, Documents &document)
     for(auto &x : document.values) x.val *= pow(document.kld[x.row], params.power);
 }
 
-    /*
-void runTransductive(Param const &params) {
+
+void runTransductive(Param const &params, Documents &doc_train, Documents &doc_test) {
     auto timer = Timer{};
 
-    int K_dim = params.kdim;
+    int64_t tdocs = doc_train.docs.size();
 
-    std::string fin_name = params.trainFile;
-    MSParaFile fin{fin_name};
+    doc_train.docs.insert( doc_train.docs.end(), doc_test.docs.begin(), doc_test.docs.end() );
 
-    std::string fin_name2 = params.testFile;
-    MSParaFile fin2{fin_name2};
-    
-    auto vocab = LearnVocab(fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Vocabulary.\n");
-    fin.setBegin();
-    auto docs = LearnPairSentence(vocab,fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
-    fin.setBegin();
-    auto tag = LearnTag(fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Tag.\n");
+    doc_train.values.clear();
+    fillValue(doc_train);
+    MakeTFKLD(params, doc_train);
 
-    int64_t tdocs = docs.size();
-    
-    auto vocab2 = vocab;
-    auto docs2 = LearnPairSentence(vocab2,fin2);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
-    fin2.setBegin();
-    auto tag2 = LearnTag(fin2);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Tag.\n");
+    sp_mat inMat;
 
-    std::vector<SpValue> values;
-    std::vector<real_t> kld;
-
-    fillValue(values, vocab, docs);
-    MakeTFKLD(params, kld, tag, values, vocab, docs);
-
-    docs.insert( docs.end(), docs2.begin(), docs2.end() );
-
-    values.clear();
-    fillValue(values, vocab, docs);
-    MakeTFKLD(params, kld, values);
-
-    int64_t n_rows, n_cols;
-    n_rows = vocab.size();
-    n_cols = docs.size();
-
-    sp_mat inMat(n_rows, n_cols);
-
-    fillMat(values, vocab, docs, inMat);
+    fillMat(doc_train, inMat);
 
     if(params.verbose == 1) timer.here_then_reset("Filled the Matrix.\n");
     
@@ -126,7 +92,7 @@ void runTransductive(Param const &params) {
     vec s;
     mat V;
 
-    svds(U,s,V,inMat,K_dim);
+    svds(U,s,V,inMat,doc_train.K_dim);
 
     if(params.verbose == 1) timer.here_then_reset("SVD is complete.\n");
 
@@ -140,7 +106,7 @@ void runTransductive(Param const &params) {
     int lcount = 1;
     
     for(int i = 0; i < tdocs/2; i++) {
-        fout << tag[count] << " ";
+        fout << doc_train.tag[count] << " ";
         for(auto y : svec[i]) {
             fout << lcount << ":" << y << " ";
             lcount++;
@@ -152,34 +118,11 @@ void runTransductive(Param const &params) {
 
     if(params.verbose == 1) timer.here_then_reset("Writing Similarity Vectors is Done.\n");
 
-    std::string vocab_filename = "vocab.dat";
-    std::ofstream vocab_out{vocab_filename};
+    sp_mat inMat2;
 
-    std::string kld_filename = "kld.dat";
-    std::ofstream kld_out{kld_filename};
-    
-    for(auto x : vocab) {
-        vocab_out << x.first << " " << x.second << std::endl;
-    }
-
-    for(auto x : kld) {
-        kld_out << pow(x,params.power) << std::endl;
-    }    
-    
-    vocab_out.close();
-    kld_out.close();
-
-    int64_t n_rows2, n_cols2;
-    n_rows2 = vocab2.size();
-    n_cols2 = docs2.size();
-
-    sp_mat inMat2(n_rows2, n_cols2);
-
-    std::vector<SpValue> values2;
-
-    fillValue(values2, vocab2, docs2);
-    MakeTFKLD(params, kld, values2);
-    fillMat(values2, vocab2, docs2, inMat2);
+    fillValue(doc_test);
+    MakeTFKLD_without_calculating_KLD(params, doc_test);
+    fillMat(doc_test, inMat2);
     
     if(params.verbose == 1) timer.here_then_reset("Filled the Matrix.\n");
 
@@ -187,7 +130,7 @@ void runTransductive(Param const &params) {
     vec s2;
     mat V2;
 
-    svds(U2,s2,V2,inMat2,K_dim);
+    svds(U2,s2,V2,inMat2,doc_test.K_dim);
 
     if(params.verbose == 1) timer.here_then_reset("SVD is complete.\n");
 
@@ -201,7 +144,7 @@ void runTransductive(Param const &params) {
     lcount = 1;
 
     for(auto x : svec2) {
-        fout2 << tag2[count] << " ";
+        fout2 << doc_test.tag[count] << " ";
         for(auto y : x) {
             fout2 << lcount << ":" << y << " ";
             lcount++;
@@ -218,37 +161,15 @@ void runTransductive(Param const &params) {
     
 }
 
-void runInductive(Param const &params) {
+void runInductive(Param const &params, Documents &doc_train, Documents &doc_test) {
 
     auto timer = Timer{};
 
-    int K_dim = params.kdim;
-    
-    std::string fin_name = params.trainFile;
-    MSParaFile fin{fin_name};
+    sp_mat inMat;
 
-    auto vocab = LearnVocab(fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Vocabulary.\n");
-    fin.setBegin();
-    auto docs = LearnPairSentence(vocab,fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
-    fin.setBegin();
-    auto tag = LearnTag(fin);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Tag.\n");
-    
-    int64_t n_rows, n_cols;
-    n_rows = vocab.size();
-    n_cols = docs.size();
-
-    sp_mat inMat(n_rows, n_cols);
-
-    std::vector<SpValue> values;
-    std::vector<real_t> idf;
-    std::vector<real_t> kld;
-
-    fillValue(values, vocab, docs);
-    MakeTFKLD(params, kld, tag, values, vocab, docs);
-    fillMat(values, vocab, docs, inMat);
+    fillValue(doc_train);
+    MakeTFKLD(params, doc_train);
+    fillMat(doc_train, inMat);
 
     if(params.verbose == 1) timer.here_then_reset("Filled the Matrix.\n");
     
@@ -256,7 +177,7 @@ void runInductive(Param const &params) {
     vec s;
     mat V;
 
-    svds(U,s,V,inMat,K_dim);
+    svds(U,s,V,inMat,doc_train.K_dim);
 
     if(params.verbose == 1) timer.here_then_reset("SVD is complete.\n");
 
@@ -269,7 +190,7 @@ void runInductive(Param const &params) {
     int64_t count{0};
     int lcount = 1;
     for(auto x : svec) {
-        fout << tag[count] << " ";
+        fout << doc_train.tag[count] << " ";
         for(auto y : x) {
             fout << lcount << ":" << y << " ";
             lcount++;
@@ -281,49 +202,11 @@ void runInductive(Param const &params) {
 
     if(params.verbose == 1) timer.here_then_reset("Writing Similarity Vectors is Done.\n");
 
-    std::string vocab_filename = "vocab.dat";
-    std::ofstream vocab_out{vocab_filename};
+    sp_mat inMat2;
 
-    std::string kld_filename = "kld.dat";
-    std::ofstream kld_out{kld_filename};
-    
-    for(auto x : vocab) {
-        vocab_out << x.first << " " << x.second << std::endl;
-    }
-
-    for(auto x : kld) {
-        kld_out << pow(x,params.power) << std::endl;
-    }    
-    
-    vocab_out.close();
-    kld_out.close();
-
-    std::string fin_name2 = params.testFile;
-    MSParaFile fin2{fin_name2};
-
-    std::string vocabread_filename = "vocab.dat";
-    std::ifstream vocabread_in{vocabread_filename};
-
-    //auto vocab2 = ReadVocab(vocabread_in);
-    auto vocab2 = vocab;
-    
-    auto docs2 = LearnPairSentence(vocab2,fin2);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Paragraphs.\n");
-    fin2.setBegin();
-    auto tag2 = LearnTag(fin2);
-    if(params.verbose == 1) timer.here_then_reset("\nConstructed Tag.\n");
-
-    int64_t n_rows2, n_cols2;
-    n_rows2 = vocab2.size();
-    n_cols2 = docs2.size();
-
-    sp_mat inMat2(n_rows2, n_cols2);
-
-    std::vector<SpValue> values2;
-
-    fillValue(values2, vocab2, docs2);
-    MakeTFKLD(params, kld, values2);
-    fillMat(values2, vocab2, docs2, inMat2);
+    fillValue(doc_test);
+    MakeTFKLD(params, doc_test);
+    fillMat(doc_test, inMat2);
     
     if(params.verbose == 1) timer.here_then_reset("Filled the Matrix.\n");
 
@@ -331,7 +214,7 @@ void runInductive(Param const &params) {
     vec s2;
     mat V2;
 
-    svds(U2,s2,V2,inMat2,K_dim);
+    svds(U2,s2,V2,inMat2,doc_test.K_dim);
 
     if(params.verbose == 1) timer.here_then_reset("SVD is complete.\n");
 
@@ -346,7 +229,7 @@ void runInductive(Param const &params) {
     lcount = 1;
 
     for(auto x : svec2) {
-        fout2 << tag2[count] << " ";
+        fout2 << doc_test.tag[count] << " ";
         for(auto y : x) {
             fout2 << lcount << ":" << y << " ";
             lcount++;
@@ -363,11 +246,11 @@ void runInductive(Param const &params) {
 
 }
 
-void runTFKLD(Param const &params) {
+void runTFKLD(Param const &params, Documents &doc_train, Documents &doc_test) {
 
-    if(params.mode == 0) runInductive(params);
-    if(params.mode == 1) runTransductive(params);
+    if(params.mode == 0) runInductive(params, doc_train, doc_test);
+    if(params.mode == 1) runTransductive(params, doc_train, doc_test);
     
-    }*/
+}
     
 }//namespace tfkld
