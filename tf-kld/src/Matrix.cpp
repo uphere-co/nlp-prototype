@@ -1,4 +1,5 @@
 #include "src/Matrix.h"
+#include "src/Vocab.h"
 
 using namespace util;
 using namespace util::io;
@@ -7,30 +8,37 @@ using namespace tfkld::type;
 
 namespace tfkld{
 
-void fillValue(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {    
+void fillValue(Documents &document) {
     SpValue value;
+    doc_t docs = document.docs;
     for(auto it = docs.begin(); it != docs.end(); ++it) {
         value.reset();
         for(auto itt = it -> begin(); itt != it -> end(); ++itt) {
             value.row = (*itt).first;
             value.col = std::distance(docs.begin(),it);
             value.val = (*itt).second;
-            values.push_back(value);
+            document.values.push_back(value);
         }
     }   
 }
 
-void fillMat(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat) {
+void fillMat(Documents &document, arma::sp_mat &mat) {
 
-    int64_t count{static_cast<int64_t>(values.size())};
+    int64_t count{static_cast<int64_t>(document.values.size())};
+
+    int64_t n_rows, n_cols;
+    n_rows = document.vocab.size();
+    n_cols = document.docs.size();
+
+    mat.set_size(n_rows, n_cols);
     
     arma::umat location(2,count);
     arma::vec value(count);
 
     for(int64_t a = 0; a < count; a++) {
-        location(0,a) = values[a].row;
-        location(1,a) = values[a].col;
-        value(a) = values[a].val;
+        location(0,a) = document.values[a].row;
+        location(1,a) = document.values[a].col;
+        value(a) = document.values[a].val;
     }
 
     mat = std::move( arma::sp_mat(location, value) );

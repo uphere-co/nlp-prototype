@@ -1,4 +1,5 @@
 #include "src/TFKLD.h"
+#include "src/Vocab.h"
 
 using namespace util;
 using namespace util::io;
@@ -9,7 +10,7 @@ using namespace arma;
 
 namespace tfkld{
 
-void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFKLD(Param const &params, Documents &document) {
 
     real_t ep=0.05;
     real_t p=ep;
@@ -18,37 +19,37 @@ void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<std::s
     real_t nq=ep;
     
     real_t div;
-    for(int64_t a = 0; a < vocab.size(); ++a) {
-        for(int i = 0; i < tag.size(); ++i) {
+    for(int64_t a = 0; a < document.vocab.size(); ++a) {
+        for(int i = 0; i < document.tag.size(); ++i) {
             
-            auto isin1 = docs[i*2].find(a);
-            auto isin2 = docs[i*2+1].find(a);
+            auto isin1 = document.docs[i*2].find(a);
+            auto isin2 = document.docs[i*2+1].find(a);
 
-            if(tag[i] == "-1") {
-                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+            if(document.tag[i] == "-1") {
+                if(isin1 != document.docs[i*2].end() && isin2 != document.docs[i*2+1].end()) {
                     q++;
                 }
-                if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
+                if(isin1 != document.docs[i*2].end() && isin2 == document.docs[i*2+1].end()) {
                     nq++;
                 }
-                if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                if(isin1 == document.docs[i*2].end() && isin2 != document.docs[i*2+1].end()) {
                     nq++;
                 }
-            } else { // tag[i] == 1;
-                if(isin1 != docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+            } else { // document.tag[i] == 1;
+                if(isin1 != document.docs[i*2].end() && isin2 != document.docs[i*2+1].end()) {
                     p++;
                 }
-                if(isin1 != docs[i*2].end() && isin2 == docs[i*2+1].end()) {
+                if(isin1 != document.docs[i*2].end() && isin2 == document.docs[i*2+1].end()) {
                     np++;
                 }
-                if(isin1 == docs[i*2].end() && isin2 != docs[i*2+1].end()) {
+                if(isin1 == document.docs[i*2].end() && isin2 != document.docs[i*2+1].end()) {
                     np++;
                 }
             }
         }
 
         div = (p/(p+np))*log((p/(p+np))/(q/(q+nq)) + 1e-7) + (np/(p+np))*log((np/(p+np))/(nq/(q+nq)) + 1e-7);        
-        kld.push_back(div);
+        document.kld.push_back(div);
         p = ep;
         q = ep;
         np = ep;
@@ -56,7 +57,7 @@ void MakeTFKLD(Param const &params, std::vector<real_t> &kld, std::vector<std::s
         
     }
 
-    for(auto &x : values) x.val *= pow(kld[x.row],params.power);
+    for(auto &x : document.values) x.val *= pow(document.kld[x.row],params.power);
         
 }
 

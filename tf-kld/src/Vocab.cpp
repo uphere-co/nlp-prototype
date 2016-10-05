@@ -30,12 +30,14 @@ std::vector<std::string> Documents::MakeNGrams(std::vector<std::string> &words, 
     return result;
 }
     
-vocab_t Documents::LearnVocab(MSParaFile &file) {
+void Documents::LearnVocab(MSParaFile &file) {
   std::string line;
-  vocab_t vocab;
   int64_t word_idx = 0;
   int64_t count = 0;
   std::vector<std::string> items;
+
+  //Reset the filestream cursor
+  file.setBegin();
   
   std::getline(file.val, line);
   while(std::getline(file.val, line)){
@@ -88,16 +90,17 @@ vocab_t Documents::LearnVocab(MSParaFile &file) {
     
   }
   // return sorted vocabulary with ascending order
-  return vocab;
 }
     
-doc_t Documents::LearnPairSentence(MSParaFile &file) {
+void Documents::LearnPairSentence(MSParaFile &file) {
     std::string line;
-    doc_t docs;
     hashmap_t doc;
     int64_t count = 0;
     std::vector<std::string> items;
 
+    //Reset the filestream cursor
+    file.setBegin();
+    
     std::getline(file.val, line);
     while (std::getline(file.val, line)) {
         count++;
@@ -155,15 +158,16 @@ doc_t Documents::LearnPairSentence(MSParaFile &file) {
 
     }
 
-    return docs;
 }
 
-doc_t Documents::LearnSentence(MSParaFile &file) {
+void Documents::LearnSentence(MSParaFile &file) {
     std::string line;
-    doc_t docs;
     hashmap_t doc;
     int64_t count = 0;
 
+    //Reset the filestream cursor
+    file.setBegin();
+    
     std::getline(file.val, line);
     while (std::getline(file.val, line)) {
         count++;
@@ -195,16 +199,16 @@ doc_t Documents::LearnSentence(MSParaFile &file) {
         doc.clear();
 
     }
-
-    return docs;
 }
 
     
-std::vector<std::string> Documents::LearnTag(MSParaFile &file) {
+void Documents::LearnTag(MSParaFile &file) {
     std::string line;
     int64_t count = 0;
     std::vector<std::string> items;
-    std::vector<std::string> tag;
+
+    //Reset the filestream cursor
+    file.setBegin();
     
     std::getline(file.val, line);
     while (std::getline(file.val, line)) {
@@ -221,10 +225,9 @@ std::vector<std::string> Documents::LearnTag(MSParaFile &file) {
         tag.push_back(words);
     }
 
-    return tag;
 }
 
-vocab_t Documents::ReadVocab(std::ifstream &vocab_file) {
+void Documents::ReadVocab(std::ifstream &vocab_file) {
     std::string word;
     int64_t index;
     vocab_t vocab;
@@ -232,8 +235,6 @@ vocab_t Documents::ReadVocab(std::ifstream &vocab_file) {
     while(vocab_file >> word >> index) {
         vocab[word] = index;
     }
-
-    return vocab;
 }
     
 void Documents::PrintVocab(){

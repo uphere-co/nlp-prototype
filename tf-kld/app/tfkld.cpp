@@ -26,70 +26,51 @@ int main(int argc, char **argv){
         ArgPass(argc, argv, params);
     }
 
+    
     Documents document;
-
     MSParaFile trainFile{params.trainFile};
-    
     int K_dim = params.kdim;
-    
-    auto vocab = document.LearnVocab(trainFile);
-    trainFile.setBegin();
-    auto docs = document.LearnPairSentence(trainFile);
-    trainFile.setBegin();
-    auto tag = document.LearnTag(trainFile);
-    /*
-    std::vector<SpValue> values;
-    std::vector<real_t> kld;
 
-    fillValue(values, vocab, docs);
-    MakeTFKLD(params, kld, tag, values, vocab, docs);
-
-    int64_t n_rows, n_cols;
-    n_rows = vocab.size();
-    n_cols = docs.size();
-
-    sp_mat inMat(n_rows, n_cols);
-
-    fillMat(values, vocab, docs, inMat);
-
+    sp_mat inMat;
     mat U;
     vec s;
     mat V;
 
+    document.LearnVocab(trainFile);
+    document.LearnPairSentence(trainFile);
+    document.LearnTag(trainFile);
+    
+    fillValue(document);
+    MakeTFKLD(params, document);
+    fillMat(document, inMat);
+    
     svds(U,s,V,inMat,K_dim);
 
     auto svec = makeSimMat(V);
 
 
 
+    Documents document2;
     MSParaFile testFile{params.testFile};
-    auto tag2 = LearnTag(testFile);
-    testFile.setBegin();
-    auto docs2 = LearnPairSentence(vocab, testFile);
-    
-    std::vector<SpValue> values2;
-    std::vector<real_t> kld2;
-
-    fillValue(values2, vocab, docs2);
-    MakeTFKLD(params, kld, tag2, values2, vocab, docs2);
-
-    n_rows = vocab.size();
-    n_cols = docs2.size();
-
-    sp_mat inMat2(n_rows, n_cols);
-
-    fillMat(values2, vocab, docs2, inMat2);
-
+    sp_mat inMat2;
     mat U2;
     vec s2;
     mat V2;
+
+    document2.vocab = document.vocab;
+    document2.LearnPairSentence(testFile);
+    document2.LearnTag(testFile);
+    
+    fillValue(document2);
+    MakeTFKLD(params, document2);
+    fillMat(document2,inMat2);
 
     svds(U2,s2,V2,inMat2,K_dim);
 
     auto svec2 = makeSimMat(V2);
 
     mParam *mparams;
-    mparams = Do_Train(tag,svec);
+    mparams = Do_Train(document.tag,svec);
 
     int sum = 0;
     int correct = 0;
@@ -97,9 +78,9 @@ int main(int argc, char **argv){
     
     std::vector<std::string> tag3;
     std::vector<std::vector<float>> svec3;
-    for(int j=0;j<10;j++) {
-    for(int i=0;i<tag2.size();i++) {
-    tag3.push_back(tag2[i]);
+    for(int j=0;j<1;j++) {
+    for(int i=0;i<document2.tag.size();i++) {
+    tag3.push_back(document2.tag[i]);
     svec3.push_back(svec2[i]);
     //mainPredict(tag2, svec2, mparams);
     q = onePredict(tag3, svec3, mparams);
@@ -116,9 +97,5 @@ int main(int argc, char **argv){
     std::cout << "Accuracy is " << correct/(double)sum << std::endl;
     free(mparams);
 
-    Documents docum;
-
-
-    */
     return 0;
 }
