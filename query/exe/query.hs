@@ -11,6 +11,7 @@ import           Control.Monad.Loops
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Closure
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
+import           Control.Distributed.Process.Serializable
 import           Data.Aeson
 import qualified Data.Binary                         as Bi (encode)
 import           Data.ByteString.Char8                     (ByteString)
@@ -64,6 +65,10 @@ writeProcessId = do
 
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
+  -- let q' = Query q
+  -- liftIO $ print (wrapMessage q')
+  -- liftIO $ putStrLn $ showFingerprint (fingerprint q') ""
+  
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
   bstr' <- liftIO $ B.useAsCString bstr $ 
@@ -74,8 +79,9 @@ queryWorker sc q = do
 server :: Process ()
 server = do
   writeProcessId
-  whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
-
+  whileJust_ expect $ \(q,sc) -> do
+    -- liftIO $ print q -- (querySentences q)
+    spawnLocal (queryWorker sc q)
 
 makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]

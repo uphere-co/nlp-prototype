@@ -8,6 +8,7 @@
 // 
 #include "similarity/similarity.h"
 #include "utils/json.h"
+#include "utils/profiling.h"
 #include "template.hh"
 
 using json_t = nlohmann::json;
@@ -30,7 +31,7 @@ using json = nlohmann::json;
 json config; 
 SimilaritySearch* engine;
 
-Timer timer{};
+util::Timer timer{};
 
     
 json_t_p json_create( char* str )
@@ -57,7 +58,7 @@ const char* json_serialize( json_t_p p )
 
 void query_init( char* configfile )
 {
-    config = load_json(configfile);
+    config = util::load_json(configfile);
     engine = new SimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded."); 
