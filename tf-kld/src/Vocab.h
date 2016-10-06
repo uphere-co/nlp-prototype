@@ -47,7 +47,8 @@ void ReadVocab(std::ifstream &vocab_file);
 hashmap_t makeSentoDoc(std::string sen);
 void PrintVocab();
 };
- 
+
+std::vector<std::string> get_raw_sentence(MSParaFile &file);
 std::vector<std::string> getVocabWord(vocab_t &vocab);
 std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
 std::vector<std::vector<type::int64_t>> getDocsIndex(doc_t &docs);

@@ -11,12 +11,20 @@ double calculateDistance(arma::mat a, arma::mat b) {
     return sum;
 }
    
-void searchSentence(Documents &document, std::string sen) {
+void searchSentence(svm::mParam *mparams, Documents &document, std::string sen) {
 
     Documents resultDocs;
+    std::cout << "docs?" << std::endl;
+    fflush(stdout);
     resultDocs = document;
 
+    std::cout << "Do I reach here?" << std::endl;
+    fflush(stdout);
+    
     hashmap_t doc = document.makeSentoDoc(sen);
+
+    std::cout << "Do I reach here?" << std::endl;
+    fflush(stdout);
 
     resultDocs.docs.push_back(doc);
     resultDocs.values.clear();
@@ -28,15 +36,38 @@ void searchSentence(Documents &document, std::string sen) {
     arma::vec s;
     arma::mat V;
 
+    
     arma::svds(U,s,V,inMat,resultDocs.K_dim);
 
     int V_last_row = V.n_rows - 1;
 
-    for(int i=0;i<V.n_rows - 1; i++) {
-        double distance = dot(V.row(i),V.row(V_last_row));
-        if(distance > 0.8) V.row(i).print("V is ");
-    }
+    MSParaFile inFile{"Tk_msr_paraphrase_train.txt"};
+    std::vector<std::string> raw_sentence = get_raw_sentence(inFile);
 
+    std::vector<std::string> tag;
+    std::vector<std::vector<float>> svec;
+    std::vector<float> vec;
+    
+    tag.push_back("+1");
+
+    double neg_sum = 0;
+    for(int i=0;i<V.n_rows - 1; i++) {
+        //double distance = dot(V.row(i),V.row(V_last_row));
+        for(int w=0;w<resultDocs.K_dim;w++) {
+            vec.push_back(V.row(i)[w] + V.row(V_last_row)[w]);
+            neg_sum += pow(V.row(i)[w] - V.row(V_last_row)[w],2.0);
+        }
+        vec.push_back(sqrt(neg_sum));
+        svec.push_back(vec);
+        
+        int q = svm::predicting::onePredict(tag, svec, mparams);
+        std::cout << raw_sentence[i] << std::endl;
+        
+        vec.clear();
+        svec.clear();
+        neg_sum=0;
+    }
+            
     
 }
 

@@ -60,6 +60,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	read_problem_mem(tag,svec);
     error_msg = check_parameter(&prob,&param);
 
+
 	if(error_msg)
 	{
 		fprintf(stderr,"ERROR: %s\n",error_msg);
@@ -824,6 +825,7 @@ int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &s
 
     free(cargv);
     return result;
+
 }
 
 

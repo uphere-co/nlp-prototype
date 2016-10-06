@@ -265,13 +265,29 @@ hashmap_t Documents::makeSentoDoc(std::string sen) {
     }
 
     return doc;
-}
-
+}    
     
 void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;
 }
 
+std::vector<std::string> get_raw_sentence(MSParaFile &file) {
+    std::string line;
+    std::vector<std::string> items;
+    std::vector<std::string> sentences;
+    file.setBegin();
+    
+    std::getline(file.val, line);
+    while(std::getline(file.val, line)) {
+        boost::split(items, line, boost::is_any_of("\t"));
+        sentences.push_back(items[3]);
+        sentences.push_back(items[4]);
+    }
+
+    return sentences;
+}
+
+    
 std::vector<std::string> getVocabWord(vocab_t &vocab) {
     std::vector<std::string> result;
     for(auto x : vocab) result.push_back(x.first);
