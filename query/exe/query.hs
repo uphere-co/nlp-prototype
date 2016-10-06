@@ -82,6 +82,7 @@ queryWorker sc q = do
       bstr = BL.toStrict r 
   bstr' <- liftIO $ B.useAsCString bstr $ 
     json_create >=> query >=> json_serialize >=> unsafePackCString
+  liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
   return ()
   
@@ -96,15 +97,16 @@ server url = do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
     let them = (Bi.decode . B64.decodeLenient . BL.pack) pidstr
-    liftIO $ do
-      print them
-      print (wrapMessage (10 :: Int))
-      print (showFingerprint (fingerprint (10 :: Int)) "")
-     
     lift $ do
-      send them (10:: Int)
-      send them (11::Int)
-      send them (12 :: Int)
+      us <- getSelfPid
+      (sc,rc) <- newChan :: Process (SendPort Query, ReceivePort Query)
+      send them (sc,us)
+      sc' <- expect :: Process (SendPort BL.ByteString)
+      forever $ do
+        q <- receiveChan rc
+        liftIO $ print q
+      
+        spawnLocal (queryWorker sc' q)
       -- whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
   return ()
 
@@ -117,6 +119,6 @@ main = do
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
-    -- c_query_init configfile
+    c_query_init configfile
     runProcess node (server "http://localhost:8333/config")
-    -- c_query_finalize
+    c_query_finalize
