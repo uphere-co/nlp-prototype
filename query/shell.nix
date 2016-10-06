@@ -10,6 +10,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      network-transport-zeromq
 	      monad-loops uuid aeson
 	      cabal-install conduit conduit-extra
+	      base64-bytestring aeson
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
