@@ -64,20 +64,9 @@ query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 json_serialize :: Json -> IO CString
 json_serialize p = withForeignPtr p c_json_serialize
 
-{- 
-writeProcessId :: Process ()
-writeProcessId = do
-  us <- getSelfPid
-  liftIO $ print us
-  liftIO $ BL.writeFile "server.pid" (Bi.encode us)
--}
 
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  -- let q' = Query q
-  -- liftIO $ print (wrapMessage q')
-  -- liftIO $ putStrLn $ showFingerprint (fingerprint q') ""
-  
   let r = encode (makeJson q)
       bstr = BL.toStrict r 
   bstr' <- liftIO $ B.useAsCString bstr $ 
@@ -89,10 +78,6 @@ queryWorker sc q = do
 server :: String -> Process ()
 server url = do
   str <- liftIO $ readProcess "curl" [url] ""
-  -- liftIO $ Bi.decode <$> BL.readFile "server.pid"
-  -- print r
-  -- return undefined
-
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
@@ -105,9 +90,7 @@ server url = do
       forever $ do
         q <- receiveChan rc
         liftIO $ print q
-      
         spawnLocal (queryWorker sc' q)
-      -- whileJust_ expect $ \(q,sc) -> spawnLocal (queryWorker sc q)
   return ()
 
 makeJson :: Query -> Value
