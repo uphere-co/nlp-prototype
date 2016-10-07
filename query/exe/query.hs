@@ -77,7 +77,8 @@ queryWorker sc q = do
   
 server :: String -> Process ()
 server url = do
-  str <- liftIO $ readProcess "curl" [url] ""
+  curlapp <- liftIO (getEnv "CURLAPP")
+  str <- liftIO $ readProcess curlapp [url] ""
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
@@ -103,5 +104,5 @@ main = do
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node (server "http://localhost:8333/config")
+    runProcess node (server "https://ygp.uphere.co/config")
     c_query_finalize
