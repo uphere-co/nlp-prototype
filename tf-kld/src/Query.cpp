@@ -20,7 +20,7 @@ void searchSentence(svm::SVM_param svmparam, Documents &document, std::string se
 
     resultDocs.docs.push_back(doc);
     resultDocs.values.clear();
-    
+
     fillValue(resultDocs);
     arma::sp_mat inMat;
     fillMat(resultDocs,inMat);
@@ -31,6 +31,9 @@ void searchSentence(svm::SVM_param svmparam, Documents &document, std::string se
     
     arma::svds(U,s,V,inMat,resultDocs.K_dim);
 
+
+    
+    
     int V_last_row = V.n_rows - 1;
 
     MSParaFile inFile{"Tk_msr_paraphrase_train.txt"};
@@ -47,11 +50,15 @@ void searchSentence(svm::SVM_param svmparam, Documents &document, std::string se
         //double distance = dot(V.row(i),V.row(V_last_row));
         for(int w=0;w<resultDocs.K_dim;w++) {
             vec.push_back(V.row(i)[w] + V.row(V_last_row)[w]);
-            neg_sum += pow(V.row(i)[w] - V.row(V_last_row)[w],2.0);
         }
-        vec.push_back(sqrt(neg_sum));
+        for(int w=0;w<resultDocs.K_dim;w++) {
+            vec.push_back(abs(V.row(i)[w] - V.row(V_last_row)[w]));
+        }
+
+
         svec.push_back(vec);
-        
+
+
         int q = svm::predicting::onePredict(tag, svec, svmparam);
         if(q != 0) std::cout << raw_sentence[i] << std::endl;
         

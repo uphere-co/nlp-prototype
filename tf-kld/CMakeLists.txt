@@ -49,3 +49,7 @@ target_link_libraries(math hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 add_executable(IncSVD tests/IncSVD
                ../rnn++/utils/profiling)
 target_link_libraries(IncSVD armadillo openblas)
+
+#add_executable(testSVD tests/testSVD
+#               ../rnn++/utils/profiling)
+#target_link_libraries(testSVD armadillo openblas)

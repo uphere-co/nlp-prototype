@@ -90,6 +90,28 @@ std::vector<std::vector<real_t> > makeSimMat(arma::mat const &V) {
     return result;
 }
 
+std::vector<std::vector<real_t> > makeSimMat2(arma::mat const &V) {
+
+    std::vector<real_t> svec;
+    std::vector< std::vector<real_t> > result;
+
+    // transpose V
+    for(int a = 0; a < V.n_rows; a=a+2) {
+        for(int b = 0; b < V.n_cols; b++) {
+            svec.push_back(V(a,b) + V(a+1,b));
+        }
+        for(int b = 0; b < V.n_cols; b++) {
+            svec.push_back(abs(V(a,b) - V(a+1,b)));
+        }
+
+        result.push_back(svec);
+        svec.clear();
+        
+    }
+
+    return result;
+}
+
 
 void normalizeSimMat(std::vector<std::vector<real_t> > &svec) {
 

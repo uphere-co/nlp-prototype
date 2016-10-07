@@ -67,7 +67,7 @@ int main(int argc, char **argv){
     fillMat(document2,inMat2);
 
     svds(U2,s2,V2,inMat2,K_dim);
-    auto svec2 = makeSimMat(V2);
+    auto svec2 = makeSimMat2(V2);
 
     SVM_param svmparam;
     svmparam = Do_Train(document.tag,svec);
@@ -77,7 +77,7 @@ int main(int argc, char **argv){
     int q;
 
 
-    searchSentence(svmparam, document, "around gmt tab shares were up cents or at a having earlier set a record high of");
+    searchSentence(svmparam, document, "amrozi accused his brother whom he called the witness of deliberately distorting his evidence");
 
     //mainPredict(document2.tag, svec2, mparams);
 
