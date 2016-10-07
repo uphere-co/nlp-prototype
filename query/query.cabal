@@ -65,17 +65,24 @@ Executable query
   build-depends:        base,
                         --
                         aeson,
+                        base64-bytestring,
+                        
                         binary,
                         bytestring,
                         conduit,
                         conduit-extra,
+                        containers,
+
                         directory,
                         distributed-process,
                         filepath,
                         monad-loops,
                         network-transport-zeromq,
+                        process,
+                        
                         stm,
                         text,
+                        transformers,
                         unix,
                         uuid,
                         --
@@ -100,10 +107,15 @@ Executable client
                         
   build-depends:        base,
                         --
-                        binary,                        
+                        aeson,
+                        base64-bytestring,
+                        binary,
                         bytestring,
+                        containers,
                         distributed-process,
                         network-transport-zeromq,
+                        process,
+                        text,
                         --
                         query
                         
