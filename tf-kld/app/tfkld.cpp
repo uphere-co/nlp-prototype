@@ -69,21 +69,16 @@ int main(int argc, char **argv){
     //////////////svds(U2,s2,V2,inMat2,K_dim);
     //////////////auto svec2 = makeSimMat(V2);
 
-    mParam *mparams;
-    mparams = Do_Train(document.tag,svec);
+    SVM_param svmparam;
+    svmparam = Do_Train(document.tag,svec);
 
-
-    std::cout << "train is over.\n";
-    fflush(stdout);
-
-    
     int sum = 0;
     int correct = 0;
     int q;
 
     //auto k_word = mapSentoLatent("hello my world", document);
 
-    searchSentence(mparams, document, "the stock rose or about percent to close friday at on the new york stock exchange");
+    //searchSentence(mparams, document, "the stock rose or about percent to close friday at on the new york stock exchange");
 
     //mainPredict(document2.tag, svec2, mparams);
 

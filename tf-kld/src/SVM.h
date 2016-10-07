@@ -28,10 +28,20 @@ struct mParam
     double *w;
 };
 
+struct SVM_param {
+    std::string solver_type;
+    int nr_class;
+    int nr_feature;
+    double bias;
+    std::vector<int> label;
+    std::vector<double> w;
+    
+};
+ 
 namespace training{
 
 void print_null(const char *s);
-struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
+struct SVM_param Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name);
 void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec);
 void do_cross_validation();

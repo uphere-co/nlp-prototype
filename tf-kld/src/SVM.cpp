@@ -1,8 +1,9 @@
 #include "SVM.h"
+#include "Vocab.h"
 
 namespace tfkld{
 namespace svm{
-
+    
 static const char *solver_type_table[]=
 {
 	"L2R_LR", "L2R_L2LOSS_SVC_DUAL", "L2R_L2LOSS_SVC", "L2R_L1LOSS_SVC_DUAL", "MCSVM_CS",
@@ -11,7 +12,16 @@ static const char *solver_type_table[]=
 	"L2R_L2LOSS_SVR", "L2R_L2LOSS_SVR_DUAL", "L2R_L1LOSS_SVR_DUAL", NULL
 };
 
-
+void writeSVMData(Documents &document, std::vector<std::vector<float>> &svec, std::ofstream &fout) {
+    for(int i=0;i<document.tag.size();i++) {
+        fout << document.tag[i];
+        for(int j =0;j<svec[0].size();j++) {
+            fout << " " << (j+1) << ":" << svec[i][j];
+        }
+        fout << "\n";
+    }
+}
+    
 namespace training{        
 static char *line = NULL;
 static int max_line_len;
@@ -29,7 +39,7 @@ double bias;
 
 void print_null(const char *s) {}
     
-struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec) {
+struct SVM_param Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec) {
     char *cargv[100];
     int cargc;
     
@@ -41,7 +51,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	char input_file_name[1024];
 	char model_file_name[1024];
 
-    mParam *mparams;
+    mParam* mparams;
     mparams = Malloc(mParam, 1);
     
     std::string solver_type;
@@ -78,8 +88,8 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	else
 	{
 		model_=train(&prob, &param);
-
-        const parameter& param = model_ -> param;
+        
+        //const parameter& param = model_ -> param;
         nr_feature=model_->nr_feature;
         
         if(model_->bias>=0)
@@ -101,6 +111,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
         bias=model_->bias;
         
         w = Malloc(double, w_size*nr_w + nr_w);
+
         for(int q=0; q<w_size; q++)
         {
             for(int p=0; p<nr_w; p++)
@@ -112,30 +123,53 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 			fprintf(stderr,"can't save model to file %s\n",model_file_name);
 			exit(1);
 		}
+        
 		free_and_destroy_model(&model_);
 	}
+
+
+    
 	destroy_param(&param);
+
 	free(prob.y);
 	free(prob.x);
-	free(x_space);
-	free(line);
 
-    mparams -> solver_type = solver_type;
-    mparams -> nr_class = nr_class;
-    mparams -> nr_feature = nr_feature;
-    mparams -> bias = bias;
-    
-    mparams -> label = Malloc(int,nr_class);
-    mparams -> w = Malloc(double, w_size*nr_w + nr_w);
-    
-    for(int q=0; q<nr_class;q++) mparams -> label[q] = label[q];
-    for(int q=0; q<w_size; q++)
-    {
-        for(int p=0; p<nr_w; p++)
-            mparams -> w[q*nr_w+p] = w[q*nr_w+p];
+    free(x_space);
+    free(line);
+
+
+    SVM_param svmparam;
+
+    svmparam.solver_type = solver_type;
+    svmparam.nr_class = nr_class;
+    svmparam.nr_feature = nr_feature;
+    svmparam.bias = bias;
+
+    for(int q=0; q<nr_class;q++) svmparam.label.push_back(label[q]);
+    for(int q=0; q<w_size; q++) {
+        for(int p=0;p<nr_w;p++) {
+            svmparam.w.push_back(w[q*nr_w+p]);
+        }
     }
+
+
     
-    return mparams;
+    //mparams -> solver_type = solver_type;
+    //mparams -> nr_class = nr_class;
+    //mparams -> nr_feature = nr_feature;
+    //mparams -> bias = bias;
+    
+    //mparams -> label = Malloc(int,nr_class);
+    //mparams -> w = Malloc(double, w_size*nr_w + nr_w);
+
+    //for(int q=0; q<nr_class;q++) mparams -> label[q] = label[q];
+    //for(int q=0; q<w_size; q++)
+    //{
+    //    for(int p=0; p<nr_w; p++)
+    //        mparams -> w[q*nr_w+p] = w[q*nr_w+p];
+    //}
+    
+    return svmparam;
 }
 
 void do_find_parameter_C()
@@ -352,11 +386,13 @@ void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<flo
     int index = 1;
     int n_feature = svec[0].size();
     
-    elements = tag.size() * (n_feature+1);
+    elements = tag.size() * n_feature + 1;
     prob.l = tag.size();
 
 	prob.bias=bias;
 
+    std::cout << elements + prob.l << std::endl;
+    
 	prob.y = Malloc(double,prob.l);
 	prob.x = Malloc(struct feature_node *,prob.l);
 	x_space = Malloc(struct feature_node,elements+prob.l);
