@@ -11,20 +11,12 @@ double calculateDistance(arma::mat a, arma::mat b) {
     return sum;
 }
    
-void searchSentence(svm::mParam *mparams, Documents &document, std::string sen) {
+void searchSentence(svm::SVM_param svmparam, Documents &document, std::string sen) {
 
     Documents resultDocs;
-    std::cout << "docs?" << std::endl;
-    fflush(stdout);
     resultDocs = document;
 
-    std::cout << "Do I reach here?" << std::endl;
-    fflush(stdout);
-    
     hashmap_t doc = document.makeSentoDoc(sen);
-
-    std::cout << "Do I reach here?" << std::endl;
-    fflush(stdout);
 
     resultDocs.docs.push_back(doc);
     resultDocs.values.clear();
@@ -60,8 +52,8 @@ void searchSentence(svm::mParam *mparams, Documents &document, std::string sen) 
         vec.push_back(sqrt(neg_sum));
         svec.push_back(vec);
         
-        int q = svm::predicting::onePredict(tag, svec, mparams);
-        std::cout << raw_sentence[i] << std::endl;
+        int q = svm::predicting::onePredict(tag, svec, svmparam);
+        if(q != 0) std::cout << raw_sentence[i] << std::endl;
         
         vec.clear();
         svec.clear();

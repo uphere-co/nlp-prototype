@@ -7,7 +7,7 @@
 namespace tfkld{
 
     // List of sentences that met searching condition defined by threshold
-void searchSentence(svm::mParam *mparams, Documents &document, std::string question);
+void searchSentence(svm::SVM_param svmparam, Documents &document, std::string question);
 
 
 

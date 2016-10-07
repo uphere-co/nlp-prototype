@@ -133,7 +133,6 @@ struct SVM_param Do_Train(std::vector<std::string> &tag, std::vector<std::vector
 
 	free(prob.y);
 	free(prob.x);
-
     free(x_space);
     free(line);
 
@@ -603,8 +602,8 @@ int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>
 			((total*sumpp-sump*sump)*(total*sumtt-sumt*sumt))
 			);
 	}
-	else
-		info("Accuracy = %g%% (%d/%d)\n",(double) correct/total*100,correct,total);
+	//else
+	//	info("Accuracy = %g%% (%d/%d)\n",(double) correct/total*100,correct,total);
 	if(flag_predict_probability)
 		free(prob_estimates);
 
@@ -753,7 +752,7 @@ void exit_with_help()
 }
 
 
-struct model *load_model_mem(mParam *mparams)
+struct model *load_model_mem(SVM_param svmparam)
 {
 	int i;
 	int nr_feature;
@@ -774,15 +773,15 @@ struct model *load_model_mem(mParam *mparams)
 	setlocale(LC_ALL, "C");
 
     for(int i=0;solver_type_table[i];i++) {
-        if(strcmp(solver_type_table[i],mparams -> solver_type.c_str()) == 0)
+        if(strcmp(solver_type_table[i],svmparam.solver_type.c_str()) == 0)
             {
                 param.solver_type = i;
                 break;
             }
     }
-    model_ -> nr_class = mparams -> nr_class;
-    model_ -> nr_feature = mparams -> nr_feature;
-    model_ -> bias = mparams -> bias;
+    model_ -> nr_class = svmparam.nr_class;
+    model_ -> nr_feature = svmparam.nr_feature;
+    model_ -> bias = svmparam.bias;
     nr_class = model_->nr_class;
     model_->label = Malloc(int,nr_class);
 
@@ -799,14 +798,14 @@ struct model *load_model_mem(mParam *mparams)
 		nr_w = nr_class;
 
     for(int i=0;i<nr_class;i++)
-        model_ -> label[i] = mparams -> label[i];
+        model_ -> label[i] = svmparam.label[i];
     
 	model_->w=Malloc(double, w_size*nr_w);
 	for(i=0; i<w_size; i++)
 	{
 		int j;
 		for(j=0; j<nr_w; j++)
-			model_ -> w[i*nr_w+j] = mparams -> w[i*nr_w+j];
+			model_ -> w[i*nr_w+j] = svmparam.w[i*nr_w+j];
 	}
 	setlocale(LC_ALL, old_locale);
 	free(old_locale);
@@ -814,12 +813,11 @@ struct model *load_model_mem(mParam *mparams)
 	return model_;
 }
 
-int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
+int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, SVM_param svmparam)
 {
     int cargc;
     char *cargv[100];
 
-    std::cout << "onePredict" << std::endl;
     cargv[0] = (char *)"./test";
     cargv[1] = (char *)"test_train.txt";
     cargv[2] = (char *)"KLD.model";
@@ -852,19 +850,35 @@ int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &s
 	if(i>=cargc)
 		exit_with_help();
 
+
+    int n;
+    int w_size;
+    int nr_w;
+    
+    if(svmparam.bias>=0)
+        n=svmparam.nr_feature+1;
+    else
+        n=svmparam.nr_feature;
+
+    w_size = n;
+    if(svmparam.nr_class==2 && svmparam.solver_type != "MCSVM_CS")
+        nr_w=1;
+    else
+        nr_w=model_->nr_class;
+
 	x = (struct feature_node *) malloc(max_nr_attr*sizeof(struct feature_node));
-    model_=load_model_mem(mparams);
+    model_=load_model_mem(svmparam);
 	int result = do_one_predict(tag, svec);
 	free_and_destroy_model(&model_);
 	free(line);
 	free(x);
-
+    
     free(cargv);
     return result;
 
 }
 
-
+    /*
 void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
 {
     int cargc;
@@ -909,7 +923,7 @@ void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> 
 	free_and_destroy_model(&model_);
 	free(line);
 	free(x);
-}
+    }*/
 
 }//namespace predicting
 }//namespace svm
