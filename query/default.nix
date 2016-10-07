@@ -3,6 +3,7 @@
 , monad-loops, network-transport-zeromq,stdenv
 , stm, tbb, text, unix, uuid
 , rnnpp, msgsl, json
+, base64-bytestring
 }:
 mkDerivation {
   pname = "query";
@@ -16,7 +17,7 @@ mkDerivation {
   executableHaskellDepends = [
     aeson base binary bytestring conduit conduit-extra directory
     distributed-process filepath monad-loops network-transport-zeromq
-    stm text unix uuid
+    stm text unix uuid base64-bytestring
   ];
   executableSystemDepends = [ hdf5_cpp rnnpp tbb msgsl json ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
