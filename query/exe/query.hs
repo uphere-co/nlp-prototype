@@ -78,7 +78,7 @@ queryWorker sc q = do
 server :: String -> Process ()
 server url = do
   curlapp <- liftIO (getEnv "CURLAPP")
-  str <- liftIO $ readProcess curlapp [url] ""
+  str <- liftIO $ readProcess curlapp ["-k",url] ""
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
