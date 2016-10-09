@@ -98,11 +98,13 @@ makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
+  configurl <- liftIO (getEnv "CONFIGURL")
+  
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node (server "https://ygp.uphere.co/config")
+    runProcess node (server configurl) -- "https://ygp.uphere.co/config"
     c_query_finalize
