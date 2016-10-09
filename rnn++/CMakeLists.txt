@@ -65,7 +65,7 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
 add_executable(nndep_reader app/nndep_reader
-               ${util_files})
+               ${simple_model_parsers} ${util_files})
 target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 

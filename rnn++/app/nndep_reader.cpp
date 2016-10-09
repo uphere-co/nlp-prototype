@@ -1,7 +1,10 @@
 #include <vector>
 #include <algorithm>
+#include <src/parser/voca.h>
 
 #include "fmt/printf.h"
+
+#include "parser/voca.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -10,21 +13,68 @@
 
 using namespace util::io;
 
+struct ParsedWord{
+    ParsedWord(util::io::H5file const &file, std::string prefix)
+    : sent_idx{file.getRawData<int64_t>(H5name{prefix+".sent_idx"})},
+      word_raw{file.getRawData<char>(H5name{prefix+".word"})},
+      word{util::string::unpack_word_views(word_raw)},
+      idx_word{file.getRawData<int64_t>(H5name{prefix+".idx_word"})},
+      head_word_raw{file.getRawData<char>(H5name{prefix+".head_word"})},
+      head_word{util::string::unpack_word_views(head_word_raw)},
+      idx_head{file.getRawData<int64_t>(H5name{prefix+".idx_head"})},
+      pos_raw{file.getRawData<char>(H5name{prefix+".POS"})},
+      pos{util::string::unpack_word_views(pos_raw)}
+    {}
+    std::vector<int64_t>     sent_idx;
+    std::vector<char>        word_raw;
+    std::vector<const char*> word;
+    std::vector<int64_t>     idx_word;
+    std::vector<char>        head_word_raw;
+    std::vector<const char*> head_word;
+    std::vector<int64_t>     idx_head;
+    std::vector<char>        pos_raw;
+    std::vector<const char*> pos;
+};
+
+std::vector<int64_t> get_voca_idxs(rnn::wordrep::VocaIndexMap const &word2idx,
+                                   std::vector<const char*> words){
+    std::vector<int64_t> vidxs;
+    for(auto x : words) {
+        int64_t idx = word2idx.getIndex(rnn::wordrep::Word{x});
+        vidxs.push_back(idx);
+    }
+    return vidxs;
+}
+
+struct ParsedWordIdx{
+    ParsedWordIdx(ParsedWord const &words, rnn::wordrep::VocaIndexMap const &word2idx)
+            : sent_idx{words.sent_idx},
+              word{get_voca_idxs(word2idx, words.word)},
+              idx_word{words.idx_word},
+              head_word{get_voca_idxs(word2idx, words.head_word)},
+              idx_head{words.idx_head},
+              pos_raw{words.pos_raw},
+              pos{util::string::unpack_word_views(pos_raw)}
+    {}
+
+    std::vector<int64_t>     sent_idx;
+    std::vector<int64_t>     word;
+    std::vector<int64_t>     idx_word;
+    std::vector<int64_t>     head_word;
+    std::vector<int64_t>     idx_head;
+    std::vector<char>        pos_raw;
+    std::vector<const char*> pos;
+};
+
 int main(){
-    H5file file{H5name{"news.Google.h5"}, hdf5::FileMode::read_exist};
-    auto sent_idx = file.getRawData<int64_t>(H5name{"sent_idx"});
-    auto word_raw = file.getRawData<char>(H5name{"word"});
-    auto word = util::string::unpack_word_views(word_raw);
-    auto idx_word = file.getRawData<int64_t>(H5name{"idx_word"});
-    auto head_word_raw = file.getRawData<char>(H5name{"head_word"});
-    auto head_word = util::string::unpack_word_views(head_word_raw);
-    auto idx_head = file.getRawData<int64_t>(H5name{"idx_head"});
-    auto pos_raw = file.getRawData<char>(H5name{"POS"});
-    auto pos = util::string::unpack_word_views(pos_raw);
+    H5file infile{H5name{"news.Google.h5"}, hdf5::FileMode::read_exist};
+    ParsedWord news{infile, "test"};
+    auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
+    auto word2idx = voca.indexing();
+    ParsedWordIdx news_indexed{news, word2idx};
 
-
-    auto beg=sent_idx.cbegin();
-    auto end=sent_idx.cend();
+    auto beg=news_indexed.sent_idx.cbegin();
+    auto end=news_indexed.sent_idx.cend();
     std::vector<int64_t> sent_beg{0};
     auto it=beg;
     while(it!=end) {
@@ -37,7 +87,10 @@ int main(){
         auto end=sent_beg[is+1];
         for(auto i=beg; i<end; ++i) {
             fmt::print("{} : ", i);
-            fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n", word[i], idx_word[i], head_word[i], idx_head[i], pos[i]);
+            fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n",
+                       voca.getWord(news_indexed.word[i]).val, news_indexed.idx_word[i],
+                       voca.getWord(news_indexed.head_word[i]).val,
+                       news_indexed.idx_head[i], news_indexed.pos[i]);
         }
         fmt::print("{}\n",end-beg);
     }
