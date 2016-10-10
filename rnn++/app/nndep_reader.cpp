@@ -19,10 +19,10 @@ struct ParsedWord{
     : sent_idx{file.getRawData<int64_t>(H5name{prefix+".sent_idx"})},
       word_raw{file.getRawData<char>(H5name{prefix+".word"})},
       word{util::string::unpack_word_views(word_raw)},
-      idx_word{file.getRawData<int64_t>(H5name{prefix+".idx_word"})},
+      idx_word{file.getRawData<int64_t>(H5name{prefix+".word_pidx"})},
       head_word_raw{file.getRawData<char>(H5name{prefix+".head_word"})},
       head_word{util::string::unpack_word_views(head_word_raw)},
-      idx_head{file.getRawData<int64_t>(H5name{prefix+".idx_head"})},
+      idx_head{file.getRawData<int64_t>(H5name{prefix+".head_pidx"})},
       pos_raw{file.getRawData<char>(H5name{prefix+".POS"})},
       pos{util::string::unpack_word_views(pos_raw)}
     {}
@@ -51,18 +51,18 @@ struct ParsedWordIdx{
     ParsedWordIdx(ParsedWord const &words, rnn::wordrep::VocaIndexMap const &word2idx)
     : sent_idx{words.sent_idx},
       word{get_voca_idxs(word2idx, words.word)},
-      idx_word{words.idx_word},
+      word_pidx{words.idx_word},
       head_word{get_voca_idxs(word2idx, words.head_word)},
-      idx_head{words.idx_head},
+      head_pidx{words.idx_head},
       pos_raw{util::string::pack_words(words.pos)},
       pos{util::string::unpack_word_views(pos_raw)}
     {}
     ParsedWordIdx(util::io::H5file const &file, std::string prefix)
     : sent_idx{file.getRawData<int64_t>(H5name{prefix+".sent_idx"})},
       word{file.getRawData<int64_t>(H5name{prefix+".word"})},
-      idx_word{file.getRawData<int64_t>(H5name{prefix+".idx_word"})},
+      word_pidx{file.getRawData<int64_t>(H5name{prefix+".word_pidx"})},
       head_word{file.getRawData<int64_t>(H5name{prefix+".head_word"})},
-      idx_head{file.getRawData<int64_t>(H5name{prefix+".idx_head"})},
+      head_pidx{file.getRawData<int64_t>(H5name{prefix+".head_pidx"})},
       pos_raw{file.getRawData<char>(H5name{prefix+".POS"})},
       pos{util::string::unpack_word_views(pos_raw)}
     {}
@@ -71,17 +71,17 @@ struct ParsedWordIdx{
         H5file outfile{H5name{filename}, hdf5::FileMode::replace};
         outfile.writeRawData(H5name{prefix+".sent_idx"}, sent_idx);
         outfile.writeRawData(H5name{prefix+".word"},     word);
-        outfile.writeRawData(H5name{prefix+".idx_word"}, idx_word);
+        outfile.writeRawData(H5name{prefix+".word_pidx"},word_pidx);
         outfile.writeRawData(H5name{prefix+".head_word"},head_word);
-        outfile.writeRawData(H5name{prefix+".idx_head"}, idx_head);
+        outfile.writeRawData(H5name{prefix+".head_pidx"},head_pidx);
         outfile.writeRawData(H5name{prefix+".POS"},      pos_raw);
     }
 
     std::vector<int64_t>     sent_idx;
     std::vector<int64_t>     word;
-    std::vector<int64_t>     idx_word;
+    std::vector<int64_t>     word_pidx;
     std::vector<int64_t>     head_word;
-    std::vector<int64_t>     idx_head;
+    std::vector<int64_t>     head_pidx;
     std::vector<char>        pos_raw;
     std::vector<const char*> pos;
 };
@@ -89,13 +89,14 @@ struct ParsedWordIdx{
 //TODO : POS index, Sent end/beg
 
 int main(){
+    util::Timer timer{};
+    auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
+    auto word2idx = voca.indexing();
+
 //    H5file infile{H5name{"news.Google.h5"}, hdf5::FileMode::read_exist};
 //    ParsedWord news{infile, "test"};
 //    ParsedWordIdx news_indexed{news, word2idx};
 //    news_indexed.write_to_disk("news.dep.h5", "test");
-    util::Timer timer{};
-    auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
-    auto word2idx = voca.indexing();
     H5file infile{H5name{"news.dep.h5"}, hdf5::FileMode::read_exist};
     ParsedWordIdx news_indexed{infile, "test"};
 
@@ -111,10 +112,10 @@ int main(){
     }
     timer.here_then_reset("Engine is ready.");
 
+    auto n_sent = sent_beg.size();
     auto google_idx = word2idx.getIndex(rnn::wordrep::Word{"Google"});
     auto bought_idx = word2idx.getIndex(rnn::wordrep::Word{"bought"});
     auto startup_idx = word2idx.getIndex(rnn::wordrep::Word{"startup"});
-    auto n_sent = sent_beg.size();
     for(decltype(n_sent) sent_idx=0; sent_idx!=n_sent;++sent_idx) {
         auto beg=sent_beg[sent_idx];
         auto end=sent_end[sent_idx];
@@ -138,10 +139,11 @@ int main(){
         auto end=sent_end[sent_idx];
         for(auto i=beg; i<end; ++i) {
             fmt::print("{:<10} {:<10} {:<10} {:<10} : ", sent_idx, i, beg, end);
+//            fmt::print("{:<10} ", sent_idx);
             fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n",
-                       voca.getWord(news_indexed.word[i]).val, news_indexed.idx_word[i],
+                       voca.getWord(news_indexed.word[i]).val, news_indexed.word_pidx[i],
                        voca.getWord(news_indexed.head_word[i]).val,
-                       news_indexed.idx_head[i], news_indexed.pos[i]);
+                       news_indexed.head_pidx[i], news_indexed.pos[i]);
         }
         fmt::print("{}\n",end-beg);
     }
