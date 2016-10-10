@@ -8,6 +8,7 @@
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
+#include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
 
@@ -85,12 +86,14 @@ struct ParsedWordIdx{
     std::vector<const char*> pos;
 };
 
+//TODO : POS index, Sent end/beg
 
 int main(){
 //    H5file infile{H5name{"news.Google.h5"}, hdf5::FileMode::read_exist};
 //    ParsedWord news{infile, "test"};
 //    ParsedWordIdx news_indexed{news, word2idx};
 //    news_indexed.write_to_disk("news.dep.h5", "test");
+    util::Timer timer{};
     auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
     auto word2idx = voca.indexing();
     H5file infile{H5name{"news.dep.h5"}, hdf5::FileMode::read_exist};
@@ -98,18 +101,43 @@ int main(){
 
     auto beg=news_indexed.sent_idx.cbegin();
     auto end=news_indexed.sent_idx.cend();
-    std::vector<int64_t> sent_beg{0};
+    std::vector<int64_t> sent_beg{};
+    std::vector<int64_t> sent_end{};
     auto it=beg;
     while(it!=end) {
-        it = std::find_if_not(it, end, [it](auto x) { return x == *it; });
         sent_beg.push_back(it-beg);
+        it = std::find_if_not(it, end, [it](auto x) { return x == *it; });
+        sent_end.push_back(it-beg);
     }
+    timer.here_then_reset("Engine is ready.");
 
-    for(int64_t is=0; is<sent_beg.size()-1; ++is){
-        auto beg=sent_beg[is];
-        auto end=sent_beg[is+1];
+    auto google_idx = word2idx.getIndex(rnn::wordrep::Word{"Google"});
+    auto bought_idx = word2idx.getIndex(rnn::wordrep::Word{"bought"});
+    auto startup_idx = word2idx.getIndex(rnn::wordrep::Word{"startup"});
+    auto n_sent = sent_beg.size();
+    for(decltype(n_sent) sent_idx=0; sent_idx!=n_sent;++sent_idx) {
+        auto beg=sent_beg[sent_idx];
+        auto end=sent_end[sent_idx];
+        //find google bought
+        bool google_bought = false;
+        bool startup = false;
         for(auto i=beg; i<end; ++i) {
-            fmt::print("{} : ", i);
+            if(news_indexed.word[i] == google_idx && news_indexed.head_word[i] == bought_idx)
+                google_bought = true;
+            if( news_indexed.word[i]==startup_idx)
+                startup = true;
+        }
+        if(google_bought && startup)
+            fmt::print("{:<10}\n", sent_idx);
+    }
+    timer.here_then_reset("Queries are answered.");
+    return 0;
+
+    for(decltype(n_sent) sent_idx=0; sent_idx!=n_sent;++sent_idx){
+        auto beg=sent_beg[sent_idx];
+        auto end=sent_end[sent_idx];
+        for(auto i=beg; i<end; ++i) {
+            fmt::print("{:<10} {:<10} {:<10} {:<10} : ", sent_idx, i, beg, end);
             fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n",
                        voca.getWord(news_indexed.word[i]).val, news_indexed.idx_word[i],
                        voca.getWord(news_indexed.head_word[i]).val,
