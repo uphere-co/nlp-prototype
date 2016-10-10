@@ -5,10 +5,9 @@
 
 namespace tfkld{
 
-void MakeTFKLD(Param const &params, std::vector<type::real_t> &kld, std::vector<std::string> &tag, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs);
-
+void MakeTFKLD(Param const &params, Documents &document);
 void MakeTFKLD(Param const &params, std::vector<type::real_t> &kld, std::vector<SpValue> &values);
-
-void runTFKLD(Param const &params);
+void MakeTFKLD_without_calculating_KLD(Param const &params, Documents &document);
+void runTFKLD(Param const &params, Documents &doc_train, Documents &doc_test);
  
 }//namespace tfkld

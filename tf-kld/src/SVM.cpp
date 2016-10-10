@@ -1,8 +1,9 @@
 #include "SVM.h"
+#include "Vocab.h"
 
 namespace tfkld{
 namespace svm{
-
+    
 static const char *solver_type_table[]=
 {
 	"L2R_LR", "L2R_L2LOSS_SVC_DUAL", "L2R_L2LOSS_SVC", "L2R_L1LOSS_SVC_DUAL", "MCSVM_CS",
@@ -11,7 +12,16 @@ static const char *solver_type_table[]=
 	"L2R_L2LOSS_SVR", "L2R_L2LOSS_SVR_DUAL", "L2R_L1LOSS_SVR_DUAL", NULL
 };
 
-
+void writeSVMData(Documents &document, std::vector<std::vector<float>> &svec, std::ofstream &fout) {
+    for(int i=0;i<document.tag.size();i++) {
+        fout << document.tag[i];
+        for(int j =0;j<svec[0].size();j++) {
+            fout << " " << (j+1) << ":" << svec[i][j];
+        }
+        fout << "\n";
+    }
+}
+    
 namespace training{        
 static char *line = NULL;
 static int max_line_len;
@@ -29,7 +39,7 @@ double bias;
 
 void print_null(const char *s) {}
     
-struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec) {
+struct SVM_param Do_Train(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec) {
     char *cargv[100];
     int cargc;
     
@@ -41,7 +51,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	char input_file_name[1024];
 	char model_file_name[1024];
 
-    mParam *mparams;
+    mParam* mparams;
     mparams = Malloc(mParam, 1);
     
     std::string solver_type;
@@ -60,6 +70,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	read_problem_mem(tag,svec);
     error_msg = check_parameter(&prob,&param);
 
+
 	if(error_msg)
 	{
 		fprintf(stderr,"ERROR: %s\n",error_msg);
@@ -77,8 +88,8 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 	else
 	{
 		model_=train(&prob, &param);
-
-        const parameter& param = model_ -> param;
+        
+        //const parameter& param = model_ -> param;
         nr_feature=model_->nr_feature;
         
         if(model_->bias>=0)
@@ -100,6 +111,7 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
         bias=model_->bias;
         
         w = Malloc(double, w_size*nr_w + nr_w);
+
         for(int q=0; q<w_size; q++)
         {
             for(int p=0; p<nr_w; p++)
@@ -111,30 +123,52 @@ struct mParam* Do_Train(std::vector<std::string> &tag, std::vector<std::vector<f
 			fprintf(stderr,"can't save model to file %s\n",model_file_name);
 			exit(1);
 		}
+        
 		free_and_destroy_model(&model_);
 	}
+
+
+    
 	destroy_param(&param);
+
 	free(prob.y);
 	free(prob.x);
-	free(x_space);
-	free(line);
+    free(x_space);
+    free(line);
 
-    mparams -> solver_type = solver_type;
-    mparams -> nr_class = nr_class;
-    mparams -> nr_feature = nr_feature;
-    mparams -> bias = bias;
-    
-    mparams -> label = Malloc(int,nr_class);
-    mparams -> w = Malloc(double, w_size*nr_w + nr_w);
-    
-    for(int q=0; q<nr_class;q++) mparams -> label[q] = label[q];
-    for(int q=0; q<w_size; q++)
-    {
-        for(int p=0; p<nr_w; p++)
-            mparams -> w[q*nr_w+p] = w[q*nr_w+p];
+
+    SVM_param svmparam;
+
+    svmparam.solver_type = solver_type;
+    svmparam.nr_class = nr_class;
+    svmparam.nr_feature = nr_feature;
+    svmparam.bias = bias;
+
+    for(int q=0; q<nr_class;q++) svmparam.label.push_back(label[q]);
+    for(int q=0; q<w_size; q++) {
+        for(int p=0;p<nr_w;p++) {
+            svmparam.w.push_back(w[q*nr_w+p]);
+        }
     }
+
+
     
-    return mparams;
+    //mparams -> solver_type = solver_type;
+    //mparams -> nr_class = nr_class;
+    //mparams -> nr_feature = nr_feature;
+    //mparams -> bias = bias;
+    
+    //mparams -> label = Malloc(int,nr_class);
+    //mparams -> w = Malloc(double, w_size*nr_w + nr_w);
+
+    //for(int q=0; q<nr_class;q++) mparams -> label[q] = label[q];
+    //for(int q=0; q<w_size; q++)
+    //{
+    //    for(int p=0; p<nr_w; p++)
+    //        mparams -> w[q*nr_w+p] = w[q*nr_w+p];
+    //}
+    
+    return svmparam;
 }
 
 void do_find_parameter_C()
@@ -351,11 +385,13 @@ void read_problem_mem(std::vector<std::string> &tag, std::vector<std::vector<flo
     int index = 1;
     int n_feature = svec[0].size();
     
-    elements = tag.size() * (n_feature+1);
+    elements = tag.size() * n_feature + 1;
     prob.l = tag.size();
 
 	prob.bias=bias;
 
+    std::cout << elements + prob.l << std::endl;
+    
 	prob.y = Malloc(double,prob.l);
 	prob.x = Malloc(struct feature_node *,prob.l);
 	x_space = Malloc(struct feature_node,elements+prob.l);
@@ -452,6 +488,128 @@ static char* readline(FILE *input)
 			break;
 	}
 	return line;
+}
+
+int do_one_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec)
+{
+    if(tag.size() != 1 || svec.size() != 1) {
+        std::cout << "Wrong use of do_one_predict function.\n";
+        exit(1);
+    }
+    int correct = 0;
+	int total = 0;
+	double error = 0;
+	double sump = 0, sumt = 0, sumpp = 0, sumtt = 0, sumpt = 0;    
+    
+	int nr_class=get_nr_class(model_);
+	double *prob_estimates=NULL;
+	int j, n;
+	int nr_feature=get_nr_feature(model_);
+	if(model_->bias>=0)
+		n=nr_feature+1;
+	else
+		n=nr_feature;
+	if(flag_predict_probability)
+	{
+		int *labels;
+
+		if(!check_probability_model(model_))
+		{
+			fprintf(stderr, "probability output is only supported for logistic regression\n");
+			exit(1);
+		}
+
+		labels=(int *) malloc(nr_class*sizeof(int));
+		get_labels(model_,labels);
+		prob_estimates = (double *) malloc(nr_class*sizeof(double));
+		free(labels);
+	}
+
+	max_line_len = 1024;
+	line = (char *)malloc(max_line_len*sizeof(char));
+    int p = 0;
+    int q = 1;
+    for(p = 0; p< tag.size(); p++)
+	{
+		int i = 0;
+		double target_label, predict_label;
+		int inst_max_index = 0; // strtol gives 0 if wrong format
+
+        target_label = atof(tag[p].c_str());
+
+		//target_label = strtod(label,&endptr);
+		//if(endptr == label || *endptr != '\0')
+		//	exit_input_error(total+1);
+
+		while(1)
+		{
+			if(i>=max_nr_attr-2)	// need one more for index = -1
+			{
+				max_nr_attr *= 2;
+				x = (struct feature_node *) realloc(x,max_nr_attr*sizeof(struct feature_node));
+			}
+
+			errno = 0;
+			x[i].index = (i % nr_feature)+1;
+            
+			if(x[i].index <= inst_max_index)
+				exit_input_error(total+1);
+			else
+				inst_max_index = x[i].index;
+
+			errno = 0;
+			x[i].value = svec[p][(i % nr_feature)];
+ 
+			// feature indices larger than those in training are not used
+            i++;
+            if((i % nr_feature) == 0) break;
+            
+		}
+
+		if(model_->bias>=0)
+		{
+			x[i].index = n;
+			x[i].value = model_->bias;
+			i++;
+		}
+		x[i].index = -1;
+
+		if(flag_predict_probability)
+		{
+			int j;
+			predict_label = predict_probability(model_,x,prob_estimates);
+		}
+		else
+		{
+			predict_label = predict(model_,x);
+		}
+
+		if(predict_label == target_label)
+			++correct;
+		error += (predict_label-target_label)*(predict_label-target_label);
+		sump += predict_label;
+		sumt += target_label;
+		sumpp += predict_label*predict_label;
+		sumtt += target_label*target_label;
+		sumpt += predict_label*target_label;
+		++total;
+	}
+	if(check_regression_model(model_))
+	{
+		info("Mean squared error = %g (regression)\n",error/total);
+		info("Squared correlation coefficient = %g (regression)\n",
+			((total*sumpt-sump*sumt)*(total*sumpt-sump*sumt))/
+			((total*sumpp-sump*sump)*(total*sumtt-sumt*sumt))
+			);
+	}
+	//else
+	//	info("Accuracy = %g%% (%d/%d)\n",(double) correct/total*100,correct,total);
+	if(flag_predict_probability)
+		free(prob_estimates);
+
+    free(prob_estimates);
+    
+    return correct;
 }
 
 void do_predict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec)
@@ -594,7 +752,7 @@ void exit_with_help()
 }
 
 
-struct model *load_model_mem(mParam *mparams)
+struct model *load_model_mem(SVM_param svmparam)
 {
 	int i;
 	int nr_feature;
@@ -615,15 +773,15 @@ struct model *load_model_mem(mParam *mparams)
 	setlocale(LC_ALL, "C");
 
     for(int i=0;solver_type_table[i];i++) {
-        if(strcmp(solver_type_table[i],mparams -> solver_type.c_str()) == 0)
+        if(strcmp(solver_type_table[i],svmparam.solver_type.c_str()) == 0)
             {
                 param.solver_type = i;
                 break;
             }
     }
-    model_ -> nr_class = mparams -> nr_class;
-    model_ -> nr_feature = mparams -> nr_feature;
-    model_ -> bias = mparams -> bias;
+    model_ -> nr_class = svmparam.nr_class;
+    model_ -> nr_feature = svmparam.nr_feature;
+    model_ -> bias = svmparam.bias;
     nr_class = model_->nr_class;
     model_->label = Malloc(int,nr_class);
 
@@ -640,14 +798,14 @@ struct model *load_model_mem(mParam *mparams)
 		nr_w = nr_class;
 
     for(int i=0;i<nr_class;i++)
-        model_ -> label[i] = mparams -> label[i];
+        model_ -> label[i] = svmparam.label[i];
     
 	model_->w=Malloc(double, w_size*nr_w);
 	for(i=0; i<w_size; i++)
 	{
 		int j;
 		for(j=0; j<nr_w; j++)
-			model_ -> w[i*nr_w+j] = mparams -> w[i*nr_w+j];
+			model_ -> w[i*nr_w+j] = svmparam.w[i*nr_w+j];
 	}
 	setlocale(LC_ALL, old_locale);
 	free(old_locale);
@@ -655,7 +813,72 @@ struct model *load_model_mem(mParam *mparams)
 	return model_;
 }
 
+int onePredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, SVM_param svmparam)
+{
+    int cargc;
+    char *cargv[100];
 
+    cargv[0] = (char *)"./test";
+    cargv[1] = (char *)"test_train.txt";
+    cargv[2] = (char *)"KLD.model";
+    cargv[3] = (char *)"KLD.output";
+    cargc = 4;
+
+
+	int i;
+
+	// parse options
+	for(i=1;i<cargc;i++)
+	{
+		if(cargv[i][0] != '-') break;
+		++i;
+		switch(cargv[i-1][1])
+		{
+			case 'b':
+				flag_predict_probability = atoi(cargv[i]);
+				break;
+			case 'q':
+				info = &print_null_p;
+				i--;
+				break;
+			default:
+				fprintf(stderr,"unknown option: -%c\n", cargv[i-1][1]);
+				exit_with_help();
+				break;
+		}
+	}
+	if(i>=cargc)
+		exit_with_help();
+
+
+    int n;
+    int w_size;
+    int nr_w;
+    
+    if(svmparam.bias>=0)
+        n=svmparam.nr_feature+1;
+    else
+        n=svmparam.nr_feature;
+
+    w_size = n;
+    if(svmparam.nr_class==2 && svmparam.solver_type != "MCSVM_CS")
+        nr_w=1;
+    else
+        nr_w=model_->nr_class;
+
+	x = (struct feature_node *) malloc(max_nr_attr*sizeof(struct feature_node));
+    model_=load_model_mem(svmparam);
+	int result = do_one_predict(tag, svec);
+	free_and_destroy_model(&model_);
+	free(line);
+	free(x);
+    
+    free(cargv);
+    return result;
+
+}
+
+    /*
 void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> &svec, mParam *mparams)
 {
     int cargc;
@@ -700,7 +923,7 @@ void mainPredict(std::vector<std::string> &tag, std::vector<std::vector<float>> 
 	free_and_destroy_model(&model_);
 	free(line);
 	free(x);
-}
+    }*/
 
 }//namespace predicting
 }//namespace svm

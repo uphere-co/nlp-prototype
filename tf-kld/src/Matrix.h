@@ -17,6 +17,8 @@
 
 namespace tfkld{
 
+class Documents;
+    
 struct SpValue{
     SpValue() :
         row(0), col(0), val(0.0) {}
@@ -56,12 +58,11 @@ struct Param{
 };
 
  
-void fillValue(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs);
-
-void fillMat(std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs, arma::sp_mat &mat);
-    
+void fillValue(Documents &document);
+void fillMat(Documents &document, arma::sp_mat &mat);
+arma::mat mapSentoLatent(std::string sen, Documents &document);
 std::vector<std::vector<type::real_t>> makeSimMat(arma::mat const &V);
-
+std::vector<std::vector<type::real_t>> makeSimMat2(arma::mat const &V);
 void normalizeSimMat(std::vector<std::vector<type::real_t>> &svec);
 
 }//namespace tfkld

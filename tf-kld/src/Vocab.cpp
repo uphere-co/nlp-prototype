@@ -6,8 +6,8 @@ using namespace util::io;
 using namespace tfkld::type;
 
 namespace tfkld{
-
-std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
+   
+std::vector<std::string> Documents::MakeNGrams(std::vector<std::string> &words, int n) {
     std::vector<std::string> result;
     std::string word{""};
     if(words.size() < n) {
@@ -30,12 +30,14 @@ std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n) {
     return result;
 }
     
-vocab_t LearnVocab(MSParaFile &file) {
+void Documents::LearnVocab(MSParaFile &file) {
   std::string line;
-  vocab_t vocab;
   int64_t word_idx = 0;
   int64_t count = 0;
   std::vector<std::string> items;
+
+  //Reset the filestream cursor
+  file.setBegin();
   
   std::getline(file.val, line);
   while(std::getline(file.val, line)){
@@ -88,16 +90,18 @@ vocab_t LearnVocab(MSParaFile &file) {
     
   }
   // return sorted vocabulary with ascending order
-  return vocab;
 }
     
-doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
+void Documents::LearnPairSentence(MSParaFile &file) {
     std::string line;
-    doc_t docs;
     hashmap_t doc;
     int64_t count = 0;
+    int64_t word_idx = 0;
     std::vector<std::string> items;
 
+    //Reset the filestream cursor
+    file.setBegin();
+    
     std::getline(file.val, line);
     while (std::getline(file.val, line)) {
         count++;
@@ -155,14 +159,58 @@ doc_t LearnDocs(vocab_t &vocab, MSParaFile &file) {
 
     }
 
-    return docs;
 }
 
-std::vector<std::string> LearnTag(MSParaFile &file) {
+void Documents::LearnSentence(MSParaFile &file) {
+    std::string line;
+    hashmap_t doc;
+    int64_t count = 0;
+    int64_t word_idx = 0;
+
+    //Reset the filestream cursor
+    file.setBegin();
+    
+    std::getline(file.val, line);
+    while (std::getline(file.val, line)) {
+        count++;
+        if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+        
+        std::istringstream iss{line};
+        
+        std::vector<std::string> words = util::string::split(line);
+        std::vector<std::string> unigram_words = MakeNGrams(words,1);
+        std::vector<std::string> bigram_words = MakeNGrams(words,2);
+        
+        for(auto x : unigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+        
+        for(auto x : bigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+
+        docs.push_back(doc);
+        doc.clear();
+
+    }
+}
+
+    
+void Documents::LearnTag(MSParaFile &file) {
     std::string line;
     int64_t count = 0;
     std::vector<std::string> items;
-    std::vector<std::string> tag;
+
+    //Reset the filestream cursor
+    file.setBegin();
     
     std::getline(file.val, line);
     while (std::getline(file.val, line)) {
@@ -179,10 +227,9 @@ std::vector<std::string> LearnTag(MSParaFile &file) {
         tag.push_back(words);
     }
 
-    return tag;
 }
 
-vocab_t ReadVocab(std::ifstream &vocab_file) {
+void Documents::ReadVocab(std::ifstream &vocab_file) {
     std::string word;
     int64_t index;
     vocab_t vocab;
@@ -190,14 +237,57 @@ vocab_t ReadVocab(std::ifstream &vocab_file) {
     while(vocab_file >> word >> index) {
         vocab[word] = index;
     }
-
-    return vocab;
 }
+
+hashmap_t Documents::makeSentoDoc(std::string sen) {
+    hashmap_t doc;
+
+    int64_t word_idx = 0;
     
-void PrintVocab(vocab_t &vocab){
+    std::vector<std::string> words = util::string::split(sen);
+    std::vector<std::string> unigram_words = MakeNGrams(words,1);
+    std::vector<std::string> bigram_words = MakeNGrams(words,2);
+    
+    for(auto x : unigram_words) {
+        auto it = vocab.find(x);
+        if(it != vocab.end()) {   
+            auto word_idx = it -> second;
+            doc[word_idx] += 1;
+        }
+    }
+    
+    for(auto x : bigram_words) {
+        auto it = vocab.find(x);
+        if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+        }
+    }
+
+    return doc;
+}    
+    
+void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;
 }
 
+std::vector<std::string> get_raw_sentence(MSParaFile &file) {
+    std::string line;
+    std::vector<std::string> items;
+    std::vector<std::string> sentences;
+    file.setBegin();
+    
+    std::getline(file.val, line);
+    while(std::getline(file.val, line)) {
+        boost::split(items, line, boost::is_any_of("\t"));
+        sentences.push_back(items[3]);
+        sentences.push_back(items[4]);
+    }
+
+    return sentences;
+}
+
+    
 std::vector<std::string> getVocabWord(vocab_t &vocab) {
     std::vector<std::string> result;
     for(auto x : vocab) result.push_back(x.first);
