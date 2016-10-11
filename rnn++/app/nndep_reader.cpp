@@ -44,8 +44,8 @@ struct ParsedWord{
       head_word_raw{file.getRawData<char>(H5name{prefix+".head_word"})},
       head_word{util::string::unpack_word_views(head_word_raw)},
       idx_head{file.getRawData<int64_t>(H5name{prefix+".head_pidx"})},
-      pos_raw{file.getRawData<char>(H5name{prefix+".POS"})},
-      pos{util::string::unpack_word_views(pos_raw)}
+      arc_label_raw{file.getRawData<char>(H5name{prefix+".arc_label"})},
+      arc_label{util::string::unpack_word_views(arc_label_raw)}
     {}
     std::vector<int64_t>     sent_idx;
     std::vector<char>        word_raw;
@@ -54,8 +54,8 @@ struct ParsedWord{
     std::vector<char>        head_word_raw;
     std::vector<const char*> head_word;
     std::vector<int64_t>     idx_head;
-    std::vector<char>        pos_raw;
-    std::vector<const char*> pos;
+    std::vector<char>        arc_label_raw;
+    std::vector<const char*> arc_label;
 };
 
 std::vector<int64_t> get_voca_idxs(rnn::wordrep::VocaIndexMap const &word2idx,
@@ -75,8 +75,8 @@ struct ParsedWordIdx{
       word_pidx{words.idx_word},
       head_word{get_voca_idxs(word2idx, words.head_word)},
       head_pidx{words.idx_head},
-      pos_raw{util::string::pack_words(words.pos)},
-      pos{util::string::unpack_word_views(pos_raw)}
+      arc_label_raw{util::string::pack_words(words.arc_label)},
+      arc_label{util::string::unpack_word_views(arc_label_raw)}
     {}
     ParsedWordIdx(util::io::H5file const &file, std::string prefix)
     : sent_idx{file.getRawData<int64_t>(H5name{prefix+".sent_idx"})},
@@ -84,8 +84,8 @@ struct ParsedWordIdx{
       word_pidx{file.getRawData<int64_t>(H5name{prefix+".word_pidx"})},
       head_word{file.getRawData<int64_t>(H5name{prefix+".head_word"})},
       head_pidx{file.getRawData<int64_t>(H5name{prefix+".head_pidx"})},
-      pos_raw{file.getRawData<char>(H5name{prefix+".POS"})},
-      pos{util::string::unpack_word_views(pos_raw)}
+      arc_label_raw{file.getRawData<char>(H5name{prefix+".arc_label"})},
+      arc_label{util::string::unpack_word_views(arc_label_raw)}
     {}
 
     void write_to_disk(std::string filename, std::string prefix) const {
@@ -95,7 +95,7 @@ struct ParsedWordIdx{
         outfile.writeRawData(H5name{prefix+".word_pidx"},word_pidx);
         outfile.writeRawData(H5name{prefix+".head_word"},head_word);
         outfile.writeRawData(H5name{prefix+".head_pidx"},head_pidx);
-        outfile.writeRawData(H5name{prefix+".POS"},      pos_raw);
+        outfile.writeRawData(H5name{prefix+".arc_label"},arc_label_raw);
     }
 
     std::vector<Sentence> SegmentSentences() const {
@@ -118,8 +118,8 @@ struct ParsedWordIdx{
     std::vector<int64_t>     word_pidx;
     std::vector<int64_t>     head_word;
     std::vector<int64_t>     head_pidx;
-    std::vector<char>        pos_raw;
-    std::vector<const char*> pos;
+    std::vector<char>        arc_label_raw;
+    std::vector<const char*> arc_label;
 };
 
 void convert_h5py_to_native(){
@@ -130,8 +130,32 @@ void convert_h5py_to_native(){
     ParsedWordIdx news_indexed{news, word2idx};
     news_indexed.write_to_disk("news.dep.h5", "test");
 }
-//TODO : POS index, Sent end/beg
+//TODO : arc_label index, Sent end/beg
 
+struct DepParsedQuery{
+    DepParsedQuery(nlohmann::json const &sent, rnn::wordrep::VocaIndexMap const &word2idx)
+    : len{sent["basic-dependencies"].size()}, word(len), word_pidx(len), head_word(len), head_pidx(len), arc_label(len){
+//        fmt::print("len : {}\n", len);
+        for(auto const&x : sent["basic-dependencies"]) {
+            auto i = x["dependent"].get<int64_t>() - 1;
+            word[i] = word2idx.getIndex(rnn::wordrep::Word{x["dependentGloss"].get<std::string>()});
+            word_pidx[i] = x["dependent"];
+            head_word[i] = word2idx.getIndex(rnn::wordrep::Word{x["governorGloss"].get<std::string>()});
+            head_pidx[i] = x["governor"];
+            arc_label[i]= x["dep"];
+//            fmt::print("{} {} {} {} {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i]);
+        }
+//        fmt::print("\n");
+//        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
+    }
+
+    std::size_t len;
+    std::vector<int64_t> word;
+    std::vector<int64_t> word_pidx;
+    std::vector<int64_t> head_word;
+    std::vector<int64_t> head_pidx;
+    std::vector<std::string> arc_label;
+};
 int main(){
 //    convert_h5py_to_native();
     util::Timer timer{};
@@ -144,6 +168,11 @@ int main(){
     std::vector<Sentence> sents = news_indexed.SegmentSentences();
 
     timer.here_then_reset("Sentences are reconstructed.\nEngine is ready.");
+
+    auto query_json = R"({"cutoffs": [[0.8, 0.0, 1.0, 0.7, 0.0]], "sentences": [{"tokens": [{"index": 1, "word": "Startups", "after": " ", "pos": "NNS", "characterOffsetEnd": 8, "characterOffsetBegin": 0, "originalText": "Startups", "before": ""}, {"index": 2, "word": "that", "after": " ", "pos": "WDT", "characterOffsetEnd": 13, "characterOffsetBegin": 9, "originalText": "that", "before": " "}, {"index": 3, "word": "Google", "after": " ", "pos": "NNP", "characterOffsetEnd": 20, "characterOffsetBegin": 14, "originalText": "Google", "before": " "}, {"index": 4, "word": "bought", "after": "", "pos": "VBD", "characterOffsetEnd": 27, "characterOffsetBegin": 21, "originalText": "bought", "before": " "}], "index": 0, "basic-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "parse": "SENTENCE_SKIPPED_OR_UNPARSABLE", "collapsed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "collapsed-ccprocessed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}]}]})"_json;
+    nlohmann::json& sent_json = query_json["sentences"][0];
+    std::vector<double> cutoff = query_json["cutoffs"][0];
+    DepParsedQuery query{sent_json, word2idx};
 
     auto google_idx = word2idx.getIndex(rnn::wordrep::Word{"Google"});
     auto bought_idx = word2idx.getIndex(rnn::wordrep::Word{"bought"});
@@ -176,7 +205,7 @@ int main(){
 //            fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n",
 //                       voca.getWord(news_indexed.word[i]).val, news_indexed.word_pidx[i],
 //                       voca.getWord(news_indexed.head_word[i]).val,
-//                       news_indexed.head_pidx[i], news_indexed.pos[i]);
+//                       news_indexed.head_pidx[i], news_indexed.arc_label[i]);
 //        }
 //        fmt::print("{}\n",end-beg);
 //    }
