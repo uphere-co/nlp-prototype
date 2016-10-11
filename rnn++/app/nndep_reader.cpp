@@ -5,6 +5,7 @@
 #include "fmt/printf.h"
 
 #include "parser/voca.h"
+#include "parser/parser.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -15,12 +16,10 @@
 using namespace util::io;
 
 struct SentUIndex{
-//    SentUIndex(int64_t val) : val{val}{}
     SentUIndex(std::ptrdiff_t val) : val{val}{}
     int64_t val;
 };
 struct WordUIndex{
-//    WordUIndex(int64_t val) : val{val}{}
     WordUIndex(std::ptrdiff_t val) : val{val}{}
     int64_t val;
 };
@@ -178,46 +177,47 @@ struct DepParsedQuery{
     std::vector<int64_t> head_pidx;
     std::vector<std::string> arc_label;
 };
-int main(){
-//    convert_h5py_to_native();
-    util::Timer timer{};
-    auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
-    auto word2idx = voca.indexing();
 
-    H5file infile{H5name{"news.dep.h5"}, hdf5::FileMode::read_exist};
-    ParsedWordIdx news_indexed{infile, "test"};
-    timer.here_then_reset("Data loaded.");
-    std::vector<Sentence> sents = news_indexed.SegmentSentences();
+struct DepParseSearch{
+    using json_t = nlohmann::json;
+    using voca_info_t = rnn::simple_model::VocaInfo;
+    DepParseSearch(json_t const &config)
+    : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"],
+          util::datatype_from_string(config["w2v_float_t"])},
+      words{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+                          hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
+      sents{words.SegmentSentences()},
+      sents_plain{util::string::readlines(config["plain_text"])}
+    {}
+    json_t process_queries(json_t ask) const {
+        nlohmann::json& sent_json = ask["sentences"][0];
+        std::vector<double> cutoff = ask["cutoffs"][0];
+        DepParsedQuery query{cutoff, sent_json, rnn.word2idx};
 
-    timer.here_then_reset("Sentences are reconstructed.\nEngine is ready.");
-
-    auto query_json = R"({"cutoffs": [[0.8, 0.0, 1.0, 0.7]], "sentences": [{"tokens": [{"index": 1, "word": "startup", "after": " ", "pos": "NN", "characterOffsetEnd": 7, "characterOffsetBegin": 0, "originalText": "startup", "before": ""}, {"index": 2, "word": "that", "after": " ", "pos": "WDT", "characterOffsetEnd": 12, "characterOffsetBegin": 8, "originalText": "that", "before": " "}, {"index": 3, "word": "Google", "after": " ", "pos": "NNP", "characterOffsetEnd": 19, "characterOffsetBegin": 13, "originalText": "Google", "before": " "}, {"index": 4, "word": "bought", "after": "", "pos": "VBD", "characterOffsetEnd": 26, "characterOffsetBegin": 20, "originalText": "bought", "before": " "}], "index": 0, "basic-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "parse": "SENTENCE_SKIPPED_OR_UNPARSABLE", "collapsed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "collapsed-ccprocessed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}]}]})"_json;
-    nlohmann::json& sent_json = query_json["sentences"][0];
-    std::vector<double> cutoff = query_json["cutoffs"][0];
-    DepParsedQuery query{cutoff, sent_json, word2idx};
-
-    auto sents_plain=util::string::readlines("news.Google.nodes.plain");
-    for(auto sent: sents){
-        if( query.is_similar(sent, news_indexed)) {
-            fmt::print("{:<10} : {}\n", sent.uid.val, sents_plain[sent.uid.val]);
+        json_t answer{};
+        for(auto sent: sents){
+            if( query.is_similar(sent, words)) {
+                answer["simiar_sents"].push_back(sents_plain[sent.uid.val]);
+            }
         }
+        return answer;
     }
+    voca_info_t rnn;
+    ParsedWordIdx words;
+    std::vector<Sentence> sents;
+    std::vector<std::string> sents_plain;
+
+};
+
+int main(int /*argc*/, char** argv){
+//    convert_h5py_to_native();
+    auto config = util::load_json(argv[1]);
+    util::Timer timer{};
+    DepParseSearch engine{config};
+    timer.here_then_reset("Data loaded.");
+    auto query_json = R"({"cutoffs": [[0.8, 0.0, 1.0, 0.7]], "sentences": [{"tokens": [{"index": 1, "word": "startup", "after": " ", "pos": "NN", "characterOffsetEnd": 7, "characterOffsetBegin": 0, "originalText": "startup", "before": ""}, {"index": 2, "word": "that", "after": " ", "pos": "WDT", "characterOffsetEnd": 12, "characterOffsetBegin": 8, "originalText": "that", "before": " "}, {"index": 3, "word": "Google", "after": " ", "pos": "NNP", "characterOffsetEnd": 19, "characterOffsetBegin": 13, "originalText": "Google", "before": " "}, {"index": 4, "word": "bought", "after": "", "pos": "VBD", "characterOffsetEnd": 26, "characterOffsetBegin": 20, "originalText": "bought", "before": " "}], "index": 0, "basic-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "parse": "SENTENCE_SKIPPED_OR_UNPARSABLE", "collapsed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "collapsed-ccprocessed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}]}]})"_json;
+    auto answer = engine.process_queries(query_json);
     timer.here_then_reset("Queries are answered.");
-    return 0;
-
-//    for(decltype(n_sent) sent_idx=0; sent_idx!=n_sent;++sent_idx){
-//        auto beg=sent_beg[sent_idx];
-//        auto end=sent_end[sent_idx];
-//        for(auto i=beg; i<end; ++i) {
-//            fmt::print("{:<10} {:<10} {:<10} {:<10} : ", sent_idx, i, beg, end);
-////            fmt::print("{:<10} ", sent_idx);
-//            fmt::print("{:<10} {:<2}  {:<10} {:<2}  {}\n",
-//                       voca.getWord(news_indexed.word[i]).val, news_indexed.word_pidx[i],
-//                       voca.getWord(news_indexed.head_word[i]).val,
-//                       news_indexed.head_pidx[i], news_indexed.arc_label[i]);
-//        }
-//        fmt::print("{}\n",end-beg);
-//    }
-
+    fmt::print("{}\n", answer.dump(4));
     return 0;
 }
