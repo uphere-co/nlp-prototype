@@ -27,7 +27,7 @@ struct WordUIndex{
 struct SentPosition{int64_t val;};
 struct Sentence{
     Sentence(SentUIndex uid, WordUIndex beg, WordUIndex end)
-    : uid{uid}, beg{beg}, end{end} {}
+    : uid{uid}, beg{beg}, end{end}{}
     SentUIndex uid;
     WordUIndex beg;
     WordUIndex end;
@@ -133,8 +133,8 @@ void convert_h5py_to_native(){
 //TODO : arc_label index, Sent end/beg
 
 struct DepParsedQuery{
-    DepParsedQuery(nlohmann::json const &sent, rnn::wordrep::VocaIndexMap const &word2idx)
-    : len{sent["basic-dependencies"].size()}, word(len), word_pidx(len), head_word(len), head_pidx(len), arc_label(len){
+    DepParsedQuery(std::vector<double> const &cutoff, nlohmann::json const &sent, rnn::wordrep::VocaIndexMap const &word2idx)
+    : len{cutoff.size()}, cutoff{cutoff}, word(len), word_pidx(len), head_word(len), head_pidx(len), arc_label(len){
 //        fmt::print("len : {}\n", len);
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
@@ -143,13 +143,35 @@ struct DepParsedQuery{
             head_word[i] = word2idx.getIndex(rnn::wordrep::Word{x["governorGloss"].get<std::string>()});
             head_pidx[i] = x["governor"];
             arc_label[i]= x["dep"];
-//            fmt::print("{} {} {} {} {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i]);
+//            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
         }
 //        fmt::print("\n");
 //        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
+    bool is_similar(Sentence const &sent, ParsedWordIdx const &words) const {
+        std::vector<bool> is_found(len, false);
+        auto beg=sent.beg.val;
+        auto end=sent.end.val;
+        for(auto i=beg; i<end; ++i) {
+            auto query_word = words.word[i];
+            auto query_head = words.head_word[i];
+            for(decltype(len)j=0; j<len; ++j){
+                if(cutoff[j]<1.0){
+                    if(word[j]==query_word) is_found[j] = true;
+                } else {
+                    if(word[j]==query_word && head_word[j]==query_head) is_found[j] = true;
+                }
+            }
+        }
+        for(decltype(len)j=0; j<len; ++j){
+            if(cutoff[j]==0.0) is_found[j] = true;
+        }
+        return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
+    }
+
     std::size_t len;
+    std::vector<double> cutoff;
     std::vector<int64_t> word;
     std::vector<int64_t> word_pidx;
     std::vector<int64_t> head_word;
@@ -169,29 +191,16 @@ int main(){
 
     timer.here_then_reset("Sentences are reconstructed.\nEngine is ready.");
 
-    auto query_json = R"({"cutoffs": [[0.8, 0.0, 1.0, 0.7, 0.0]], "sentences": [{"tokens": [{"index": 1, "word": "Startups", "after": " ", "pos": "NNS", "characterOffsetEnd": 8, "characterOffsetBegin": 0, "originalText": "Startups", "before": ""}, {"index": 2, "word": "that", "after": " ", "pos": "WDT", "characterOffsetEnd": 13, "characterOffsetBegin": 9, "originalText": "that", "before": " "}, {"index": 3, "word": "Google", "after": " ", "pos": "NNP", "characterOffsetEnd": 20, "characterOffsetBegin": 14, "originalText": "Google", "before": " "}, {"index": 4, "word": "bought", "after": "", "pos": "VBD", "characterOffsetEnd": 27, "characterOffsetBegin": 21, "originalText": "bought", "before": " "}], "index": 0, "basic-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "parse": "SENTENCE_SKIPPED_OR_UNPARSABLE", "collapsed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "collapsed-ccprocessed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "Startups"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}]}]})"_json;
+    auto query_json = R"({"cutoffs": [[0.8, 0.0, 1.0, 0.7]], "sentences": [{"tokens": [{"index": 1, "word": "startup", "after": " ", "pos": "NN", "characterOffsetEnd": 7, "characterOffsetBegin": 0, "originalText": "startup", "before": ""}, {"index": 2, "word": "that", "after": " ", "pos": "WDT", "characterOffsetEnd": 12, "characterOffsetBegin": 8, "originalText": "that", "before": " "}, {"index": 3, "word": "Google", "after": " ", "pos": "NNP", "characterOffsetEnd": 19, "characterOffsetBegin": 13, "originalText": "Google", "before": " "}, {"index": 4, "word": "bought", "after": "", "pos": "VBD", "characterOffsetEnd": 26, "characterOffsetBegin": 20, "originalText": "bought", "before": " "}], "index": 0, "basic-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "parse": "SENTENCE_SKIPPED_OR_UNPARSABLE", "collapsed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}], "collapsed-ccprocessed-dependencies": [{"dep": "ROOT", "dependent": 4, "governorGloss": "ROOT", "governor": 0, "dependentGloss": "bought"}, {"dep": "dobj", "dependent": 1, "governorGloss": "bought", "governor": 4, "dependentGloss": "startup"}, {"dep": "det", "dependent": 2, "governorGloss": "Google", "governor": 3, "dependentGloss": "that"}, {"dep": "nsubj", "dependent": 3, "governorGloss": "bought", "governor": 4, "dependentGloss": "Google"}]}]})"_json;
     nlohmann::json& sent_json = query_json["sentences"][0];
     std::vector<double> cutoff = query_json["cutoffs"][0];
-    DepParsedQuery query{sent_json, word2idx};
+    DepParsedQuery query{cutoff, sent_json, word2idx};
 
-    auto google_idx = word2idx.getIndex(rnn::wordrep::Word{"Google"});
-    auto bought_idx = word2idx.getIndex(rnn::wordrep::Word{"bought"});
-    auto startup_idx = word2idx.getIndex(rnn::wordrep::Word{"startup"});
-//    for(decltype(n_sent) sent_idx=0; sent_idx!=n_sent;++sent_idx) {
+    auto sents_plain=util::string::readlines("news.Google.nodes.plain");
     for(auto sent: sents){
-        auto beg=sent.beg.val;
-        auto end=sent.end.val;
-        //find google bought
-        bool google_bought = false;
-        bool startup = false;
-        for(auto i=beg; i<end; ++i) {   
-            if(news_indexed.word[i] == google_idx && news_indexed.head_word[i] == bought_idx)
-                google_bought = true;
-            if( news_indexed.word[i]==startup_idx)
-                startup = true;
+        if( query.is_similar(sent, news_indexed)) {
+            fmt::print("{:<10} : {}\n", sent.uid.val, sents_plain[sent.uid.val]);
         }
-        if(google_bought && startup)
-            fmt::print("{:<10}\n", sent.uid.val);
     }
     timer.here_then_reset("Queries are answered.");
     return 0;
