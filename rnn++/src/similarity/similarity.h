@@ -39,7 +39,7 @@ std::vector<int32_t> load_data(std::string datset_name);
 
 struct IndexedSentences{
     IndexedSentences(std::string filename)
-            : val{load_data(filename)} {
+    : val{load_data(filename)} {
         auto beg=val.cbegin();
         auto end=std::find(beg, val.cend(), sep);
         while(end!=val.cend()){
@@ -69,3 +69,48 @@ struct BoWVSimilaritySearch{
     rnn::ParsedSentences lines;
 };
 
+struct SentUIndex{
+    SentUIndex(std::ptrdiff_t val) : val{val}{}
+    int64_t val;
+};
+struct WordUIndex{
+    WordUIndex(std::ptrdiff_t val) : val{val}{}
+    int64_t val;
+};
+struct SentPosition{int64_t val;};
+struct Sentence{
+    Sentence(SentUIndex uid, WordUIndex beg, WordUIndex end)
+    : uid{uid}, beg{beg}, end{end}{}
+    SentUIndex uid;
+    WordUIndex beg;
+    WordUIndex end;
+};
+
+
+struct ParsedWord;
+struct ParsedWordIdx{
+    ParsedWordIdx(ParsedWord const &words, rnn::wordrep::VocaIndexMap const &word2idx);
+    ParsedWordIdx(util::io::H5file const &file, std::string prefix);
+
+    void write_to_disk(std::string filename, std::string prefix) const;
+    std::vector<Sentence> SegmentSentences() const;
+
+    std::vector<int64_t>     sent_idx;
+    std::vector<int64_t>     word;
+    std::vector<int64_t>     word_pidx;
+    std::vector<int64_t>     head_word;
+    std::vector<int64_t>     head_pidx;
+    std::vector<char>        arc_label_raw;
+    std::vector<const char*> arc_label;
+};
+
+struct DepParseSearch{
+    using json_t = nlohmann::json;
+    using voca_info_t = rnn::simple_model::VocaInfo;
+    DepParseSearch(json_t const &config);
+    json_t process_queries(json_t ask) const;
+    voca_info_t rnn;
+    ParsedWordIdx words;
+    std::vector<Sentence> sents;
+    std::vector<std::string> sents_plain;
+};
