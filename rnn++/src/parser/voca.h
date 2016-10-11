@@ -55,6 +55,7 @@ public:
     //auto getIndex(Word word) const {return val.find(word.span.data())->second;}//return val[word];}
     auto getIndex(Word word) const {
         auto it = val.find(word.val);
+        //TODO: remove ad-hoc rule for unknown words.
         if(it==val.end()) return idx_t{0};
         return it->second;
     }

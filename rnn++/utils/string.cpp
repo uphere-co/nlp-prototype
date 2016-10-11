@@ -31,6 +31,15 @@ std::vector<char> pack_words(std::vector<std::string> const &words){
     }
     return vec;
 }
+std::vector<char> pack_words(std::vector<const char*> const &words){
+    std::vector<char> vec;
+    for(auto const &word:words){
+        std::string x{word};
+        std::copy(x.cbegin(),x.cend(),std::back_inserter(vec));
+        vec.push_back('\0');
+    }
+    return vec;
+}
 
 std::vector<std::string> unpack_words(std::vector<char> const &concat_words){
     std::vector<std::string> words;

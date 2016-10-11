@@ -1,6 +1,6 @@
 #include <limits>
 
-#include "parser/parser.h"
+#include "parser/voca.h"
 
 #include "utils/json.h"
 #include "utils/profiling.h"
@@ -19,8 +19,9 @@ int main(int /*argc*/, char** argv){
     tbb::task_group g;
 
     auto config = load_json(argv[1]);
-    rnn::simple_model::VocaInfo rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"],
-                                    util::datatype_from_string(config["float_t"])};
+    auto voca = rnn::wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
+    auto word2idx = voca.indexing();
+
     timer.here_then_reset("Load voca info.");
     auto input_name = argv[2];
     auto dataset=rnn::TokenizedSentences{input_name};
@@ -32,7 +33,7 @@ int main(int /*argc*/, char** argv){
 
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent=lines[i];
-        auto idxs = rnn.word2idx.getIndex(sent);
+        auto idxs = word2idx.getIndex(sent);
         std::copy(idxs.cbegin(), idxs.cend(), std::back_inserter(indexed[i]));
     });
     timer.here_then_reset("Indexing finished.");
