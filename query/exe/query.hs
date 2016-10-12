@@ -36,7 +36,7 @@ import           Network.Transport.ZMQ                     (createTransport, def
 import           System.Directory
 import           System.Environment
 import           System.FilePath
-import           System.IO                                 (hClose, hGetContents, hPutStrLn)
+import           System.IO                                 (hClose, hGetContents, hPutStrLn, stderr)
 import           System.Process                            (readProcess)
 --
 import           Type
@@ -82,15 +82,18 @@ server url = do
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
+    liftIO $ hPutStrLn stderr (show pidstr)
     let them = (Bi.decode . B64.decodeLenient . BL.pack) pidstr
     lift $ do
+      let heartbeat n = send them (HB n) >> liftIO (threadDelay 5000000) >> heartbeat (n+1)
       us <- getSelfPid
       (sc,rc) <- newChan :: Process (SendPort Query, ReceivePort Query)
       send them (sc,us)
       sc' <- expect :: Process (SendPort BL.ByteString)
+      spawnLocal (heartbeat 0)
       forever $ do
         q <- receiveChan rc
-        liftIO $ print q
+        liftIO $ hPutStrLn stderr (show q)
         spawnLocal (queryWorker sc' q)
   return ()
 
@@ -98,11 +101,13 @@ makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
+  configurl <- liftIO (getEnv "CONFIGURL")
+  
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node (server "https://ygp.uphere.co/config")
+    runProcess node (server configurl)
     c_query_finalize
