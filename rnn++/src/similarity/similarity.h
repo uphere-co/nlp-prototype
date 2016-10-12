@@ -2,11 +2,11 @@
 
 #include "parser/parser.h"
 #include "parser/wordvec.h"
+
 #include "utils/json.h"
+#include "utils/span.h"
 
 #include <vector>
-#include "utils/hdf5.h"
-#include "utils/span.h"
 
 struct SimilaritySearch{
     using json_t = nlohmann::json;
