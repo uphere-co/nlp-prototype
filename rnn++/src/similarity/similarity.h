@@ -114,3 +114,5 @@ struct DepParseSearch{
     std::vector<Sentence> sents;
     std::vector<std::string> sents_plain;
 };
+
+void convert_h5py_to_native();
