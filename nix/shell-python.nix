@@ -46,7 +46,8 @@ stdenv.mkDerivation {
                    redis
                  ];
   shellHook = ''
-     PS1="\n\[\033[1;32m\][\u@\h.devel:\w]\$\[\033[0m\] "
+     #PS1="\n\[\033[1;32m\][\u@\h.devel:\w]\$\[\033[0m\] "
+     PS1="[\u@\h.devel:\w]\$ "
      EDITOR=vim
      CC=clang
      CXX=clang++
