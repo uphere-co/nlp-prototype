@@ -110,7 +110,7 @@ struct DepParseSearch{
     DepParseSearch(json_t const &config);
     json_t process_queries(json_t ask) const;
     voca_info_t rnn;
-    ParsedWordIdx words;
+    ParsedWordIdx tokens;
     std::vector<Sentence> sents;
     std::vector<std::string> sents_plain;
 };

@@ -2,6 +2,7 @@
 #include <utils/profiling.h>
 
 #include "tbb/task_group.h"
+#include "fmt/printf.h"
 
 #include "similarity.h"
 
@@ -357,6 +358,29 @@ struct DepParsedQuery{
         return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
     }
 
+    bool is_similar(Sentence const &sent, ParsedWordIdx const &words,
+                    BoWVQuery const &similarity) const {
+        std::vector<bool> is_found(len, false);
+        auto beg=sent.beg.val;
+        auto end=sent.end.val;
+        for(auto i=beg; i<end; ++i) {
+            auto query_word = words.word[i];
+            auto query_head = words.head_word[i];
+            for(decltype(len)j=0; j<len; ++j){
+                if(cutoff[j]<1.0){
+                    if(similarity.distances[j][query_word] >= cutoff[j]) is_found[j] = true;
+                } else {
+                    if((similarity.distances[j][query_word] >= cutoff[j]) &&
+                       (similarity.distances[head_pidx[j]-1][query_head]>=cutoff[head_pidx[j]-1])) is_found[j] = true;
+                }
+            }
+        }
+        for(decltype(len)j=0; j<len; ++j){
+            if(cutoff[j]==0.0) is_found[j] = true;
+        }
+        return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
+    }
+
     std::size_t len;
     std::vector<double> cutoff;
     std::vector<int64_t> word;
@@ -370,9 +394,9 @@ struct DepParsedQuery{
 DepParseSearch::DepParseSearch(json_t const &config)
     : rnn{config["wordvec_store"], config["voca_name"], config["w2vmodel_name"],
     util::datatype_from_string(config["w2v_float_t"])},
-    words{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+    tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
-    sents{words.SegmentSentences()},
+    sents{tokens.SegmentSentences()},
     sents_plain{util::string::readlines(config["plain_text"])}
 {}
 
@@ -381,10 +405,11 @@ DepParseSearch::json_t DepParseSearch::process_queries(json_t ask) const {
     std::vector<double> cutoff = ask["cutoffs"][0];
     std::string query_str = ask["queries"][0];
     DepParsedQuery query{cutoff, sent_json, rnn.word2idx};
+    BoWVQuery similarity{query_str, cutoff, rnn};
 
     json_t answer{};
     for(auto sent: sents){
-        if( query.is_similar(sent, words)) {
+        if( query.is_similar(sent, tokens, similarity)) {
             answer[query_str].push_back(sents_plain[sent.uid.val]);
         }
     }
