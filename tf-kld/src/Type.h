@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <tuple>
 
 namespace tfkld{
 namespace type{
@@ -20,5 +21,5 @@ using vocab_t = std::map<std::string, type::int64_t>;
 using tag_t = std::vector<std::string>;
 using sen_t = std::vector<hashmap_t>;
 using doc_t = std::vector<hashmap_t>;
-
+using tfmat_t = std::vector<std::tuple<type::int64_t, std::string, int>>;
 }//namespace tfkld

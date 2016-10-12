@@ -50,6 +50,14 @@ add_executable(IncSVD tests/IncSVD
                ../rnn++/utils/profiling)
 target_link_libraries(IncSVD armadillo openblas)
 
+add_executable(readYGP tests/readYGP
+               src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/Query
+               ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param
+               ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
+               utils/h5io)
+target_link_libraries(readYGP hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
+
 #add_executable(testSVD tests/testSVD
 #               ../rnn++/utils/profiling)
 #target_link_libraries(testSVD armadillo openblas)

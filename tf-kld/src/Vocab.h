@@ -53,5 +53,8 @@ std::vector<std::string> getVocabWord(vocab_t &vocab);
 std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
 std::vector<std::vector<type::int64_t>> getDocsIndex(doc_t &docs);
 std::vector<std::vector<int>> getDocsCount(doc_t &docs);
-
+std::vector<type::int64_t> getDocIndex(tfmat_t &tfmat);
+std::vector<std::string> getWord(tfmat_t &tfmat);
+std::vector<int> getWordCount(tfmat_t &tfmat);
+void transformDocsToTF(vocab_t &vocab, doc_t &docs, tfmat_t &tfmat);
 }//namespace tfkld

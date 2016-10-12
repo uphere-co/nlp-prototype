@@ -437,7 +437,7 @@ int main(int argc, char **argv) {
   initVocabHash();
   ReadWordVector();
   normalizeWordVectors();
-  std::string hey = "physics";
+  std::string hey = "google";
   int aaa = 10;
   result = GetSimilarWords(hey,aaa);
   for(int i = 0; i < aaa; i++) {

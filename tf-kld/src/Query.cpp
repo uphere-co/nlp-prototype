@@ -52,7 +52,7 @@ void searchSentence(svm::SVM_param svmparam, Documents &document, std::string se
             vec.push_back(V.row(i)[w] + V.row(V_last_row)[w]);
         }
         for(int w=0;w<resultDocs.K_dim;w++) {
-            vec.push_back(abs(V.row(i)[w] - V.row(V_last_row)[w]));
+            vec.push_back(std::abs(V.row(i)[w] - V.row(V_last_row)[w]));
         }
 
 
