@@ -101,7 +101,7 @@ std::vector<std::vector<real_t> > makeSimMat2(arma::mat const &V) {
             svec.push_back(V(a,b) + V(a+1,b));
         }
         for(int b = 0; b < V.n_cols; b++) {
-            svec.push_back(abs(V(a,b) - V(a+1,b)));
+            svec.push_back(std::abs(V(a,b) - V(a+1,b)));
         }
 
         result.push_back(svec);

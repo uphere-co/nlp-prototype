@@ -41,7 +41,6 @@ void writeVocabH5(vocab_t &vocab) {
 }
 
 void writeDocsH5(doc_t &docs) {
-
     std::ifstream f{"data.h5"};
 
     if(!f.good()) {
@@ -49,6 +48,7 @@ void writeDocsH5(doc_t &docs) {
     }
 
     H5file file{H5name{"data.h5"}, hdf5::FileMode::rw_exist};
+    
     auto docs_word_idx = getDocsIndex(docs);
     auto docs_word_count = getDocsCount(docs);
     //std::vector<char> concat_words = Concat(vocab_word);
@@ -56,12 +56,27 @@ void writeDocsH5(doc_t &docs) {
     file.writeRawData(H5name{"MSR.training.docs.index"},docs_word_idx);
     file.writeRawData(H5name{"MSR.training.docs.count"},docs_word_count);
 
-    auto docs_word_idx_H5 = file.getRawData<int64_t>(H5name{"MSR.training.docs.index"});
-    auto docs_word_count_H5 = file.getRawData<int>(H5name{"MSR.training.docs.coutn"});
-
-    for(auto x : docs_word_idx_H5) std::cout << x << " ";
-    for(auto x : docs_word_count_H5) std::cout << x << " ";
 }
 
+void writeTFH5(tfmat_t &tfmat) {
+    std::ifstream f{"tfmat.h5"};
+
+    if(!f.good()) {
+        H5file file{H5name{"tfmat.h5"}, hdf5::FileMode::create};
+    }
+
+    H5file file{H5name{"tfmat.h5"}, hdf5::FileMode::rw_exist};
+
+    auto doc_idx = getDocIndex(tfmat);
+    auto word = getWord(tfmat);
+    auto word_count = getWordCount(tfmat);
+    //std::vector<char> concat_doc_idx = Concat(doc_idx);
+    std::vector<char> concat_word = Concat(word);
+
+    file.writeRawData(H5name{"YGP.Amendment.DocIndex"},doc_idx);
+    file.writeRawData(H5name{"YGP.Amendment.Word"},concat_word);
+    file.writeRawData(H5name{"YGP.Amendment.WordCount"},word_count);
+    
+}
 }//namespace util
 }//namespace tfkld

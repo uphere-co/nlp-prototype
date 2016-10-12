@@ -1,3 +1,5 @@
+#include <tuple>
+
 #include "src/Vocab.h"
 
 using namespace util;
@@ -44,12 +46,12 @@ void Documents::LearnVocab(MSParaFile &file) {
     count++;
     if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
 
-    std::istringstream iss{line};
-    boost::split(items, line, boost::is_any_of("\t"));
+    //std::istringstream iss{line};
+    //boost::split(items, line, boost::is_any_of("\t"));
 
-    std::vector<std::string> words = util::string::split(items[3]);
+    std::vector<std::string> words = util::string::split(line);
     std::vector<std::string> unigram_words = MakeNGrams(words,1);
-    std::vector<std::string> bigram_words = MakeNGrams(words,2);
+    //std::vector<std::string> bigram_words = MakeNGrams(words,2);
     
     for(auto x : unigram_words) {
         auto isin = vocab.find(x);
@@ -58,7 +60,7 @@ void Documents::LearnVocab(MSParaFile &file) {
             word_idx++;
         }
     }
-
+    /*
     for(auto x : bigram_words) {
         auto isin = vocab.find(x);
         if(isin == vocab.end()) {
@@ -87,7 +89,7 @@ void Documents::LearnVocab(MSParaFile &file) {
             word_idx++;
         }
     }
-    
+    */
   }
   // return sorted vocabulary with ascending order
 }
@@ -179,7 +181,7 @@ void Documents::LearnSentence(MSParaFile &file) {
         
         std::vector<std::string> words = util::string::split(line);
         std::vector<std::string> unigram_words = MakeNGrams(words,1);
-        std::vector<std::string> bigram_words = MakeNGrams(words,2);
+        //std::vector<std::string> bigram_words = MakeNGrams(words,2);
         
         for(auto x : unigram_words) {
             auto it = vocab.find(x);
@@ -188,7 +190,7 @@ void Documents::LearnSentence(MSParaFile &file) {
                 doc[word_idx] += 1;
             }
         }
-        
+        /*
         for(auto x : bigram_words) {
             auto it = vocab.find(x);
             if(it != vocab.end()) {   
@@ -196,7 +198,7 @@ void Documents::LearnSentence(MSParaFile &file) {
                 doc[word_idx] += 1;
             }
         }
-
+        */
         docs.push_back(doc);
         doc.clear();
 
@@ -331,5 +333,55 @@ std::vector<std::vector<int>> getDocsCount(doc_t &docs) {
 
     return result;
 }
-    
+
+std::vector<int64_t> getDocIndex(tfmat_t &tfmat) {
+    std::vector<int64_t> result;
+    for(auto x : tfmat) {
+        result.push_back(std::get<0>(x));
+    }
+    return result;
+}
+
+std::vector<std::string> getWord(tfmat_t &tfmat) {
+    std::vector<std::string> result;
+    for(auto x : tfmat) {
+        result.push_back(std::get<1>(x));
+    }
+    return result;
+}
+
+std::vector<int> getWordCount(tfmat_t &tfmat) {
+    std::vector<int> result;
+    for(auto x : tfmat) {
+        result.push_back(std::get<2>(x));
+    }
+    return result;
+}
+
+std::string getOriginalWord(vocab_t &vocab, int64_t a) {
+    for(auto x : vocab) {
+        if(x.second == a) return x.first;
+    }
+    return 0;
+}
+
+void transformDocsToTF(vocab_t &vocab, doc_t &docs, tfmat_t &tfmat) {
+    int64_t idx = 0;
+
+    std::map<int64_t, std::string> reverse_vocab;
+
+    for(auto x : vocab) {
+        reverse_vocab[x.second] = x.first;
+    }
+    for(auto x : docs) {
+        for(auto y : x) {
+            std::string ss = reverse_vocab.find(y.first) -> second;
+            std::tuple<int64_t, std::string, int> t = std::make_tuple(idx, ss, y.second);
+            tfmat.push_back(t);
+        }
+        idx++;
+    }
+}
+
+                       
 }//namespace tfkld
