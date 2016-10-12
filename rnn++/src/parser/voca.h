@@ -90,6 +90,7 @@ public:
     util::cstring_span<> getWordSpan(data_t::size_type idx) const {
         return gsl::ensure_z(word_views[idx]);
     }
+    std::string operator[](idx_t i) const {return word_views[i];}
     auto size() const {return word_views.size();}
     VocaIndexMap indexing() const{
         auto word_to_idx = VocaIndexMap::data_t{};

@@ -257,12 +257,15 @@ struct ParsedWord{
     std::vector<char>        arc_label_raw;
     std::vector<const char*> arc_label;
 };
+
 void convert_h5py_to_native(){
+//    auto voca = rnn::wordrep::load_voca("test.Google.h5", "news.en.words");
     auto voca = rnn::wordrep::load_voca("news.h5", "news.en.words");
     auto word2idx = voca.indexing();
     H5file infile{H5name{"news.Google.h5"}, hdf5::FileMode::read_exist};
     ParsedWord news{infile, "test"};
     ParsedWordIdx news_indexed{news, word2idx};
+//    news_indexed.write_to_disk("test.Google.h5", "test");
     news_indexed.write_to_disk("news.dep.h5", "test");
 }
 
@@ -298,6 +301,7 @@ ParsedWordIdx::ParsedWordIdx(util::io::H5file const &file, std::string prefix)
 {}
 
 void ParsedWordIdx::write_to_disk(std::string filename, std::string prefix) const {
+//    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
     H5file outfile{H5name{filename}, hdf5::FileMode::replace};
     outfile.writeRawData(H5name{prefix+".sent_idx"}, sent_idx);
     outfile.writeRawData(H5name{prefix+".word"},     word);
