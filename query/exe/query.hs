@@ -36,7 +36,7 @@ import           Network.Transport.ZMQ                     (createTransport, def
 import           System.Directory
 import           System.Environment
 import           System.FilePath
-import           System.IO                                 (hClose, hGetContents, hPutStrLn)
+import           System.IO                                 (hClose, hGetContents, hPutStrLn, stderr)
 import           System.Process                            (readProcess)
 --
 import           Type
@@ -78,19 +78,29 @@ queryWorker sc q = do
 server :: String -> Process ()
 server url = do
   curlapp <- liftIO (getEnv "CURLAPP")
+  liftIO $ hPutStrLn stderr curlapp
+  liftIO $ hPutStrLn stderr url
   str <- liftIO $ readProcess curlapp ["-k",url] ""
+  liftIO $ hPutStrLn stderr str
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
+    liftIO $ hPutStrLn stderr (show m)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
+    liftIO $ hPutStrLn stderr (show pidstr)
     let them = (Bi.decode . B64.decodeLenient . BL.pack) pidstr
+    liftIO $ hPutStrLn stderr $ "them = " ++ show them
     lift $ do
+      let heartbeat n = send them (HB n) >> liftIO (threadDelay 5000000) >> heartbeat (n+1)
       us <- getSelfPid
+      liftIO $ hPutStrLn stderr $ "us = " ++ show us
       (sc,rc) <- newChan :: Process (SendPort Query, ReceivePort Query)
+      liftIO $ hPutStrLn stderr "here"
       send them (sc,us)
       sc' <- expect :: Process (SendPort BL.ByteString)
+      spawnLocal (heartbeat 0)
       forever $ do
         q <- receiveChan rc
-        liftIO $ print q
+        liftIO $ hPutStrLn stderr (show q)
         spawnLocal (queryWorker sc' q)
   return ()
 
