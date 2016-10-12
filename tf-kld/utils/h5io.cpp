@@ -60,11 +60,9 @@ void writeDocsH5(doc_t &docs) {
 
 void writeTFH5(tfmat_t &tfmat) {
     std::ifstream f{"tfmat.h5"};
-
     if(!f.good()) {
         H5file file{H5name{"tfmat.h5"}, hdf5::FileMode::create};
     }
-
     H5file file{H5name{"tfmat.h5"}, hdf5::FileMode::rw_exist};
 
     auto doc_idx = getDocIndex(tfmat);
@@ -73,9 +71,9 @@ void writeTFH5(tfmat_t &tfmat) {
     //std::vector<char> concat_doc_idx = Concat(doc_idx);
     std::vector<char> concat_word = Concat(word);
 
-    file.writeRawData(H5name{"YGP.Amendment.DocIndex"},doc_idx);
-    file.writeRawData(H5name{"YGP.Amendment.Word"},concat_word);
-    file.writeRawData(H5name{"YGP.Amendment.WordCount"},word_count);
+    file.writeRawData(H5name{"YGP.DocIndex"},doc_idx);
+    file.writeRawData(H5name{"YGP.Word"},concat_word);
+    file.writeRawData(H5name{"YGP.WordCount"},word_count);
     
 }
 }//namespace util

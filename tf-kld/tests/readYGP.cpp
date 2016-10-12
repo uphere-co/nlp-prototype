@@ -17,7 +17,7 @@ int main(){
     auto timer = Timer{};
 
     Documents document;
-    std::string fin_name = "YGP_text.txt.short";
+    std::string fin_name = "YGP_text.txt";
     MSParaFile fin{fin_name};
 
     document.LearnVocab(fin);
@@ -26,7 +26,6 @@ int main(){
     tfmat_t tfmat;
 
     transformDocsToTF(document.vocab, document.docs, tfmat);
-
     writeTFH5(tfmat);
 
     return 0;
