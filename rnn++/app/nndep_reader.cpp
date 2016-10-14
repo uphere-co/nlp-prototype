@@ -6,7 +6,9 @@
 #include "parser/voca.h"
 #include "parser/parser.h"
 #include "similarity/similarity.h"
+
 #include "wordrep/word_uid.h"
+#include "wordrep/word_prob.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -49,16 +51,15 @@ void print_CoreNLP_output(nlohmann::json const &json){
     for (auto it = json.begin(); it != json.end(); ++it) {
         std::cout << it.key() << "\n";
     }
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/words.uid"};
-    //nlohmann::json& sent_json = query_json['sentences'][0];
-//    fmt::print("{}\n", sent_json.dump());
+    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
+    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
     for(auto const& sent_json : json["sentences"] ){
         for(auto const &token : sent_json["tokens"]){
             auto word_pidx = token["index"].get<int64_t>()-1;
             auto word = token["word"].get<std::string>();
             auto pos = token["pos"].get<std::string>();
             assert(wordUIDs[wordUIDs[word]]==word);
-            fmt::print("{} {} {} {}\n", word, word_pidx, wordUIDs[word].val, pos);
+            fmt::print("{:<10}\t{}\t{}\t{}\n", word, word_pidx, word_cutoff.ratio(wordUIDs[word]), pos);
         }
         for(auto const &x : sent_json["basic-dependencies"]){
 //            word[i] = word2idx.getIndex(rnn::wordrep::Word{x["dependentGloss"].get<std::string>()});
@@ -78,8 +79,20 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     auto query_json = util::load_json(argv[2]);
     auto output_json = util::load_json(argv[3]);
-    print_CoreNLP_output(output_json);
 
+//    print_CoreNLP_output(output_json);
+    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
+    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
+    for(auto const& sent_json : output_json["sentences"] ){
+        for(auto const &token : sent_json["tokens"]){
+            auto word_pidx = token["index"].get<int64_t>()-1;
+            auto word = token["word"].get<std::string>();
+            auto pos = token["pos"].get<std::string>();
+            assert(wordUIDs[wordUIDs[word]]==word);
+            fmt::print("{:<10}\t{}\t{}\t{}\n", word, word_pidx, word_cutoff.cutoff(wordUIDs[word]), pos);
+        }
+        fmt::print("----------------------------------------\n");
+    }
     return 0;
     util::Timer timer{};
     DepParseSearch engine{config};
