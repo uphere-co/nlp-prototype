@@ -27,6 +27,7 @@ FILE(GLOB simple_model_parsers src/*cpp
     src/parser/compute.cpp src/parser/config.cpp src/parser/node.cpp src/parser/param.cpp)
 
 FILE(GLOB wordrep_files src/wordrep/*cpp)
+FILE(GLOB similarity_files src/similarity/*cpp)
 
 FILE(GLOB util_files utils/*cpp)
 
@@ -67,8 +68,8 @@ target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
-add_executable(nndep_reader app/nndep_reader src/similarity/similarity
-               ${simple_model_parsers} ${wordrep_files} ${util_files})
+add_executable(nndep_reader app/nndep_reader ${simple_model_parsers}
+               ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 

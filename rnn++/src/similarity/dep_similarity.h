@@ -20,7 +20,7 @@ struct VocaInfo{
 
 }//namespace wordrep
 
-namespace similarity {
+namespace engine {
 
 struct DepSimilaritySearch {
     using json_t = nlohmann::json;
@@ -35,4 +35,4 @@ struct DepSimilaritySearch {
     std::vector<std::string> sents_plain;
 };
 
-}//namespace similarity
+}//namespace engine

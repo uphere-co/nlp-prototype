@@ -3,6 +3,7 @@
 #include "utils/base_types.h"
 
 #include "wordrep/word_uid.h"
+#include "wordrep/voca.h"
 
 namespace util{
 namespace io{
@@ -13,7 +14,7 @@ struct H5file; //forward declaration.
 namespace wordrep{
 
 struct WordIndexDummy{};
-using WordIndex = util::IntegerLike<WordIndexDummy>;
+using WordPosIndex = util::IntegerLike<WordIndexDummy>;
 struct SentIndexDummy{};
 using SentIndex = util::IntegerLike<SentIndexDummy>;
 
@@ -38,10 +39,10 @@ struct DepParsedTokens{
     std::vector<Sentence> SegmentSentences() const;
 
     std::vector<SentIndex>   sent_idx;
-    std::vector<WordUID>     word;
-    std::vector<WordIndex>   word_pidx;
-    std::vector<WordUID>     head_word;
-    std::vector<WordIndex>   head_pidx;
+    std::vector<VocaIndex>     word;
+    std::vector<WordPosIndex>   word_pidx;
+    std::vector<VocaIndex>     head_word;
+    std::vector<WordPosIndex>   head_pidx;
     std::vector<char>        arc_label_raw;
     std::vector<const char*> arc_label;
 };

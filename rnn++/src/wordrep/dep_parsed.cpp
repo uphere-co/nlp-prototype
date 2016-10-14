@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "wordrep/dep_parsed.h"
 
 #include "utils/hdf5.h"
@@ -23,10 +25,10 @@ std::vector<typename T::val_t> serialize(std::vector<T> const& uids){
 namespace wordrep{
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
 : sent_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
-  word{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
-  word_pidx{deserialize<WordIndex>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
-  head_word{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_word"}))},
-  head_pidx{deserialize<WordIndex>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
+  word{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
+  word_pidx{deserialize<WordPosIndex>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
+  head_word{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head_word"}))},
+  head_pidx{deserialize<WordPosIndex>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
   arc_label_raw{file.getRawData<char>(H5name{prefix+".arc_label"})},
   arc_label{util::string::unpack_word_views(arc_label_raw)}
 {}

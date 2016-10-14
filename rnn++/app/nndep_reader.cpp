@@ -20,6 +20,7 @@
 
 using namespace util::io;
 using namespace wordrep;
+using namespace engine;
 
 void write_WordUIDs(std::string filename, std::string voca_name, std::string uids_name){
     H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
@@ -88,28 +89,27 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     auto query_json = util::load_json(argv[2]);
     auto output_json = util::load_json(argv[3]);
-    /*
+
 //    print_CoreNLP_output(output_json);
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
-    for(auto const& sent_json : output_json["sentences"] ){
-        for(auto const &token : sent_json["tokens"]){
-            auto word_pidx = token["index"].get<int64_t>()-1;
-            auto word = token["word"].get<std::string>();
-            auto pos = token["pos"].get<std::string>();
-            auto word_uid = wordUIDs[word];
-            fmt::print("{:<10}\t{:<10}\t{}\t{}\t{}\n",
-                       word, wordUIDs[word_uid], word_pidx, word_cutoff.cutoff(word_uid), pos);
-        }
-        fmt::print("----------------------------------------\n");
-    }
-    return 0;
+//    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
+//    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
+//    for(auto const& sent_json : output_json["sentences"] ){
+//        for(auto const &token : sent_json["tokens"]){
+//            auto word_pidx = token["index"].get<int64_t>()-1;
+//            auto word = token["word"].get<std::string>();
+//            auto pos = token["pos"].get<std::string>();
+//            auto word_uid = wordUIDs[word];
+//            fmt::print("{:<10}\t{:<10}\t{}\t{}\t{}\n",
+//                       word, wordUIDs[word_uid], word_pidx, word_cutoff.cutoff(word_uid), pos);
+//        }
+//        fmt::print("----------------------------------------\n");
+//    }
+//    return 0;
     util::Timer timer{};
-    DepParseSearch engine{config};
+    DepSimilaritySearch engine{config};
     timer.here_then_reset("Data loaded.");
     auto answer = engine.process_queries(query_json);
     timer.here_then_reset("Queries are answered.");
     fmt::print("{}\n", answer.dump(4));
     return 0;
-    */
 }
