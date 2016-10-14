@@ -29,6 +29,7 @@ include_directories($ENV{MS_GSL}/GSL/include)
 include_directories($ENV{SPDLOG}/spdlog/include)
 include_directories($ENV{LIBLINEAR})
 
+
 add_executable(tfkld app/tfkld
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
                ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
@@ -36,6 +37,7 @@ add_executable(tfkld app/tfkld
                src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/SVM src/Query
                utils/help utils/h5io)
 target_link_libraries(tfkld hdf5_cpp hdf5_hl_cpp tbb armadillo openblas linear)
+
 
 add_executable(math app/math
                ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
@@ -46,9 +48,21 @@ add_executable(math app/math
                utils/h5io)
 target_link_libraries(math hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 
+
+add_executable(YGP_TFIDF app/YGP_TFIDF
+               ../rnn++/src/parser/compute ../rnn++/src/parser/config ../rnn++/src/parser/node ../rnn++/src/parser/param 
+               ../rnn++/src/parser/parser ../rnn++/src/parser/voca ../rnn++/src/parser/wordvec 
+               ../rnn++/utils/string ../rnn++/utils/hdf5 ../rnn++/utils/math ../rnn++/utils/logger
+               src/Matrix src/Vocab src/TFIDF src/Query
+               tests/testMath
+               utils/help utils/h5io)
+target_link_libraries(YGP_TFIDF hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
+
+
 add_executable(IncSVD tests/IncSVD
                ../rnn++/utils/profiling)
 target_link_libraries(IncSVD armadillo openblas)
+
 
 add_executable(readYGP tests/readYGP
                src/TFKLD src/Matrix src/Vocab src/TFKLD src/TFIDF src/Query
@@ -58,9 +72,11 @@ add_executable(readYGP tests/readYGP
                utils/h5io)
 target_link_libraries(readYGP hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 
+
 add_executable(testSVD2 tests/testSVD2
                ../rnn++/utils/profiling)
 target_link_libraries(testSVD2 armadillo openblas)
+
 
 #add_executable(testSVD tests/testSVD
 #               ../rnn++/utils/profiling)

@@ -6,9 +6,7 @@
 namespace tfkld{
 
 type::real_t val_idf(type::int64_t D, type::int_t Dt);
-    
-void MakeTFIDF(std::vector<type::real_t> &idf, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs);
-
- void MakeTFIDF(std::vector<type::real_t> &idf, std::vector<SpValue> &values);
+void MakeTFIDF(Param const &params, Documents &document);
+void runTFIDF(Param const &params, Documents &document);
 
 }//namespace tfkld

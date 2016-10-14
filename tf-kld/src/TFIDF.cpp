@@ -3,6 +3,7 @@
 using namespace util;
 using namespace util::io;
 
+using namespace arma;
 using namespace tfkld::type;
 
 namespace tfkld{
@@ -11,28 +12,44 @@ real_t val_idf(int64_t D, int_t Dt) {
     return log(D/(real_t)Dt);
 }
     
-void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFIDF(Param const &params, Documents &document) {
 
     hashmap_t df;
-    int64_t D = docs.size();
+    int64_t D = document.docs.size();
     
-    for(auto x : values) df[x.row] += 1;
+    for(auto x : document.values) df[x.row] += 1;
 
-    if(df.size() != vocab.size()) {
+    if(df.size() != document.vocab.size()) {
         std::cout << "Sanity check failed!\n";
         exit(1);
     }
     
-    for(auto x : df) idf.push_back(val_idf(D,x.second));
+    for(auto x : df) document.idf.push_back(val_idf(D,x.second));
 
-    for(auto &x : values) x.val *= idf[x.row];
-
-}
-
-void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values) {
-
-    for(auto &x : values) x.val *= idf[x.row];
+    for(auto &x : document.values) x.val *= document.idf[x.row];
 
 }
+
+void runTFIDF(Param const &params, Documents &document) {
+
+    auto timer = Timer{};
+
+    MSParaFile trainFile{params.trainFile};
+    int K_dim = params.kdim;
+
+    sp_mat inMat;
+    mat U;
+    vec s;
+    mat V;
+
+    document.LearnVocab(trainFile);
+    document.LearnSentence(trainFile);
+    fillValue(document);
+    MakeTFIDF(params, document);
+    fillMat(document, inMat);
+    svds(U,s,V,inMat,K_dim);
     
+}
+
+
 }//namespace tfkld

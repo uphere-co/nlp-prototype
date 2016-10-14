@@ -32,6 +32,7 @@ public:
     vocab_t vocab;
     doc_t docs;
     tag_t tag;
+    std::vector<type::real_t> idf;
     std::vector<type::real_t> kld;
     std::vector<SpValue> values;
     int K_dim;
