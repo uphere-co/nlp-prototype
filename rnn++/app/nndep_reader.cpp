@@ -3,9 +3,8 @@
 #include <cctype>
 #include "fmt/printf.h"
 
-#include "parser/voca.h"
-#include "parser/parser.h"
-#include "similarity/similarity.h"
+//#include "similarity/similarity.h"
+#include "similarity/dep_similarity.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
