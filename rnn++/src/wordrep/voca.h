@@ -2,7 +2,6 @@
 #include <unordered_map>
 
 #include "utils/base_types.h"
-#include "utils/span.h"
 #include "wordrep/word_uid.h"
 
 namespace wordrep{
@@ -11,7 +10,7 @@ using VocaIndex = util::IntegerLike<VocaIndexDummy,-1>; //UID -1 for unknown wor
 
 class VocaIndexMap{
 public:
-    VocaIndexMap(util::span_dyn<WordUID::val_t> uids_val) {
+    VocaIndexMap(std::vector<WordUID::val_t> uids_val) {
         auto n = uids_val.size();
         for(decltype(n)i=0; i!=n; ++i){
             WordUID uid{uids_val[i]};
@@ -28,4 +27,5 @@ public:
     std::unordered_map<VocaIndex, WordUID> idx2uid;
 };
 
+std::vector<WordUID::val_t> load_voca(std::string h5name, std::string voca_name);
 }//namespace wordrep

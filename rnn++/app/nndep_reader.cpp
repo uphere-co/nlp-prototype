@@ -32,15 +32,12 @@ void write_WordUIDs(std::string filename, std::string voca_name, std::string uid
     file.writeRawData(H5name{uids_name}, uids);
 }
 void pruning_voca(){
-    H5file file{H5name{"news.h5"}, hdf5::FileMode::rw_exist};
-    auto raw = file.getRawData<WordUID::val_t>(H5name{"news.en.uids"});
-    VocaIndexMap uids{raw};
+    VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
     H5file prunerfile{H5name{"s2010.h5"}, hdf5::FileMode::rw_exist};
     auto raw_pruner = prunerfile.getRawData<WordUID::val_t>(H5name{"s2010.uids"});
     VocaIndexMap pruner_uids{raw_pruner};
 
-    auto raw_wvecs = file.getRawData<float>(H5name{"news.en.vecs"});
-    WordBlock_base<float,100> wvecs{raw_wvecs};
+    WordBlock_base<float,100> wvecs{load_raw_wvec("news.h5", "news.en.vecs", "float32")};
     std::vector<float> pruned_wvecs;
     std::vector<WordUID::val_t > pruned_uids;
     for(auto const& pair: uids.uid2idx) {

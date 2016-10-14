@@ -2,6 +2,8 @@
 
 #include "parser/parser.h"
 #include "parser/wordvec.h"
+#include "wordrep/voca.h"
+#include "wordrep/wordvec.h"
 
 #include "utils/json.h"
 #include "utils/span.h"
@@ -105,6 +107,19 @@ struct ParsedWordIdx{
     std::vector<char>        arc_label_raw;
     std::vector<const char*> arc_label;
 };
+
+namespace wordrep{
+struct VocaInfo{
+    VocaInfo(std::string h5file, std::string voca_name,
+             std::string wvec_name, std::string float_type)
+    : voca{load_voca(h5file, voca_name)},
+      wvecs{load_raw_wvec(h5file, wvec_name, float_type)}
+    {}
+    VocaIndexMap voca;
+    WordBlock_base<float,100> wvecs;
+};
+
+}//namespace wordrep
 
 struct DepParseSearch{
     using json_t = nlohmann::json;
