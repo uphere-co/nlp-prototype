@@ -58,7 +58,6 @@ void print_CoreNLP_output(nlohmann::json const &json){
             auto word_pidx = token["index"].get<int64_t>()-1;
             auto word = token["word"].get<std::string>();
             auto pos = token["pos"].get<std::string>();
-            assert(wordUIDs[wordUIDs[word]]==word);
             fmt::print("{:<10}\t{}\t{}\t{}\n", word, word_pidx, word_cutoff.ratio(wordUIDs[word]), pos);
         }
         for(auto const &x : sent_json["basic-dependencies"]){
@@ -88,8 +87,9 @@ int main(int /*argc*/, char** argv){
             auto word_pidx = token["index"].get<int64_t>()-1;
             auto word = token["word"].get<std::string>();
             auto pos = token["pos"].get<std::string>();
-            assert(wordUIDs[wordUIDs[word]]==word);
-            fmt::print("{:<10}\t{}\t{}\t{}\n", word, word_pidx, word_cutoff.cutoff(wordUIDs[word]), pos);
+            auto word_uid = wordUIDs[word];
+            fmt::print("{:<10}\t{:<10}\t{}\t{}\t{}\n",
+                       word, wordUIDs[word_uid], word_pidx, word_cutoff.cutoff(word_uid), pos);
         }
         fmt::print("----------------------------------------\n");
     }
