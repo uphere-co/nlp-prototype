@@ -15,7 +15,7 @@ namespace wordrep{
 
 
 template<int32_t word_dim>
-class WordBlock_base{
+class [[deprecated("Replaced by src/wordrep/wordvec.h")]] WordBlock_base{
 public:
     static constexpr int32_t dim = word_dim;
     using float_t    = rnn::type::float_t;

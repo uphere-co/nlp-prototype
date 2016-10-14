@@ -71,6 +71,7 @@ void print_CoreNLP_output(nlohmann::json const &json){
         fmt::print("----------------------------------------\n");
     }
 }
+
 int main(int /*argc*/, char** argv){
 //    pruning_voca();
 //    convert_h5py_to_native();

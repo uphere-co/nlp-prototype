@@ -42,7 +42,7 @@ struct cmp_str {
    }
 };
 
-class VocaIndexMap{
+class [[deprecated("Replaced by src/wordrep/voca.h")]] VocaIndexMap{
 public:
     typedef size_t idx_t;
     // typedef std::unordered_map<Word, idx_t> data_t;
@@ -76,7 +76,7 @@ private:
     const data_t val;
 };
 
-class Voca{
+class [[deprecated("Replaced by src/wordrep/voca.h")]] Voca{
     using idx_t = VocaIndexMap::idx_t;
 public:
     typedef std::vector<rnn::type::char_t> data_t;
