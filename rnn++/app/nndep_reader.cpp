@@ -42,12 +42,39 @@ void pruning_voca(){
     outfile.writeRawData(H5name{"news.en.vecs"}, vec_raw);
     outfile.writeRawData(H5name{"news.en.words"}, word_raw);
 }
+
+void print_CoreNLP_output(nlohmann::json const &json){
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        std::cout << it.key() << "\n";
+    }
+    //nlohmann::json& sent_json = query_json['sentences'][0];
+//    fmt::print("{}\n", sent_json.dump());
+    for(auto const& sent_json : json["sentences"] ){
+        for(auto const &token : sent_json["tokens"]){
+            auto word_pidx = token["index"].get<int64_t>()-1;
+            fmt::print("{} {} {}\n", word_pidx, token["word"].get<std::string>(), token["pos"].get<std::string>());
+        }
+        for(auto const &x : sent_json["basic-dependencies"]){
+//            word[i] = word2idx.getIndex(rnn::wordrep::Word{x["dependentGloss"].get<std::string>()});
+            auto word_pidx = x["dependent"].get<int64_t>()-1;
+//            head_word[i] = word2idx.getIndex(rnn::wordrep::Word{x["governorGloss"].get<std::string>()});
+            auto head_pidx = x["governor"].get<int64_t>()-1;
+//            arc_label[i]= x["dep"];
+            fmt::print("{} {}\n", word_pidx, head_pidx);
+        }
+        fmt::print("----------------------------------------\n");
+    }
+}
 int main(int /*argc*/, char** argv){
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    return 0;
     auto config = util::load_json(argv[1]);
     auto query_json = util::load_json(argv[2]);
+    auto output_json = util::load_json(argv[3]);
+    print_CoreNLP_output(output_json);
+
+    return 0;
     util::Timer timer{};
     DepParseSearch engine{config};
     timer.here_then_reset("Data loaded.");
