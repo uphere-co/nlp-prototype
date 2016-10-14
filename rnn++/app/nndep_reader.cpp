@@ -10,6 +10,7 @@
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
 #include "wordrep/voca.h"
+#include "wordrep/wordvec.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -38,37 +39,22 @@ void pruning_voca(){
     auto raw_pruner = prunerfile.getRawData<WordUID::val_t>(H5name{"s2010.uids"});
     VocaIndexMap pruner_uids{raw_pruner};
 
+    auto raw_wvecs = file.getRawData<float>(H5name{"news.en.vecs"});
+    WordBlock_base<float,100> wvecs{raw_wvecs};
+    std::vector<float> pruned_wvecs;
     std::vector<WordUID::val_t > pruned_uids;
-    std::vector<VocaIndex::val_t > pruned_idxs;
     for(auto const& pair: uids.uid2idx) {
-        if (pruner_uids.isin(pair.first)) {
-            pruned_uids.push_back(pair.first.val);
-            pruned_idxs.push_back(pair.second.val);
+        auto uid = pair.first;
+        if (pruner_uids.isin(uid)) {
+            pruned_uids.push_back(uid.val);
+            auto wvec = wvecs[uids[uid]];
+            std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(pruned_wvecs));
         }
     }
 
-//    auto n = s2010.voca.size();
-//    std::vector<std::string> words;
-//    std::vector<float> vec_raw;
-//    words.push_back(s2010.voca[0]);
-//    auto wvec = s2010.voca_vecs[0];
-//    std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(vec_raw));
-//    for(decltype(n)i=0; i!=n; ++i){
-//        auto word = s2010.voca[i];
-//        auto idx = rnn.word2idx.getIndex(rnn::wordrep::Word{word});
-//        if(idx==0) continue;
-////        fmt::print("{}\n", word);
-//        words.push_back(word);
-//        auto wvec = rnn.voca_vecs[idx];
-//        if (rnn.voca[idx]!=word) fmt::print("{} should be {}\n", rnn.voca[idx], word);
-//        std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(vec_raw));
-//    }
-//    auto word_raw = util::string::pack_words(words);
-//
     H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
     outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
-//    outfile.writeRawData(H5name{"news.en.vecs"}, vec_raw);
-//    outfile.writeRawData(H5name{"news.en.words"}, word_raw);
+    outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
 }
 
 void print_CoreNLP_output(nlohmann::json const &json){
