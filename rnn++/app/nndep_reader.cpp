@@ -80,15 +80,15 @@ void print_CoreNLP_output(nlohmann::json const &json){
 }
 
 int main(int /*argc*/, char** argv){
-    pruning_voca();
+//    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("news.h5", "news.en.words", "news.en.uids");
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-    return 0;
+//    return 0;
     auto config = util::load_json(argv[1]);
     auto query_json = util::load_json(argv[2]);
     auto output_json = util::load_json(argv[3]);
-
+    /*
 //    print_CoreNLP_output(output_json);
     WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
     WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
@@ -111,4 +111,5 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Queries are answered.");
     fmt::print("{}\n", answer.dump(4));
     return 0;
+    */
 }
