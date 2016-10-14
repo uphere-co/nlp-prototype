@@ -6,6 +6,7 @@
 #include "parser/voca.h"
 #include "parser/parser.h"
 #include "similarity/similarity.h"
+#include "wordrep/word_uid.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -14,6 +15,7 @@
 #include "utils/string.h"
 
 using namespace util::io;
+using namespace wordrep;
 
 void pruning_voca(){
     rnn::simple_model::VocaInfo rnn{"news.h5", "news.en.words", "news.en.vecs",
@@ -47,12 +49,16 @@ void print_CoreNLP_output(nlohmann::json const &json){
     for (auto it = json.begin(); it != json.end(); ++it) {
         std::cout << it.key() << "\n";
     }
+    WordUIDindex wordUIDs{"/home/jihuni/word2vec/words.uid"};
     //nlohmann::json& sent_json = query_json['sentences'][0];
 //    fmt::print("{}\n", sent_json.dump());
     for(auto const& sent_json : json["sentences"] ){
         for(auto const &token : sent_json["tokens"]){
             auto word_pidx = token["index"].get<int64_t>()-1;
-            fmt::print("{} {} {}\n", word_pidx, token["word"].get<std::string>(), token["pos"].get<std::string>());
+            auto word = token["word"].get<std::string>();
+            auto pos = token["pos"].get<std::string>();
+            assert(wordUIDs[wordUIDs[word]]==word);
+            fmt::print("{} {} {} {}\n", word, word_pidx, wordUIDs[word].val, pos);
         }
         for(auto const &x : sent_json["basic-dependencies"]){
 //            word[i] = word2idx.getIndex(rnn::wordrep::Word{x["dependentGloss"].get<std::string>()});
