@@ -30,6 +30,36 @@ void MakeTFIDF(Param const &params, Documents &document) {
 
 }
 
+std::vector<int> findDocbyTopicThreshold(mat &V, int topic, double threshold) {
+    std::vector<int> result;
+    
+    for(int64_t i = 0; i<V.n_rows; i++) {
+        if(std::abs(V.row(i)[topic]) > threshold) result.push_back(i);
+    }
+
+    return result;
+}
+
+std::vector<int> findDocbyTopicRank(mat &V, int topic, int n) {
+    std::vector<std::pair<int64_t, double>> rank;
+    std::vector<int> result;
+
+    for(int64_t i = 0; i<V.n_rows; i++) {
+        rank.push_back(std::make_pair(i,std::abs(V.row(i)[topic])));
+    }
+
+    std::sort(rank.begin(), rank.end(), [](auto &left, auto &right) {
+      return left.second  < right.second;
+    });
+
+    for(int i = 0; i < n; i++) {
+        result.push_back(std::get<0>(rank[i]));
+    }
+
+    return result;
+    
+}
+    
 void runTFIDF(Param const &params, Documents &document) {
 
     auto timer = Timer{};
@@ -50,7 +80,13 @@ void runTFIDF(Param const &params, Documents &document) {
     fillMat(document, inMat);
     svds(U,s,V,inMat,K_dim);
 
-    s.print("s = ");
+    //auto target = findDocbyTopicThreshold(V, 0, 1e-4);
+    auto target = findDocbyTopicRank(V, 5, 10);
+    for(auto x : target) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+    
 }
 
 

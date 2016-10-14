@@ -20,12 +20,9 @@ int main(int argc, char **argv){
     } else {
         ArgPass(argc, argv, params);
     }
-
     
     Documents document;
 
-    //runTFIDF(params, document);
-    MSParaFile fin{params.trainFile};
-    printYGPDocs(fin, 5);
+    runTFIDF(params, document);
     return 0;
 }
