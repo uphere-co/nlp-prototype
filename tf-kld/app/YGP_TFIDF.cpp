@@ -25,6 +25,6 @@ int main(int argc, char **argv){
     Documents document;
 
     runTFIDF(params, document);
-
+    
     return 0;
 }

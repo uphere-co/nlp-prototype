@@ -205,6 +205,38 @@ void Documents::LearnSentence(MSParaFile &file) {
     }
 }
 
+void Documents::LearnYGPDocs(MSParaFile &file) {
+    std::string line;
+    hashmap_t doc;
+    int64_t count = 0;
+    int64_t word_idx = 0;
+
+    //Reset the filestream cursor
+    file.setBegin();
+    
+    std::getline(file.val, line);
+    while (std::getline(file.val, line)) {
+        count++;
+        // if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+
+        std::vector<std::string> words = util::string::split(line);
+        std::vector<std::string> unigram_words = MakeNGrams(words,1);
+
+        if(line == "--------------------------------------------------------") {
+            docs.push_back(doc);
+            doc.clear();
+        }
+        
+        for(auto x : unigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+
+    }
+}
     
 void Documents::LearnTag(MSParaFile &file) {
     std::string line;

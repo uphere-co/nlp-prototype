@@ -43,6 +43,7 @@ std::vector<std::string> MakeNGrams(std::vector<std::string> &words, int n);
 void LearnVocab(MSParaFile &file);
 void LearnPairSentence(MSParaFile &file);
 void LearnSentence(MSParaFile &file);
+void LearnYGPDocs(MSParaFile &file);
 void LearnTag(MSParaFile &file);
 void ReadVocab(std::ifstream &vocab_file);
 hashmap_t makeSentoDoc(std::string sen);

@@ -43,12 +43,14 @@ void runTFIDF(Param const &params, Documents &document) {
     mat V;
 
     document.LearnVocab(trainFile);
-    document.LearnSentence(trainFile);
+    // document.LearnSentence(trainFile);
+    document.LearnYGPDocs(trainFile); // YGP specific procedure
     fillValue(document);
     MakeTFIDF(params, document);
     fillMat(document, inMat);
     svds(U,s,V,inMat,K_dim);
-    
+
+    s.print("s = ");
 }
 
 
