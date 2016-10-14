@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <vector>
 #include <limits>
 #include <cassert>
 
@@ -31,6 +32,18 @@ bool operator!=(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
     return lhs.val!=rhs.val;
 }
 
+template<typename T>
+std::vector<T> deserialize(std::vector<typename T::val_t> const& raw){
+    std::vector<T> uids;
+    for(auto uid : raw) uids.push_back(T{uid});
+    return uids;
+}
+template<typename T>
+std::vector<typename T::val_t> serialize(std::vector<T> const& uids){
+    std::vector<typename T::val_t> raw;
+    for(auto uid : uids) raw.push_back(uid.val);
+    return raw;
+}
 }//namespace util
 
 namespace std {
@@ -47,5 +60,5 @@ struct equal_to<util::IntegerLike<T,VAL>> {
         return lhs.val == rhs.val;
     }
 };
-}//namespace std
 
+}//namespace std

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "similarity/dep_similarity.h"
-
 #include "parser/parser.h"
 #include "parser/wordvec.h"
 #include "wordrep/voca.h"

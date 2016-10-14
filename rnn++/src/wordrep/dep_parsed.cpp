@@ -5,22 +5,8 @@
 #include "utils/hdf5.h"
 #include "utils/string.h"
 
+using namespace util;
 using namespace util::io;
-
-namespace {
-template<typename T>
-std::vector<T> deserialize(std::vector<typename T::val_t> const& raw){
-    std::vector<T> uids;
-    for(auto uid : raw) uids.push_back(T{uid});
-    return uids;
-}
-template<typename T>
-std::vector<typename T::val_t> serialize(std::vector<T> const& uids){
-    std::vector<typename T::val_t> raw;
-    for(auto uid : uids) raw.push_back(uid.val);
-    return raw;
-}
-}//nameless namespace
 
 namespace wordrep{
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
