@@ -3,7 +3,6 @@
 #include "utils/base_types.h"
 
 #include "wordrep/word_uid.h"
-#include "wordrep/voca.h"
 
 namespace util{
 namespace io{

@@ -1,6 +1,7 @@
 #include "wordrep/dep_parsed.h"
 
 #include "utils/hdf5.h"
+#include "utils/string.h"
 
 using namespace util::io;
 
