@@ -81,12 +81,37 @@ void runTFIDF(Param const &params, Documents &document) {
     svds(U,s,V,inMat,K_dim);
 
     //auto target = findDocbyTopicThreshold(V, 0, 1e-4);
-    auto target = findDocbyTopicRank(V, 5, 10);
-    for(auto x : target) {
+    auto target1 = findDocbyTopicRank(V, 0, 5);
+    std::cout << "Topic 1 : " << std::endl;
+    for(auto x : target1) {
         printYGPDocs(trainFile, x);
         std::cout << "\n\n";
     }
-    
+
+
+    auto target2 = findDocbyTopicRank(V, 1, 5);
+    std::cout << "Topic 2 : " << std::endl;
+    for(auto x : target2) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+
+    auto target3 = findDocbyTopicRank(V, 2, 5);
+    std::cout << "Topic 3 : " << std::endl;
+    for(auto x : target3) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+
+    auto target4 = findDocbyTopicRank(V, 3, 5);
+    std::cout << "Topic 4 : " << std::endl;
+    for(auto x : target4) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
 }
 
 
