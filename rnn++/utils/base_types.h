@@ -18,9 +18,17 @@ struct IntegerLike{
 };
 
 template<typename T, int64_t VAL>
-IntegerLike<T> operator*(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs)
-{
+IntegerLike<T> operator*(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
     return IntegerLike<T>{lhs.val*rhs.val};
+}
+
+template<typename T, int64_t VAL>
+bool operator==(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
+    return lhs.val==rhs.val;
+}
+template<typename T, int64_t VAL>
+bool operator!=(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
+    return lhs.val!=rhs.val;
 }
 
 }//namespace util
