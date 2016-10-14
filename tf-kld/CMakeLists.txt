@@ -58,6 +58,10 @@ add_executable(readYGP tests/readYGP
                utils/h5io)
 target_link_libraries(readYGP hdf5_cpp hdf5_hl_cpp tbb armadillo openblas)
 
+add_executable(testSVD2 tests/testSVD2
+               ../rnn++/utils/profiling)
+target_link_libraries(testSVD2 armadillo openblas)
+
 #add_executable(testSVD tests/testSVD
 #               ../rnn++/utils/profiling)
 #target_link_libraries(testSVD armadillo openblas)
