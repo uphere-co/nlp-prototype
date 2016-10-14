@@ -9,6 +9,7 @@
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
+#include "wordrep/voca.h"
 
 #include "utils/json.h"
 #include "utils/hdf5.h"
@@ -19,6 +20,9 @@
 using namespace util::io;
 using namespace wordrep;
 
+void write_WordUIDs(){
+
+}
 void pruning_voca(){
     rnn::simple_model::VocaInfo rnn{"news.h5", "news.en.words", "news.en.vecs",
                                     util::datatype_from_string("float32")};
