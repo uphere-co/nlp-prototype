@@ -24,7 +24,8 @@ int main(int argc, char **argv){
     
     Documents document;
 
-    runTFIDF(params, document);
-    
+    //runTFIDF(params, document);
+    MSParaFile fin{params.trainFile};
+    printYGPDocs(fin, 5);
     return 0;
 }

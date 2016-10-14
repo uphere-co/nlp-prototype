@@ -214,7 +214,6 @@ void Documents::LearnYGPDocs(MSParaFile &file) {
     //Reset the filestream cursor
     file.setBegin();
     
-    std::getline(file.val, line);
     while (std::getline(file.val, line)) {
         count++;
         // if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
@@ -303,6 +302,30 @@ hashmap_t Documents::makeSentoDoc(std::string sen) {
     
 void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;
+}
+
+void printYGPDocs(MSParaFile &file, int lineNumber){
+    int count = 0;
+    std::string line;
+    std::vector<std::string> doc;
+    file.setBegin();
+
+    while (std::getline(file.val, line)) {
+        if(line == "--------------------------------------------------------") {
+            if(count == lineNumber) {
+                break;
+            }   
+            count++;
+            doc.clear();
+            continue;
+        }
+        doc.push_back(line);
+
+    }
+
+    for(auto x : doc) std::cout << x << std::endl;
+
+    
 }
 
 std::vector<std::string> get_raw_sentence(MSParaFile &file) {

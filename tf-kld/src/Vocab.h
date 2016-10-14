@@ -50,6 +50,7 @@ hashmap_t makeSentoDoc(std::string sen);
 void PrintVocab();
 };
 
+void printYGPDocs(MSParaFile &file, int lineNumber);
 std::vector<std::string> get_raw_sentence(MSParaFile &file);
 std::vector<std::string> getVocabWord(vocab_t &vocab);
 std::vector<type::int64_t> getVocabIndex(vocab_t &vocab);
