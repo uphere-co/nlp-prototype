@@ -9,7 +9,6 @@ using namespace util::io;
 
 namespace wordrep{
 
-
 VocaIndexMap::VocaIndexMap(std::vector<idx_t::val_t> const &uids_val) {
     auto n = uids_val.size();
     for(decltype(n)i=0; i!=n; ++i){
@@ -31,16 +30,6 @@ VocaIndexMap::idx_t VocaIndexMap::operator[](VocaIndex idx) const {
     if(it==idx2uid.cend()) return idx_t{};
     return it->second;
 }
-std::vector<VocaIndex> VocaIndexMap::getIndex(std::string sentence) const {
-    auto tokens = util::string::split(sentence);
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-    std::vector<VocaIndex> idxs;
-    for(auto const &word : tokens){
-        idxs.push_back((*this)[wordUIDs[word]]);
-    }
-    return idxs;
-}
-
 
 
 std::vector<WordUID::val_t> load_voca(std::string h5name, std::string voca_name){

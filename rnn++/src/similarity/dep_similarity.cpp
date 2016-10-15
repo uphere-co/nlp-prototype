@@ -19,22 +19,19 @@ struct BoWVQuery2{
     using val_t        = word_block_t::val_t;
     using idx_t        = word_block_t::idx_t;
 
-    BoWVQuery2(std::string query, std::vector<val_t> cutoffs,
+    BoWVQuery2(std::vector<VocaIndex> const &words, std::vector<val_t> cutoffs,
                voca_info_t const &voca)
-    : idxs{voca.indexmap.getIndex(query)}, cutoffs{cutoffs}, distances(idxs.size()), str{query}
+    : idxs{words}, cutoffs{cutoffs}, distances(cutoffs.size())
     {
         auto n= voca.wvecs.size();
         auto n_queries=idxs.size();
         for(auto& v: distances) v.resize(n);
-        for(auto idx : idxs) fmt::print("{} ", idx.val);
-        fmt::print(" : {}\n", n);
         tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
                           [&](tbb::blocked_range<decltype(n)> const &r){
                               for(decltype(n) i=r.begin(); i!=r.end(); ++i){
                                   for(decltype(n_queries)qi=0; qi!=n_queries; ++qi){
                                       auto q = voca.wvecs[idxs[qi]];
                                       auto widx = idx_t{i};
-                                      //TODO: use get_distance
                                       get_distance(qi,widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
                                   }
                               }
@@ -46,7 +43,7 @@ struct BoWVQuery2{
     val_t get_distance(WordPosIndex i, idx_t widx) const { return distances[i.val-1][widx.val];}
 
     bool is_similar(util::span_dyn<idx_t> widxs){
-        auto n = idxs.size();
+        auto n = cutoffs.size();
         auto end=std::cend(widxs);
         for(decltype(n)i=0; i!=n; ++i){
             auto cut= cutoffs[i];
@@ -61,7 +58,6 @@ struct BoWVQuery2{
     std::vector<idx_t> idxs;
     std::vector<val_t> cutoffs;
     std::vector<std::vector<val_t>> distances;
-    std::string str;
 };
 
 //TODO: remove code duplication for parsing CoreNLP outputs
@@ -83,41 +79,20 @@ struct DepParsedQuery{
 //        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
-    bool is_similar(Sentence const &sent, DepParsedTokens const &words) const {
-        std::vector<bool> is_found(len, false);
-        auto beg=sent.beg.val;
-        auto end=sent.end.val;
-        for(auto i=beg; i<end; ++i) {
-            auto query_word = words.word[i];
-            auto query_head = words.head_word[i];
-            for(decltype(len)j=0; j<len; ++j){
-                if(cutoff[j]<1.0){
-                    if(word[j]==query_word) is_found[j] = true;
-                } else {
-                    if(word[j]==query_word && head_word[j]==query_head) is_found[j] = true;
-                }
-            }
-        }
-        for(decltype(len)j=0; j<len; ++j){
-            if(cutoff[j]==0.0) is_found[j] = true;
-        }
-        return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
-    }
-
     bool is_similar(Sentence const &sent, DepParsedTokens const &words,
                     BoWVQuery2 const &similarity) const {
         std::vector<bool> is_found(len, false);
         auto beg=sent.beg.val;
         auto end=sent.end.val;
         for(auto i=beg; i<end; ++i) {
-            auto query_word = words.word[i];
-            auto query_head = words.head_word[i];
+            auto word = words.word[i];
+            auto head_word = words.head_word[i];
             for(decltype(len)j=0; j<len; ++j){
                 if(cutoff[j]<1.0){
-                    if(similarity.get_distance(j,query_word) >= cutoff[j]) is_found[j] = true;
+                    if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
                 } else {
-                    if((similarity.get_distance(j,query_word) >= cutoff[j]) &&
-                       (similarity.get_distance(head_pidx[j], query_head) >=get_cutoff(head_pidx[j]))) is_found[j] = true;
+                    if((similarity.get_distance(j,word) >= cutoff[j]) &&
+                       (similarity.get_distance(head_pidx[j], head_word) >=get_cutoff(head_pidx[j]))) is_found[j] = true;
                 }
             }
         }
@@ -158,7 +133,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     std::vector<DepParsedQuery::val_t> cutoff = ask["cutoffs"][0];
     std::string query_str = ask["queries"][0];
     DepParsedQuery query{cutoff, sent_json, voca.indexmap};
-    BoWVQuery2 similarity{query_str, cutoff, voca};
+    BoWVQuery2 similarity{query.word, cutoff, voca};
 
     json_t answer{};
     for(auto sent: sents){

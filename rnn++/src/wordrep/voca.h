@@ -14,7 +14,6 @@ public:
     VocaIndexMap(std::vector<idx_t::val_t> const &uids_val);
     VocaIndex operator[](idx_t uid) const;
     idx_t operator[](VocaIndex idx) const;
-    std::vector<VocaIndex> getIndex(std::string sentence) const;
 
     bool isin(idx_t uid) {return uid2idx[uid]!=VocaIndex{};}
 //private:
