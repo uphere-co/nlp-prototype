@@ -17,6 +17,8 @@ struct WordIndexDummy{};
 using WordPosIndex = util::IntegerLike<WordIndexDummy>;
 struct SentIndexDummy{};
 using SentIndex = util::IntegerLike<SentIndexDummy>;
+struct ArcLabelDummy{};
+using ArcLabel = util::IntegerLike<ArcLabelDummy>;
 
 struct SentPositionDummy{};
 using SentPosition = util::IntegerLike<SentPositionDummy>;
@@ -38,13 +40,12 @@ struct DepParsedTokens{
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> SegmentSentences() const;
 
-    std::vector<SentIndex>   sent_idx;
-    std::vector<VocaIndex>     word;
-    std::vector<WordPosIndex>   word_pidx;
-    std::vector<VocaIndex>     head_word;
-    std::vector<WordPosIndex>   head_pidx;
-    std::vector<char>        arc_label_raw;
-    std::vector<const char*> arc_label;
+    std::vector<SentIndex>    sent_idx;
+    std::vector<VocaIndex>    word;
+    std::vector<WordPosIndex> word_pidx;
+    std::vector<VocaIndex>    head_word;
+    std::vector<WordPosIndex> head_pidx;
+    std::vector<ArcLabel>     arc_label;
 };
 
 }//namespace wordrep

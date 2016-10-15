@@ -87,7 +87,6 @@ int main(int /*argc*/, char** argv){
 //    return 0;
     auto config = util::load_json(argv[1]);
     auto query_json = util::load_json(argv[2]);
-    auto output_json = util::load_json(argv[3]);
 
 //    print_CoreNLP_output(output_json);
 //    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};

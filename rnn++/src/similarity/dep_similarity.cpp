@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "similarity/dep_similarity.h"
 
 #include "similarity/similarity_measure.h"
@@ -8,6 +10,7 @@
 //#include "utils/span.h"
 #include "utils/string.h"
 #include "utils/hdf5.h"
+#include "utils/math.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -72,7 +75,8 @@ struct DepParsedQuery{
             word_pidx[i] = WordPosIndex{x["dependent"].get<WordPosIndex::val_t>()};
             head_word[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
             head_pidx[i] = WordPosIndex{x["governor"].get<WordPosIndex::val_t>()};
-            arc_label[i]= x["dep"];
+            //TODO: fix it.
+            arc_label[i]= ArcLabel{int64_t{0}};//x["dep"];
 //            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
         }
 //        fmt::print("\n");
@@ -89,16 +93,26 @@ struct DepParsedQuery{
             auto head_word = words.head_word[i];
             for(decltype(len)j=0; j<len; ++j){
                 if(cutoff[j]<1.0){
-                    if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
+                    if(similarity.get_distance(j,word) >= cutoff[j]) {
+                        is_found[j] = true;
+//                        fmt::print("{} ", j);
+                    }
                 } else {
                     if((similarity.get_distance(j,word) >= cutoff[j]) &&
                        (similarity.get_distance(head_pidx[j], head_word) >=get_cutoff(head_pidx[j]))) is_found[j] = true;
                 }
             }
         }
+//        fmt::print(": {} \n", sent.uid.val);
         for(decltype(len)j=0; j<len; ++j){
             if(cutoff[j]==0.0) is_found[j] = true;
         }
+        auto n_found = std::count_if(is_found.cbegin(), is_found.cend(), [](bool x){return x;});
+        if(1.0*n_found/is_found.size()>0.8) {
+            fmt::print("{} {}\n", sent.uid.val, n_found);
+            return true;
+        }
+        return false;
         return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
     }
 
@@ -110,7 +124,7 @@ struct DepParsedQuery{
     std::vector<WordPosIndex> word_pidx;
     std::vector<VocaIndex> head_word;
     std::vector<WordPosIndex> head_pidx;
-    std::vector<std::string> arc_label;
+    std::vector<ArcLabel> arc_label;
     WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
 };
 
@@ -122,6 +136,8 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
        config["w2vmodel_name"], config["w2v_float_t"]},
   tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                 hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
+  wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"},
+  word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}},
   sents{tokens.SegmentSentences()},
   sents_plain{util::string::readlines(config["plain_text"])}
 {}
@@ -130,15 +146,20 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     nlohmann::json& sent_json = ask["sentences"][0];
-    std::vector<DepParsedQuery::val_t> cutoff = ask["cutoffs"][0];
     std::string query_str = ask["queries"][0];
+    auto words = util::string::split(query_str);
+    std::vector<DepParsedQuery::val_t> cutoff;
+    for(auto word :words)  cutoff.push_back((word_cutoff.cutoff(wordUIDs[word])));
+    for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
+    fmt::print(" : VocaIndex\n");
+    for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
     DepParsedQuery query{cutoff, sent_json, voca.indexmap};
     BoWVQuery2 similarity{query.word, cutoff, voca};
 
     json_t answer{};
     for(auto sent: sents){
         if( query.is_similar(sent, tokens, similarity)) {
-            answer[query_str].push_back(sents_plain[sent.uid.val]);
+            answer[query_str].push_back(sent.uid.val);
         }
     }
     return answer;

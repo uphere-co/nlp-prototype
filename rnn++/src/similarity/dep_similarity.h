@@ -4,6 +4,7 @@
 
 #include "wordrep/dep_parsed.h"
 #include "wordrep/voca.h"
+#include "wordrep/word_prob.h"
 #include "wordrep/wordvec.h"
 
 namespace wordrep{
@@ -31,6 +32,8 @@ struct DepSimilaritySearch {
 
     voca_info_t voca;
     wordrep::DepParsedTokens tokens;
+    wordrep::WordUIDindex wordUIDs;
+    wordrep::WordImportance word_cutoff;
     std::vector<wordrep::Sentence> sents;
     std::vector<std::string> sents_plain;
 };
