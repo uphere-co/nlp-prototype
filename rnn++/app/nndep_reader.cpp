@@ -79,14 +79,30 @@ void print_CoreNLP_output(nlohmann::json const &json){
     }
 }
 
+void write_voca_index_col(nlohmann::json const& config){
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
+    H5file file{H5name{config["dep_parsed_store"].get<std::string>()}, hdf5::FileMode::rw_exist};
+    std::string prefix{config["dep_parsed_text"].get<std::string>()};
+    using namespace util;
+    {auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}));
+        std::vector<VocaIndex> idxs;
+        for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
+        file.writeRawData(H5name{prefix+".word"}, serialize(idxs));}
+    {auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}));
+        std::vector<VocaIndex> idxs;
+        for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
+        file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
+}
 int main(int /*argc*/, char** argv){
+    auto config = util::load_json(argv[1]);
+    auto query_json = util::load_json(argv[2]);
 //    pruning_voca();
 //    convert_h5py_to_native();
+//    write_voca_index_col(config);
 //    write_WordUIDs("news.h5", "news.en.words", "news.en.uids");
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
 //    return 0;
-    auto config = util::load_json(argv[1]);
-    auto query_json = util::load_json(argv[2]);
 
 //    print_CoreNLP_output(output_json);
 //    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
