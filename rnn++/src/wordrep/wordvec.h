@@ -7,7 +7,7 @@
 namespace wordrep{
 
 template<typename T, int32_t word_dim>
-    class WordBlock_base{
+class WordBlock_base{
 public:
     static constexpr int32_t dim = word_dim;
     using val_t      = T;
@@ -20,7 +20,7 @@ public:
 //    WordBlock_base(idx_t voca_size)
 //    : _val(voca_size*word_dim),span{_val} {}
     template<typename TV>
-    WordBlock_base(std::vector<TV> raw_data)
+    WordBlock_base(std::vector<TV> const &raw_data)
     : _val{},span{} {
         for(auto x : raw_data) _val.push_back(static_cast<val_t>(x));
         span = _val;
@@ -45,7 +45,7 @@ public:
     }
     auto size() const {return _val.size()/word_dim;};
 
- private:
+private:
     data_t _val;
     raw_span_t span;
 };

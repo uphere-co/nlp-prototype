@@ -10,7 +10,7 @@ using namespace util::io;
 namespace wordrep{
 
 
-VocaIndexMap::VocaIndexMap(std::vector<idx_t::val_t> uids_val) {
+VocaIndexMap::VocaIndexMap(std::vector<idx_t::val_t> const &uids_val) {
     auto n = uids_val.size();
     for(decltype(n)i=0; i!=n; ++i){
         idx_t uid{uids_val[i]};

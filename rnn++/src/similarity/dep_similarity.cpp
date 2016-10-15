@@ -35,7 +35,7 @@ struct BoWVQuery2{
                                       auto q = voca.wvecs[idxs[qi]];
                                       auto widx = idx_t{i};
                                       //TODO: use get_distance
-                                      distances[qi][widx.val]=similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
+                                      get_distance(qi,widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
                                   }
                               }
                           });
@@ -43,7 +43,7 @@ struct BoWVQuery2{
 
     val_t get_distance(size_t i, idx_t widx) const { return distances[i][widx.val];}
     val_t& get_distance(size_t i, idx_t widx) { return distances[i][widx.val];}
-//    val_t& get_distance(WordPosIndex i, idx_t widx) { return distances[i.val-1][widx.val];}
+    val_t get_distance(WordPosIndex i, idx_t widx) const { return distances[i.val-1][widx.val];}
 
     bool is_similar(util::span_dyn<idx_t> widxs){
         auto n = idxs.size();
@@ -117,7 +117,7 @@ struct DepParsedQuery{
                     if(similarity.get_distance(j,query_word) >= cutoff[j]) is_found[j] = true;
                 } else {
                     if((similarity.get_distance(j,query_word) >= cutoff[j]) &&
-                       (similarity.get_distance(head_pidx[j].val-1,query_head) >=cutoff[head_pidx[j].val-1])) is_found[j] = true;
+                       (similarity.get_distance(head_pidx[j], query_head) >=get_cutoff(head_pidx[j]))) is_found[j] = true;
                 }
             }
         }
@@ -126,6 +126,8 @@ struct DepParsedQuery{
         }
         return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
     }
+
+    val_t get_cutoff (WordPosIndex idx) const {return cutoff[idx.val -1];}
 
     std::size_t len;
     std::vector<val_t> cutoff;

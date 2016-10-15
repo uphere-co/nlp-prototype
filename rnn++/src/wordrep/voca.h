@@ -11,7 +11,7 @@ using VocaIndex = util::IntegerLike<VocaIndexDummy,-1>; //UID -1 for unknown wor
 class VocaIndexMap{
 public:
     using idx_t = WordUID;
-    VocaIndexMap(std::vector<idx_t::val_t> uids_val);
+    VocaIndexMap(std::vector<idx_t::val_t> const &uids_val);
     VocaIndex operator[](idx_t uid) const;
     idx_t operator[](VocaIndex idx) const;
     std::vector<VocaIndex> getIndex(std::string sentence) const;
