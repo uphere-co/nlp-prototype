@@ -67,51 +67,44 @@ struct BoWVQuery2{
 struct DepParsedQuery{
     using val_t = BoWVQuery2::val_t;
     DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent, wordrep::VocaIndexMap const &voca)
-    : len{cutoff.size()}, cutoff{cutoff}, word(len), word_pidx(len), head_word(len), head_pidx(len), arc_label(len){ //
+    : len{cutoff.size()}, cutoff{cutoff}, words(len), words_pidx(len), head_words(len), heads_pidx(len), arc_labels(len){ //
 //        fmt::print("len : {}\n", len);
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
-            word[i]  = voca[wordUIDs[x["dependentGloss"].get<std::string>()]];
-            word_pidx[i] = WordPosIndex{x["dependent"].get<WordPosIndex::val_t>()};
-            head_word[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
-            head_pidx[i] = WordPosIndex{x["governor"].get<WordPosIndex::val_t>()};
+            words[i]  = voca[wordUIDs[x["dependentGloss"].get<std::string>()]];
+            words_pidx[i] = WordPosIndex{x["dependent"].get<WordPosIndex::val_t>()};
+            head_words[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
+            heads_pidx[i] = WordPosIndex{x["governor"].get<WordPosIndex::val_t>()};
             //TODO: fix it.
-            arc_label[i]= ArcLabel{int64_t{0}};//x["dep"];
+            arc_labels[i]= ArcLabel{int64_t{0}};//x["dep"];
 //            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
         }
 //        fmt::print("\n");
 //        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
-    bool is_similar(Sentence const &sent, DepParsedTokens const &words,
-                    BoWVQuery2 const &similarity) const {
+    bool is_similar(Sentence const &sent, DepParsedTokens const &query_words,
+                    BoWVQuery2 const &similarity, wordrep::VocaIndexMap const &voca) const {
         std::vector<bool> is_found(len, false);
         auto beg=sent.beg.val;
         auto end=sent.end.val;
         for(auto i=beg; i<end; ++i) {
-            auto word = words.word[i];
-            auto head_word = words.head_word[i];
+            auto word = query_words.word[i];
+            auto head_word = query_words.head_word[i];
             for(decltype(len)j=0; j<len; ++j){
                 if(cutoff[j]<1.0){
-                    if(similarity.get_distance(j,word) >= cutoff[j]) {
-                        is_found[j] = true;
-//                        fmt::print("{} ", j);
-                    }
+                    if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
                 } else {
                     if((similarity.get_distance(j,word) >= cutoff[j]) &&
-                       (similarity.get_distance(head_pidx[j], head_word) >=get_cutoff(head_pidx[j]))) is_found[j] = true;
+                       (similarity.get_distance(heads_pidx[j], head_word) >=get_cutoff(heads_pidx[j]))) is_found[j] = true;
                 }
             }
         }
-//        fmt::print(": {} \n", sent.uid.val);
-        for(decltype(len)j=0; j<len; ++j){
-            if(cutoff[j]==0.0) is_found[j] = true;
-        }
+//        for(decltype(len)j=0; j<len; ++j){
+//            if(cutoff[j]==0.0) is_found[j] = true;
+//        }
         auto n_found = std::count_if(is_found.cbegin(), is_found.cend(), [](bool x){return x;});
-        if(1.0*n_found/is_found.size()>0.8) {
-            fmt::print("{} {}\n", sent.uid.val, n_found);
-            return true;
-        }
+        if(1.0*n_found/is_found.size()>0.8) return true;
         return false;
         return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
     }
@@ -120,11 +113,11 @@ struct DepParsedQuery{
 
     std::size_t len;
     std::vector<val_t> cutoff;
-    std::vector<VocaIndex> word;
-    std::vector<WordPosIndex> word_pidx;
-    std::vector<VocaIndex> head_word;
-    std::vector<WordPosIndex> head_pidx;
-    std::vector<ArcLabel> arc_label;
+    std::vector<VocaIndex> words;
+    std::vector<WordPosIndex> words_pidx;
+    std::vector<VocaIndex> head_words;
+    std::vector<WordPosIndex> heads_pidx;
+    std::vector<ArcLabel> arc_labels;
     WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
 };
 
@@ -150,16 +143,27 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     auto words = util::string::split(query_str);
     std::vector<DepParsedQuery::val_t> cutoff;
     for(auto word :words)  cutoff.push_back((word_cutoff.cutoff(wordUIDs[word])));
+    for(auto word :words)  fmt::print("{} ", wordUIDs[word].val);
+    fmt::print(" : WordUID\n");
     for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
     fmt::print(" : VocaIndex\n");
     for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
     DepParsedQuery query{cutoff, sent_json, voca.indexmap};
-    BoWVQuery2 similarity{query.word, cutoff, voca};
+    BoWVQuery2 similarity{query.words, cutoff, voca};
 
+    auto print_sent=[&](auto &sent){
+        auto beg=sent.beg.val;
+        auto end=sent.end.val;
+        for(auto i=beg; i<end; ++i) {
+            fmt::print("{} ", wordUIDs[voca.indexmap[tokens.word[i]]]);
+        }
+        fmt::print("\n");
+    };
     json_t answer{};
     for(auto sent: sents){
-        if( query.is_similar(sent, tokens, similarity)) {
+        if( query.is_similar(sent, tokens, similarity, voca.indexmap)) {
             answer[query_str].push_back(sent.uid.val);
+            print_sent(sent);
         }
     }
     return answer;
