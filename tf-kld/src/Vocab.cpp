@@ -205,6 +205,37 @@ void Documents::LearnSentence(MSParaFile &file) {
     }
 }
 
+void Documents::LearnYGPDocs(MSParaFile &file) {
+    std::string line;
+    hashmap_t doc;
+    int64_t count = 0;
+    int64_t word_idx = 0;
+
+    //Reset the filestream cursor
+    file.setBegin();
+    
+    while (std::getline(file.val, line)) {
+        count++;
+        // if(count % 1000 == 0) std::cout << "\r" << count << " lines.";
+
+        std::vector<std::string> words = util::string::split(line);
+        std::vector<std::string> unigram_words = MakeNGrams(words,1);
+
+        if(line == "--------------------------------------------------------") {
+            docs.push_back(doc);
+            doc.clear();
+        }
+        
+        for(auto x : unigram_words) {
+            auto it = vocab.find(x);
+            if(it != vocab.end()) {   
+                auto word_idx = it -> second;
+                doc[word_idx] += 1;
+            }
+        }
+
+    }
+}
     
 void Documents::LearnTag(MSParaFile &file) {
     std::string line;
@@ -271,6 +302,30 @@ hashmap_t Documents::makeSentoDoc(std::string sen) {
     
 void Documents::PrintVocab(){
     for(auto x : vocab) std::cout << x.first << std::endl;
+}
+
+void printYGPDocs(MSParaFile &file, int lineNumber){
+    int count = 0;
+    std::string line;
+    std::vector<std::string> doc;
+    file.setBegin();
+
+    while (std::getline(file.val, line)) {
+        if(line == "--------------------------------------------------------") {
+            if(count == lineNumber) {
+                break;
+            }   
+            count++;
+            doc.clear();
+            continue;
+        }
+        doc.push_back(line);
+
+    }
+
+    for(auto x : doc) std::cout << x << std::endl;
+
+    
 }
 
 std::vector<std::string> get_raw_sentence(MSParaFile &file) {

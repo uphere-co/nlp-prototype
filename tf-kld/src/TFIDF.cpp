@@ -3,6 +3,7 @@
 using namespace util;
 using namespace util::io;
 
+using namespace arma;
 using namespace tfkld::type;
 
 namespace tfkld{
@@ -11,28 +12,107 @@ real_t val_idf(int64_t D, int_t Dt) {
     return log(D/(real_t)Dt);
 }
     
-void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values, vocab_t const &vocab, doc_t const &docs) {
+void MakeTFIDF(Param const &params, Documents &document) {
 
     hashmap_t df;
-    int64_t D = docs.size();
+    int64_t D = document.docs.size();
     
-    for(auto x : values) df[x.row] += 1;
+    for(auto x : document.values) df[x.row] += 1;
 
-    if(df.size() != vocab.size()) {
+    if(df.size() != document.vocab.size()) {
         std::cout << "Sanity check failed!\n";
         exit(1);
     }
     
-    for(auto x : df) idf.push_back(val_idf(D,x.second));
+    for(auto x : df) document.idf.push_back(val_idf(D,x.second));
 
-    for(auto &x : values) x.val *= idf[x.row];
+    for(auto &x : document.values) x.val *= document.idf[x.row];
 
 }
 
-void MakeTFIDF(std::vector<real_t> &idf, std::vector<SpValue> &values) {
+std::vector<int> findDocbyTopicThreshold(mat &V, int topic, double threshold) {
+    std::vector<int> result;
+    
+    for(int64_t i = 0; i<V.n_rows; i++) {
+        if(std::abs(V.row(i)[topic]) > threshold) result.push_back(i);
+    }
 
-    for(auto &x : values) x.val *= idf[x.row];
+    return result;
+}
 
+std::vector<int> findDocbyTopicRank(mat &V, int topic, int n) {
+    std::vector<std::pair<int64_t, double>> rank;
+    std::vector<int> result;
+
+    for(int64_t i = 0; i<V.n_rows; i++) {
+        rank.push_back(std::make_pair(i,std::abs(V.row(i)[topic])));
+    }
+
+    std::sort(rank.begin(), rank.end(), [](auto &left, auto &right) {
+      return left.second  < right.second;
+    });
+
+    for(int i = 0; i < n; i++) {
+        result.push_back(std::get<0>(rank[i]));
+    }
+
+    return result;
+    
 }
     
+void runTFIDF(Param const &params, Documents &document) {
+
+    auto timer = Timer{};
+
+    MSParaFile trainFile{params.trainFile};
+    int K_dim = params.kdim;
+
+    sp_mat inMat;
+    mat U;
+    vec s;
+    mat V;
+
+    document.LearnVocab(trainFile);
+    // document.LearnSentence(trainFile);
+    document.LearnYGPDocs(trainFile); // YGP specific procedure
+    fillValue(document);
+    MakeTFIDF(params, document);
+    fillMat(document, inMat);
+    svds(U,s,V,inMat,K_dim);
+
+    //auto target = findDocbyTopicThreshold(V, 0, 1e-4);
+    auto target1 = findDocbyTopicRank(V, 0, 5);
+    std::cout << "Topic 1 : " << std::endl;
+    for(auto x : target1) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+
+    auto target2 = findDocbyTopicRank(V, 1, 5);
+    std::cout << "Topic 2 : " << std::endl;
+    for(auto x : target2) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+
+    auto target3 = findDocbyTopicRank(V, 2, 5);
+    std::cout << "Topic 3 : " << std::endl;
+    for(auto x : target3) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+
+    auto target4 = findDocbyTopicRank(V, 3, 5);
+    std::cout << "Topic 4 : " << std::endl;
+    for(auto x : target4) {
+        printYGPDocs(trainFile, x);
+        std::cout << "\n\n";
+    }
+
+}
+
+
 }//namespace tfkld
