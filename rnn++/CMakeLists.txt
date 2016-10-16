@@ -25,6 +25,9 @@ FILE(GLOB rnn_simple_model_files src/parser/*cpp src/*cpp)
 FILE(GLOB simple_model_parsers src/*cpp
     src/parser/parser.cpp src/parser/voca.cpp src/parser/wordvec.cpp
     src/parser/compute.cpp src/parser/config.cpp src/parser/node.cpp src/parser/param.cpp)
+
+FILE(GLOB wordrep_files src/wordrep/*cpp)
+
 FILE(GLOB util_files utils/*cpp)
 
 add_executable(train_model0 app/train_model0 tests/test_simple_model
@@ -65,11 +68,11 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
 add_executable(nndep_reader app/nndep_reader src/similarity/similarity
-               ${simple_model_parsers} ${util_files})
+               ${simple_model_parsers} ${wordrep_files} ${util_files})
 target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 
-add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string)
+add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)
 
 

@@ -73,6 +73,8 @@ struct SentUIndex{
     SentUIndex(std::ptrdiff_t val) : val{val}{}
     int64_t val;
 };
+
+//TODO:rename it to WVID or so.
 struct WordUIndex{
     WordUIndex(std::ptrdiff_t val) : val{val}{}
     int64_t val;
@@ -80,7 +82,7 @@ struct WordUIndex{
 struct SentPosition{int64_t val;};
 struct Sentence{
     Sentence(SentUIndex uid, WordUIndex beg, WordUIndex end)
-    : uid{uid}, beg{beg}, end{end}{}
+    : uid{uid}, beg{beg}, end{end} {}
     SentUIndex uid;
     WordUIndex beg;
     WordUIndex end;
