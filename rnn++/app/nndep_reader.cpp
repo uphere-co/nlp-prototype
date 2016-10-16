@@ -1,13 +1,12 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
-#include <fstream>
-#include <stdlib.h>
 
 #include "fmt/printf.h"
 
 //#include "similarity/similarity.h"
 #include "similarity/dep_similarity.h"
+#include "similarity/corenlp_helper.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -19,7 +18,6 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
-#include "utils/random.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -105,28 +103,7 @@ void write_voca_index_col(nlohmann::json const& config){
         file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
 }
 
-struct CoreNLPwebclient{
-    CoreNLPwebclient(std::string script_path) : script_path{script_path} {}
-    nlohmann::json from_query_file(std::string content_file_path) const {
-        std::string command = "python "+script_path + "  "+content_file_path;
-        int ret=system(command.c_str());
-        fmt::print("Query to CoreNLP and get return code {}\n", ret);
-        return util::load_json(content_file_path+".corenlp");
-    }
-    nlohmann::json from_query_content(std::string query_content) const {
-        std::string content_file_path = "tmp."+util::get_uuid_str();
-        std::ofstream temp_file;
-        temp_file.open (content_file_path);
-        temp_file << query_content;
-        temp_file.close();
-        auto query_json = from_query_file(content_file_path);
-        auto commend_remove_temp_file = "rm -f "+content_file_path +"*";
-        system(commend_remove_temp_file.c_str());
-        return query_json;
-    }
 
-    std::string script_path;
-};
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    pruning_voca();

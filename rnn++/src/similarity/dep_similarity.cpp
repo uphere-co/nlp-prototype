@@ -145,19 +145,22 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         nlohmann::json& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
         auto words = util::string::split(query_str);
-        for(auto word :words)  fmt::print("{} ", wordUIDs[word].val);
-        fmt::print(" : WordUID\n");
-        for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
-        fmt::print(" : VocaIndex\n");
-//        for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
         answer[query_str].push_back(process_query(sent_json));
     }
     return answer;
 }
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
-    std::vector<DepParsedQuery::val_t> cutoff;
+    std::vector<std::string> words;
     for(auto const &x : sent_json["basic-dependencies"])
-        cutoff.push_back((word_cutoff.cutoff(wordUIDs[x["dependentGloss"].get<std::string>()])));
+        words.push_back(x["dependentGloss"].get<std::string>());
+    std::vector<DepParsedQuery::val_t> cutoff;
+    for(auto const &word : words)
+        cutoff.push_back(word_cutoff.cutoff(wordUIDs[word]));
+
+    for(int i=0; i<words.size(); ++i)
+        fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
+                   voca.indexmap[wordUIDs[words[i]]].val,cutoff[i]);
+
     DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
     BoWVQuery2 similarity{query.words, cutoff, voca};
     json_t answer{};
