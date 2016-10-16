@@ -2,7 +2,6 @@
 #include <unordered_map>
 
 #include "utils/base_types.h"
-#include "utils/span.h"
 #include "wordrep/word_uid.h"
 
 namespace wordrep{
@@ -11,21 +10,16 @@ using VocaIndex = util::IntegerLike<VocaIndexDummy,-1>; //UID -1 for unknown wor
 
 class VocaIndexMap{
 public:
-    VocaIndexMap(util::span_dyn<WordUID::val_t> uids_val) {
-        auto n = uids_val.size();
-        for(decltype(n)i=0; i!=n; ++i){
-            WordUID uid{uids_val[i]};
-            VocaIndex idx{i};
-            uid2idx[uid]=idx;
-            idx2uid[idx]=uid;
-        }
-    }
-    VocaIndex operator[](WordUID uid) {return uid2idx[uid];}
-    WordUID operator[](VocaIndex idx) {return idx2uid[idx];}
-    bool isin(WordUID uid) {return uid2idx[uid]!=VocaIndex{};}
+    using idx_t = WordUID;
+    VocaIndexMap(std::vector<idx_t::val_t> const &uids_val);
+    VocaIndex operator[](idx_t uid) const;
+    idx_t operator[](VocaIndex idx) const;
+
+    bool isin(idx_t uid) {return uid2idx[uid]!=VocaIndex{};}
 //private:
-    std::unordered_map<WordUID, VocaIndex> uid2idx;
-    std::unordered_map<VocaIndex, WordUID> idx2uid;
+    std::unordered_map<idx_t, VocaIndex> uid2idx;
+    std::unordered_map<VocaIndex, idx_t> idx2uid;
 };
 
+std::vector<VocaIndexMap::idx_t::val_t> load_voca(std::string h5name, std::string voca_name);
 }//namespace wordrep

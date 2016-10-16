@@ -1,10 +1,13 @@
 #pragma once
 
+#include "utils/span.h"
+
 #include "wordrep/voca.h"
+
 namespace wordrep{
 
 template<typename T, int32_t word_dim>
-    class WordBlock_base{
+class WordBlock_base{
 public:
     static constexpr int32_t dim = word_dim;
     using val_t      = T;
@@ -16,9 +19,10 @@ public:
 //    : _val{},span{_val} {}
 //    WordBlock_base(idx_t voca_size)
 //    : _val(voca_size*word_dim),span{_val} {}
-    WordBlock_base(raw_span_t raw_data)
+    template<typename TV>
+    WordBlock_base(std::vector<TV> const &raw_data)
     : _val{},span{} {
-        for(auto x : raw_data) _val.push_back(x);
+        for(auto x : raw_data) _val.push_back(static_cast<val_t>(x));
         span = _val;
     }
     WordBlock_base(WordBlock_base&& )= default;
@@ -41,9 +45,10 @@ public:
     }
     auto size() const {return _val.size()/word_dim;};
 
- private:
+private:
     data_t _val;
     raw_span_t span;
 };
 
+std::vector<double> load_raw_wvec(std::string h5name, std::string wvec_name, std::string float_type);
 }//namespace wordrep
