@@ -4,6 +4,8 @@
 #include "parser/wordvec.h"
 #include "wordrep/voca.h"
 #include "wordrep/wordvec.h"
+#include "similarity/dep_similarity.h"
+
 
 #include "utils/json.h"
 #include "utils/span.h"

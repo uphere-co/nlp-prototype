@@ -70,7 +70,16 @@ query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 json_serialize :: Json -> IO CString
 json_serialize p = withForeignPtr p c_json_serialize
 
-
+runCoreNLP body = do
+  -- let body = "establishing \rthe ecological criteria for awarding the EU ecolabel"
+  -- body <- TE.encodeUtf8 <$> TIO.getContents 
+  lbstr <- simpleHttpClient methodPost "http://mark:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
+  -- BL.toStrict lbstr
+  let txt' = TE.decodeUtf8 (BL.toStrict lbstr)
+      txt = T.filter (>=' ') txt'
+  TIO.putStrLn txt
+  -- print txt
+  
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   let r = encode (makeJson q)
@@ -118,7 +127,7 @@ server url = do
 makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
-main0 = do
+main = do
   configurl <- liftIO (getEnv "CONFIGURL")
   
   [host] <- getArgs
@@ -130,13 +139,3 @@ main0 = do
     runProcess node (server configurl)
     c_query_finalize
 
-main = do
-  -- let body = "establishing \rthe ecological criteria for awarding the EU ecolabel"
-  body <- TE.encodeUtf8 <$> TIO.getContents 
-  lbstr <- simpleHttpClient methodPost "http://mark:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
-  -- BL.toStrict lbstr
-  let txt' = TE.decodeUtf8 (BL.toStrict lbstr)
-      txt = T.filter (>=' ') txt'
-  TIO.putStrLn txt
-  -- print txt
-  
