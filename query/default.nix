@@ -4,6 +4,8 @@
 , stm, tbb, text, unix, uuid
 , rnnpp, msgsl, json
 , base64-bytestring
+, http-client
+, http-client-tls
 }:
 mkDerivation {
   pname = "query";
@@ -12,7 +14,7 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base binary bytestring conduit conduit-extra unix
+    base binary bytestring conduit conduit-extra unix http-client http-client-tls
   ];
   executableHaskellDepends = [
     aeson base binary bytestring conduit conduit-extra directory
