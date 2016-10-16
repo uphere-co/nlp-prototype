@@ -66,7 +66,9 @@ struct BoWVQuery2{
 //TODO: remove code duplication for parsing CoreNLP outputs
 struct DepParsedQuery{
     using val_t = BoWVQuery2::val_t;
-    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent, wordrep::VocaIndexMap const &voca)
+    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent,
+                   wordrep::VocaIndexMap const &voca,
+                   WordUIDindex const &wordUIDs)
     : len{cutoff.size()}, cutoff{cutoff}, words(len), words_pidx(len), head_words(len), heads_pidx(len), arc_labels(len){ //
 //        fmt::print("len : {}\n", len);
         for(auto const&x : sent["basic-dependencies"]) {
@@ -118,7 +120,6 @@ struct DepParsedQuery{
     std::vector<VocaIndex> head_words;
     std::vector<WordPosIndex> heads_pidx;
     std::vector<ArcLabel> arc_labels;
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
 };
 
 
@@ -129,7 +130,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
        config["w2vmodel_name"], config["w2v_float_t"]},
   tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                 hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
-  wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"},
+  wordUIDs{config["word_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}},
   sents{tokens.SegmentSentences()},
   sents_plain{util::string::readlines(config["plain_text"])}
@@ -148,7 +149,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
     fmt::print(" : VocaIndex\n");
     for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
-    DepParsedQuery query{cutoff, sent_json, voca.indexmap};
+    DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
     BoWVQuery2 similarity{query.words, cutoff, voca};
 
     auto print_sent=[&](auto &sent){
