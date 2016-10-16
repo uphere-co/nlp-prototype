@@ -66,6 +66,7 @@ Executable query
   build-depends:        base,
                         --
                         aeson,
+                        attoparsec,
                         base64-bytestring,
                         
                         binary,
@@ -89,7 +90,9 @@ Executable query
                         text,
                         transformers,
                         unix,
+                        unordered-containers,
                         uuid,
+                        vector,
                         --
                         query
 
