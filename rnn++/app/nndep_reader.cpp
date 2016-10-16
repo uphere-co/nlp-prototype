@@ -1,6 +1,9 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
+#include <stdlib.h>
+
 #include "fmt/printf.h"
 
 //#include "similarity/similarity.h"
@@ -16,6 +19,7 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
+#include "utils/random.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -85,40 +89,57 @@ void write_voca_index_col(nlohmann::json const& config){
     H5file file{H5name{config["dep_parsed_store"].get<std::string>()}, hdf5::FileMode::rw_exist};
     std::string prefix{config["dep_parsed_text"].get<std::string>()};
     using namespace util;
-    {auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}));
+    {
+        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}));
+//        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word"}));
+//        file.writeRawData(H5name{prefix+".word_uid"}, serialize(uids));}
         std::vector<VocaIndex> idxs;
         for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
-        file.writeRawData(H5name{prefix+".word"}, serialize(idxs));}
-    {auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}));
+        file.overwriteRawData(H5name{prefix+".word"}, serialize(idxs));}
+    {
+        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}));
+//        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_word"}));
+//        file.writeRawData(H5name{prefix+".head_uid"}, serialize(uids));}
         std::vector<VocaIndex> idxs;
         for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
         file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
 }
+
+struct CoreNLPwebclient{
+    CoreNLPwebclient(std::string script_path) : script_path{script_path} {}
+    nlohmann::json from_query_file(std::string content_file_path) const {
+        std::string command = "python "+script_path + "  "+content_file_path;
+        int ret=system(command.c_str());
+        fmt::print("Query to CoreNLP and get return code {}\n", ret);
+        return util::load_json(content_file_path+".corenlp");
+    }
+    nlohmann::json from_query_content(std::string query_content) const {
+        std::string content_file_path = "tmp."+util::get_uuid_str();
+        std::ofstream temp_file;
+        temp_file.open (content_file_path);
+        temp_file << query_content;
+        temp_file.close();
+        auto query_json = from_query_file(content_file_path);
+        auto commend_remove_temp_file = "rm -f "+content_file_path +"*";
+        system(commend_remove_temp_file.c_str());
+        return query_json;
+    }
+
+    std::string script_path;
+};
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    auto query_json = util::load_json(argv[2]);
 //    pruning_voca();
 //    convert_h5py_to_native();
+//    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_voca_index_col(config);
-//    write_WordUIDs("news.h5", "news.en.words", "news.en.uids");
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
 //    return 0;
+    std::string input = argv[2];
+    CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
+    auto query_json = corenlp_client.from_query_content(input);
+//    auto query_json = corenlp_client.from_query_file(input);
 
-//    print_CoreNLP_output(output_json);
-//    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-//    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
-//    for(auto const& sent_json : output_json["sentences"] ){
-//        for(auto const &token : sent_json["tokens"]){
-//            auto word_pidx = token["index"].get<int64_t>()-1;
-//            auto word = token["word"].get<std::string>();
-//            auto pos = token["pos"].get<std::string>();
-//            auto word_uid = wordUIDs[word];
-//            fmt::print("{:<10}\t{:<10}\t{}\t{}\t{}\n",
-//                       word, wordUIDs[word_uid], word_pidx, word_cutoff.cutoff(word_uid), pos);
-//        }
-//        fmt::print("----------------------------------------\n");
-//    }
-//    return 0;
     util::Timer timer{};
     DepSimilaritySearch engine{config};
     timer.here_then_reset("Data loaded.");

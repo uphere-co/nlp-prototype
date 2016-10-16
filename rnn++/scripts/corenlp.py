@@ -1,0 +1,17 @@
+import sys
+import requests
+import json
+
+query_file = sys.argv[1]
+#query_file="/home/jihuni/nlp-prototype/build/query.2"
+#query_file = "/home/jihuni/nlp-prototype/build/query.dirty"
+#query_file = "/home/jihuni/nlp-prototype/build/query.short"
+with open(query_file, "r") as f:
+    content=f.read()
+r = requests.post('http://mark:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}', data =content)
+r.encoding='UTF-8'
+a= r.json(strict=False)
+queries = [' '.join([token['word'] for token in sent['tokens']]) for sent in a['sentences']]
+a['queries'] = queries
+with open(query_file+".corenlp", "w") as f:
+    f.write(json.dumps(a, indent=4))
