@@ -139,32 +139,41 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
-    nlohmann::json& sent_json = ask["sentences"][0];
-    std::string query_str = ask["queries"][0];
-    auto words = util::string::split(query_str);
+    json_t answer{};
+    auto n_queries = ask["sentences"].size();
+    for(decltype(n_queries)i=0; i!=n_queries; ++i){
+        nlohmann::json& sent_json = ask["sentences"][i];
+        std::string query_str = ask["queries"][i];
+        auto words = util::string::split(query_str);
+        for(auto word :words)  fmt::print("{} ", wordUIDs[word].val);
+        fmt::print(" : WordUID\n");
+        for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
+        fmt::print(" : VocaIndex\n");
+//        for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
+        answer[query_str].push_back(process_query(sent_json));
+    }
+    return answer;
+}
+DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<DepParsedQuery::val_t> cutoff;
-    for(auto word :words)  cutoff.push_back((word_cutoff.cutoff(wordUIDs[word])));
-    for(auto word :words)  fmt::print("{} ", wordUIDs[word].val);
-    fmt::print(" : WordUID\n");
-    for(auto word :words)  fmt::print("{} ", voca.indexmap[wordUIDs[word]].val);
-    fmt::print(" : VocaIndex\n");
-    for(int i=0; i<words.size(); ++i) fmt::print("{} : {}\n", words[i], cutoff[i]);
+    for(auto const &x : sent_json["basic-dependencies"])
+        cutoff.push_back((word_cutoff.cutoff(wordUIDs[x["dependentGloss"].get<std::string>()])));
     DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
     BoWVQuery2 similarity{query.words, cutoff, voca};
-
-    auto print_sent=[&](auto &sent){
+    json_t answer{};
+    auto sent_to_str=[&](auto &sent){
         auto beg=sent.beg.val;
         auto end=sent.end.val;
+        std::stringstream ss;
         for(auto i=beg; i<end; ++i) {
-            fmt::print("{} ", wordUIDs[voca.indexmap[tokens.word[i]]]);
+            ss <<  wordUIDs[voca.indexmap[tokens.word[i]]]<< " ";
         }
-        fmt::print("\n");
+        return ss.str();
     };
-    json_t answer{};
     for(auto sent: sents){
         if( query.is_similar(sent, tokens, similarity, voca.indexmap)) {
-            answer[query_str].push_back(sent.uid.val);
-            print_sent(sent);
+            //answer[query_str].push_back(sent.uid.val);
+            answer.push_back(sent_to_str(sent));
         }
     }
     return answer;

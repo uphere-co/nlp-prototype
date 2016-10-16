@@ -28,6 +28,7 @@ struct DepSimilaritySearch {
     using voca_info_t = wordrep::VocaInfo;
     DepSimilaritySearch(json_t const& config);
 
+    json_t process_query(json_t query) const;
     json_t process_queries(json_t ask) const;
 
     voca_info_t voca;
