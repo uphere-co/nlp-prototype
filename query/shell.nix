@@ -11,6 +11,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      monad-loops uuid aeson
 	      cabal-install conduit conduit-extra
 	      base64-bytestring aeson
+	      http-client
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";

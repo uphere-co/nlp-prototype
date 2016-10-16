@@ -32,6 +32,7 @@ import           Foreign.C.String
 import           Foreign.C.Types                           (CInt(..))
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
+import           Network.HTTP.Client
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
 import           System.Directory
 import           System.Environment
@@ -74,11 +75,19 @@ queryWorker sc q = do
   liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
   return ()
+
+getConfig :: String -> IO String
+getConfig url = do
+  manager <- newManager defaultManagerSettings
+  request <- parseRequest url 
+  response <- httpLbs request manager
+  return (BL.unpack (responseBody response))
   
 server :: String -> Process ()
 server url = do
-  curlapp <- liftIO (getEnv "CURLAPP")
-  str <- liftIO $ readProcess curlapp ["-k",url] ""
+  -- curlapp <- liftIO (getEnv "CURLAPP")
+  -- str <- liftIO $ readProcess curlapp ["-k",url] ""
+  str <- liftIO (getConfig url)
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
