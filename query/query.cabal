@@ -79,6 +79,7 @@ Executable query
                         filepath,
                         http-client,
                         http-client-tls,
+                        http-types,
                         monad-loops,
                         network-transport-zeromq,
                         process,

@@ -26,6 +26,8 @@ import qualified Data.Map                         as M
 
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
+import qualified Data.Text.Encoding                  as TE
+import qualified Data.Text.IO                        as TIO
 import           Data.UUID                                 (toString)
 import           Data.UUID.V4                              (nextRandom)
 import           Foreign.C.String
@@ -35,6 +37,7 @@ import           Foreign.Ptr
 import           Network.Connection                        (TLSSettings(..))
 import           Network.HTTP.Client
 import           Network.HTTP.Client.TLS
+import           Network.HTTP.Types                        (Method,methodGet,methodPost)
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
 import           System.Directory
 import           System.Environment
@@ -77,25 +80,23 @@ queryWorker sc q = do
   liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
   return ()
-
-getConfig :: String -> IO String
-getConfig url = do
-  request <- parseRequest url
+  
+simpleHttpClient :: Method -> String -> Maybe ByteString -> IO BL.ByteString
+simpleHttpClient mth url mbstr = do
+  request0 <- parseRequest url
+  let request = maybe (request0 { method = mth }) (\bstr -> request0 { method = mth, requestBody = RequestBodyBS bstr }) mbstr
   manager <- if (secure request)
                then do
                  let tlssetting = TLSSettingsSimple True False False
                      mansetting = mkManagerSettings tlssetting Nothing
-                 newManager mansetting -- tlsManagerSettings
+                 newManager mansetting
                else newManager defaultManagerSettings
   response <- httpLbs request manager
-  return (BL.unpack (responseBody response))
-    
+  return (responseBody response)
   
 server :: String -> Process ()
 server url = do
-  -- curlapp <- liftIO (getEnv "CURLAPP")
-  -- str <- liftIO $ readProcess curlapp ["-k",url] ""
-  str <- liftIO (getConfig url)
+  str <- liftIO (BL.unpack <$> simpleHttpClient methodGet url Nothing)
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)
@@ -117,7 +118,7 @@ server url = do
 makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
-main = do
+main0 = do
   configurl <- liftIO (getEnv "CONFIGURL")
   
   [host] <- getArgs
@@ -125,6 +126,17 @@ main = do
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
-    -- c_query_init configfile
+    c_query_init configfile
     runProcess node (server configurl)
-    -- c_query_finalize
+    c_query_finalize
+
+main = do
+  -- let body = "establishing \rthe ecological criteria for awarding the EU ecolabel"
+  body <- TE.encodeUtf8 <$> TIO.getContents 
+  lbstr <- simpleHttpClient methodPost "http://mark:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
+  -- BL.toStrict lbstr
+  let txt' = TE.decodeUtf8 (BL.toStrict lbstr)
+      txt = T.filter (>=' ') txt'
+  TIO.putStrLn txt
+  -- print txt
+  
