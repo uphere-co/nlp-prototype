@@ -1,18 +1,11 @@
-#include <random>
 #include <sstream>
 
 #include <spdlog/spdlog.h>
 
 #include "utils/logger.h"
+#include "utils/random.h"
 
-namespace{
-int64_t uuid_gen(){    
-    std::random_device rd{};
-    std::mt19937 e{rd()};
-    std::uniform_int_distribution<int64_t>  uniform_dist{1, 0xffffffff};
-    return uniform_dist(e);
-}
-}//nameless namespace
+using namespace util;
 
 struct Logger::impl{
     impl(std::string name, std::string log_file)
