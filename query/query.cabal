@@ -59,12 +59,14 @@ Executable query
                         -fno-warn-unused-do-bind
 
   ghc-prof-options:     -auto-all
-  extra-libraries:      similarity, parser, tbb, hdf5_cpp, stdc++
+  extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, stdc++
+  -- tbb, hdf5_cpp, fmt
   c-sources:            csrc/invoke.cpp
   cc-options:           -std=c++14
   build-depends:        base,
                         --
                         aeson,
+                        attoparsec,
                         base64-bytestring,
                         
                         binary,
@@ -79,6 +81,7 @@ Executable query
                         filepath,
                         http-client,
                         http-client-tls,
+                        http-types,
                         monad-loops,
                         network-transport-zeromq,
                         process,
@@ -87,7 +90,9 @@ Executable query
                         text,
                         transformers,
                         unix,
+                        unordered-containers,
                         uuid,
+                        vector,
                         --
                         query
 

@@ -131,7 +131,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                 hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
   wordUIDs{config["word_uids_dump"].get<std::string>()},
-  word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}},
+  word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.SegmentSentences()},
   sents_plain{util::string::readlines(config["plain_text"])}
 {}
