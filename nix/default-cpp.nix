@@ -180,6 +180,21 @@ rec {
       '';
     };
 
+    csv = stdenv.mkDerivation rec {
+      name = "csv-${version}";
+      version = "9bf299c";
+      src = fetchgit {
+        url = "https://github.com/ben-strasser/fast-cpp-csv-parser.git";
+        rev = "9bf299cefb60d0e4ba7dc79d51491595ab1b3213";
+        sha256 = "1xgmw46d3f1wbl6bmcz53ph1mrgzk1mrjnkvz4ypavzwg2q1vxnq";
+      };
+      installPhase = ''
+        mkdir -p $out/include/csv
+        cp -a *.h $out/include/csv
+      '';
+    };
+
+
 
     libsvm = stdenv.mkDerivation rec {
       name = "libsvm-${version}";

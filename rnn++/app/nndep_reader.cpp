@@ -3,6 +3,7 @@
 #include <cctype>
 
 #include "fmt/printf.h"
+#include "csv/csv.h"
 
 //#include "similarity/similarity.h"
 #include "similarity/dep_similarity.h"
@@ -103,6 +104,18 @@ void write_voca_index_col(nlohmann::json const& config){
         file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
 }
 
+void indexing_csv(const char* file){
+    //io::CSVReader<1, io::trim_chars<' ','\r', '\t'>, io::double_quote_escape<',', '"'>> in(file);
+//    io::CSVReader<1, io::trim_chars<' ','\r', '\t'>, io::no_quote_escape<','>> in(file);
+    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
+    in.read_header(io::ignore_extra_column, "row_str");
+    std::string row_str;
+    int i=0;
+    while(in.read_row(row_str)){
+        fmt::print("{}\n", row_str);
+        if(++i>10) break;
+    }
+}
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
@@ -111,7 +124,8 @@ int main(int /*argc*/, char** argv){
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-//    return 0;
+    indexing_csv(argv[2]);
+    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
