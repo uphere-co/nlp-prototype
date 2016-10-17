@@ -86,7 +86,7 @@ struct DepParsedQuery{
     }
 
     bool is_similar(Sentence const &sent, DepParsedTokens const &query_words,
-                    BoWVQuery2 const &similarity, wordrep::VocaIndexMap const &voca) const {
+                    BoWVQuery2 const &similarity) const {
         std::vector<bool> is_found(len, false);
         auto beg=sent.beg.val;
         auto end=sent.end.val;
@@ -102,13 +102,9 @@ struct DepParsedQuery{
                 }
             }
         }
-//        for(decltype(len)j=0; j<len; ++j){
-//            if(cutoff[j]==0.0) is_found[j] = true;
-//        }
         auto n_found = std::count_if(is_found.cbegin(), is_found.cend(), [](bool x){return x;});
         if(1.0*n_found/is_found.size()>0.8) return true;
         return false;
-        return std::all_of(is_found.cbegin(), is_found.cend(), [](bool i){ return i;});
     }
 
     val_t get_cutoff (WordPosIndex idx) const {return cutoff[idx.val -1];}
@@ -139,15 +135,16 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
-    json_t answer{};
+    json_t answers{};
     auto n_queries = ask["sentences"].size();
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         nlohmann::json& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
-        auto words = util::string::split(query_str);
-        answer[query_str].push_back(process_query(sent_json));
+        json_t answer = process_query(sent_json);
+        answer["input"].push_back(query_str);
+        answers.push_back(answer);
     }
-    return answer;
+    return answers;
 }
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
@@ -174,11 +171,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         return ss.str();
     };
     for(auto sent: sents){
-        if( query.is_similar(sent, tokens, similarity, voca.indexmap)) {
+        if( query.is_similar(sent, tokens, similarity)) {
             //answer[query_str].push_back(sent.uid.val);
-            answer.push_back(sent_to_str(sent));
+            answer["result"].push_back(sent_to_str(sent));
         }
     }
+    answer["cutoffs"] = cutoff;
+    answer["words"] = words;
     return answer;
 }
 
