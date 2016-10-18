@@ -19,17 +19,28 @@ struct IntegerLike{
 };
 
 template<typename T, int64_t VAL>
-IntegerLike<T> operator*(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
+IntegerLike<T> operator*(IntegerLike<T,VAL> lhs, IntegerLike<T,VAL> rhs) {
     return IntegerLike<T>{lhs.val*rhs.val};
 }
 
 template<typename T, int64_t VAL>
-bool operator==(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
+bool operator==(IntegerLike<T,VAL> const& lhs, IntegerLike<T,VAL> const& rhs) {
     return lhs.val==rhs.val;
 }
 template<typename T, int64_t VAL>
-bool operator!=(IntegerLike<T,VAL> lhs, const IntegerLike<T,VAL>& rhs) {
+bool operator!=(IntegerLike<T,VAL> const& lhs, IntegerLike<T,VAL> const& rhs) {
     return lhs.val!=rhs.val;
+}
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator++(IntegerLike<T,VAL> &x) {// pre increment
+    ++x.val;
+    return x;
+}
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL> operator++(IntegerLike<T,VAL> &x, int ){ // post increment
+    IntegerLike<T,VAL> t{x.val};
+    ++x.val;
+    return t;
 }
 
 template<typename T>
