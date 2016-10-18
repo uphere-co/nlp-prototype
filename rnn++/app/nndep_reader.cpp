@@ -19,6 +19,10 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
+#include "utils/parallel.h"
+
+#include <fstream>
+#include "utils/random.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -105,16 +109,26 @@ void write_voca_index_col(nlohmann::json const& config){
 }
 
 void indexing_csv(const char* file){
-    //io::CSVReader<1, io::trim_chars<' ','\r', '\t'>, io::double_quote_escape<',', '"'>> in(file);
-//    io::CSVReader<1, io::trim_chars<' ','\r', '\t'>, io::no_quote_escape<','>> in(file);
+//    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::no_quote_escape<','>> in(file);
     io::CSVReader<1, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
     in.read_header(io::ignore_extra_column, "row_str");
     std::string row_str;
-    int i=0;
-    while(in.read_row(row_str)){
-        fmt::print("{}\n", row_str);
-        if(++i>10) break;
-    }
+    CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
+
+    std::vector<std::string> rows;
+    while(in.read_row(row_str)) rows.push_back(row_str);
+    auto n = rows.size();
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10000, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
+        for(auto i=r.begin(); i!=r.end(); ++i){
+            auto row_str = rows[i];
+            if(row_str.size()<10) return;
+            auto query_json = corenlp_client.from_query_content(row_str);
+            std::ofstream temp_file;
+            temp_file.open ("result."+std::to_string(i));
+            temp_file << query_json.dump(4);
+            temp_file.close();
+        }
+    });
 }
 
 int main(int /*argc*/, char** argv){
