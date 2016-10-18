@@ -40,6 +40,7 @@ stdenv.mkDerivation {
                    toolz_cpp.spdlog
                    toolz_cpp.fmt
                    toolz_cpp.json
+		   toolz_cpp.csv
                    doxygen graphviz
                    libcgroup 
                  ];

@@ -16,6 +16,7 @@ stdenv.mkDerivation rec {
                   toolz_cpp.spdlog
 		  toolz_cpp.fmt
 		  toolz_cpp.json
+		  toolz_cpp.csv
 		  cppzmq
                 ];
   enableParallelBuilding = true;
