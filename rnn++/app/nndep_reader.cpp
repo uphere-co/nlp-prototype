@@ -3,6 +3,7 @@
 #include <cctype>
 
 #include "fmt/printf.h"
+#include "csv/csv.h"
 
 //#include "similarity/similarity.h"
 #include "similarity/dep_similarity.h"
@@ -18,6 +19,10 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
+#include "utils/parallel.h"
+
+#include <fstream>
+#include "utils/random.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -103,6 +108,28 @@ void write_voca_index_col(nlohmann::json const& config){
         file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
 }
 
+void indexing_csv(const char* file){
+//    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::no_quote_escape<','>> in(file);
+    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
+    in.read_header(io::ignore_extra_column, "row_str");
+    std::string row_str;
+    CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
+
+    std::vector<std::string> rows;
+    while(in.read_row(row_str)) rows.push_back(row_str);
+    auto n = rows.size();
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10000, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
+        for(auto i=r.begin(); i!=r.end(); ++i){
+            auto row_str = rows[i];
+            if(row_str.size()<10) return;
+            auto query_json = corenlp_client.from_query_content(row_str);
+            std::ofstream temp_file;
+            temp_file.open ("result."+std::to_string(i));
+            temp_file << query_json.dump(4);
+            temp_file.close();
+        }
+    });
+}
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
@@ -111,7 +138,8 @@ int main(int /*argc*/, char** argv){
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-//    return 0;
+    indexing_csv(argv[2]);
+    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
