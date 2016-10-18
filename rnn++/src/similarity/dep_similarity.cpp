@@ -154,7 +154,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     for(auto const &word : words)
         cutoff.push_back(word_cutoff.cutoff(wordUIDs[word]));
 
-    for(int i=0; i<words.size(); ++i)
+    for(size_t i=0; i<words.size(); ++i)
         fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
                    voca.indexmap[wordUIDs[words[i]]].val,cutoff[i]);
 
