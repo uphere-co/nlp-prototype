@@ -1,8 +1,12 @@
 #include "zmq.hpp"
+
 #include "similarity/similarity.h"
+#include "similarity/corenlp_helper.h"
+
 #include "utils/profiling.h"
 
 int main(int /*argc*/, char** argv){
+    using namespace engine;
     using namespace util;
     Timer timer{};
     tbb::task_group g;
@@ -13,8 +17,10 @@ int main(int /*argc*/, char** argv){
 
 //    SimilaritySearch engine{config};
 //    timer.here_then_reset("SimilaritySearch engine loaded.");
-    BoWVSimilaritySearch engine{config};
-    timer.here_then_reset("BoWVSimilaritySearch engine loaded.");
+//    BoWVSimilaritySearch engine{config};
+    DepSimilaritySearch engine{config};
+    CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
+    timer.here_then_reset("Search engine loaded.");
 
     const char * protocol = "tcp://*:5555";
     zmq::context_t context (1);
@@ -23,7 +29,10 @@ int main(int /*argc*/, char** argv){
     while(1){
         zmq::message_t request;
         socket.recv (&request);
-        auto query = SimilaritySearch::parse((const char*)request.data());
+
+        std::string input{(const char*)request.data()};
+        auto query = corenlp_client.from_query_content(input);
+//        auto query = SimilaritySearch::parse((const char*)request.data());
         std::cerr << query.dump(4) << std::endl;
 
         auto answer = engine.process_queries(query);

@@ -1,5 +1,6 @@
 #include <limits>
 
+#include "dataset.h"
 #include "parser/voca.h"
 
 #include "utils/json.h"
