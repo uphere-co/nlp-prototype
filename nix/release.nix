@@ -13,6 +13,7 @@ rec {
                    msgsl = toolz_cpp.msgsl;
                    inherit rnnpp;
                    json = toolz_cpp.json;
+		   fmt = toolz_cpp.fmt;
                  };
   
   "rnnpp"      = import ../rnn++    { inherit pkgs; };
