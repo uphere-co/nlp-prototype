@@ -10,7 +10,7 @@ using namespace util::io;
 
 namespace wordrep{
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
-: sent_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
+: sent_idx{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
   word{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
   word_pidx{deserialize<WordPosIndex>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
   head_word{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head"}))},
@@ -21,7 +21,7 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) const {
 //    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
     H5file outfile{H5name{filename}, hdf5::FileMode::replace};
-    outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sent_idx));
+    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sent_idx));
     outfile.writeRawData(H5name{prefix+".word"}, serialize(word));
     outfile.writeRawData(H5name{prefix+".word_pidx"},serialize(word_pidx));
     outfile.writeRawData(H5name{prefix+".head"}, serialize(head_word));
@@ -34,7 +34,7 @@ std::vector<Sentence> DepParsedTokens::SegmentSentences() const {
     std::vector<Sentence> sents;
     auto it=beg;
     while(it!=end) {
-        SentIndex uid{*it};
+        SentUID uid{*it};
         DPTokenIndex sbeg{it-beg};
         it = std::find_if_not(it, end, [it](auto x) { return x == *it; });
         DPTokenIndex send{it-beg};
