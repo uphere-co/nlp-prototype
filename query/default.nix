@@ -2,7 +2,7 @@
 , conduit-extra, directory, distributed-process, filepath, hdf5_cpp
 , monad-loops, network-transport-zeromq,stdenv
 , stm, tbb, text, unix, uuid
-, rnnpp, msgsl, json
+, rnnpp, msgsl, json, fmt
 , base64-bytestring
 , http-client
 , http-client-tls
@@ -21,7 +21,7 @@ mkDerivation {
     distributed-process filepath monad-loops network-transport-zeromq
     stm text unix uuid base64-bytestring
   ];
-  executableSystemDepends = [ hdf5_cpp rnnpp tbb msgsl json ];
+  executableSystemDepends = [ hdf5_cpp rnnpp tbb msgsl json fmt ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";
   license = "unknown";
