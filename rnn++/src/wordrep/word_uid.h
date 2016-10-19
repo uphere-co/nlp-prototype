@@ -37,9 +37,9 @@ struct DummyWordUID{};
 using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
 using WordUIDindex = UIDIndex<WordUID>;
 
-struct DummyPosUID{};
-using PosUID = util::IntegerLike<DummyPosUID,-1>; //UID -1 for unknown words.
-using PosUIDindex = UIDIndex<PosUID>;
+struct DummyPOSUID{};
+using POSUID = util::IntegerLike<DummyPOSUID,-1>; //UID -1 for unknown words.
+using POSUIDindex = UIDIndex<POSUID>;
 struct DummyArcLabelUID{};
 using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
 using ArcLabelUIDindex = UIDIndex<ArcLabelUID>;

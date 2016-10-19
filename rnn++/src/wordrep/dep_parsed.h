@@ -1,6 +1,7 @@
 #pragma once
 
 #include "utils/base_types.h"
+#include "utils/json.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/voca.h"
@@ -14,20 +15,19 @@ struct H5file; //forward declaration.
 namespace wordrep{
 
 struct WordPosIndexDummy{};
-using WordPosIndex = util::IntegerLike<WordPosIndexDummy>;
-struct SentUIDDummy{};
-using SentUID = util::IntegerLike<SentUIDDummy>;
-struct ArcLabelDummy{};
-using ArcLabel = util::IntegerLike<ArcLabelDummy>;
-
+using WordPosition = util::IntegerLike<WordPosIndexDummy>;
 struct SentPositionDummy{};
 using SentPosition = util::IntegerLike<SentPositionDummy>;
-
-struct DPTokenIndexDummy;
-using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
+struct SentUIDDummy{};
+using SentUID = util::IntegerLike<SentUIDDummy>;
 
 struct CharOffsetDummy;
 using CharOffset = util::IntegerLike<CharOffsetDummy>;
+
+struct DPTokenIndexDummy;
+using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
+struct ChunkIndexDummy;
+using ChunkIndex = util::IntegerLike<ChunkIndexDummy>;
 
 struct Sentence{
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
@@ -39,18 +39,26 @@ struct Sentence{
 
 struct DepParsedTokens{
     DepParsedTokens(util::io::H5file const &file, std::string prefix);
+    DepParsedTokens(){}
 
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> SegmentSentences() const;
 
-    std::vector<SentUID>    sent_idx;
-    std::vector<VocaIndex>    word;
-    std::vector<WordPosIndex> word_pidx;
-    std::vector<VocaIndex>    head_word;
-    std::vector<WordPosIndex> head_pidx;
-    std::vector<ArcLabel>     arc_label;
-    std::vector<CharOffset>    word_beg;
-    std::vector<CharOffset>    word_end;
+    VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
+    VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
+
+private:
+    std::vector<SentUID>      sent_uid;
+    std::vector<ChunkIndex>   chunk_idx;
+    std::vector<SentPosition> sent_idx;
+    std::vector<VocaIndex>    words;
+    std::vector<WordPosition> word_pidx;
+    std::vector<VocaIndex>    head_words;
+    std::vector<WordPosition> head_pidx;
+    std::vector<CharOffset>   word_beg;
+    std::vector<CharOffset>   word_end;
+    std::vector<POSUID>       pos;
+    std::vector<ArcLabelUID>  arclabel;
 };
 
 namespace ygp{

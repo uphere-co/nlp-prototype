@@ -19,7 +19,7 @@ UIDIndex<TUID>::UIDIndex(std::string file){
 
 //Explicit instantiations;
 template class UIDIndex<WordUID>;
-template class UIDIndex<PosUID>;
+template class UIDIndex<POSUID>;
 template class UIDIndex<ArcLabelUID>;
 
 }//namespace wordrep
