@@ -119,7 +119,7 @@ void indexing_csv(const char* file){
     std::vector<std::string> rows;
     while(in.read_row(row_str)) rows.push_back(row_str);
     auto n = rows.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10000, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
         for(auto i=r.begin(); i!=r.end(); ++i){
             auto row_str = rows[i];
             if(row_str.size()<10) return;
@@ -160,8 +160,8 @@ int main(int /*argc*/, char** argv){
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-//    indexing_csv(argv[2]);
-    generate_sent_uid(config);
+    indexing_csv(argv[2]);
+//    generate_sent_uid(config);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
     return 0;

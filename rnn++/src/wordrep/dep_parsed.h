@@ -26,6 +26,9 @@ using SentPosition = util::IntegerLike<SentPositionDummy>;
 struct DPTokenIndexDummy;
 using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
 
+struct CharOffsetDummy;
+using CharOffset = util::IntegerLike<CharOffsetDummy>;
+
 struct Sentence{
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
     : uid{uid}, beg{beg}, end{end} {}
@@ -46,9 +49,12 @@ struct DepParsedTokens{
     std::vector<VocaIndex>    head_word;
     std::vector<WordPosIndex> head_pidx;
     std::vector<ArcLabel>     arc_label;
+    std::vector<CharOffset>    word_beg;
+    std::vector<CharOffset>    word_end;
 };
 
 namespace ygp{
+
 struct TableUIDDummy{};
 using TableUID = util::IntegerLike<TableUIDDummy>;
 struct ColumUIDDummy{};
@@ -57,6 +63,7 @@ struct RowUIDDummy{};
 using RowUID    = util::IntegerLike<RowUIDDummy>;
 struct SentIndexDummy{};
 using SentIndex = util::IntegerLike<SentIndexDummy>;
+
 } //namespace wordrep::ygp
 
 }//namespace wordrep
