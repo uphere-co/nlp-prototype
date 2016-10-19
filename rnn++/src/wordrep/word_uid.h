@@ -5,15 +5,28 @@
 #include <vector>
 
 
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <limits>
+
+#include "wordrep/word_uid.h"
+
+#include "utils/string.h"
+
+
+
+
 #include "utils/base_types.h"
 namespace wordrep {
 
-struct DummyWordUID{};
-using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
 
-struct WordUIDindex{
-    using uid_t = WordUID;
-    WordUIDindex(std::string file);
+template<typename TUID>
+class UIDIndex{
+public:
+    using uid_t = TUID;
+    UIDIndex(std::string file);
     uid_t operator[] (std::string const &word) const {
         //return word2uid[word];
         auto it=word2uid.find(word);
@@ -27,8 +40,15 @@ struct WordUIDindex{
         return it->second;
     }
 
+private:
     std::unordered_map<uid_t, std::string> uid2word;
     std::unordered_map<std::string, uid_t> word2uid;
 };
+
+
+//forward declarations.
+struct DummyWordUID{};
+using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
+using WordUIDindex = UIDIndex<WordUID>;
 
 }//namespace wordrep
