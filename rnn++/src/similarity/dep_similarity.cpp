@@ -15,6 +15,7 @@
 using namespace wordrep;
 using namespace util::io;
 
+namespace {
 //TODO: merge this with BoWQuery.
 struct BoWVQuery2{
     using voca_info_t  = wordrep::VocaInfo;
@@ -119,6 +120,14 @@ struct DepParsedQuery{
 };
 
 
+struct SentenceProb{
+    int get_rank_cutoff(Sentence const &sent) const {
+        return 5;
+    }
+};
+
+}//nameless namespace
+
 namespace engine {
 
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
@@ -131,8 +140,6 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   sents{tokens.SegmentSentences()},
   sents_plain{util::string::readlines(config["plain_text"])}
 {}
-
-
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     json_t answers{};
@@ -160,6 +167,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
 
     DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
     BoWVQuery2 similarity{query.words, cutoff, voca};
+
+    Sentence query_sent{SentUID{int64_t{0}}, DPTokenIndex{int64_t{0}}, DPTokenIndex{cutoff.size()}};
+    SentenceProb sent_model{};
+    auto rank_cutoff = sent_model.get_rank_cutoff(query_sent);
+
     json_t answer{};
     auto sent_to_str=[&](auto &sent){
         auto beg=sent.beg.val;
@@ -175,6 +187,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             //answer[query_str].push_back(sent.uid.val);
             answer["result"].push_back(sent_to_str(sent));
         }
+        if(answer["result"].size()>rank_cutoff) break;
     }
     answer["cutoffs"] = cutoff;
     answer["words"] = words;

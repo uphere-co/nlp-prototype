@@ -160,11 +160,11 @@ int main(int /*argc*/, char** argv){
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-    indexing_csv(argv[2]);
+//    indexing_csv(argv[2]);
 //    generate_sent_uid(config);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
-    return 0;
+//    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
