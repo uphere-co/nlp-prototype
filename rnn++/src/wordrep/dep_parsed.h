@@ -13,10 +13,10 @@ struct H5file; //forward declaration.
 
 namespace wordrep{
 
-struct WordIndexDummy{};
-using WordPosIndex = util::IntegerLike<WordIndexDummy>;
-struct SentIndexDummy{};
-using SentIndex = util::IntegerLike<SentIndexDummy>;
+struct WordPosIndexDummy{};
+using WordPosIndex = util::IntegerLike<WordPosIndexDummy>;
+struct SentUIDDummy{};
+using SentUID = util::IntegerLike<SentUIDDummy>;
 struct ArcLabelDummy{};
 using ArcLabel = util::IntegerLike<ArcLabelDummy>;
 
@@ -26,10 +26,13 @@ using SentPosition = util::IntegerLike<SentPositionDummy>;
 struct DPTokenIndexDummy;
 using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
 
+struct CharOffsetDummy;
+using CharOffset = util::IntegerLike<CharOffsetDummy>;
+
 struct Sentence{
-    Sentence(SentIndex uid, DPTokenIndex beg, DPTokenIndex end)
+    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
     : uid{uid}, beg{beg}, end{end} {}
-    SentIndex uid;
+    SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;
 };
@@ -40,13 +43,27 @@ struct DepParsedTokens{
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> SegmentSentences() const;
 
-    std::vector<SentIndex>    sent_idx;
+    std::vector<SentUID>    sent_idx;
     std::vector<VocaIndex>    word;
     std::vector<WordPosIndex> word_pidx;
     std::vector<VocaIndex>    head_word;
     std::vector<WordPosIndex> head_pidx;
     std::vector<ArcLabel>     arc_label;
+    std::vector<CharOffset>    word_beg;
+    std::vector<CharOffset>    word_end;
 };
 
-}//namespace wordrep
+namespace ygp{
 
+struct TableUIDDummy{};
+using TableUID = util::IntegerLike<TableUIDDummy>;
+struct ColumUIDDummy{};
+using ColumnUID = util::IntegerLike<ColumUIDDummy>;
+struct RowUIDDummy{};
+using RowUID    = util::IntegerLike<RowUIDDummy>;
+struct SentIndexDummy{};
+using SentIndex = util::IntegerLike<SentIndexDummy>;
+
+} //namespace wordrep::ygp
+
+}//namespace wordrep

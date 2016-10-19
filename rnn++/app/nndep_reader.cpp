@@ -20,6 +20,7 @@
 #include "utils/span.h"
 #include "utils/string.h"
 #include "utils/parallel.h"
+#include "utils/base_types.h"
 
 #include <fstream>
 #include "utils/random.h"
@@ -118,7 +119,7 @@ void indexing_csv(const char* file){
     std::vector<std::string> rows;
     while(in.read_row(row_str)) rows.push_back(row_str);
     auto n = rows.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10000, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
         for(auto i=r.begin(); i!=r.end(); ++i){
             auto row_str = rows[i];
             if(row_str.size()<10) return;
@@ -131,6 +132,27 @@ void indexing_csv(const char* file){
     });
 }
 
+void generate_sent_uid(nlohmann::json const& config){
+    H5file file{H5name{config["dep_parsed_store"].get<std::string>()}, hdf5::FileMode::rw_exist};
+    std::string prefix{config["dep_parsed_text"].get<std::string>()};
+    auto sent_idx = util::deserialize<ygp::SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
+    std::vector<SentUID> sent_uid;
+    auto beg=sent_idx.cbegin();
+    auto end=sent_idx.cend();
+    auto it=beg;
+    ygp::SentIndex current_idx{*it};
+    SentUID current_uid{};
+    while(it!=end) {
+        if( *it == current_idx) {sent_uid.push_back(current_uid);}
+        else {
+            current_idx=*it;
+            sent_uid.push_back(++current_uid);
+        }
+        ++it;
+    }
+    file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
+}
+
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
@@ -139,6 +161,9 @@ int main(int /*argc*/, char** argv){
 //    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
     indexing_csv(argv[2]);
+//    generate_sent_uid(config);
+    //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+    //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
     return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
