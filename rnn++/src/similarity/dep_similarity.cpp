@@ -148,7 +148,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         nlohmann::json& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
         json_t answer = process_query(sent_json);
-        answer["input"].push_back(query_str);
+        answer["input"]=query_str;
         answers.push_back(answer);
     }
     return answers;
