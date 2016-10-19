@@ -1,8 +1,3 @@
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <limits>
-
 #include "wordrep/word_uid.h"
 
 #include "utils/string.h"
@@ -24,5 +19,7 @@ UIDIndex<TUID>::UIDIndex(std::string file){
 
 //Explicit instantiations;
 template class UIDIndex<WordUID>;
+template class UIDIndex<PosUID>;
+template class UIDIndex<ArcLabelUID>;
 
 }//namespace wordrep

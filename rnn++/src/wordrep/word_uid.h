@@ -4,20 +4,6 @@
 #include <unordered_map>
 #include <vector>
 
-
-
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <limits>
-
-#include "wordrep/word_uid.h"
-
-#include "utils/string.h"
-
-
-
-
 #include "utils/base_types.h"
 namespace wordrep {
 
@@ -50,5 +36,12 @@ private:
 struct DummyWordUID{};
 using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
 using WordUIDindex = UIDIndex<WordUID>;
+
+struct DummyPosUID{};
+using PosUID = util::IntegerLike<DummyPosUID,-1>; //UID -1 for unknown words.
+using PosUIDindex = UIDIndex<PosUID>;
+struct DummyArcLabelUID{};
+using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
+using ArcLabelUIDindex = UIDIndex<ArcLabelUID>;
 
 }//namespace wordrep
