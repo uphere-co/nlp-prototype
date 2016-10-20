@@ -134,11 +134,13 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 : voca{config["wordvec_store"], config["voca_name"],
        config["w2vmodel_name"], config["w2v_float_t"]},
   tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                hdf5::FileMode::read_exist}, config["dep_parsed_text"]},
+                hdf5::FileMode::read_exist}, config["dep_parsed_prefix"]},
   wordUIDs{config["word_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
-  sents{tokens.SegmentSentences()},
-  sents_plain{util::string::readlines(config["plain_text"])}
+  sents{tokens.IndexSentences()},
+  sents_plain{config["plain_text"].get<std::string>()},
+  ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+                     hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
@@ -153,6 +155,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     }
     return answers;
 }
+
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
@@ -183,10 +186,14 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         }
         return ss.str();
     };
+
     for(auto sent: sents){
         if( query.is_similar(sent, tokens, similarity)) {
             //answer[query_str].push_back(sent.uid.val);
             answer["result"].push_back(sent_to_str(sent));
+            answer["result_chunk_id"].push_back(ygp_indexer.row_idx(tokens.chunk_idx(sent.beg)).val);
+            answer["result_beg"].push_back(tokens.word_beg(sent.beg).val);
+            answer["result_end"].push_back(tokens.word_end(--sent.end).val);
         }
         if(answer["result"].size()>rank_cutoff) break;
     }

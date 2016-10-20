@@ -9,18 +9,24 @@ using namespace util;
 using namespace util::io;
 
 namespace wordrep{
+
+RawTexts::RawTexts(std::string filename)
+        :lines(util::string::readlines(filename))
+{}
+
+
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
 : sents_uid{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
-//  chunks_idx{deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))},
-  sents_idx{deserialize<SentPosition>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
+  chunks_idx{deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))},
+  sents_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
   words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
   words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
   words_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
   heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
   head_words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head"}))},
   heads_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
-//  words_beg{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_beg"}))},
-//  words_end{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_end"}))},
+  words_beg{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_beg"}))},
+  words_end{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_end"}))},
   poss{deserialize<POSUID>(file.getRawData<int64_t>(H5name{prefix+".pos_uid"}))},
   arclabels{deserialize<ArcLabelUID>(file.getRawData<int64_t>(H5name{prefix+".arclabel_uid"}))}
 {}
@@ -43,7 +49,7 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
     outfile.writeRawData(H5name{prefix+".arclabel_uid"},serialize(arclabels));
 }
 
-std::vector<Sentence> DepParsedTokens::SegmentSentences() const {
+std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     auto beg=sents_uid.cbegin();
     auto end=sents_uid.cend();
     std::vector<Sentence> sents;
@@ -80,7 +86,7 @@ void DepParsedTokens::append_corenlp_output(nlohmann::json const &output){
 
 //            sents_uid;
             chunks_idx.push_back(current_chunk_idx);
-            sents_idx.push_back(SentPosition{sent_idx});
+            sents_idx.push_back(SentIndex{sent_idx});
 //            words;
             words_uid.push_back(wordUIDs[word]);
             words_pidx.push_back(WordPosition{word_pidx});
@@ -112,5 +118,15 @@ void DepParsedTokens::append_corenlp_output(nlohmann::json const &output){
     }
     ++current_chunk_idx;
 }
+
+
+namespace ygp{
+YGP_indexer::YGP_indexer(util::io::H5file const &file, std::string prefix)
+        : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))}
+{}
+}//namespace ygp
+
+
 }//namespace wordrep
+
 

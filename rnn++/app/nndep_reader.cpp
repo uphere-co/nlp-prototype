@@ -104,6 +104,30 @@ void write_voca_index_col(VocaInfo const &voca, std::string filename, std::strin
     }
 }
 
+void generate_sent_uid(std::string filename, std::string prefix){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+    auto sent_idx = util::deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
+    std::vector<SentUID> sent_uid;
+    auto beg=sent_idx.cbegin();
+    auto end=sent_idx.cend();
+    auto it=beg;
+    SentIndex current_idx{*it};
+    SentUID current_uid{};
+    while(it!=end) {
+        if( *it == current_idx) {sent_uid.push_back(current_uid);}
+        else {
+            current_idx=*it;
+            sent_uid.push_back(++current_uid);
+        }
+        ++it;
+    }
+    file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
+}
+
+void dump_chunk2row(std::vector<int64_t> chunk2row, std::string filename, std::string prefix){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+    file.writeRawData(H5name{prefix+".chunk2row"}, chunk2row);
+}
 void indexing_csv(const char* file){
 //    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::no_quote_escape<','>> in(file);
     io::CSVReader<1, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
@@ -119,35 +143,11 @@ void indexing_csv(const char* file){
             auto row_str = rows[i];
             if(row_str.size()<10) return;
             auto query_json = corenlp_client.from_query_content(row_str);
-            std::ofstream temp_file;
-            temp_file.open ("result."+std::to_string(i));
-            temp_file << query_json.dump(4);
-            temp_file.close();
         }
     });
 }
 
-void generate_sent_uid(std::string filename, std::string prefix){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
-    auto sent_idx = util::deserialize<ygp::SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
-    std::vector<SentUID> sent_uid;
-    auto beg=sent_idx.cbegin();
-    auto end=sent_idx.cend();
-    auto it=beg;
-    ygp::SentIndex current_idx{*it};
-    SentUID current_uid{};
-    while(it!=end) {
-        if( *it == current_idx) {sent_uid.push_back(current_uid);}
-        else {
-            current_idx=*it;
-            sent_uid.push_back(++current_uid);
-        }
-        ++it;
-    }
-    file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
-}
-
-void ParseCoreNLPoutput(nlohmann::json const &config, const char* file){
+void ParseWithCoreNLP(nlohmann::json const &config, const char* file){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
@@ -157,14 +157,43 @@ void ParseCoreNLPoutput(nlohmann::json const &config, const char* file){
     auto filename="test.h5";
     auto prefix="ygp";
 
-
-    auto results = util::string::readlines(file);
     DepParsedTokens tokens{};
-    for(auto const& result : results)
-        tokens.append_corenlp_output(util::load_json(result));
+
+    CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
+    io::CSVReader<1, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
+    in.read_header(io::ignore_extra_column, "row_str");
+    std::string row_str;
+    std::vector<std::string> rows;
+    while(in.read_row(row_str)) rows.push_back(row_str);
+    rows.resize(100);
+    auto n = rows.size();
+    std::vector<int64_t> row_idx;
+    for(decltype(n)i=0; i!=n; ++i){
+        auto const &row_str = rows[i];
+        if (row_str.size() < 50) continue;
+        auto parsed_json = corenlp_client.from_query_content(row_str);
+        tokens.append_corenlp_output(parsed_json);
+        row_idx.push_back(i);
+    }
+    for(auto x : row_idx) fmt::print("{} ", x);
+    fmt::print("\n");
+//    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,100}, [&](tbb::blocked_range<decltype(n)> const &r){
+//        for(auto i=r.begin(); i!=r.end(); ++i) {
+//            auto row_str = rows[i];
+//            if (row_str.size() < 10) return;
+//            auto parsed_json = corenlp_client.from_query_content(row_str);
+//            tokens.append_corenlp_output(parsed_json);
+////            std::ofstream temp_file;
+////            temp_file.open("result." + std::to_string(i));
+////            temp_file << parsed_json.dump(4);
+////            temp_file.close();
+//        }
+//    });
+
     tokens.write_to_disk(filename, prefix);
     generate_sent_uid(filename, prefix);
     write_voca_index_col(voca, filename, prefix);
+    dump_chunk2row(row_idx, filename, prefix);
 }
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
@@ -172,11 +201,10 @@ int main(int /*argc*/, char** argv){
 //    convert_h5py_to_native();
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
-//    indexing_csv(argv[2]);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
-//    ParseCoreNLPoutput(config, argv[2]);
-//    return 0;
+    ParseWithCoreNLP(config, argv[2]);
+    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
