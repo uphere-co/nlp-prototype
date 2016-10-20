@@ -87,11 +87,18 @@ using ColumnUID = util::IntegerLike<ColumUIDDummy>;
 struct RowIndexDummy{};
 using RowIndex    = util::IntegerLike<RowIndexDummy>;
 
-struct YGP_indexer{
-    YGP_indexer(util::io::H5file const &file, std::string prefix);
+struct YGPindexer{
+    YGPindexer(util::io::H5file const &file, std::string prefix);
     ygp::RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
 
     std::vector<ygp::RowIndex> chunk2idx;
+};
+
+struct YGPdump{
+    YGPdump(std::string filename);
+    std::string getline(RowIndex i) const {return lines[i.val];}
+
+    std::vector<std::string> lines;
 };
 } //namespace wordrep::ygp
 

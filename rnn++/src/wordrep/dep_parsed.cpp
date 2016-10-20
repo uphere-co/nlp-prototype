@@ -121,8 +121,12 @@ void DepParsedTokens::append_corenlp_output(nlohmann::json const &output){
 
 
 namespace ygp{
-YGP_indexer::YGP_indexer(util::io::H5file const &file, std::string prefix)
+YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
         : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))}
+{}
+
+YGPdump::YGPdump(std::string filename)
+        :lines(util::string::readlines(filename))
 {}
 }//namespace ygp
 

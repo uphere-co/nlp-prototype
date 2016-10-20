@@ -38,8 +38,8 @@ struct DepSimilaritySearch {
     wordrep::WordUIDindex wordUIDs;
     wordrep::WordImportance word_cutoff;
     std::vector<wordrep::Sentence> sents;
-    wordrep::RawTexts sents_plain;
-    wordrep::ygp::YGP_indexer ygp_indexer;
+    wordrep::ygp::YGPdump texts;
+    wordrep::ygp::YGPindexer ygp_indexer;
 };
 
 }//namespace engine

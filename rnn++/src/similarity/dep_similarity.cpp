@@ -138,7 +138,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   wordUIDs{config["word_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
-  sents_plain{config["plain_text"].get<std::string>()},
+  texts{config["plain_text"].get<std::string>()},
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
@@ -155,7 +155,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     }
     return answers;
 }
-
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
@@ -190,10 +189,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     for(auto sent: sents){
         if( query.is_similar(sent, tokens, similarity)) {
             //answer[query_str].push_back(sent.uid.val);
+            auto row_id = ygp_indexer.row_idx(tokens.chunk_idx(sent.beg));
             answer["result"].push_back(sent_to_str(sent));
-            answer["result_chunk_id"].push_back(ygp_indexer.row_idx(tokens.chunk_idx(sent.beg)).val);
+            answer["result_row_id"].push_back(row_id.val);
             answer["result_beg"].push_back(tokens.word_beg(sent.beg).val);
             answer["result_end"].push_back(tokens.word_end(--sent.end).val);
+            answer["result_raw"].push_back(texts.getline(row_id));
         }
         if(answer["result"].size()>rank_cutoff) break;
     }
