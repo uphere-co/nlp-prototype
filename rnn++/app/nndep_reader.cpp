@@ -119,7 +119,7 @@ void indexing_csv(const char* file){
     std::vector<std::string> rows;
     while(in.read_row(row_str)) rows.push_back(row_str);
     auto n = rows.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,10, 20}, [&](tbb::blocked_range<decltype(n)> const &r){
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,100}, [&](tbb::blocked_range<decltype(n)> const &r){
         for(auto i=r.begin(); i!=r.end(); ++i){
             auto row_str = rows[i];
             if(row_str.size()<10) return;
@@ -153,6 +153,19 @@ void generate_sent_uid(nlohmann::json const& config){
     file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
 }
 
+void ParseCoreNLPoutput(const char* file){
+    auto output = util::load_json(file);
+    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
+    POSUIDindex posUIDs{"/home/jihuni/word2vec/ygp/pos.uid"};
+    ArcLabelUIDindex arclabelUIDs{"/home/jihuni/word2vec/ygp/dep.uid"};
+
+
+    auto results = util::string::readlines("results");
+    DepParsedTokens tokens{};
+    for(auto const& result : results)
+        tokens.append_corenlp_output(util::load_json(result));
+    tokens.write_to_disk("test.h5", "ygp");
+}
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
@@ -164,7 +177,8 @@ int main(int /*argc*/, char** argv){
 //    generate_sent_uid(config);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
-//    return 0;
+    ParseCoreNLPoutput(argv[2]);
+    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
@@ -178,3 +192,4 @@ int main(int /*argc*/, char** argv){
     fmt::print("{}\n", answer.dump(4));
     return 0;
 }
+

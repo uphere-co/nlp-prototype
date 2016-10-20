@@ -43,22 +43,27 @@ struct DepParsedTokens{
 
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> SegmentSentences() const;
+    void append_corenlp_output(nlohmann::json const &output);
 
+    WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
     VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
     VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
 
 private:
-    std::vector<SentUID>      sent_uid;
-    std::vector<ChunkIndex>   chunk_idx;
-    std::vector<SentPosition> sent_idx;
+    std::vector<SentUID>      sents_uid;
+    std::vector<ChunkIndex>   chunks_idx;
+    std::vector<SentPosition> sents_idx;
     std::vector<VocaIndex>    words;
-    std::vector<WordPosition> word_pidx;
+    std::vector<WordUID>      words_uid;
+    std::vector<WordPosition> words_pidx;
     std::vector<VocaIndex>    head_words;
-    std::vector<WordPosition> head_pidx;
-    std::vector<CharOffset>   word_beg;
-    std::vector<CharOffset>   word_end;
-    std::vector<POSUID>       pos;
-    std::vector<ArcLabelUID>  arclabel;
+    std::vector<WordUID>      heads_uid;
+    std::vector<WordPosition> heads_pidx;
+    std::vector<CharOffset>   words_beg;
+    std::vector<CharOffset>   words_end;
+    std::vector<POSUID>       poss;
+    std::vector<ArcLabelUID>  arclabels;
+    ChunkIndex current_chunk_idx{ChunkIndex::val_t{0}};
 };
 
 namespace ygp{
