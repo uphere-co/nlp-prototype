@@ -11,8 +11,8 @@ struct IntegerLike{
     using val_t = int64_t;
 
     IntegerLike() : val{DEFAULT} {}
-    IntegerLike(val_t val) : val{val} {}
-    IntegerLike(uint64_t uval) : val{static_cast<val_t>(uval)}{
+    explicit IntegerLike(val_t val) : val{val} {}
+    explicit IntegerLike(uint64_t uval) : val{static_cast<val_t>(uval)}{
         assert(uval<std::numeric_limits<val_t>::max());
     }
     val_t val;

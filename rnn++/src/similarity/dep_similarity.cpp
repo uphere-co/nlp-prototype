@@ -44,7 +44,7 @@ struct BoWVQuery2{
 
     val_t get_distance(size_t i, idx_t widx) const { return distances[i][widx.val];}
     val_t& get_distance(size_t i, idx_t widx) { return distances[i][widx.val];}
-    val_t get_distance(WordPosIndex i, idx_t widx) const { return distances[i.val-1][widx.val];}
+    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val-1][widx.val];}
 
     bool is_similar(util::span_dyn<idx_t> widxs){
         auto n = cutoffs.size();
@@ -75,11 +75,11 @@ struct DepParsedQuery{
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
             words[i]  = voca[wordUIDs[x["dependentGloss"].get<std::string>()]];
-            words_pidx[i] = WordPosIndex{x["dependent"].get<WordPosIndex::val_t>()};
+            words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()};
             head_words[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
-            heads_pidx[i] = WordPosIndex{x["governor"].get<WordPosIndex::val_t>()};
+            heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()};
             //TODO: fix it.
-            arc_labels[i]= ArcLabel{int64_t{0}};//x["dep"];
+            arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
 //            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
         }
 //        fmt::print("\n");
@@ -89,11 +89,11 @@ struct DepParsedQuery{
     bool is_similar(Sentence const &sent, DepParsedTokens const &query_words,
                     BoWVQuery2 const &similarity) const {
         std::vector<bool> is_found(len, false);
-        auto beg=sent.beg.val;
-        auto end=sent.end.val;
-        for(auto i=beg; i<end; ++i) {
-            auto word = query_words.word[i];
-            auto head_word = query_words.head_word[i];
+        auto beg=sent.beg;
+        auto end=sent.end;
+        for(auto i=beg; i!=end; ++i) {
+            auto word = query_words.word(i);
+            auto head_word = query_words.head_word(i);
             for(decltype(len)j=0; j<len; ++j){
                 if(cutoff[j]<1.0){
                     if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
@@ -108,15 +108,15 @@ struct DepParsedQuery{
         return false;
     }
 
-    val_t get_cutoff (WordPosIndex idx) const {return cutoff[idx.val -1];}
+    val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val -1];}
 
     std::size_t len;
     std::vector<val_t> cutoff;
     std::vector<VocaIndex> words;
-    std::vector<WordPosIndex> words_pidx;
+    std::vector<WordPosition> words_pidx;
     std::vector<VocaIndex> head_words;
-    std::vector<WordPosIndex> heads_pidx;
-    std::vector<ArcLabel> arc_labels;
+    std::vector<WordPosition> heads_pidx;
+    std::vector<ArcLabelUID> arc_labels;
 };
 
 
@@ -153,6 +153,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     }
     return answers;
 }
+
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
     for(auto const &x : sent_json["basic-dependencies"])
@@ -174,11 +175,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
 
     json_t answer{};
     auto sent_to_str=[&](auto &sent){
-        auto beg=sent.beg.val;
-        auto end=sent.end.val;
+        auto beg=sent.beg;
+        auto end=sent.end;
         std::stringstream ss;
-        for(auto i=beg; i<end; ++i) {
-            ss <<  wordUIDs[voca.indexmap[tokens.word[i]]]<< " ";
+        for(auto i=beg; i!=end; ++i) {
+            ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";
         }
         return ss.str();
     };
