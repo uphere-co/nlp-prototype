@@ -29,11 +29,11 @@ using namespace util::io;
 using namespace wordrep;
 using namespace engine;
 
-void write_WordUIDs(std::string filename, std::string voca_name, std::string uids_name){
+void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca_name, std::string uids_name){
     H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
     auto raw = file.getRawData<char>(H5name{voca_name});
     auto words = util::string::unpack_word_views(raw);
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
+    WordUIDindex wordUIDs{uid_dump};
 
     std::vector<WordUID::val_t> uids;
     for(auto word : words) uids.push_back(wordUIDs[word].val);
@@ -60,31 +60,6 @@ void pruning_voca(){
     H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
     outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
     outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
-}
-
-void print_CoreNLP_output(nlohmann::json const &json){
-    for (auto it = json.begin(); it != json.end(); ++it) {
-        std::cout << it.key() << "\n";
-    }
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-    WordImportance word_cutoff{H5file{H5name{"/home/jihuni/word2vec/ygp/prob.test.h5"}, hdf5::FileMode::read_exist}};
-    for(auto const& sent_json : json["sentences"] ){
-        for(auto const &token : sent_json["tokens"]){
-            auto word_pidx = token["index"].get<int64_t>()-1;
-            auto word = token["word"].get<std::string>();
-            auto pos = token["pos"].get<std::string>();
-            fmt::print("{:<10}\t{}\t{}\t{}\n", word, word_pidx, word_cutoff.ratio(wordUIDs[word]), pos);
-        }
-        for(auto const &x : sent_json["basic-dependencies"]){
-//            word[i] = word2idx.getIndex(rnn::wordrep::Word{x["dependentGloss"].get<std::string>()});
-            auto word_pidx = x["dependent"].get<int64_t>()-1;
-//            head_word[i] = word2idx.getIndex(rnn::wordrep::Word{x["governorGloss"].get<std::string>()});
-            auto head_pidx = x["governor"].get<int64_t>()-1;
-//            arc_label[i]= x["dep"];
-            fmt::print("{} {}\n", word_pidx, head_pidx);
-        }
-        fmt::print("----------------------------------------\n");
-    }
 }
 
 void write_voca_index_col(VocaInfo const &voca, std::string filename, std::string prefix){
@@ -150,9 +125,9 @@ void generate_sent_uid(std::string filename, std::string prefix){
 void ParseCoreNLPoutput(nlohmann::json const &config, const char* file){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-    POSUIDindex posUIDs{"/home/jihuni/word2vec/ygp/pos.uid"};
-    ArcLabelUIDindex arclabelUIDs{"/home/jihuni/word2vec/ygp/dep.uid"};
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+    POSUIDindex posUIDs{config["pos_uids_dump"].get<std::string>()};
+    ArcLabelUIDindex arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
 
     auto filename="test.h5";
     auto prefix="ygp";
@@ -161,7 +136,7 @@ void ParseCoreNLPoutput(nlohmann::json const &config, const char* file){
     auto results = util::string::readlines(file);
     DepParsedTokens tokens{};
     for(auto const& result : results)
-        tokens.append_corenlp_output(util::load_json(result));
+        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, util::load_json(result));
     tokens.write_to_disk(filename, prefix);
     generate_sent_uid(filename, prefix);
     write_voca_index_col(voca, filename, prefix);
@@ -170,8 +145,8 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
 //    convert_h5py_to_native();
-//    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
-//    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
+//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
+//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "s2010.h5", "s2010.words", "s2010.uids");
 //    indexing_csv(argv[2]);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
