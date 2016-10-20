@@ -42,6 +42,17 @@ IntegerLike<T,VAL> operator++(IntegerLike<T,VAL> &x, int ){ // post increment
     ++x.val;
     return t;
 }
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator--(IntegerLike<T,VAL> &x) {// pre increment
+    --x.val;
+    return x;
+}
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL> operator--(IntegerLike<T,VAL> &x, int ){ // post increment
+    IntegerLike<T,VAL> t{x.val};
+    --x.val;
+    return t;
+}
 
 template<typename T>
 std::vector<T> deserialize(std::vector<typename T::val_t> const& raw){
