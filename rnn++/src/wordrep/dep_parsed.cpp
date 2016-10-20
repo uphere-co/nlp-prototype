@@ -28,12 +28,14 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) const {
 //    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
     H5file outfile{H5name{filename}, hdf5::FileMode::replace};
-    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sents_uid));
+//    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sents_uid));
     outfile.writeRawData(H5name{prefix+".chunk_idx"}, serialize(chunks_idx));
     outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sents_idx));
-    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
+    outfile.writeRawData(H5name{prefix+".word_uid"}, serialize(words_uid));
+//    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
     outfile.writeRawData(H5name{prefix+".word_pidx"},serialize(words_pidx));
-    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
+    outfile.writeRawData(H5name{prefix+".head_uid"}, serialize(heads_uid));
+//    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
     outfile.writeRawData(H5name{prefix+".head_pidx"},serialize(heads_pidx));
     outfile.writeRawData(H5name{prefix+".word_beg"},serialize(words_beg));
     outfile.writeRawData(H5name{prefix+".word_end"},serialize(words_end));

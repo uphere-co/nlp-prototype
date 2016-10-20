@@ -87,26 +87,21 @@ void print_CoreNLP_output(nlohmann::json const &json){
     }
 }
 
-void write_voca_index_col(nlohmann::json const& config){
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                  config["w2vmodel_name"], config["w2v_float_t"]};
-    H5file file{H5name{config["dep_parsed_store"].get<std::string>()}, hdf5::FileMode::rw_exist};
-    std::string prefix{config["dep_parsed_text"].get<std::string>()};
+void write_voca_index_col(VocaInfo const &voca, std::string filename, std::string prefix){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
     using namespace util;
     {
         auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}));
-//        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word"}));
-//        file.writeRawData(H5name{prefix+".word_uid"}, serialize(uids));}
         std::vector<VocaIndex> idxs;
         for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
-        file.overwriteRawData(H5name{prefix+".word"}, serialize(idxs));}
+        file.writeRawData(H5name{prefix+".word"}, serialize(idxs));
+    }
     {
         auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}));
-//        auto uids = deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_word"}));
-//        file.writeRawData(H5name{prefix+".head_uid"}, serialize(uids));}
         std::vector<VocaIndex> idxs;
         for(auto uid:uids) idxs.push_back(voca.indexmap[uid]);
-        file.writeRawData(H5name{prefix+".head"}, serialize(idxs));}
+        file.writeRawData(H5name{prefix+".head"}, serialize(idxs));
+    }
 }
 
 void indexing_csv(const char* file){
@@ -132,9 +127,8 @@ void indexing_csv(const char* file){
     });
 }
 
-void generate_sent_uid(nlohmann::json const& config){
-    H5file file{H5name{config["dep_parsed_store"].get<std::string>()}, hdf5::FileMode::rw_exist};
-    std::string prefix{config["dep_parsed_text"].get<std::string>()};
+void generate_sent_uid(std::string filename, std::string prefix){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
     auto sent_idx = util::deserialize<ygp::SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
     std::vector<SentUID> sent_uid;
     auto beg=sent_idx.cbegin();
@@ -153,32 +147,36 @@ void generate_sent_uid(nlohmann::json const& config){
     file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
 }
 
-void ParseCoreNLPoutput(const char* file){
-    auto output = util::load_json(file);
+void ParseCoreNLPoutput(nlohmann::json const &config, const char* file){
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
     POSUIDindex posUIDs{"/home/jihuni/word2vec/ygp/pos.uid"};
     ArcLabelUIDindex arclabelUIDs{"/home/jihuni/word2vec/ygp/dep.uid"};
 
+    auto filename="test.h5";
+    auto prefix="ygp";
 
-    auto results = util::string::readlines("results");
+
+    auto results = util::string::readlines(file);
     DepParsedTokens tokens{};
     for(auto const& result : results)
         tokens.append_corenlp_output(util::load_json(result));
-    tokens.write_to_disk("test.h5", "ygp");
+    tokens.write_to_disk(filename, prefix);
+    generate_sent_uid(filename, prefix);
+    write_voca_index_col(voca, filename, prefix);
 }
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("test.Google.h5", "news.en.words", "news.en.uids");
-//    write_voca_index_col(config);
 //    write_WordUIDs("s2010.h5", "s2010.words", "s2010.uids");
 //    indexing_csv(argv[2]);
-//    generate_sent_uid(config);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
-    ParseCoreNLPoutput(argv[2]);
-    return 0;
+//    ParseCoreNLPoutput(config, argv[2]);
+//    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
