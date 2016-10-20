@@ -51,7 +51,10 @@ struct DepParsedTokens{
 
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> IndexSentences() const;
-    void append_corenlp_output(nlohmann::json const &output);
+    void append_corenlp_output(WordUIDindex const &wordUIDs,
+                               POSUIDindex const &posUIDs,
+                               ArcLabelUIDindex const &arclabelUIDs,
+                               nlohmann::json const &output);
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}

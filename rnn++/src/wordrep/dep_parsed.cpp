@@ -64,10 +64,10 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     return sents;
 }
 
-void DepParsedTokens::append_corenlp_output(nlohmann::json const &output){
-    WordUIDindex wordUIDs{"/home/jihuni/word2vec/ygp/words.uid"};
-    POSUIDindex posUIDs{"/home/jihuni/word2vec/ygp/pos.uid"};
-    ArcLabelUIDindex arclabelUIDs{"/home/jihuni/word2vec/ygp/dep.uid"};
+void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
+                                            POSUIDindex const &posUIDs,
+                                            ArcLabelUIDindex const &arclabelUIDs,
+                                            nlohmann::json const &output){
 
     int64_t sent_idx{0};
     for(auto const& sent_json : output["sentences"] ){
