@@ -17,7 +17,7 @@ namespace wordrep{
 struct WordPosIndexDummy{};
 using WordPosition = util::IntegerLike<WordPosIndexDummy>;
 struct SentPositionDummy{};
-using SentPosition = util::IntegerLike<SentPositionDummy>;
+using SentIndex = util::IntegerLike<SentPositionDummy>;
 struct SentUIDDummy{};
 using SentUID = util::IntegerLike<SentUIDDummy>;
 
@@ -29,9 +29,17 @@ using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
 struct ChunkIndexDummy;
 using ChunkIndex = util::IntegerLike<ChunkIndexDummy>;
 
+struct RawTexts{
+    RawTexts(std::string filename);
+    std::string getline(ChunkIndex i) const {return lines[i.val];}
+
+    std::vector<std::string> lines;
+};
+
 struct Sentence{
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
-    : uid{uid}, beg{beg}, end{end} {}
+            : uid{uid}, beg{beg}, end{end} {
+    }
     SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;
@@ -42,20 +50,24 @@ struct DepParsedTokens{
     DepParsedTokens(){}
 
     void write_to_disk(std::string filename, std::string prefix) const;
-    std::vector<Sentence> SegmentSentences() const;
+    std::vector<Sentence> IndexSentences() const;
     void append_corenlp_output(WordUIDindex const &wordUIDs,
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
+    ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
+    CharOffset word_beg(DPTokenIndex idx) const {return words_beg[idx.val];}
+    CharOffset word_end(DPTokenIndex idx) const {return words_end[idx.val];}
     VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
     VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
 
+    friend Sentence;
 private:
     std::vector<SentUID>      sents_uid;
     std::vector<ChunkIndex>   chunks_idx;
-    std::vector<SentPosition> sents_idx;
+    std::vector<SentIndex> sents_idx;
     std::vector<VocaIndex>    words;
     std::vector<WordUID>      words_uid;
     std::vector<WordPosition> words_pidx;
@@ -75,11 +87,22 @@ struct TableUIDDummy{};
 using TableUID = util::IntegerLike<TableUIDDummy>;
 struct ColumUIDDummy{};
 using ColumnUID = util::IntegerLike<ColumUIDDummy>;
-struct RowUIDDummy{};
-using RowUID    = util::IntegerLike<RowUIDDummy>;
-struct SentIndexDummy{};
-using SentIndex = util::IntegerLike<SentIndexDummy>;
+struct RowIndexDummy{};
+using RowIndex    = util::IntegerLike<RowIndexDummy>;
 
+struct YGPindexer{
+    YGPindexer(util::io::H5file const &file, std::string prefix);
+    ygp::RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
+
+    std::vector<ygp::RowIndex> chunk2idx;
+};
+
+struct YGPdump{
+    YGPdump(std::string filename);
+    std::string getline(RowIndex i) const {return lines[i.val];}
+
+    std::vector<std::string> lines;
+};
 } //namespace wordrep::ygp
 
 }//namespace wordrep

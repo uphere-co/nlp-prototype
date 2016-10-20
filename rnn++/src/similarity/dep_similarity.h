@@ -7,6 +7,8 @@
 #include "wordrep/word_prob.h"
 #include "wordrep/wordvec.h"
 
+#include "utils/hdf5.h"
+
 namespace wordrep{
 struct VocaInfo{
     using voca_vecs_t = WordBlock_base<float,100>;
@@ -36,7 +38,8 @@ struct DepSimilaritySearch {
     wordrep::WordUIDindex wordUIDs;
     wordrep::WordImportance word_cutoff;
     std::vector<wordrep::Sentence> sents;
-    std::vector<std::string> sents_plain;
+    wordrep::ygp::YGPdump texts;
+    wordrep::ygp::YGPindexer ygp_indexer;
 };
 
 }//namespace engine
