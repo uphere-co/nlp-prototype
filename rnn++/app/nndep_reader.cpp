@@ -148,7 +148,7 @@ void ParseWithCoreNLP(nlohmann::json const &config, const char* file){
         auto const &row_str = rows[i];
         if (row_str.size() < 50) continue;
         auto parsed_json = corenlp_client.from_query_content(row_str);
-        tokens.append_corenlp_output(parsed_json);
+        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs,parsed_json);
         row_idx.push_back(i);
     }
     for(auto x : row_idx) fmt::print("{} ", x);
@@ -166,8 +166,6 @@ void ParseWithCoreNLP(nlohmann::json const &config, const char* file){
 //        }
 //    });
 
-    for(auto const& result : results)
-        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, util::load_json(result));
     tokens.write_to_disk(filename, prefix);
     generate_sent_uid(filename, prefix);
     write_voca_index_col(voca, filename, prefix);
