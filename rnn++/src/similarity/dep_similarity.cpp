@@ -192,9 +192,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             auto row_id = ygp_indexer.row_idx(tokens.chunk_idx(sent.beg));
             answer["result"].push_back(sent_to_str(sent));
             answer["result_row_id"].push_back(row_id.val);
-            answer["result_beg"].push_back(tokens.word_beg(sent.beg).val);
-            answer["result_end"].push_back(tokens.word_end(--sent.end).val);
+            auto beg = tokens.word_beg(sent.beg).val;
+            auto end = tokens.word_end(--sent.end).val;
+            answer["result_beg"].push_back(beg);
+            answer["result_end"].push_back(end);
             answer["result_raw"].push_back(texts.getline(row_id));
+            answer["highlight_beg"].push_back(beg+10);
+            answer["highlight_end"].push_back(beg+60<end?beg+60:end);
         }
         if(answer["result"].size()>rank_cutoff) break;
     }
