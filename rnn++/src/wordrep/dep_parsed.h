@@ -98,8 +98,9 @@ struct YGPindexer{
 };
 
 struct YGPdump{
+    using row_uid = ChunkIndex;
     YGPdump(std::string filename);
-    std::string getline(RowIndex i) const {return lines[i.val];}
+    std::string getline(row_uid i) const {return lines[i.val];}
 
     std::vector<std::string> lines;
 };

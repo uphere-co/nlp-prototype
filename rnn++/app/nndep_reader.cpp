@@ -244,8 +244,8 @@ int main(int /*argc*/, char** argv){
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
 //    QueryAndDumpCoreNLPoutput(argv[2]);
     //ParseWithCoreNLP(config, argv[2]);
-    GenerateExtraIndexes(config, argv[2], argv[3]);
-    return 0;
+//    GenerateExtraIndexes(config, argv[2], argv[3]);
+//    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);
