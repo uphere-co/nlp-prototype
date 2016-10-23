@@ -7,7 +7,7 @@
 #include "fmt/printf.h"
 
 #include "utils/parallel.h"
-//#include "utils/span.h"
+#include "utils/span.h"
 #include "utils/string.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
@@ -21,9 +21,9 @@ struct BoWVQuery2{
     using voca_info_t  = wordrep::VocaInfo;
     using word_block_t = voca_info_t::voca_vecs_t;
     using val_t        = word_block_t::val_t;
-    using idx_t        = word_block_t::idx_t;
+    using idx_t        = VocaIndex;
 
-    BoWVQuery2(std::vector<VocaIndex> const &words, std::vector<val_t> cutoffs,
+    BoWVQuery2(std::vector<idx_t> const &words, std::vector<val_t> cutoffs,
                voca_info_t const &voca)
     : idxs{words}, cutoffs{cutoffs}, distances(cutoffs.size())
     {
@@ -86,26 +86,25 @@ struct DepParsedQuery{
 //        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
-    bool is_similar(Sentence const &sent, DepParsedTokens const &query_words,
+    val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
                     BoWVQuery2 const &similarity) const {
-        std::vector<bool> is_found(len, false);
+        std::vector<val_t> scores(len, 0.0);
         auto beg=sent.beg;
         auto end=sent.end;
         for(auto i=beg; i!=end; ++i) {
-            auto word = query_words.word(i);
-            auto head_word = query_words.head_word(i);
+            auto word = data_tokens.word(i);
+            auto head_word = data_tokens.head_word(i);
             for(decltype(len)j=0; j<len; ++j){
                 if(cutoff[j]<1.0){
-                    if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
+                    if(similarity.get_distance(j,word) >= cutoff[j]) scores[j] = 1.0;
                 } else {
                     if((similarity.get_distance(j,word) >= cutoff[j]) &&
-                       (similarity.get_distance(heads_pidx[j], head_word) >=get_cutoff(heads_pidx[j]))) is_found[j] = true;
+                       (similarity.get_distance(heads_pidx[j], head_word) >=get_cutoff(heads_pidx[j]))) scores[j] = 1.0;
                 }
             }
         }
-        auto n_found = std::count_if(is_found.cbegin(), is_found.cend(), [](bool x){return x;});
-        if(1.0*n_found/is_found.size()>0.8) return true;
-        return false;
+        auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
+        return total_score;
     }
 
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val -1];}
@@ -187,7 +186,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     };
 
     for(auto sent: sents){
-        if( query.is_similar(sent, tokens, similarity)) {
+        if( query.get_score(sent, tokens, similarity)>0.6) {
             //answer[query_str].push_back(sent.uid.val);
             auto chunk_idx = tokens.chunk_idx(sent.beg);
             ygp::YGPdump::row_uid row_uid = chunk_idx;//if a chunk is a row, chunk_idx is row_uid
