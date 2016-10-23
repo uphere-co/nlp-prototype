@@ -63,7 +63,6 @@ struct DepParsedTokens{
     VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
     VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
 
-    friend Sentence;
 private:
     std::vector<SentUID>      sents_uid;
     std::vector<ChunkIndex>   chunks_idx;
