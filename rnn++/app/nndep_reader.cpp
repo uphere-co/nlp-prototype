@@ -179,8 +179,8 @@ void ParseWithCoreNLP(nlohmann::json const &config, const char* file) {
     POSUIDindex posUIDs{config["pos_uids_dump"].get<std::string>()};
     ArcLabelUIDindex arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
 
-    auto filename = "ygp.h5";
-    auto prefix = "ygp";
+    auto filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
     std::vector<std::string> dumps = util::string::readlines(file);
     DepParsedTokens tokens{};
@@ -224,8 +224,8 @@ void GenerateExtraIndexes(nlohmann::json const &config, const char* file, const 
         row_idxs.push_back(row_idx);
     };
 
-    auto filename = "ygp.h5";
-    auto prefix = "ygp";
+    auto filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
     generate_sent_uid(filename, prefix);
     write_voca_index_col(voca, filename, prefix);
@@ -243,7 +243,7 @@ int main(int /*argc*/, char** argv){
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
 //    QueryAndDumpCoreNLPoutput(argv[2]);
-    //ParseWithCoreNLP(config, argv[2]);
+//    ParseWithCoreNLP(config, argv[2]);
 //    GenerateExtraIndexes(config, argv[2], argv[3]);
 //    return 0;
     std::string input = argv[2];
