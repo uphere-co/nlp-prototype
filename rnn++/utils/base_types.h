@@ -12,7 +12,7 @@ struct IntegerLike{
 
     IntegerLike() : val{DEFAULT} {}
     explicit IntegerLike(val_t val) : val{val} {}
-    explicit IntegerLike(uint64_t uval) : val{static_cast<val_t>(uval)}{
+    explicit IntegerLike(std::size_t uval) : val{static_cast<val_t>(uval)}{
         assert(uval<std::numeric_limits<val_t>::max());
     }
     val_t val;

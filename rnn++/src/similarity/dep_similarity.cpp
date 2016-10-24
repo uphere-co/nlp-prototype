@@ -33,26 +33,25 @@ struct BoWVQuery2{
         tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
                           [&](tbb::blocked_range<decltype(n)> const &r){
                               for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-                                  for(decltype(n_queries)qi=0; qi!=n_queries; ++qi){
+                                  for(int64_t qi=0; qi!=n_queries; ++qi){
                                       auto q = voca.wvecs[idxs[qi]];
                                       auto widx = idx_t{i};
-                                      get_distance(qi,widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
+                                      get_distance(WordPosition{qi},widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
                                   }
                               }
                           });
     }
 
-    val_t get_distance(size_t i, idx_t widx) const { return distances[i][widx.val];}
-    val_t& get_distance(size_t i, idx_t widx) { return distances[i][widx.val];}
-    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val-1][widx.val];}
+    val_t& get_distance(WordPosition i, idx_t widx) { return distances[i.val][widx.val];}
+    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val][widx.val];}
 
     bool is_similar(util::span_dyn<idx_t> widxs){
         auto n = cutoffs.size();
         auto end=std::cend(widxs);
-        for(decltype(n)i=0; i!=n; ++i){
+        for(int64_t i=0; i!=n; ++i){
             auto cut= cutoffs[i];
             auto result = std::find_if(std::cbegin(widxs), end, [&](auto widx){
-                return get_distance(i, widx) >=cut;
+                return get_distance(WordPosition{i}, widx) >=cut;
             });
             if(result==end) return false;
         }
@@ -95,15 +94,13 @@ struct DepParsedQuery{
             auto word = data_tokens.word(i);
             auto head_word = data_tokens.head_word(i);
             for(decltype(len)j=0; j<len; ++j){
-                auto dependent_score = similarity.get_distance(j,word);
+                auto dependent_score = similarity.get_distance(WordPosition{j},word);
                 if(heads_pidx[j].val<0) {
                     auto score = cutoff[j] * dependent_score;
-//                    auto score = dependent_score;
                     scores[j] = std::max(scores[j], score);
                 } else {
                     auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
                     auto score = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
-//                    auto score = dependent_score * (1 +  governor_score);
                     scores[j] = std::max(scores[j], score);
                 }
             }
@@ -201,12 +198,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     }
     auto n_found = relevant_sents.size();
     auto n_max_result=n_found>5? 5 : n_found;
-    fmt::print("{} found", n_found);
     std::partial_sort(relevant_sents.begin(),relevant_sents.begin()+n_max_result,relevant_sents.end(),
                       [](auto const &x, auto const &y){return x.first>y.first;});
-    //relevant_sents.resize(n_max_result);
-    //for(auto pair : relevant_sents){
-    for(auto it=relevant_sents.cbegin(); it!=relevant_sents.cbegin()+n_max_result; ++it){
+    auto score_cutoff = 0.5*relevant_sents[0].first;
+    auto rank_cut = std::find_if_not(relevant_sents.cbegin(), relevant_sents.cend(),
+                                 [score_cutoff](auto const &x){return x.first>score_cutoff;});
+    for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
         auto const &pair = *it;
         //auto sent = sents[pair.second.val];
         auto sent = pair.second;
