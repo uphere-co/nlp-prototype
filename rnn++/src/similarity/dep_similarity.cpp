@@ -191,30 +191,31 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
     for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
-        if ( score > query.len*0.5) {
+        if ( score > query.len*0.2) {
             //relevant_sents.push_back(std::make_pair(score,sent.uid));
             relevant_sents.push_back(std::make_pair(score,sent));
         }
     }
     auto n_found = relevant_sents.size();
     auto n_max_result=n_found>5? 5 : n_found;
-    std::partial_sort(relevant_sents.begin(),relevant_sents.begin()+n_max_result,relevant_sents.end(),
+    auto rank_cut = relevant_sents.begin()+n_max_result;
+    std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
                       [](auto const &x, auto const &y){return x.first>y.first;});
     auto score_cutoff = 0.5*relevant_sents[0].first;
-    auto rank_cut = std::find_if_not(relevant_sents.cbegin(), relevant_sents.cend(),
-                                 [score_cutoff](auto const &x){return x.first>score_cutoff;});
+    rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
+                                [score_cutoff](auto const &x){return x.first>score_cutoff;});
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
         auto const &pair = *it;
         //auto sent = sents[pair.second.val];
         auto sent = pair.second;
         //answer[query_str].push_back(sent.uid.val);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
-        ygp::YGPdump::row_uid row_uid = chunk_idx;//if a chunk is a row, chunk_idx is row_uid
+        auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto row_id = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(pair.first);
         answer["result"].push_back(sent_to_str(sent));
         answer["result_row_uid"].push_back(row_uid.val);
-        answer["result_row_id"].push_back(row_id.val);
+        answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(-1);
         auto beg = tokens.word_beg(sent.beg).val;
         auto end = tokens.word_end(--sent.end).val;

@@ -88,18 +88,21 @@ struct ColumUIDDummy{};
 using ColumnUID = util::IntegerLike<ColumUIDDummy>;
 struct RowIndexDummy{};
 using RowIndex    = util::IntegerLike<RowIndexDummy>;
+struct RowUIDDummy{};
+using RowUID    = util::IntegerLike<RowUIDDummy>;
 
 struct YGPindexer{
     YGPindexer(util::io::H5file const &file, std::string prefix);
-    ygp::RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
+    RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
+    RowUID row_uid(ChunkIndex idx) const {return chunk2uid[idx.val];}
 
     std::vector<ygp::RowIndex> chunk2idx;
+    std::vector<ygp::RowUID> chunk2uid;
 };
 
 struct YGPdump{
-    using row_uid = ChunkIndex;
     YGPdump(std::string filename);
-    std::string getline(row_uid i) const {return lines[i.val];}
+    std::string getline(RowUID i) const {return lines[i.val];}
 
     std::vector<std::string> lines;
 };
