@@ -82,19 +82,26 @@ void write_voca_index_col(VocaInfo const &voca, std::string filename, std::strin
 void generate_sent_uid(std::string filename, std::string prefix){
     H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
     auto sent_idx = util::deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
+    auto chunk_idx = util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}));
     std::vector<SentUID> sent_uid;
     auto beg=sent_idx.cbegin();
     auto end=sent_idx.cend();
+    auto chunk_beg=chunk_idx.cbegin();
+    auto chunk_end=chunk_idx.cend();
     auto it=beg;
+    auto it_chunk=chunk_beg;
     SentIndex current_idx{*it};
+    ChunkIndex current_chunk{*it_chunk};
     SentUID current_uid{};
     while(it!=end) {
-        if( *it == current_idx) {sent_uid.push_back(current_uid);}
+        if( *it == current_idx && *it_chunk==current_chunk) {sent_uid.push_back(current_uid);}
         else {
             current_idx=*it;
+            current_chunk = *it_chunk;
             sent_uid.push_back(++current_uid);
         }
         ++it;
+        ++it_chunk;
     }
     file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
 }
@@ -131,17 +138,16 @@ void indexing_csv(const char* file){
 
 void QueryAndDumpCoreNLPoutput(const char* file, const char* dumpfile_prefix){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
-//    io::CSVReader<3, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
-////    in.read_header(io::ignore_extra_column, "row_str");
-//    int64_t col_uid, row_idx;
-//    std::string row_str;
-//    std::vector<std::string> rows;
-//    while(in.read_row(col_uid, row_idx, row_str)) {
-//        rows.push_back(row_str);
-//        if (row_str.size() < 6) assert(0);
-//    }
+    io::CSVReader<3, io::trim_chars<' ', '\t'>, io::double_quote_escape<',', '"'>> in(file);
+//    in.read_header(io::ignore_extra_column, "row_str");
+    int64_t col_uid, row_idx;
+    std::string row_str;
+    std::vector<std::string> rows;
+    while(in.read_row(col_uid, row_idx, row_str)) {
+        rows.push_back(row_str);
+        if (row_str.size() < 6) assert(0);
+    }
 
-    std::vector<std::string> rows = util::string::readlines(file);
 
     auto n = rows.size();
     tbb::parallel_for(tbb::blocked_range < decltype(n) > {0, n},
@@ -155,26 +161,6 @@ void QueryAndDumpCoreNLPoutput(const char* file, const char* dumpfile_prefix){
                               temp_file.close();
                           }
                       });
-    //    using jsonvec_t = std::vector<std::pair<int64_t, nlohmann::json>>;
-//    auto outputs=tbb::parallel_reduce(
-//            tbb::blocked_range<decltype(n)>{0,n},
-//            jsonvec_t{},
-//            //current_sum should be const & or copied by value.
-//            [&]( tbb::blocked_range<decltype(n)> const &r, jsonvec_t current_sum ) {
-//                for(auto i=r.begin(); i!=r.end(); ++i) {
-//                    auto const &row_str = rows[i];
-//                    if (row_str.size() < 6) continue;
-//                    auto const &parsed_json = corenlp_client.from_query_content(row_str);
-//                    current_sum.push_back(std::make_pair(i,parsed_json));
-//                }
-//                return current_sum;
-//            },
-//            [](jsonvec_t const &x,jsonvec_t const &y){
-//                jsonvec_t sum{x};
-//                std::copy(y.cbegin(), y.cend(), std::back_inserter(sum));
-//                return sum;
-//            }
-//    );
     return;
 }
 void ParseWithCoreNLP(nlohmann::json const &config, const char* dumpfile_prefix, int64_t n_items) {
@@ -252,10 +238,14 @@ int main(int /*argc*/, char** argv){
 //    indexing_csv(argv[2]);
     //DepParsedTokens tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
-//    QueryAndDumpCoreNLPoutput(argv[2], argv[3]); //"/data/jihuni/corenlp/news.{:010}"
-//    ParseWithCoreNLP(config, argv[2], std::stoi(argv[3]));
-//    GenerateExtraIndexes(config, argv[4], argv[2]);
-//    return 0;
+
+    auto csvfile = argv[2];
+    const char* dumpfile_prefix = argv[3];
+    auto n = std::stoi(argv[4]);
+    QueryAndDumpCoreNLPoutput(csvfile, dumpfile_prefix); //"/data/jihuni/corenlp/news.{:010}"
+    ParseWithCoreNLP(config, dumpfile_prefix, n);
+    GenerateExtraIndexes(config, csvfile, dumpfile_prefix);
+    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_json = corenlp_client.from_query_content(input);

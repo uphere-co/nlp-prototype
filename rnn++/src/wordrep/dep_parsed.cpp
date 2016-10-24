@@ -57,7 +57,7 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     while(it!=end) {
         SentUID uid{*it};
         DPTokenIndex sbeg{it-beg};
-        it = std::find_if_not(it, end, [it](auto x) { return x == *it; });
+        it = std::find_if_not(it, end, [uid](auto x) { return x == uid; });
         DPTokenIndex send{it-beg};
         sents.push_back(Sentence{uid, sbeg, send});
     }
