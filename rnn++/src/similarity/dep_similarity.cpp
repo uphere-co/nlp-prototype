@@ -219,11 +219,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         answer["result_column_uid"].push_back(-1);
         auto beg = tokens.word_beg(sent.beg).val;
         auto end = tokens.word_end(--sent.end).val;
-        answer["result_beg"].push_back(beg);
-        answer["result_end"].push_back(end);
+        answer["result_offset"].push_back({beg,end});
         answer["result_raw"].push_back(texts.getline(row_uid));
-        answer["highlight_beg"].push_back(beg+10);
-        answer["highlight_end"].push_back(beg+60<end?beg+60:end);
+        answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
         answer["cutoffs"] = cutoff;
         answer["words"] = words;
     }
