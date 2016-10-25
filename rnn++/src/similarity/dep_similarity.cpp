@@ -152,7 +152,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     for(auto const &word : words) {
         auto wuid = wordUIDs[word];
         cutoff.push_back(word_cutoff.cutoff(wuid));
-        vidxs.push_back(voca.indexmap[wuid]);
+        auto vuid = voca.indexmap[wuid];
+        if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
+        vidxs.push_back(vuid);
     }
     for(size_t i=0; i<words.size(); ++i) {
         fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
