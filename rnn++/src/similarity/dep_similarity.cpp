@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <map>
 
 #include "similarity/dep_similarity.h"
 
@@ -147,34 +148,27 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     for(auto const &x : sent_json["basic-dependencies"])
         words.push_back(x["dependentGloss"].get<std::string>());
     std::vector<DepParsedQuery::val_t> cutoff;
-    for(auto const &word : words)
-        cutoff.push_back(word_cutoff.cutoff(wordUIDs[word]));
     std::vector<VocaIndex> vidxs;
+    for(auto const &word : words) {
+        auto wuid = wordUIDs[word];
+        cutoff.push_back(word_cutoff.cutoff(wuid));
+        vidxs.push_back(voca.indexmap[wuid]);
+    }
     for(size_t i=0; i<words.size(); ++i) {
         fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
                    voca.indexmap[wordUIDs[words[i]]].val, cutoff[i]);
-        vidxs.push_back(voca.indexmap[wordUIDs[words[i]]]);
     }
 
     DepParsedQuery query{cutoff, sent_json};
     BoWVQuery2 similarity{vidxs, voca};
 
-    auto sent_to_str=[&](auto &sent){
-        auto beg=sent.beg;
-        auto end=sent.end;
-        std::stringstream ss;
-        for(auto i=beg; i!=end; ++i) {
-            ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";
-        }
-        return ss.str();
-    };
-
     std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
+    std::map<DepParsedQuery::val_t, bool> is_seen{};
     for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
-        if ( score > query.n_words()*0.2) {
-            //relevant_sents.push_back(std::make_pair(score,sent.uid));
+        if ( score > query.n_words()*0.2 && !is_seen[score]) {
             relevant_sents.push_back(std::make_pair(score,sent));
+            is_seen[score] = true;
         }
     }
     auto n_found = relevant_sents.size();
@@ -190,14 +184,17 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
                                 [score_cutoff](auto const &x){return x.first>score_cutoff;});
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
         auto const &pair = *it;
-        //auto sent = sents[pair.second.val];
         auto sent = pair.second;
-        //answer[query_str].push_back(sent.uid.val);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_id = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(pair.first);
+        auto sent_to_str=[&](auto &sent){
+            std::stringstream ss;
+            for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
+            return ss.str();
+        };
         answer["result"].push_back(sent_to_str(sent));
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
