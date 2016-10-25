@@ -187,7 +187,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         return ss.str();
     };
 
-    //std::vector<std::pair<DepParsedQuery::val_t, SentUID>> relevant_sents{};
     std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
     for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
@@ -197,6 +196,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         }
     }
     auto n_found = relevant_sents.size();
+    if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;
     auto rank_cut = relevant_sents.begin()+n_max_result;
     std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
