@@ -94,10 +94,12 @@ using RowUID    = util::IntegerLike<RowUIDDummy>;
 struct YGPindexer{
     YGPindexer(util::io::H5file const &file, std::string prefix);
     RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
-    RowUID row_uid(ChunkIndex idx) const {return chunk2uid[idx.val];}
+    RowUID row_uid(ChunkIndex idx) const {return chunk2row_uid[idx.val];}
+    ColumnUID column_uid(ChunkIndex idx) const {return chunk2col_uid[idx.val];}
 
-    std::vector<ygp::RowIndex> chunk2idx;
-    std::vector<ygp::RowUID> chunk2uid;
+    std::vector<RowIndex> chunk2idx;
+    std::vector<RowUID> chunk2row_uid;
+    std::vector<ColumnUID> chunk2col_uid;
 };
 
 struct YGPdump{
