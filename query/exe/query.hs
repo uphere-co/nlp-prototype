@@ -96,7 +96,8 @@ json_serialize :: Json -> IO CString
 json_serialize p = withForeignPtr p c_json_serialize
 
 runCoreNLP body = do
-  lbstr <- simpleHttpClient methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
+  lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
+  liftIO $ BL.putStrLn lbstr
   let r_bstr = (TE.encodeUtf8 . T.filter (>=' ') . TE.decodeUtf8 . BL.toStrict) lbstr
   let Just c' = do
         o@(Object c) <- A.maybeResult (A.parse json r_bstr)
@@ -109,16 +110,24 @@ runCoreNLP body = do
   
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  bstr <- (liftIO . runCoreNLP . B.pack . head . querySentences) q
+  liftIO $ print q
+  liftIO $ TIO.putStrLn (head (querySentences q))
+  bstr <- (liftIO . runCoreNLP . TE.encodeUtf8 . head . querySentences) q
   bstr' <- liftIO $ B.useAsCString bstr $ 
     json_create >=> query >=> json_serialize >=> unsafePackCString
   liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
   
-simpleHttpClient :: Method -> String -> Maybe ByteString -> IO BL.ByteString
-simpleHttpClient mth url mbstr = do
-  request0 <- parseRequest url
-  let request = maybe (request0 { method = mth }) (\bstr -> request0 { method = mth, requestBody = RequestBodyBS bstr }) mbstr
+simpleHttpClient :: Bool -> Method -> String -> Maybe ByteString -> IO BL.ByteString
+simpleHttpClient isurlenc mth url mbstr = do
+  request0' <- parseRequest url
+  let request0 = request0' { requestHeaders = requestHeaders request0' ++ [ ("Accept","application/json") ] }
+  let request' = maybe (request0 { method = mth }) (\bstr -> request0 { method = mth, requestBody = RequestBodyBS bstr }) mbstr
+      request = if isurlenc then urlEncodedBody [] request' else request'
+  print (requestHeaders request)
+  case mbstr of
+    Nothing -> return ()
+    Just bstr -> TIO.putStrLn (TE.decodeUtf8 bstr)
   manager <- if (secure request)
                then do
                  let tlssetting = TLSSettingsSimple True False False
@@ -130,7 +139,7 @@ simpleHttpClient mth url mbstr = do
   
 server :: String -> Process ()
 server url = do
-  str <- liftIO (BL.unpack <$> simpleHttpClient methodGet url Nothing)
+  str <- liftIO (BL.unpack <$> simpleHttpClient False methodGet url Nothing)
   runMaybeT $ do
     m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
     pidstr <- (MaybeT . return) (M.lookup "result" m)

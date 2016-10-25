@@ -8,6 +8,7 @@ import           Data.ByteString.Char8                  (ByteString)
 import qualified Data.ByteString.Char8            as B
 import qualified Data.ByteString.Lazy.Char8       as BL
 import           Data.Monoid                            ((<>))
+import qualified Data.Text                        as T
 import           Network.Transport.ZMQ                  (createTransport, defaultZMQParameters)
 import           System.Environment
 --
@@ -31,7 +32,7 @@ readProcessId = liftIO $ Bi.decode <$> BL.readFile "server.pid"
 main :: IO ()
 main = do
   (host:msgs) <- getArgs
-  let mmsgs = if null msgs then Nothing else Just (Query msgs)
+  let mmsgs = if null msgs then Nothing else Just (Query (map T.pack msgs))
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   runProcess node (client mmsgs)
