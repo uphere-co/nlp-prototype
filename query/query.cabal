@@ -32,6 +32,7 @@ Library
                         bytestring,
                         conduit,
                         conduit-extra,
+                        text,
                         unix
 
   Exposed-modules:
