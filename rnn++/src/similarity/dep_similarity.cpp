@@ -23,9 +23,9 @@ struct BoWVQuery2{
     using val_t        = word_block_t::val_t;
     using idx_t        = VocaIndex;
 
-    BoWVQuery2(std::vector<idx_t> const &words, std::vector<val_t> cutoffs,
+    BoWVQuery2(std::vector<idx_t> const &words,
                voca_info_t const &voca)
-    : idxs{words}, cutoffs{cutoffs}, distances(cutoffs.size())
+    : idxs{words}, distances(idxs.size())
     {
         auto n= voca.wvecs.size();
         auto n_queries=idxs.size();
@@ -45,21 +45,7 @@ struct BoWVQuery2{
     val_t& get_distance(WordPosition i, idx_t widx) { return distances[i.val][widx.val];}
     val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val][widx.val];}
 
-    bool is_similar(util::span_dyn<idx_t> widxs){
-        auto n = cutoffs.size();
-        auto end=std::cend(widxs);
-        for(int64_t i=0; i!=n; ++i){
-            auto cut= cutoffs[i];
-            auto result = std::find_if(std::cbegin(widxs), end, [&](auto widx){
-                return get_distance(WordPosition{i}, widx) >=cut;
-            });
-            if(result==end) return false;
-        }
-        return true;
-    }
-
     std::vector<idx_t> idxs;
-    std::vector<val_t> cutoffs;
     std::vector<std::vector<val_t>> distances;
 };
 
@@ -157,6 +143,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     return answers;
 }
 
+struct QueryResultBuilder{
+    using json_t = DepSimilaritySearch::json_t;
+    QueryResultBuilder(){}
+
+    json_t answer;
+};
+
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
     for(auto const &x : sent_json["basic-dependencies"])
@@ -170,13 +163,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
                    voca.indexmap[wordUIDs[words[i]]].val,cutoff[i]);
 
     DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
-    BoWVQuery2 similarity{query.words, cutoff, voca};
+    BoWVQuery2 similarity{query.words, voca};
 
     Sentence query_sent{SentUID{int64_t{0}}, DPTokenIndex{int64_t{0}}, DPTokenIndex{cutoff.size()}};
     SentenceProb sent_model{};
     auto rank_cutoff = sent_model.get_rank_cutoff(query_sent);
 
-    json_t answer{};
     auto sent_to_str=[&](auto &sent){
         auto beg=sent.beg;
         auto end=sent.end;
@@ -196,6 +188,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         }
     }
     auto n_found = relevant_sents.size();
+
+    json_t answer{};
     if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;
     auto rank_cut = relevant_sents.begin()+n_max_result;
