@@ -68,15 +68,6 @@ foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 type Json = ForeignPtr RawJson
 
-json_create :: CString -> IO Json
-json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
-
-query :: Json -> IO Json
-query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
-
-json_serialize :: Json -> IO CString
-json_serialize p = withForeignPtr p c_json_serialize
-
 data NLPResult = NLPResult [Sentence] deriving Show
 instance FromJSON NLPResult where
   parseJSON (Object o) = NLPResult <$> o .: "sentences"
@@ -95,7 +86,14 @@ instance FromJSON Token where
   parseJSON (Object o) = Token <$> o .: "word"
   parseJSON invalid = typeMismatch "Token" invalid
 
+json_create :: CString -> IO Json
+json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
+query :: Json -> IO Json
+query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
+
+json_serialize :: Json -> IO CString
+json_serialize p = withForeignPtr p c_json_serialize
 
 runCoreNLP body = do
   lbstr <- simpleHttpClient methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
@@ -111,15 +109,11 @@ runCoreNLP body = do
   
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  -- let r = encode (makeJson q)
-  --     bstr = BL.toStrict r
   bstr <- (liftIO . runCoreNLP . B.pack . head . querySentences) q
   bstr' <- liftIO $ B.useAsCString bstr $ 
     json_create >=> query >=> json_serialize >=> unsafePackCString
   liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
-  -- return ()
-
   
 simpleHttpClient :: Method -> String -> Maybe ByteString -> IO BL.ByteString
 simpleHttpClient mth url mbstr = do
