@@ -1,9 +1,9 @@
 module Type where
 
 import qualified Data.Binary as Bi
+import           Data.Text         (Text)
 
-
-data Query = Query { querySentences :: [ String ] } -- deriving Typeable
+data Query = Query { querySentences :: [ Text ] } -- deriving Typeable
   deriving Show
            
 instance Bi.Binary Query where
