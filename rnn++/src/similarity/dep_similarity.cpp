@@ -63,6 +63,20 @@ public:
             //TODO: fix it.
             arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
         }
+
+        for(decltype(len) i=0; i!=len; ++i) sorted_idxs.push_back({cutoff[i],i});
+        std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
+        val_t sum=0.0;
+        for(auto pair : sorted_idxs) {
+            sum += pair.first;
+            cutoff_cumsum.push_back(sum);
+        }
+        auto it = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [this](auto x){return x/this->cutoff_cumsum.back()<0.3;});
+        auto it2 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [this](auto x){return x/this->cutoff_cumsum.back()<0.5;});
+        n_cut = it-cutoff_cumsum.cbegin();
+        n_cut2 = it2-cutoff_cumsum.cbegin();
     }
 
     val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
@@ -70,7 +84,9 @@ public:
         auto beg=sent.beg;
         auto end=sent.end;
         val_t total_score{0.0};
-        for(decltype(len)j=0; j<len; ++j){
+        auto i_trial{0};
+        for(auto pair: sorted_idxs){
+            auto j = pair.second;
             val_t score{0.0};
             for(auto i=beg; i!=end; ++i) {
                 auto word = data_tokens.word(i);
@@ -86,6 +102,11 @@ public:
                 }
             }
             total_score += score;
+//            if(++i_trial==n_cut){
+//                if(total_score < cutoff_cumsum[i_trial]*0.3) return 0.0;
+//            } else if(++i_trial==n_cut2){
+//                if(total_score < cutoff_cumsum[i_trial]*0.5) return 0.0;
+//            }
         }
         //auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
         return total_score;
@@ -99,6 +120,10 @@ private:
     std::vector<WordPosition> words_pidx;
     std::vector<WordPosition> heads_pidx;
     std::vector<ArcLabelUID> arc_labels;
+    std::vector<std::pair<val_t,decltype(len)>> sorted_idxs;
+    std::vector<val_t> cutoff_cumsum;
+    std::ptrdiff_t n_cut;
+    std::ptrdiff_t n_cut2;
 };
 
 
