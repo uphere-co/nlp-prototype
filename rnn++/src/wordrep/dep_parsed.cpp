@@ -124,8 +124,9 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
 
 namespace ygp{
 YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
-        : chunk2uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
-          chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))}
+        : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))},
+          chunk2row_uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
+          chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
 {}
 
 YGPdump::YGPdump(std::string filename) {

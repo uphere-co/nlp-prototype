@@ -205,12 +205,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         //answer[query_str].push_back(sent.uid.val);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
+        auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_id = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(pair.first);
         answer["result"].push_back(sent_to_str(sent));
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
-        answer["result_column_uid"].push_back(-1);
+        answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg).val;
         auto end = tokens.word_end(--sent.end).val;
         answer["result_offset"].push_back({beg,end});
