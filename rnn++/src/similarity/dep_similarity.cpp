@@ -176,36 +176,25 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     return answers;
 }
 
-struct QueryResultBuilder{
-    using json_t = DepSimilaritySearch::json_t;
-    QueryResultBuilder(){}
-
-    json_t answer;
-};
-
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words;
     for(auto const &x : sent_json["basic-dependencies"])
         words.push_back(x["dependentGloss"].get<std::string>());
-    std::vector<DepParsedQuery::val_t> cutoff;
+    std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
     for(auto const &word : words) {
         auto wuid = wordUIDs[word];
-        cutoff.push_back(word_cutoff.cutoff(wuid));
+        cutoffs.push_back(word_cutoff.cutoff(wuid));
         auto vuid = voca.indexmap[wuid];
         if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
         vidxs.push_back(vuid);
     }
-    for(size_t i=0; i<words.size(); ++i) {
-        fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
-                   voca.indexmap[wordUIDs[words[i]]].val, cutoff[i]);
-    }
 
-    DepParsedQuery query{cutoff, sent_json};
+    DepParsedQuery query{cutoffs, sent_json};
     BoWVQuery2 similarity{vidxs, voca};
 
-    std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
-    std::map<DepParsedQuery::val_t, bool> is_seen{};
+    std::vector<std::pair<val_t, Sentence>> relevant_sents{};
+    std::map<val_t, bool> is_seen{};
     for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
         if ( score > query.n_words()*0.2 && !is_seen[score]) {
@@ -213,8 +202,24 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             is_seen[score] = true;
         }
     }
-    auto n_found = relevant_sents.size();
+    auto answer = write_output(relevant_sents, words, cutoffs);
+    return answer;
+}
 
+
+struct QueryResultBuilder{
+    using json_t = DepSimilaritySearch::json_t;
+    QueryResultBuilder(){}
+
+    json_t answer;
+};
+DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t relevant_sents,
+        std::vector<std::string> const &words, std::vector<val_t> const &cutoffs) const{
+    auto n_found = relevant_sents.size();
+    for(size_t i=0; i<words.size(); ++i) {
+        fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
+                   voca.indexmap[wordUIDs[words[i]]].val, cutoffs[i]);
+    }
     json_t answer{};
     if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;
@@ -246,10 +251,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         answer["result_offset"].push_back({beg,end});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
-        answer["cutoffs"] = cutoff; //TODO : meaningless unless user can adjust these
+        answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
         answer["words"] = words; //TODO: removable?
     }
     return answer;
+
 }
 
 }//namespace engine
