@@ -16,6 +16,7 @@ import           Control.Distributed.Process.Node          (initRemoteTable,newL
 import           Control.Distributed.Process.Serializable
 import           Data.Aeson
 import           Data.Aeson.Encode                         (encodeToBuilder)
+import           Data.Aeson.Types
 import qualified Data.Attoparsec                     as A
 import qualified Data.Binary                         as Bi (encode,decode)
 import qualified Data.Binary.Builder                 as B  (toLazyByteString)
@@ -26,8 +27,8 @@ import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
 import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen,unsafePackCString)
 import qualified Data.HashMap.Strict                 as HM
-import qualified Data.Map                         as M
-
+import qualified Data.Map                            as M
+import           Data.Maybe                                (maybeToList)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
@@ -67,6 +68,24 @@ foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 type Json = ForeignPtr RawJson
 
+data NLPResult = NLPResult [Sentence] deriving Show
+instance FromJSON NLPResult where
+  parseJSON (Object o) = NLPResult <$> o .: "sentences"
+  parseJSON invalid = typeMismatch "NLPResult" invalid
+
+data Sentence = Sentence { unSentence :: [Token]} deriving Show
+
+instance FromJSON Sentence where
+  parseJSON (Object o) = Sentence <$> o .: "tokens"
+  parseJSON invalid = typeMismatch "Sentence" invalid
+
+
+data Token = Token { unToken :: Text} deriving Show
+
+instance FromJSON Token where
+  parseJSON (Object o) = Token <$> o .: "word"
+  parseJSON invalid = typeMismatch "Token" invalid
+
 json_create :: CString -> IO Json
 json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
@@ -77,32 +96,24 @@ json_serialize :: Json -> IO CString
 json_serialize p = withForeignPtr p c_json_serialize
 
 runCoreNLP body = do
-  -- let body = "establishing \rthe ecological criteria for awarding the EU ecolabel"
-  -- body <- TE.encodeUtf8 <$> TIO.getContents 
   lbstr <- simpleHttpClient methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
-  -- BL.toStrict lbstr
-  let txt' = TE.decodeUtf8 (BL.toStrict lbstr)
-      txt = T.filter (>=' ') txt'
-      r_bstr = TE.encodeUtf8 txt
-  let Right (Object c) = A.parseOnly json r_bstr
-      c' = Object (HM.insert "queries" (Array (V.fromList [String (TE.decodeUtf8 body)])) c)
+  let r_bstr = (TE.encodeUtf8 . T.filter (>=' ') . TE.decodeUtf8 . BL.toStrict) lbstr
+  let Just c' = do
+        o@(Object c) <- A.maybeResult (A.parse json r_bstr)
+        NLPResult ss <- decodeStrict' r_bstr
+        let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
+ 
+        return $ Object (HM.insert "queries" (Array (V.fromList queries)) c)
   print c'
-  -- TIO.putStrLn txt
-  -- print txt
-
-  
   (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c' -- r_bstr
   
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
-  -- let r = encode (makeJson q)
-  --     bstr = BL.toStrict r
   bstr <- (liftIO . runCoreNLP . B.pack . head . querySentences) q
   bstr' <- liftIO $ B.useAsCString bstr $ 
     json_create >=> query >=> json_serialize >=> unsafePackCString
   liftIO $ B.putStrLn bstr'
   sendChan sc (BL.fromStrict bstr')
-  return ()
   
 simpleHttpClient :: Method -> String -> Maybe ByteString -> IO BL.ByteString
 simpleHttpClient mth url mbstr = do
