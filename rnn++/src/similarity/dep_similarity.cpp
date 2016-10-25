@@ -63,29 +63,62 @@ public:
             //TODO: fix it.
             arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
         }
+
+        for(decltype(len) i=0; i!=len; ++i) sorted_idxs.push_back({cutoff[i],i});
+        std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
+        val_t sum=0.0;
+        std::vector<val_t> cutoff_cumsum;
+        for(auto pair : sorted_idxs) {
+            sum += pair.first;
+            cutoff_cumsum.push_back(sum);
+        }
+        auto it = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.3;});
+        auto it2 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.5;});
+        auto it3 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.8;});
+        n_cut = it - cutoff_cumsum.cbegin();
+        n_cut2 = it2 - cutoff_cumsum.cbegin();
+        n_cut3 = it3 - cutoff_cumsum.cbegin();
+        cut = *it * 0.21;
+        cut2 = *it * 0.35;
+        cut3 = *it * 0.5;
     }
 
     val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
                     BoWVQuery2 const &similarity) const {
-        std::vector<val_t> scores(len, 0.0);
         auto beg=sent.beg;
         auto end=sent.end;
-        for(auto i=beg; i!=end; ++i) {
-            auto word = data_tokens.word(i);
-            auto head_word = data_tokens.head_word(i);
-            for(decltype(len)j=0; j<len; ++j){
+        val_t total_score{0.0};
+        auto i_trial{0};
+        for(auto pair: sorted_idxs){
+            auto j = pair.second;
+            val_t score{0.0};
+            for(auto i=beg; i!=end; ++i) {
+                auto word = data_tokens.word(i);
+                auto head_word = data_tokens.head_word(i);
                 auto dependent_score = similarity.get_distance(WordPosition{j},word);
                 if(heads_pidx[j].val<0) {
-                    auto score = cutoff[j] * dependent_score;
-                    scores[j] = std::max(scores[j], score);
+                    auto tmp = cutoff[j] * dependent_score;
+                    score = std::max(tmp, score);
                 } else {
                     auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
-                    auto score = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
-                    scores[j] = std::max(scores[j], score);
+                    auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
+                    score = std::max(tmp, score);
                 }
             }
+            total_score += score;
+            if(++i_trial==n_cut){
+                if(total_score <cut) return 0.0;
+            }
+            else if(i_trial==n_cut2){
+                if(total_score < cut2) return 0.0;
+            }
+            else if(i_trial==n_cut3){
+                if(total_score < cut3) return 0.0;
+            }
         }
-        auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
         return total_score;
     }
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
@@ -97,6 +130,13 @@ private:
     std::vector<WordPosition> words_pidx;
     std::vector<WordPosition> heads_pidx;
     std::vector<ArcLabelUID> arc_labels;
+    std::vector<std::pair<val_t,decltype(len)>> sorted_idxs;
+    std::ptrdiff_t n_cut;
+    std::ptrdiff_t n_cut2;
+    std::ptrdiff_t n_cut3;
+    val_t cut;
+    val_t cut2;
+    val_t cut3;
 };
 
 
@@ -197,7 +237,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
             return ss.str();
         };
-        answer["result"].push_back(sent_to_str(sent));
+        answer["result_DEBUG"].push_back(sent_to_str(sent));
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(col_uid.val);
@@ -206,8 +246,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         answer["result_offset"].push_back({beg,end});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
-        answer["cutoffs"] = cutoff;
-        answer["words"] = words;
+        answer["cutoffs"] = cutoff; //TODO : meaningless unless user can adjust these
+        answer["words"] = words; //TODO: removable?
     }
     return answer;
 }
