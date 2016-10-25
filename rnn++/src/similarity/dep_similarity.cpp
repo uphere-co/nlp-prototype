@@ -7,7 +7,7 @@
 #include "fmt/printf.h"
 
 #include "utils/parallel.h"
-//#include "utils/span.h"
+#include "utils/span.h"
 #include "utils/string.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
@@ -21,9 +21,9 @@ struct BoWVQuery2{
     using voca_info_t  = wordrep::VocaInfo;
     using word_block_t = voca_info_t::voca_vecs_t;
     using val_t        = word_block_t::val_t;
-    using idx_t        = word_block_t::idx_t;
+    using idx_t        = VocaIndex;
 
-    BoWVQuery2(std::vector<VocaIndex> const &words, std::vector<val_t> cutoffs,
+    BoWVQuery2(std::vector<idx_t> const &words, std::vector<val_t> cutoffs,
                voca_info_t const &voca)
     : idxs{words}, cutoffs{cutoffs}, distances(cutoffs.size())
     {
@@ -33,26 +33,25 @@ struct BoWVQuery2{
         tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
                           [&](tbb::blocked_range<decltype(n)> const &r){
                               for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-                                  for(decltype(n_queries)qi=0; qi!=n_queries; ++qi){
+                                  for(int64_t qi=0; qi!=n_queries; ++qi){
                                       auto q = voca.wvecs[idxs[qi]];
                                       auto widx = idx_t{i};
-                                      get_distance(qi,widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
+                                      get_distance(WordPosition{qi},widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
                                   }
                               }
                           });
     }
 
-    val_t get_distance(size_t i, idx_t widx) const { return distances[i][widx.val];}
-    val_t& get_distance(size_t i, idx_t widx) { return distances[i][widx.val];}
-    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val-1][widx.val];}
+    val_t& get_distance(WordPosition i, idx_t widx) { return distances[i.val][widx.val];}
+    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val][widx.val];}
 
     bool is_similar(util::span_dyn<idx_t> widxs){
         auto n = cutoffs.size();
         auto end=std::cend(widxs);
-        for(decltype(n)i=0; i!=n; ++i){
+        for(int64_t i=0; i!=n; ++i){
             auto cut= cutoffs[i];
             auto result = std::find_if(std::cbegin(widxs), end, [&](auto widx){
-                return get_distance(i, widx) >=cut;
+                return get_distance(WordPosition{i}, widx) >=cut;
             });
             if(result==end) return false;
         }
@@ -75,9 +74,9 @@ struct DepParsedQuery{
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
             words[i]  = voca[wordUIDs[x["dependentGloss"].get<std::string>()]];
-            words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()};
+            words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
             head_words[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
-            heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()};
+            heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()-1};
             //TODO: fix it.
             arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
 //            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
@@ -86,29 +85,31 @@ struct DepParsedQuery{
 //        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
-    bool is_similar(Sentence const &sent, DepParsedTokens const &query_words,
+    val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
                     BoWVQuery2 const &similarity) const {
-        std::vector<bool> is_found(len, false);
+        std::vector<val_t> scores(len, 0.0);
         auto beg=sent.beg;
         auto end=sent.end;
         for(auto i=beg; i!=end; ++i) {
-            auto word = query_words.word(i);
-            auto head_word = query_words.head_word(i);
+            auto word = data_tokens.word(i);
+            auto head_word = data_tokens.head_word(i);
             for(decltype(len)j=0; j<len; ++j){
-                if(cutoff[j]<1.0){
-                    if(similarity.get_distance(j,word) >= cutoff[j]) is_found[j] = true;
+                auto dependent_score = similarity.get_distance(WordPosition{j},word);
+                if(heads_pidx[j].val<0) {
+                    auto score = cutoff[j] * dependent_score;
+                    scores[j] = std::max(scores[j], score);
                 } else {
-                    if((similarity.get_distance(j,word) >= cutoff[j]) &&
-                       (similarity.get_distance(heads_pidx[j], head_word) >=get_cutoff(heads_pidx[j]))) is_found[j] = true;
+                    auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
+                    auto score = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
+                    scores[j] = std::max(scores[j], score);
                 }
             }
         }
-        auto n_found = std::count_if(is_found.cbegin(), is_found.cend(), [](bool x){return x;});
-        if(1.0*n_found/is_found.size()>0.8) return true;
-        return false;
+        auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
+        return total_score;
     }
 
-    val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val -1];}
+    val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
 
     std::size_t len;
     std::vector<val_t> cutoff;
@@ -186,28 +187,46 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         return ss.str();
     };
 
-    for(auto sent: sents){
-        if( query.is_similar(sent, tokens, similarity)) {
-            //answer[query_str].push_back(sent.uid.val);
-            auto chunk_idx = tokens.chunk_idx(sent.beg);
-            ygp::YGPdump::row_uid row_uid = chunk_idx;//if a chunk is a row, chunk_idx is row_uid
-            auto row_id = ygp_indexer.row_idx(chunk_idx);
-            answer["result"].push_back(sent_to_str(sent));
-            answer["result_row_uid"].push_back(row_uid.val);
-            answer["result_row_id"].push_back(row_id.val);
-            answer["result_column_uid"].push_back(-1);
-            auto beg = tokens.word_beg(sent.beg).val;
-            auto end = tokens.word_end(--sent.end).val;
-            answer["result_beg"].push_back(beg);
-            answer["result_end"].push_back(end);
-            answer["result_raw"].push_back(texts.getline(row_uid));
-            answer["highlight_beg"].push_back(beg+10);
-            answer["highlight_end"].push_back(beg+60<end?beg+60:end);
+    //std::vector<std::pair<DepParsedQuery::val_t, SentUID>> relevant_sents{};
+    std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
+    for(auto sent: sents) {
+        auto score = query.get_score(sent, tokens, similarity);
+        if ( score > query.len*0.2) {
+            //relevant_sents.push_back(std::make_pair(score,sent.uid));
+            relevant_sents.push_back(std::make_pair(score,sent));
         }
-        if(answer["result"].size()>rank_cutoff) break;
     }
-    answer["cutoffs"] = cutoff;
-    answer["words"] = words;
+    auto n_found = relevant_sents.size();
+    auto n_max_result=n_found>5? 5 : n_found;
+    auto rank_cut = relevant_sents.begin()+n_max_result;
+    std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
+                      [](auto const &x, auto const &y){return x.first>y.first;});
+    auto score_cutoff = 0.5*relevant_sents[0].first;
+    rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
+                                [score_cutoff](auto const &x){return x.first>score_cutoff;});
+    for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
+        auto const &pair = *it;
+        //auto sent = sents[pair.second.val];
+        auto sent = pair.second;
+        //answer[query_str].push_back(sent.uid.val);
+        auto chunk_idx = tokens.chunk_idx(sent.beg);
+        auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
+        auto row_id = ygp_indexer.row_idx(chunk_idx);
+        answer["score"].push_back(pair.first);
+        answer["result"].push_back(sent_to_str(sent));
+        answer["result_row_uid"].push_back(row_uid.val);
+        answer["result_row_idx"].push_back(row_id.val);
+        answer["result_column_uid"].push_back(-1);
+        auto beg = tokens.word_beg(sent.beg).val;
+        auto end = tokens.word_end(--sent.end).val;
+        answer["result_beg"].push_back(beg);
+        answer["result_end"].push_back(end);
+        answer["result_raw"].push_back(texts.getline(row_uid));
+        answer["highlight_beg"].push_back(beg+10);
+        answer["highlight_end"].push_back(beg+60<end?beg+60:end);
+        answer["cutoffs"] = cutoff;
+        answer["words"] = words;
+    }
     return answer;
 }
 

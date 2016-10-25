@@ -57,7 +57,7 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     while(it!=end) {
         SentUID uid{*it};
         DPTokenIndex sbeg{it-beg};
-        it = std::find_if_not(it, end, [it](auto x) { return x == *it; });
+        it = std::find_if_not(it, end, [uid](auto x) { return x == uid; });
         DPTokenIndex send{it-beg};
         sents.push_back(Sentence{uid, sbeg, send});
     }
@@ -122,7 +122,8 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
 
 namespace ygp{
 YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
-        : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))}
+        : chunk2uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
+          chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))}
 {}
 
 YGPdump::YGPdump(std::string filename)
