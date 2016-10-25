@@ -67,25 +67,27 @@ public:
 
     val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
                     BoWVQuery2 const &similarity) const {
-        std::vector<val_t> scores(len, 0.0);
         auto beg=sent.beg;
         auto end=sent.end;
-        for(auto i=beg; i!=end; ++i) {
-            auto word = data_tokens.word(i);
-            auto head_word = data_tokens.head_word(i);
-            for(decltype(len)j=0; j<len; ++j){
+        val_t total_score{0.0};
+        for(decltype(len)j=0; j<len; ++j){
+            val_t score{0.0};
+            for(auto i=beg; i!=end; ++i) {
+                auto word = data_tokens.word(i);
+                auto head_word = data_tokens.head_word(i);
                 auto dependent_score = similarity.get_distance(WordPosition{j},word);
                 if(heads_pidx[j].val<0) {
-                    auto score = cutoff[j] * dependent_score;
-                    scores[j] = std::max(scores[j], score);
+                    auto tmp = cutoff[j] * dependent_score;
+                    score = std::max(tmp, score);
                 } else {
                     auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
-                    auto score = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
-                    scores[j] = std::max(scores[j], score);
+                    auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
+                    score = std::max(tmp, score);
                 }
             }
+            total_score += score;
         }
-        auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
+        //auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
         return total_score;
     }
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
@@ -197,7 +199,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
             return ss.str();
         };
-        answer["result"].push_back(sent_to_str(sent));
+        answer["result_DEBUG"].push_back(sent_to_str(sent));
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(col_uid.val);
@@ -206,8 +208,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         answer["result_offset"].push_back({beg,end});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
-        answer["cutoffs"] = cutoff;
-        answer["words"] = words;
+        answer["cutoffs"] = cutoff; //TODO : meaningless unless user can adjust these
+        answer["words"] = words; //TODO: removable?
     }
     return answer;
 }
