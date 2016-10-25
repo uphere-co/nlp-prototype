@@ -67,16 +67,23 @@ public:
         for(decltype(len) i=0; i!=len; ++i) sorted_idxs.push_back({cutoff[i],i});
         std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
         val_t sum=0.0;
+        std::vector<val_t> cutoff_cumsum;
         for(auto pair : sorted_idxs) {
             sum += pair.first;
             cutoff_cumsum.push_back(sum);
         }
         auto it = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
-                                   [this](auto x){return x/this->cutoff_cumsum.back()<0.3;});
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.3;});
         auto it2 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
-                                   [this](auto x){return x/this->cutoff_cumsum.back()<0.5;});
-        n_cut = it-cutoff_cumsum.cbegin();
-        n_cut2 = it2-cutoff_cumsum.cbegin();
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.5;});
+        auto it3 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+                                   [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.8;});
+        n_cut = it - cutoff_cumsum.cbegin();
+        n_cut2 = it2 - cutoff_cumsum.cbegin();
+        n_cut3 = it3 - cutoff_cumsum.cbegin();
+        cut = *it * 0.21;
+        cut2 = *it * 0.35;
+        cut3 = *it * 0.5;
     }
 
     val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
@@ -102,13 +109,16 @@ public:
                 }
             }
             total_score += score;
-//            if(++i_trial==n_cut){
-//                if(total_score < cutoff_cumsum[i_trial]*0.3) return 0.0;
-//            } else if(++i_trial==n_cut2){
-//                if(total_score < cutoff_cumsum[i_trial]*0.5) return 0.0;
-//            }
+            if(++i_trial==n_cut){
+                if(total_score <cut) return 0.0;
+            }
+            else if(i_trial==n_cut2){
+                if(total_score < cut2) return 0.0;
+            }
+            else if(i_trial==n_cut3){
+                if(total_score < cut3) return 0.0;
+            }
         }
-        //auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
         return total_score;
     }
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
@@ -121,9 +131,12 @@ private:
     std::vector<WordPosition> heads_pidx;
     std::vector<ArcLabelUID> arc_labels;
     std::vector<std::pair<val_t,decltype(len)>> sorted_idxs;
-    std::vector<val_t> cutoff_cumsum;
     std::ptrdiff_t n_cut;
     std::ptrdiff_t n_cut2;
+    std::ptrdiff_t n_cut3;
+    val_t cut;
+    val_t cut2;
+    val_t cut3;
 };
 
 
