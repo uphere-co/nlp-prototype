@@ -17,13 +17,13 @@ using namespace util::io;
 
 namespace {
 //TODO: merge this with BoWQuery.
-struct BoWVQuery2{
+class BoWVQuery2{
+public:
     using voca_info_t  = wordrep::VocaInfo;
     using word_block_t = voca_info_t::voca_vecs_t;
     using val_t        = word_block_t::val_t;
-    using idx_t        = VocaIndex;
 
-    BoWVQuery2(std::vector<idx_t> const &words,
+    BoWVQuery2(std::vector<VocaIndex> const &words,
                voca_info_t const &voca)
     : idxs{words}, distances(idxs.size())
     {
@@ -35,40 +35,33 @@ struct BoWVQuery2{
                               for(decltype(n) i=r.begin(); i!=r.end(); ++i){
                                   for(int64_t qi=0; qi!=n_queries; ++qi){
                                       auto q = voca.wvecs[idxs[qi]];
-                                      auto widx = idx_t{i};
+                                      auto widx = VocaIndex{i};
                                       get_distance(WordPosition{qi},widx) = similarity::Similarity<similarity::measure::angle>{}(voca.wvecs[widx], q);
                                   }
                               }
                           });
     }
 
-    val_t& get_distance(WordPosition i, idx_t widx) { return distances[i.val][widx.val];}
-    val_t get_distance(WordPosition i, idx_t widx) const { return distances[i.val][widx.val];}
-
-    std::vector<idx_t> idxs;
+    val_t& get_distance(WordPosition i, VocaIndex widx) { return distances[i.val][widx.val];}
+    val_t get_distance(WordPosition i, VocaIndex widx) const { return distances[i.val][widx.val];}
+private:
+    std::vector<VocaIndex> idxs;
     std::vector<std::vector<val_t>> distances;
 };
 
 //TODO: remove code duplication for parsing CoreNLP outputs
-struct DepParsedQuery{
+class DepParsedQuery{
+public:
     using val_t = BoWVQuery2::val_t;
-    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent,
-                   wordrep::VocaIndexMap const &voca,
-                   WordUIDindex const &wordUIDs)
-    : len{cutoff.size()}, cutoff{cutoff}, words(len), words_pidx(len), head_words(len), heads_pidx(len), arc_labels(len){ //
-//        fmt::print("len : {}\n", len);
+    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent)
+    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len){ //
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
-            words[i]  = voca[wordUIDs[x["dependentGloss"].get<std::string>()]];
             words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
-            head_words[i] = voca[wordUIDs[x["governorGloss"].get<std::string>()]];
             heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()-1};
             //TODO: fix it.
             arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
-//            fmt::print("{} {} {} {} {}, {}\n", word[i], word_pidx[i], head_word[i], head_pidx[i], arc_label[i], cutoff[i]);
         }
-//        fmt::print("\n");
-//        for(auto &x :sent["tokens"]) fmt::print("{} {}\n", x["pos"].get<std::string>(), x["word"].get<std::string>());
     }
 
     val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
@@ -94,14 +87,13 @@ struct DepParsedQuery{
         auto total_score = util::math::sum(util::span_dyn<val_t>{scores});
         return total_score;
     }
-
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
+    std::size_t n_words() const {return len;}
 
+private:
     std::size_t len;
     std::vector<val_t> cutoff;
-    std::vector<VocaIndex> words;
     std::vector<WordPosition> words_pidx;
-    std::vector<VocaIndex> head_words;
     std::vector<WordPosition> heads_pidx;
     std::vector<ArcLabelUID> arc_labels;
 };
@@ -157,17 +149,15 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     std::vector<DepParsedQuery::val_t> cutoff;
     for(auto const &word : words)
         cutoff.push_back(word_cutoff.cutoff(wordUIDs[word]));
-
-    for(size_t i=0; i<words.size(); ++i)
+    std::vector<VocaIndex> vidxs;
+    for(size_t i=0; i<words.size(); ++i) {
         fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
-                   voca.indexmap[wordUIDs[words[i]]].val,cutoff[i]);
+                   voca.indexmap[wordUIDs[words[i]]].val, cutoff[i]);
+        vidxs.push_back(voca.indexmap[wordUIDs[words[i]]]);
+    }
 
-    DepParsedQuery query{cutoff, sent_json, voca.indexmap, wordUIDs};
-    BoWVQuery2 similarity{query.words, voca};
-
-    Sentence query_sent{SentUID{int64_t{0}}, DPTokenIndex{int64_t{0}}, DPTokenIndex{cutoff.size()}};
-    SentenceProb sent_model{};
-    auto rank_cutoff = sent_model.get_rank_cutoff(query_sent);
+    DepParsedQuery query{cutoff, sent_json};
+    BoWVQuery2 similarity{vidxs, voca};
 
     auto sent_to_str=[&](auto &sent){
         auto beg=sent.beg;
@@ -182,7 +172,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     std::vector<std::pair<DepParsedQuery::val_t, Sentence>> relevant_sents{};
     for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
-        if ( score > query.len*0.2) {
+        if ( score > query.n_words()*0.2) {
             //relevant_sents.push_back(std::make_pair(score,sent.uid));
             relevant_sents.push_back(std::make_pair(score,sent));
         }
