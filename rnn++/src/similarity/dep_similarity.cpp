@@ -180,16 +180,16 @@ std::vector<std::string> get_words(nlohmann::json const &sent_json){
     return words;
 }
 
-std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>>
-deduplicate_results(tbb::concurrent_vector<std::pair<DepSimilaritySearch::val_t, Sentence>> const &relevant_sents){
+std::vector<std::tuple<DepSimilaritySearch::val_t, std::vector<std::pair<DPTokenIndex, DepSimilaritySearch::val_t>>, Sentence>>
+deduplicate_results(tbb::concurrent_vector<std::tuple<DepSimilaritySearch::val_t, std::vector<std::pair<DPTokenIndex, DepSimilaritySearch::val_t>>, Sentence>> const &relevant_sents){
     using val_t = DepSimilaritySearch::val_t;
     std::map<val_t, bool> is_seen{};
-    std::vector<std::pair<val_t, Sentence>> dedup_sents;
-    for(auto pair : relevant_sents){
-        auto score = pair.first;
+    std::vector<std::tuple<val_t, std::vector<std::pair<DPTokenIndex, val_t>>, Sentence>> dedup_sents;
+    for(auto tuple : relevant_sents){
+        auto score = std::get<0>(tuple);
         if(is_seen.find(score)!=is_seen.cend()) continue;
         is_seen[score] = true;
-        dedup_sents.push_back(pair);
+        dedup_sents.push_back(tuple);
     }
     return dedup_sents;
 }
@@ -239,7 +239,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     DepParsedQuery query{cutoffs, sent_json};
     BoWVQuery2 similarity{vidxs, voca};
 
-    tbb::concurrent_vector<std::pair<val_t, Sentence>> relevant_sents{};
+    using scores_t = std::vector<std::pair<DPTokenIndex, val_t>>;
+    tbb::concurrent_vector<std::tuple<val_t, scores_t, Sentence>> relevant_sents{};
     auto n = sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
@@ -248,7 +249,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         val_t score{0.0};
         for(auto pair : scores) score += pair.second;
         if ( score > query.n_words()*0.2) {
-            relevant_sents.push_back(std::make_pair(score,sent));
+            relevant_sents.push_back(std::make_tuple(score,scores, sent));
         }
     });
     auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs);
@@ -274,18 +275,20 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
     auto n_max_result=n_found>5? 5 : n_found;
     auto rank_cut = relevant_sents.begin()+n_max_result;
     std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
-                      [](auto const &x, auto const &y){return x.first>y.first;});
-    auto score_cutoff = 0.5*relevant_sents[0].first;
+                      [](auto const &x, auto const &y){return std::get<0>(x)>std::get<0>(y);});
+    auto score_cutoff = 0.5*std::get<0>(relevant_sents[0]);
     rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
-                                [score_cutoff](auto const &x){return x.first>score_cutoff;});
+                                [score_cutoff](auto const &x){return std::get<0>(x)>score_cutoff;});
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
-        auto const &pair = *it;
-        auto sent = pair.second;
+        auto const &tuple = *it;
+        auto score = std::get<0>(tuple);
+        auto scores = std::get<1>(tuple);
+        auto sent = std::get<2>(tuple);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_id = ygp_indexer.row_idx(chunk_idx);
-        answer["score"].push_back(pair.first);
+        answer["score"].push_back(score);
         auto sent_to_str=[&](auto &sent){
             std::stringstream ss;
             for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}

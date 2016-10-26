@@ -29,7 +29,7 @@ struct DepSimilaritySearch {
     using json_t = nlohmann::json;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
-    using scored_sents_t = std::vector<std::pair<val_t, wordrep::Sentence>>;
+    using scored_sents_t = std::vector<std::tuple<val_t, std::vector<std::pair<wordrep::DPTokenIndex, val_t>>, wordrep::Sentence>>;
     DepSimilaritySearch(json_t const& config);
 
     json_t process_query(json_t query) const;
