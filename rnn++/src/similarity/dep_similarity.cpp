@@ -185,6 +185,27 @@ deduplicate_results(std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>>
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
+    auto n_queries = ask["sentences"].size();
+    tbb::concurrent_vector<json_t> answers;
+    tbb::task_group g;
+    for(decltype(n_queries)i=0; i!=n_queries; ++i){
+        json_t& sent_json = ask["sentences"][i];
+        std::string query_str = ask["queries"][i];
+        g.run([&,query_str,this](){
+            json_t answer = this->process_query(sent_json);
+            answer["input"]=query_str;
+//            fmt::print("{}\n", query_str);
+            answers.push_back(answer);
+        });
+    }
+    g.wait();
+
+    json_t output{};
+    for(auto &answer : answers) output.push_back(answer);
+    return output;
+}
+
+DepSimilaritySearch::json_t DepSimilaritySearch::process_queries_2(json_t ask) const {
     json_t answers{};
     auto n_queries = ask["sentences"].size();
     std::vector<DepParsedQuery> queries;
@@ -307,15 +328,18 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     BoWVQuery2 similarity{vidxs, voca};
 
     std::vector<std::pair<val_t, Sentence>> relevant_sents{};
-    std::map<val_t, bool> is_seen{};
-    for(auto sent: sents) {
+    tbb::concurrent_vector<std::pair<val_t, Sentence>> tmp{};
+    auto n = sents.size();
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+        auto sent = sents[i];
+    //for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
-        if ( score > query.n_words()*0.2 && !is_seen[score]) {
-            relevant_sents.push_back(std::make_pair(score,sent));
-            is_seen[score] = true;
+        if ( score > query.n_words()*0.2) {
+            tmp.push_back(std::make_pair(score,sent));
         }
-    }
-    auto answer = write_output(relevant_sents, words, cutoffs);
+    });
+    for(auto &sent : tmp) relevant_sents.push_back(sent);
+    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs);
     return answer;
 }
 
