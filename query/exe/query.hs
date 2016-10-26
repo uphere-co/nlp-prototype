@@ -98,7 +98,8 @@ json_serialize p = withForeignPtr p c_json_serialize
 runCoreNLP body = do
   lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
   liftIO $ BL.putStrLn lbstr
-  let r_bstr = (TE.encodeUtf8 . T.filter (>=' ') . TE.decodeUtf8 . BL.toStrict) lbstr
+  let r_bstr = BL.toStrict lbstr
+        -- (TE.encodeUtf8 . T.filter (>=' ') . TE.decodeUtf8 . BL.toStrict) lbstr
   let Just c' = do
         o@(Object c) <- A.maybeResult (A.parse json r_bstr)
         NLPResult ss <- decodeStrict' r_bstr
