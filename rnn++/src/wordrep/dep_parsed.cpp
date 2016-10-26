@@ -36,7 +36,7 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) const {
 //    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
     H5file outfile{H5name{filename}, hdf5::FileMode::replace};
-//    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sents_uid));
+    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sents_uid));
     outfile.writeRawData(H5name{prefix+".chunk_idx"}, serialize(chunks_idx));
     outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sents_idx));
     outfile.writeRawData(H5name{prefix+".word_uid"}, serialize(words_uid));
@@ -121,6 +121,27 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
+void DepParsedTokens::build_sent_uid(){
+    auto beg=sents_idx.cbegin();
+    auto end=sents_idx.cend();
+    auto chunk_beg=chunks_idx.cbegin();
+    auto chunk_end=chunks_idx.cend();
+    auto it=beg;
+    auto it_chunk=chunk_beg;
+    SentIndex current_idx{*it};
+    ChunkIndex current_chunk{*it_chunk};
+    SentUID current_uid{};
+    while(it!=end) {
+        if( *it == current_idx && *it_chunk==current_chunk) {sents_uid.push_back(current_uid);}
+        else {
+            current_idx=*it;
+            current_chunk = *it_chunk;
+            sents_uid.push_back(++current_uid);
+        }
+        ++it;
+        ++it_chunk;
+    }
+}
 
 namespace ygp{
 YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)

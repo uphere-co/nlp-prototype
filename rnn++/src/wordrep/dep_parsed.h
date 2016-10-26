@@ -55,6 +55,7 @@ struct DepParsedTokens{
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
+    void build_sent_uid();
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
@@ -62,11 +63,12 @@ struct DepParsedTokens{
     CharOffset word_end(DPTokenIndex idx) const {return words_end[idx.val];}
     VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
     VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
+    size_t n_tokens() const { return chunks_idx.size();}
 
-private:
+//private:
     std::vector<SentUID>      sents_uid;
     std::vector<ChunkIndex>   chunks_idx;
-    std::vector<SentIndex> sents_idx;
+    std::vector<SentIndex>    sents_idx;
     std::vector<VocaIndex>    words;
     std::vector<WordUID>      words_uid;
     std::vector<WordPosition> words_pidx;
