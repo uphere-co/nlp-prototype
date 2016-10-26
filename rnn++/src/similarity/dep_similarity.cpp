@@ -169,6 +169,21 @@ std::vector<std::string> get_words(nlohmann::json const &sent_json){
         words.push_back(x["dependentGloss"].get<std::string>());
     return words;
 }
+
+std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>>
+deduplicate_results(std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>> const &relevant_sents){
+    using val_t = DepSimilaritySearch::val_t;
+    std::map<val_t, bool> is_seen{};
+    std::vector<std::pair<val_t, Sentence>> dedup_sents;
+    for(auto pair : relevant_sents){
+        auto score = pair.first;
+        if(is_seen.find(score)!=is_seen.cend()) continue;
+        is_seen[score] = true;
+        dedup_sents.push_back(pair);
+    }
+    return dedup_sents;
+}
+
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     json_t answers{};
     auto n_queries = ask["sentences"].size();
@@ -196,23 +211,23 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         similarities.push_back(similarity);
     }
 
-    for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        nlohmann::json& sent_json = ask["sentences"][i];
-        std::string query_str = ask["queries"][i];
-
-        auto const& query = queries[i];
-        auto const& similarity = similarities[i];
-        auto const& words = wordss[i];
-        auto const& cutoffs = cutoffss[i];
-        std::vector<std::pair<val_t, Sentence>> relevant_sents{};
-        std::map<val_t, bool> is_seen{};
-        for(auto sent: sents) {
+    std::vector<std::vector<std::pair<val_t, Sentence>>> relevant_sentss(n_queries);
+    for(decltype(n_queries)i=0; i!=n_queries; ++i) {
+        nlohmann::json &sent_json = ask["sentences"][i];
+        auto const &query = queries[i];
+        auto const &similarity = similarities[i];
+        auto &relevant_sents = relevant_sentss[i];
+        for (auto sent: sents) {
             auto score = query.get_score(sent, tokens, similarity);
-            if ( score > query.n_words()*0.2 && !is_seen[score]) {
-                relevant_sents.push_back(std::make_pair(score,sent));
-                is_seen[score] = true;
-            }
+            if (score > query.n_words() * 0.2) relevant_sents.push_back(std::make_pair(score, sent));
         }
+    }
+
+    for(decltype(n_queries)i=0; i!=n_queries; ++i){
+        auto const &relevant_sents = deduplicate_results(relevant_sentss[i]);
+        auto const &words = wordss[i];
+        auto const &cutoffs = cutoffss[i];
+        std::string query_str = ask["queries"][i];
         auto answer = write_output(relevant_sents, words, cutoffs);
         answer["input"]=query_str;
         answers.push_back(answer);
