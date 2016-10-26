@@ -86,11 +86,13 @@ public:
         cut3 = *it * 0.5;
     }
 
-    val_t get_score(Sentence const &sent, DepParsedTokens const &data_tokens,
+    auto get_scores(Sentence const &sent, DepParsedTokens const &data_tokens,
                     BoWVQuery2 const &similarity) const {
         auto beg=sent.beg;
         auto end=sent.end;
         val_t total_score{0.0};
+        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
+
         auto i_trial{0};
         for(auto pair: sorted_idxs){
             auto j = pair.second;
@@ -101,25 +103,31 @@ public:
                 auto dependent_score = similarity.get_distance(WordPosition{j},word);
                 if(heads_pidx[j].val<0) {
                     auto tmp = cutoff[j] * dependent_score;
-                    score = std::max(tmp, score);
+                    if(tmp>score){
+                        score = tmp;
+                        scores[j] = {i, score};
+                    }
                 } else {
                     auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
                     auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
-                    score = std::max(tmp, score);
+                    if(tmp>score){
+                        score = tmp;
+                        scores[j] = {i, score};
+                    }
                 }
             }
             total_score += score;
             if(++i_trial==n_cut){
-                if(total_score <cut) return 0.0;
+                if(total_score <cut) return scores;
             }
             else if(i_trial==n_cut2){
-                if(total_score < cut2) return 0.0;
+                if(total_score < cut2) return scores;
             }
             else if(i_trial==n_cut3){
-                if(total_score < cut3) return 0.0;
+                if(total_score < cut3) return scores;
             }
         }
-        return total_score;
+        return scores;
     }
     val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
     std::size_t n_words() const {return len;}
@@ -130,7 +138,7 @@ private:
     std::vector<WordPosition> words_pidx;
     std::vector<WordPosition> heads_pidx;
     std::vector<ArcLabelUID> arc_labels;
-    std::vector<std::pair<val_t,decltype(len)>> sorted_idxs;
+    std::vector<std::pair<val_t,decltype(len)>> sorted_idxs; //Descending order of cutoff.
     std::ptrdiff_t n_cut;
     std::ptrdiff_t n_cut2;
     std::ptrdiff_t n_cut3;
@@ -236,7 +244,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
     //for(auto sent: sents) {
-        auto score = query.get_score(sent, tokens, similarity);
+        auto scores = query.get_scores(sent, tokens, similarity);
+        val_t score{0.0};
+        for(auto pair : scores) score += pair.second;
         if ( score > query.n_words()*0.2) {
             relevant_sents.push_back(std::make_pair(score,sent));
         }
