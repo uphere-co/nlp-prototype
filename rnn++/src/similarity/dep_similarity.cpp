@@ -171,7 +171,7 @@ std::vector<std::string> get_words(nlohmann::json const &sent_json){
 }
 
 std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>>
-deduplicate_results(std::vector<std::pair<DepSimilaritySearch::val_t, Sentence>> const &relevant_sents){
+deduplicate_results(tbb::concurrent_vector<std::pair<DepSimilaritySearch::val_t, Sentence>> const &relevant_sents){
     using val_t = DepSimilaritySearch::val_t;
     std::map<val_t, bool> is_seen{};
     std::vector<std::pair<val_t, Sentence>> dedup_sents;
@@ -194,7 +194,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         g.run([&,query_str,this](){
             json_t answer = this->process_query(sent_json);
             answer["input"]=query_str;
-//            fmt::print("{}\n", query_str);
             answers.push_back(answer);
         });
     }
@@ -205,113 +204,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     return output;
 }
 
-DepSimilaritySearch::json_t DepSimilaritySearch::process_queries_2(json_t ask) const {
-    json_t answers{};
-    auto n_queries = ask["sentences"].size();
-    std::vector<DepParsedQuery> queries;
-    std::vector<BoWVQuery2> similarities;
-    std::vector<std::vector<std::string>> wordss{};
-    std::vector<std::vector<val_t>> cutoffss(n_queries);
-    for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        nlohmann::json& sent_json = ask["sentences"][i];
-        std::vector<std::string> words = get_words(sent_json);
-        wordss.push_back(words);
-        auto& cutoffs = cutoffss[i];
-        std::vector<VocaIndex> vidxs;
-        for(auto const &word : words) {
-            auto wuid = wordUIDs[word];
-            cutoffs.push_back(word_cutoff.cutoff(wuid));
-            auto vuid = voca.indexmap[wuid];
-            if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
-            vidxs.push_back(vuid);
-        }
-
-        DepParsedQuery query{cutoffs, sent_json};
-        BoWVQuery2 similarity{vidxs, voca};
-        queries.push_back(query);
-        similarities.push_back(similarity);
-    }
-
-    using sents_t = std::vector<std::pair<val_t, Sentence>>;
-    std::vector<sents_t> relevant_sentss(n_queries);
-    for(decltype(n_queries)i=0; i!=n_queries; ++i) {
-        nlohmann::json &sent_json = ask["sentences"][i];
-        auto const &query = queries[i];
-        auto const &similarity = similarities[i];
-        auto beg = sents.cbegin();
-        auto end = sents.cend();
-        auto sents=tbb::parallel_reduce(
-                tbb::blocked_range<decltype(beg)>{beg, end},
-                sents_t{},
-                //current_sum should be const & or copied by value.
-                [&]( tbb::blocked_range<decltype(beg)> const &r, sents_t sents ) {
-                    for (auto it=r.begin(); it!=r.end(); ++it) {
-                        auto sent = *it;
-                        auto score = query.get_score(sent, tokens, similarity);
-                        if (score > query.n_words() * 0.2) sents.push_back(std::make_pair(score, sent));
-                    }
-                    return sents; // body returns updated value of the accumulator
-                },
-                [](auto const &x, auto const &y){
-                    sents_t sum{x};
-                    std::copy(y.cbegin(), y.cend(), std::back_inserter(sum));
-                    return sum;
-                }
-        );
-        relevant_sentss[i] = sents;
-    }
-//    std::vector<std::vector<std::pair<val_t, Sentence>>> relevant_sentss(n_queries);
-//    for (auto sent: sents) {
-//        for(decltype(n_queries)i=0; i!=n_queries; ++i) {
-//            nlohmann::json &sent_json = ask["sentences"][i];
-//            auto const &query = queries[i];
-//            auto const &similarity = similarities[i];
-//            auto &relevant_sents = relevant_sentss[i];
-//            auto score = query.get_score(sent, tokens, similarity);
-//            if (score > query.n_words() * 0.2) relevant_sents.push_back(std::make_pair(score, sent));
-//        }
-//    }
-//    using sentss_t = std::vector<std::vector<std::pair<val_t, Sentence>>>;
-//    auto beg = sents.begin();
-//    auto end = sents.end();
-//    auto relevant_sentss =
-//            tbb::parallel_reduce(
-//            tbb::blocked_range<decltype(beg)>{beg,end},
-//            sentss_t(n_queries),
-//            //current_sum should be const & or copied by value.
-//            [&]( tbb::blocked_range<decltype(beg)> const &r, sentss_t sentss ) {
-//                for (auto it=r.begin(); it!=r.end(); ++it) {
-//                    auto sent = *it;
-//                    for(decltype(n_queries)i=0; i!=n_queries; ++i) {
-//                        nlohmann::json &sent_json = ask["sentences"][i];
-//                        auto const &query = queries[i];
-//                        auto const &similarity = similarities[i];
-//                        auto &relevant_sents = sentss[i];
-//                        auto score = query.get_score(sent, tokens, similarity);
-//                        if (score > query.n_words() * 0.2) relevant_sents.push_back(std::make_pair(score, sent));
-//                    }
-//                }
-//                return sentss; // body returns updated value of the accumulator
-//            },
-//            [](sentss_t const &x, sentss_t const &y){
-//                sentss_t sum{x};
-//                std::copy(y.cbegin(), y.cend(), std::back_inserter(sum));
-//                return sum;
-//            }
-//    );
-
-    for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        auto const &relevant_sents = deduplicate_results(relevant_sentss[i]);
-        auto const &words = wordss[i];
-        auto const &cutoffs = cutoffss[i];
-        std::string query_str = ask["queries"][i];
-        auto answer = write_output(relevant_sents, words, cutoffs);
-        answer["input"]=query_str;
-        answers.push_back(answer);
-    }
-
-    return answers;
-}
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
     std::vector<std::string> words = get_words(sent_json);
     std::vector<val_t> cutoffs;
@@ -327,18 +219,16 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     DepParsedQuery query{cutoffs, sent_json};
     BoWVQuery2 similarity{vidxs, voca};
 
-    std::vector<std::pair<val_t, Sentence>> relevant_sents{};
-    tbb::concurrent_vector<std::pair<val_t, Sentence>> tmp{};
+    tbb::concurrent_vector<std::pair<val_t, Sentence>> relevant_sents{};
     auto n = sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
     //for(auto sent: sents) {
         auto score = query.get_score(sent, tokens, similarity);
         if ( score > query.n_words()*0.2) {
-            tmp.push_back(std::make_pair(score,sent));
+            relevant_sents.push_back(std::make_pair(score,sent));
         }
     });
-    for(auto &sent : tmp) relevant_sents.push_back(sent);
     auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs);
     return answer;
 }
