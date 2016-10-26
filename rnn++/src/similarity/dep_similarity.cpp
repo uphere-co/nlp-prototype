@@ -191,9 +191,16 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         json_t& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
-        g.run([&,query_str,this](){
+        auto &query_tokens = sent_json["tokens"];
+        auto n_token = query_tokens.size();
+
+        if(n_token==0) continue;
+        auto query_sent_beg = query_tokens[0]["characterOffsetBegin"].get<int64_t>();
+        auto query_sent_end = query_tokens[n_token-1]["characterOffsetEnd"].get<int64_t>();
+        g.run([&answers,&sent_json,query_sent_beg, query_sent_end, query_str,this](){
             json_t answer = this->process_query(sent_json);
             answer["input"]=query_str;
+            answer["input_offset"]={query_sent_beg,query_sent_end};
             answers.push_back(answer);
         });
     }
