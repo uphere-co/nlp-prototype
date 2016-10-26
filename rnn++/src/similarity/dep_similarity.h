@@ -41,6 +41,8 @@ struct DepSimilaritySearch {
     voca_info_t voca;
     wordrep::DepParsedTokens tokens;
     wordrep::WordUIDindex wordUIDs;
+    wordrep::POSUIDindex posUIDs;
+    wordrep::ArcLabelUIDindex arclabelUIDs;
     wordrep::WordImportance word_cutoff;
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdump texts;

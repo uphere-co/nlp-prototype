@@ -55,7 +55,7 @@ class DepParsedQuery{
 public:
     using val_t = BoWVQuery2::val_t;
     DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent)
-    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len){ //
+    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len){
         for(auto const&x : sent["basic-dependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
             words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
@@ -156,6 +156,8 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                 hdf5::FileMode::read_exist}, config["dep_parsed_prefix"]},
   wordUIDs{config["word_uids_dump"].get<std::string>()},
+  posUIDs{config["pos_uids_dump"].get<std::string>()},
+  arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   texts{config["plain_text"].get<std::string>()},
@@ -185,18 +187,21 @@ deduplicate_results(tbb::concurrent_vector<std::pair<DepSimilaritySearch::val_t,
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
+    DepParsedTokens query_tokens{};
+    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.build_sent_uid();
+    auto query_sents = query_tokens.IndexSentences();
     auto n_queries = ask["sentences"].size();
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
+    assert(query_sents.size()==n_queries);
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        json_t& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
-        auto &query_tokens = sent_json["tokens"];
-        auto n_token = query_tokens.size();
-
-        if(n_token==0) continue;
-        auto query_sent_beg = query_tokens[0]["characterOffsetBegin"].get<int64_t>();
-        auto query_sent_end = query_tokens[n_token-1]["characterOffsetEnd"].get<int64_t>();
+        json_t& sent_json = ask["sentences"][i];
+        auto query_sent = query_sents[i];
+        if(query_sent.beg==query_sent.end) continue;
+        auto query_sent_beg = query_tokens.word_beg(query_sent.beg).val;
+        auto query_sent_end = query_tokens.word_end(query_sent.end-1).val;
         g.run([&answers,&sent_json,query_sent_beg, query_sent_end, query_str,this](){
             json_t answer = this->process_query(sent_json);
             answer["input"]=query_str;
