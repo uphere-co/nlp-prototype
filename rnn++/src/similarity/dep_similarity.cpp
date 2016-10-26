@@ -163,23 +163,64 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
 
+std::vector<std::string> get_words(nlohmann::json const &sent_json){
+    std::vector<std::string> words;
+    for(auto const &x : sent_json["basic-dependencies"])
+        words.push_back(x["dependentGloss"].get<std::string>());
+    return words;
+}
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     json_t answers{};
     auto n_queries = ask["sentences"].size();
+    std::vector<DepParsedQuery> queries;
+    std::vector<BoWVQuery2> similarities;
+    std::vector<std::vector<std::string>> wordss{};
+    std::vector<std::vector<val_t>> cutoffss(n_queries);
+    for(decltype(n_queries)i=0; i!=n_queries; ++i){
+        nlohmann::json& sent_json = ask["sentences"][i];
+        std::vector<std::string> words = get_words(sent_json);
+        wordss.push_back(words);
+        auto& cutoffs = cutoffss[i];
+        std::vector<VocaIndex> vidxs;
+        for(auto const &word : words) {
+            auto wuid = wordUIDs[word];
+            cutoffs.push_back(word_cutoff.cutoff(wuid));
+            auto vuid = voca.indexmap[wuid];
+            if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
+            vidxs.push_back(vuid);
+        }
+
+        DepParsedQuery query{cutoffs, sent_json};
+        BoWVQuery2 similarity{vidxs, voca};
+        queries.push_back(query);
+        similarities.push_back(similarity);
+    }
+
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         nlohmann::json& sent_json = ask["sentences"][i];
         std::string query_str = ask["queries"][i];
-        json_t answer = process_query(sent_json);
+
+        auto const& query = queries[i];
+        auto const& similarity = similarities[i];
+        auto const& words = wordss[i];
+        auto const& cutoffs = cutoffss[i];
+        std::vector<std::pair<val_t, Sentence>> relevant_sents{};
+        std::map<val_t, bool> is_seen{};
+        for(auto sent: sents) {
+            auto score = query.get_score(sent, tokens, similarity);
+            if ( score > query.n_words()*0.2 && !is_seen[score]) {
+                relevant_sents.push_back(std::make_pair(score,sent));
+                is_seen[score] = true;
+            }
+        }
+        auto answer = write_output(relevant_sents, words, cutoffs);
         answer["input"]=query_str;
         answers.push_back(answer);
     }
     return answers;
 }
-
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
-    std::vector<std::string> words;
-    for(auto const &x : sent_json["basic-dependencies"])
-        words.push_back(x["dependentGloss"].get<std::string>());
+    std::vector<std::string> words = get_words(sent_json);
     std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
     for(auto const &word : words) {
