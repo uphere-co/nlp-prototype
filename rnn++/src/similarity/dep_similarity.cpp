@@ -263,6 +263,26 @@ struct QueryResultBuilder{
 
     json_t answer;
 };
+
+auto get_clip_offset = [](auto &scores, auto const &tokens, auto len_max){
+    std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
+    auto pair = scores.front();
+    auto clip_beg = tokens.word_beg(pair.first);
+    auto clip_end = tokens.word_end(pair.first);
+    auto max_len = typename decltype(clip_beg)::val_t{len_max};
+    for(auto pair : scores){
+        auto idx = pair.first;
+        auto score = pair.second;
+        auto beg = tokens.word_beg(idx);
+        auto end = tokens.word_end(idx);
+        if(beg<clip_beg && clip_end < beg+max_len ) clip_beg = beg;
+        if(end>clip_end && end < clip_beg+max_len ) clip_end = end;
+//        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
+    }
+//    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
+    return std::make_pair(clip_beg, clip_end);
+};
+
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t relevant_sents,
         std::vector<std::string> const &words, std::vector<val_t> const &cutoffs) const{
     auto n_found = relevant_sents.size();
@@ -283,6 +303,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         auto const &tuple = *it;
         auto score = std::get<0>(tuple);
         auto scores = std::get<1>(tuple);
+        auto clip_offset = get_clip_offset(scores, tokens, 100);
         auto sent = std::get<2>(tuple);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
@@ -302,6 +323,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         auto end = tokens.word_end(--sent.end).val;
         answer["result_offset"].push_back({beg,end});
         answer["result_raw"].push_back(texts.getline(row_uid));
+        answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
         answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
         answer["words"] = words; //TODO: removable?
