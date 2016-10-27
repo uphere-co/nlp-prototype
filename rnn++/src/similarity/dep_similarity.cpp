@@ -56,7 +56,7 @@ public:
     using val_t = BoWVQuery2::val_t;
     DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent)
     : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len){
-        for(auto const&x : sent["basic-dependencies"]) {
+        for(auto const&x : sent["basicDependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
             words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
             heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()-1};
@@ -175,7 +175,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 
 std::vector<std::string> get_words(nlohmann::json const &sent_json){
     std::vector<std::string> words;
-    for(auto const &x : sent_json["basic-dependencies"])
+    for(auto const &x : sent_json["basicDependencies"])
         words.push_back(x["dependentGloss"].get<std::string>());
     return words;
 }

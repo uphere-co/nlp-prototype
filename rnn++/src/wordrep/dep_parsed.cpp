@@ -100,7 +100,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
             poss.push_back(posUIDs[pos]);
             arclabels.push_back(ArcLabelUID{});//
         }
-        for(auto const &x : sent_json["basic-dependencies"]){
+        for(auto const &x : sent_json["basicDependencies"]){
             //dep dependent dependentGloss governor governorGloss
             auto word      = x["dependentGloss"].get<std::string>();
             auto word_pidx = x["dependent"].get<int64_t>()-1;

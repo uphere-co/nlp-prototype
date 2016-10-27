@@ -207,8 +207,8 @@ int main(int /*argc*/, char** argv){
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
 
 //    auto csvfile = argv[2];
-//    const char* dumpfile_prefix = argv[3];
-////    QueryAndDumpCoreNLPoutput(csvfile, dumpfile_prefix); //"/data/jihuni/corenlp/news.{:010}"
+//    const char* dumpfile_prefix = argv[3]; //"/home/jihuni/nlp-prototype/build/corenlp/row.{:06}"
+//    QueryAndDumpCoreNLPoutput(csvfile, dumpfile_prefix);
 //    ParseWithCoreNLP(config, csvfile, dumpfile_prefix);
 //    GenerateExtraIndexes(config);
 //    return 0;
