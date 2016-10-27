@@ -267,34 +267,45 @@ struct QueryResultBuilder{
     json_t answer;
 };
 
-auto get_clip_offset = [](CharOffset sent_beg, CharOffset sent_end,
-                          auto &scores, auto const &tokens, auto len_max){
+auto get_clip_offset = [](Sentence sent,
+                          auto &scores, auto const &tokens, auto max_clip_len){
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
-    CharOffset clip_beg = tokens.word_beg(pair.first);
-    CharOffset clip_end = tokens.word_end(pair.first);
-    auto len_sent = sent_end.val - sent_beg.val;
-    len_max = len_max>len_sent? len_sent:len_max;
-    auto max_len = typename decltype(clip_beg)::val_t{len_max};
+    auto i_word_beg = pair.first;
+    auto i_word_end = pair.first;
+    CharOffset clip_beg = tokens.word_beg(i_word_beg);
+    CharOffset clip_end = tokens.word_end(i_word_end);
+    auto len_sent = tokens.word_end(sent.end).val - tokens.word_beg(sent.beg).val;
+    max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
+    auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
+
+    int i_trial=0;
     for(auto pair : scores){
         auto idx = pair.first;
         auto score = pair.second;
         auto beg = tokens.word_beg(idx);
         auto end = tokens.word_end(idx);
-        if(beg<clip_beg && clip_end < beg+max_len ) clip_beg = beg;
-        if(end>clip_end && end < clip_beg+max_len ) clip_end = end;
+        if(beg<clip_beg && clip_end < beg+max_len ) {
+            clip_beg = beg;
+            i_word_beg = idx;
+        } else if(end>clip_end && end < clip_beg+max_len ) {
+            clip_end = end;
+            i_word_end = idx;
+        }
 //        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
     }
     auto len = clip_end.val-clip_beg.val;
-    int i_trial=0;
     while(max_len-len>0) {
-        auto len_padding = max_len - len;
-        clip_beg = clip_beg - len_padding / 2;
-        clip_beg = clip_beg < sent_beg ? sent_beg : clip_beg;
-        clip_end = clip_end + len_padding / 2;
-        clip_end = clip_end > sent_end ? sent_end : clip_end;
+        if(i_word_beg>sent.beg) {
+            --i_word_beg;
+            clip_beg = tokens.word_beg(i_word_beg);
+        }
+        if(i_word_end<sent.end){
+            ++i_word_end;
+            clip_end = tokens.word_end(i_word_end);
+        }
         len = clip_end.val-clip_beg.val;
-        if(++i_trial > 10) break;
+        if(i_word_beg==sent.beg && i_word_end==sent.end) break;
     }
 
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
@@ -338,7 +349,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg);
         auto end = tokens.word_end(--sent.end);
-        auto clip_offset = get_clip_offset(beg, end, scores, tokens, max_clip_len);
+        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["result_offset"].push_back({beg.val,end.val});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
