@@ -201,6 +201,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     auto query_sents = query_tokens.IndexSentences();
     auto n_queries = ask["sentences"].size();
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    fmt::print("max_clip_len = {}\n", max_clip_len);
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     assert(query_sents.size()==n_queries);
@@ -266,11 +267,14 @@ struct QueryResultBuilder{
     json_t answer;
 };
 
-auto get_clip_offset = [](auto &scores, auto const &tokens, auto len_max){
+auto get_clip_offset = [](CharOffset sent_beg, CharOffset sent_end,
+                          auto &scores, auto const &tokens, auto len_max){
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
-    auto clip_beg = tokens.word_beg(pair.first);
-    auto clip_end = tokens.word_end(pair.first);
+    CharOffset clip_beg = tokens.word_beg(pair.first);
+    CharOffset clip_end = tokens.word_end(pair.first);
+    auto len_sent = sent_end.val - sent_beg.val;
+    len_max = len_max>len_sent? len_sent:len_max;
     auto max_len = typename decltype(clip_beg)::val_t{len_max};
     for(auto pair : scores){
         auto idx = pair.first;
@@ -281,6 +285,18 @@ auto get_clip_offset = [](auto &scores, auto const &tokens, auto len_max){
         if(end>clip_end && end < clip_beg+max_len ) clip_end = end;
 //        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
     }
+    auto len = clip_end.val-clip_beg.val;
+    int i_trial=0;
+    while(max_len-len>0) {
+        auto len_padding = max_len - len;
+        clip_beg = clip_beg - len_padding / 2;
+        clip_beg = clip_beg < sent_beg ? sent_beg : clip_beg;
+        clip_end = clip_end + len_padding / 2;
+        clip_end = clip_end > sent_end ? sent_end : clip_end;
+        len = clip_end.val-clip_beg.val;
+        if(++i_trial > 10) break;
+    }
+
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
     return std::make_pair(clip_beg, clip_end);
 };
@@ -305,7 +321,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         auto const &tuple = *it;
         auto score = std::get<0>(tuple);
         auto scores = std::get<1>(tuple);
-        auto clip_offset = get_clip_offset(scores, tokens, max_clip_len);
         auto sent = std::get<2>(tuple);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
@@ -321,12 +336,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(col_uid.val);
-        auto beg = tokens.word_beg(sent.beg).val;
-        auto end = tokens.word_end(--sent.end).val;
-        answer["result_offset"].push_back({beg,end});
+        auto beg = tokens.word_beg(sent.beg);
+        auto end = tokens.word_end(--sent.end);
+        auto clip_offset = get_clip_offset(beg, end, scores, tokens, max_clip_len);
+        answer["result_offset"].push_back({beg.val,end.val});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
-        answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
+        answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
         answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
         answer["words"] = words; //TODO: removable?
     }
