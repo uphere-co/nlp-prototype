@@ -14,5 +14,6 @@ mpa = dict.fromkeys(range(32))
 a = json.loads(r.text.translate(mpa))
 queries = [' '.join([token['word'] for token in sent['tokens']]) for sent in a['sentences']]
 a['queries'] = queries
+a['max_clip_len'] = 200
 with open(query_file+".corenlp", "w") as f:
     f.write(json.dumps(a, indent=4))

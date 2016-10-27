@@ -35,8 +35,8 @@ struct DepSimilaritySearch {
     json_t process_query(json_t query) const;
     json_t process_queries(json_t ask) const;
     json_t process_queries_2(json_t ask) const;
-    json_t write_output(scored_sents_t relevant_sents,
-                        std::vector<std::string> const &words, std::vector<val_t> const &cutoff) const;
+    json_t write_output(scored_sents_t relevant_sents, std::vector<std::string> const &words,
+                        std::vector<val_t> const &cutoff, int64_t max_clip_len) const;
 
     voca_info_t voca;
     wordrep::DepParsedTokens tokens;
