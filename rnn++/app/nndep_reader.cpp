@@ -79,33 +79,6 @@ void write_voca_index_col(VocaInfo const &voca, std::string filename, std::strin
     }
 }
 
-void generate_sent_uid(std::string filename, std::string prefix){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
-    auto sent_idx = util::deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}));
-    auto chunk_idx = util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}));
-    std::vector<SentUID> sent_uid;
-    auto beg=sent_idx.cbegin();
-    auto end=sent_idx.cend();
-    auto chunk_beg=chunk_idx.cbegin();
-    auto chunk_end=chunk_idx.cend();
-    auto it=beg;
-    auto it_chunk=chunk_beg;
-    SentIndex current_idx{*it};
-    ChunkIndex current_chunk{*it_chunk};
-    SentUID current_uid{};
-    while(it!=end) {
-        if( *it == current_idx && *it_chunk==current_chunk) {sent_uid.push_back(current_uid);}
-        else {
-            current_idx=*it;
-            current_chunk = *it_chunk;
-            sent_uid.push_back(++current_uid);
-        }
-        ++it;
-        ++it_chunk;
-    }
-    file.writeRawData(H5name{prefix+".sent_uid"}, util::serialize(sent_uid));
-}
-
 void write_column(std::vector<int64_t> rows, std::string filename,
                   std::string prefix, std::string colname){
     H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
@@ -205,6 +178,7 @@ void ParseWithCoreNLP(nlohmann::json const &config, const char* raw_csv, const c
         row_idxs.push_back(row_idx);
         row_uids.push_back(row_uid);
     }
+    tokens.build_sent_uid();
     tokens.write_to_disk(output_filename, prefix);
 
     write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
@@ -219,7 +193,6 @@ void GenerateExtraIndexes(nlohmann::json const &config) {
     auto filename = config["dep_parsed_store"].get<std::string>();
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
-    generate_sent_uid(filename, prefix);
     write_voca_index_col(voca, filename, prefix);
 }
 
@@ -234,8 +207,8 @@ int main(int /*argc*/, char** argv){
     //                              hdf5::FileMode::read_exist}, config["dep_parsed_text"]};
 
 //    auto csvfile = argv[2];
-//    const char* dumpfile_prefix = argv[3];
-////    QueryAndDumpCoreNLPoutput(csvfile, dumpfile_prefix); //"/data/jihuni/corenlp/news.{:010}"
+//    const char* dumpfile_prefix = argv[3]; //"/home/jihuni/nlp-prototype/build/corenlp/row.{:06}"
+//    QueryAndDumpCoreNLPoutput(csvfile, dumpfile_prefix);
 //    ParseWithCoreNLP(config, csvfile, dumpfile_prefix);
 //    GenerateExtraIndexes(config);
 //    return 0;
