@@ -86,7 +86,7 @@ Executable query
                         monad-loops,
                         network-transport-zeromq,
                         process,
-                        
+                        scientific,
                         stm,
                         text,
                         transformers,

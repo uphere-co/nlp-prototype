@@ -200,17 +200,20 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     query_tokens.build_sent_uid();
     auto query_sents = query_tokens.IndexSentences();
     auto n_queries = ask["sentences"].size();
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    fmt::print("max_clip_len = {}\n", max_clip_len);
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     assert(query_sents.size()==n_queries);
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         std::string query_str = ask["queries"][i];
         json_t& sent_json = ask["sentences"][i];
+        sent_json["max_clip_len"] = max_clip_len;
         auto query_sent = query_sents[i];
         if(query_sent.beg==query_sent.end) continue;
         auto query_sent_beg = query_tokens.word_beg(query_sent.beg).val;
         auto query_sent_end = query_tokens.word_end(query_sent.end-1).val;
-        g.run([&answers,&sent_json,query_sent_beg, query_sent_end, query_str,this](){
+        g.run([&answers,&sent_json,max_clip_len, query_sent_beg,query_sent_end, query_str,this](){
             json_t answer = this->process_query(sent_json);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
@@ -218,7 +221,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         });
     }
     g.wait();
-
     json_t output{};
     for(auto &answer : answers) output.push_back(answer);
     return output;
@@ -252,7 +254,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             relevant_sents.push_back(std::make_tuple(score,scores, sent));
         }
     });
-    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs);
+    auto max_clip_len = sent_json["max_clip_len"].get<int64_t>();
+    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs, max_clip_len);
     return answer;
 }
 
@@ -264,27 +267,53 @@ struct QueryResultBuilder{
     json_t answer;
 };
 
-auto get_clip_offset = [](auto &scores, auto const &tokens, auto len_max){
+auto get_clip_offset = [](Sentence sent,
+                          auto &scores, auto const &tokens, auto max_clip_len){
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
-    auto clip_beg = tokens.word_beg(pair.first);
-    auto clip_end = tokens.word_end(pair.first);
-    auto max_len = typename decltype(clip_beg)::val_t{len_max};
+    auto i_word_beg = pair.first;
+    auto i_word_end = pair.first;
+    CharOffset clip_beg = tokens.word_beg(i_word_beg);
+    CharOffset clip_end = tokens.word_end(i_word_end);
+    auto len_sent = tokens.word_end(sent.end).val - tokens.word_beg(sent.beg).val;
+    max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
+    auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
+
+    int i_trial=0;
     for(auto pair : scores){
         auto idx = pair.first;
         auto score = pair.second;
         auto beg = tokens.word_beg(idx);
         auto end = tokens.word_end(idx);
-        if(beg<clip_beg && clip_end < beg+max_len ) clip_beg = beg;
-        if(end>clip_end && end < clip_beg+max_len ) clip_end = end;
+        if(beg<clip_beg && clip_end < beg+max_len ) {
+            clip_beg = beg;
+            i_word_beg = idx;
+        } else if(end>clip_end && end < clip_beg+max_len ) {
+            clip_end = end;
+            i_word_end = idx;
+        }
 //        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
     }
+    auto len = clip_end.val-clip_beg.val;
+    while(max_len-len>0) {
+        if(i_word_beg>sent.beg) {
+            --i_word_beg;
+            clip_beg = tokens.word_beg(i_word_beg);
+        }
+        if(i_word_end<sent.end){
+            ++i_word_end;
+            clip_end = tokens.word_end(i_word_end);
+        }
+        len = clip_end.val-clip_beg.val;
+        if(i_word_beg==sent.beg && i_word_end==sent.end) break;
+    }
+
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
     return std::make_pair(clip_beg, clip_end);
 };
 
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t relevant_sents,
-        std::vector<std::string> const &words, std::vector<val_t> const &cutoffs) const{
+        std::vector<std::string> const &words, std::vector<val_t> const &cutoffs, int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
     for(size_t i=0; i<words.size(); ++i) {
         fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
@@ -303,7 +332,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         auto const &tuple = *it;
         auto score = std::get<0>(tuple);
         auto scores = std::get<1>(tuple);
-        auto clip_offset = get_clip_offset(scores, tokens, 100);
         auto sent = std::get<2>(tuple);
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
@@ -319,12 +347,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(col_uid.val);
-        auto beg = tokens.word_beg(sent.beg).val;
-        auto end = tokens.word_end(--sent.end).val;
-        answer["result_offset"].push_back({beg,end});
+        auto beg = tokens.word_beg(sent.beg);
+        auto end = tokens.word_end(--sent.end);
+        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
+        answer["result_offset"].push_back({beg.val,end.val});
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
-        answer["highlight_offset"].push_back({beg+10, beg+60<end?beg+60:end});
+        answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
         answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
         answer["words"] = words; //TODO: removable?
     }

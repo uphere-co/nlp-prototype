@@ -29,6 +29,8 @@ import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLe
 import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Map                            as M
 import           Data.Maybe                                (maybeToList)
+import           Data.Scientific
+
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
@@ -104,8 +106,7 @@ runCoreNLP body = do
         o@(Object c) <- A.maybeResult (A.parse json r_bstr)
         NLPResult ss <- decodeStrict' r_bstr
         let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
- 
-        return $ Object (HM.insert "queries" (Array (V.fromList queries)) c)
+        return . Object . HM.insert "max_clip_len" (toJSON (200 :: Int)) . HM.insert "queries" (Array (V.fromList queries)) $ c
   print c'
   (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c' -- r_bstr
   
