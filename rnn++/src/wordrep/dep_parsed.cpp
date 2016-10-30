@@ -128,6 +128,7 @@ void DepParsedTokens::build_sent_uid(){
     auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
+    if(it==end) return;
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
     SentUID current_uid{};
