@@ -195,6 +195,8 @@ deduplicate_results(tbb::concurrent_vector<std::tuple<DepSimilaritySearch::val_t
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
+    json_t output{};
+    if (ask.find("sentences") == ask.end() || ask.find("max_clip_len") == ask.end()) return output;
     DepParsedTokens query_tokens{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_sent_uid();
@@ -221,7 +223,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         });
     }
     g.wait();
-    json_t output{};
     for(auto &answer : answers) output.push_back(answer);
     return output;
 }
