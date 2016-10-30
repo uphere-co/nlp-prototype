@@ -113,12 +113,20 @@ runCoreNLP body = do
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
 queryWorker sc q = do
   liftIO $ print q
-  liftIO $ TIO.putStrLn (head (querySentences q))
-  bstr <- (liftIO . runCoreNLP . TE.encodeUtf8 . head . querySentences) q
-  bstr' <- liftIO $ B.useAsCString bstr $ 
-    json_create >=> query >=> json_serialize >=> unsafePackCString
-  liftIO $ B.putStrLn bstr'
-  sendChan sc (BL.fromStrict bstr')
+  let failed =encode Null
+      ss = querySentences q
+  case ss of
+    (s:_) -> do
+      if (not . T.null) s
+        then do
+          bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
+          bstr' <- liftIO $ B.useAsCString bstr $ 
+            json_create >=> query >=> json_serialize >=> unsafePackCString
+          liftIO $ B.putStrLn bstr'
+          sendChan sc (BL.fromStrict bstr')
+        else 
+          sendChan sc failed 
+    [] -> sendChan sc failed
   
 simpleHttpClient :: Bool -> Method -> String -> Maybe ByteString -> IO BL.ByteString
 simpleHttpClient isurlenc mth url mbstr = do
