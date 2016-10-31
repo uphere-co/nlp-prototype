@@ -64,6 +64,7 @@ public:
     }
 
     const dist_cache_t& distances(VocaIndex widx) const {return distance_caches[widx];}
+    const dist_cache_t& distances(WordPosition i) const {return distance_caches[idxs[i.val]];}
     val_t& get_distance(WordPosition i, VocaIndex widx2) { return distance_caches[idxs[i.val]][widx2];}
     val_t get_distance(WordPosition i, VocaIndex widx2) const { return distance_caches[idxs[i.val]][widx2];}
 private:
@@ -75,8 +76,10 @@ private:
 class DepParsedQuery{
 public:
     using val_t = BoWVQuery2::val_t;
-    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent)
-    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len){
+    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent,
+                   BoWVQuery2 const &similarity)
+    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len),
+      dists{} {
         for(auto const&x : sent["basicDependencies"]) {
             auto i = x["dependent"].get<int64_t>() - 1;
             words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
@@ -105,9 +108,11 @@ public:
         cut = *it * 0.21;
         cut2 = *it * 0.35;
         cut3 = *it * 0.5;
+
+        for(decltype(len)i=0; i!=len; ++i) dists.push_back(&similarity.distances(WordPosition{i}));
     }
 
-    auto get_scores(Sentence const &sent, BoWVQuery2 const &similarity) const {
+    auto get_scores(Sentence const &sent) const {
         auto beg=sent.beg;
         auto end=sent.end;
         val_t total_score{0.0};
@@ -120,7 +125,7 @@ public:
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
                 auto head_word = sent.tokens->head_word(i);
-                auto dependent_score = similarity.get_distance(WordPosition{j},word);
+                auto dependent_score = (*dists[j])[word];
                 if(heads_pidx[j].val<0) {
                     auto tmp = cutoff[j] * dependent_score;
                     if(tmp>score){
@@ -128,7 +133,7 @@ public:
                         scores[j] = {i, score};
                     }
                 } else {
-                    auto governor_score = similarity.get_distance(heads_pidx[j], head_word);
+                    auto governor_score = (*dists[heads_pidx[j].val])[head_word];
                     auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
                     if(tmp>score){
                         score = tmp;
@@ -165,6 +170,7 @@ private:
     val_t cut;
     val_t cut2;
     val_t cut3;
+    std::vector<BoWVQuery2::dist_cache_t const*> dists;
 };
 
 
@@ -261,10 +267,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     }
     timer.here_then_reset("Get cutoffs");
 
-    DepParsedQuery query{cutoffs, sent_json};
-    timer.here_then_reset("Query was built.");
     BoWVQuery2 similarity{vidxs, voca};
     timer.here_then_reset("Built Similarity caches.");
+    DepParsedQuery query{cutoffs, sent_json, similarity};
+    timer.here_then_reset("Query was built.");
 
     using scores_t = std::vector<std::pair<DPTokenIndex, val_t>>;
     tbb::concurrent_vector<std::tuple<val_t, scores_t, Sentence>> relevant_sents{};
@@ -272,7 +278,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
     //for(auto sent: sents) {
-        auto scores = query.get_scores(sent, similarity);
+        auto scores = query.get_scores(sent);
         val_t score{0.0};
         for(auto pair : scores) score += pair.second;
         if ( score > query.n_words()*0.2) {
