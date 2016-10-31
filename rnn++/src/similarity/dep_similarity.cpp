@@ -64,7 +64,6 @@ public:
     }
 
     const dist_cache_t& distances(VocaIndex widx) const {return distance_caches[widx];}
-    const dist_cache_t& distances(WordPosition i) const {return distance_caches[idxs[i.val]];}
     val_t& get_distance(WordPosition i, VocaIndex widx2) { return distance_caches[idxs[i.val]][widx2];}
     val_t get_distance(WordPosition i, VocaIndex widx2) const { return distance_caches[idxs[i.val]][widx2];}
 private:
@@ -76,18 +75,8 @@ private:
 class DepParsedQuery{
 public:
     using val_t = BoWVQuery2::val_t;
-    DepParsedQuery(std::vector<val_t> const &cutoff, nlohmann::json const &sent,
-                   BoWVQuery2 const &similarity)
-    : len{cutoff.size()}, cutoff{cutoff}, words_pidx(len), heads_pidx(len), arc_labels(len),
-      dists{} {
-        for(auto const&x : sent["basicDependencies"]) {
-            auto i = x["dependent"].get<int64_t>() - 1;
-            words_pidx[i] = WordPosition{x["dependent"].get<WordPosition::val_t>()-1};
-            heads_pidx[i] = WordPosition{x["governor"].get<WordPosition::val_t>()-1};
-            //TODO: fix it.
-            arc_labels[i]= ArcLabelUID{int64_t{0}};//x["dep"];
-        }
-
+    DepParsedQuery(std::vector<val_t> const &cutoff, Sentence query_sent, BoWVQuery2 const &similarity)
+    : len{cutoff.size()}, cutoff{cutoff}, query_sent{query_sent}, dists{} {
         for(decltype(len) i=0; i!=len; ++i) sorted_idxs.push_back({cutoff[i],i});
         std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
         val_t sum=0.0;
@@ -109,7 +98,8 @@ public:
         cut2 = *it * 0.35;
         cut3 = *it * 0.5;
 
-        for(decltype(len)i=0; i!=len; ++i) dists.push_back(&similarity.distances(WordPosition{i}));
+        for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx)
+            dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
     }
 
     auto get_scores(Sentence const &sent) const {
@@ -117,24 +107,27 @@ public:
         auto end=sent.end;
         val_t total_score{0.0};
         std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
-
         auto i_trial{0};
         for(auto pair: sorted_idxs){
             auto j = pair.second;
+            DPTokenIndex tidx = query_sent.beg + j;
             val_t score{0.0};
+            assert(query_sent.tokens->words_pidx[tidx.val].val==j);
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
                 auto head_word = sent.tokens->head_word(i);
                 auto dependent_score = (*dists[j])[word];
-                if(heads_pidx[j].val<0) {
+                auto head_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
+                auto j_head = query_sent.beg + head_pidx;
+                if(head_pidx<0) {
                     auto tmp = cutoff[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
                     }
                 } else {
-                    auto governor_score = (*dists[heads_pidx[j].val])[head_word];
-                    auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*get_cutoff(heads_pidx[j]);
+                    auto governor_score = (*dists[head_pidx])[head_word];
+                    auto tmp = cutoff[j] * dependent_score * (1 + governor_score)*cutoff[head_pidx];
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
@@ -154,15 +147,12 @@ public:
         }
         return scores;
     }
-    val_t get_cutoff (WordPosition idx) const {return cutoff[idx.val];}
     std::size_t n_words() const {return len;}
 
 private:
     std::size_t len;
     std::vector<val_t> cutoff;
-    std::vector<WordPosition> words_pidx;
-    std::vector<WordPosition> heads_pidx;
-    std::vector<ArcLabelUID> arc_labels;
+    Sentence query_sent;
     std::vector<std::pair<val_t,decltype(len)>> sorted_idxs; //Descending order of cutoff.
     std::ptrdiff_t n_cut;
     std::ptrdiff_t n_cut2;
@@ -225,6 +215,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     if (ask.find("sentences") == ask.end() || ask.find("max_clip_len") == ask.end()) return output;
     DepParsedTokens query_tokens{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.build_voca_index(voca.indexmap);
     query_tokens.build_sent_uid();
     auto query_sents = query_tokens.IndexSentences();
     auto n_queries = ask["sentences"].size();
@@ -241,8 +232,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
         if(query_sent.beg==query_sent.end) continue;
         auto query_sent_beg = query_tokens.word_beg(query_sent.beg).val;
         auto query_sent_end = query_tokens.word_end(query_sent.end-1).val;
-        g.run([&answers,&sent_json,max_clip_len, query_sent_beg,query_sent_end, query_str,this](){
-            json_t answer = this->process_query(sent_json);
+        g.run([&answers,&sent_json,max_clip_len, query_sent,query_sent_beg,query_sent_end, query_str,this](){
+            json_t answer = this->process_query_sent(query_sent);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answers.push_back(answer);
@@ -253,23 +244,24 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     return output;
 }
 
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
+DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sent(Sentence query_sent) const {
     util::Timer timer{};
-    std::vector<std::string> words = get_words(sent_json);
     std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
-    for(auto const &word : words) {
-        auto wuid = wordUIDs[word];
+    std::vector<std::string> words;
+    for(auto idx = query_sent.beg; idx!=query_sent.end; ++idx) {
+        auto wuid = query_sent.tokens->word_uid(idx);
+        auto word = wordUIDs[wuid];
+        words.push_back(word);
         cutoffs.push_back(word_cutoff.cutoff(wuid));
         auto vuid = voca.indexmap[wuid];
         if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
         vidxs.push_back(vuid);
     }
     timer.here_then_reset("Get cutoffs");
-
     BoWVQuery2 similarity{vidxs, voca};
     timer.here_then_reset("Built Similarity caches.");
-    DepParsedQuery query{cutoffs, sent_json, similarity};
+    DepParsedQuery query{cutoffs, query_sent, similarity};
     timer.here_then_reset("Query was built.");
 
     using scores_t = std::vector<std::pair<DPTokenIndex, val_t>>;
@@ -285,8 +277,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
             relevant_sents.push_back(std::make_tuple(score,scores, sent));
         }
     });
-    auto max_clip_len = sent_json["max_clip_len"].get<int64_t>();
-    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs, max_clip_len);
+    //auto max_clip_len = sent_json["max_clip_len"].get<int64_t>();
+    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs, 200);
     timer.here_then_reset("Query answered.");
     return answer;
 }

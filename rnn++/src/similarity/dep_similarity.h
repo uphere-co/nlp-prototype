@@ -32,9 +32,8 @@ struct DepSimilaritySearch {
     using scored_sents_t = std::vector<std::tuple<val_t, std::vector<std::pair<wordrep::DPTokenIndex, val_t>>, wordrep::Sentence>>;
     DepSimilaritySearch(json_t const& config);
 
-    json_t process_query(json_t query) const;
+    json_t process_query_sent(wordrep::Sentence query_sent) const;
     json_t process_queries(json_t ask) const;
-    json_t process_queries_2(json_t ask) const;
     json_t write_output(scored_sents_t relevant_sents, std::vector<std::string> const &words,
                         std::vector<val_t> const &cutoff, int64_t max_clip_len) const;
 
