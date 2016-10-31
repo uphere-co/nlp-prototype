@@ -165,14 +165,6 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
 
-std::vector<std::string> get_words(nlohmann::json const &sent_json){
-    std::vector<std::string> words;
-    for(auto const &x : sent_json["basicDependencies"])
-        words.push_back(x["dependentGloss"].get<std::string>());
-    return words;
-}
-
-
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     json_t output{};
     if (ask.find("sentences") == ask.end() || ask.find("max_clip_len") == ask.end()) return output;
@@ -341,7 +333,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
             return ss.str();
         };
         answer["result_DEBUG"].push_back(sent_to_str(sent));
-        answer["result_sent_uid_DEBUG"].push_back(sent.uid.val);
+        answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_id.val);
         answer["result_column_uid"].push_back(col_uid.val);
