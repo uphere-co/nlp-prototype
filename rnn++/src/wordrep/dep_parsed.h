@@ -36,13 +36,14 @@ struct RawTexts{
     std::vector<std::string> lines;
 };
 
+struct DepParsedTokens; //forward declaration.
 struct Sentence{
-    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
-            : uid{uid}, beg{beg}, end{end} {
-    }
+    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
+            : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
     SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;
+    DepParsedTokens const *tokens;
 };
 
 struct DepParsedTokens{

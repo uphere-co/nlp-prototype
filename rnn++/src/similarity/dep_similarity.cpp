@@ -86,8 +86,7 @@ public:
         cut3 = *it * 0.5;
     }
 
-    auto get_scores(Sentence const &sent, DepParsedTokens const &data_tokens,
-                    BoWVQuery2 const &similarity) const {
+    auto get_scores(Sentence const &sent, BoWVQuery2 const &similarity) const {
         auto beg=sent.beg;
         auto end=sent.end;
         val_t total_score{0.0};
@@ -98,8 +97,8 @@ public:
             auto j = pair.second;
             val_t score{0.0};
             for(auto i=beg; i!=end; ++i) {
-                auto word = data_tokens.word(i);
-                auto head_word = data_tokens.head_word(i);
+                auto word = sent.tokens->word(i);
+                auto head_word = sent.tokens->head_word(i);
                 auto dependent_score = similarity.get_distance(WordPosition{j},word);
                 if(heads_pidx[j].val<0) {
                     auto tmp = cutoff[j] * dependent_score;
@@ -203,7 +202,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     auto query_sents = query_tokens.IndexSentences();
     auto n_queries = ask["sentences"].size();
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-    fmt::print("max_clip_len = {}\n", max_clip_len);
+
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     assert(query_sents.size()==n_queries);
@@ -248,7 +247,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
     //for(auto sent: sents) {
-        auto scores = query.get_scores(sent, tokens, similarity);
+        auto scores = query.get_scores(sent, similarity);
         val_t score{0.0};
         for(auto pair : scores) score += pair.second;
         if ( score > query.n_words()*0.2) {
