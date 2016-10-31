@@ -25,6 +25,36 @@ struct VocaInfo{
 
 namespace engine {
 
+template<typename TV>
+struct DistanceCache{
+    DistanceCache() : val{} {}
+    DistanceCache(std::size_t n) : val(n) {}
+    DistanceCache(std::vector<TV> const &distances)
+    : val{distances} {}
+    DistanceCache& operator=(DistanceCache const &obj){
+        val = std::move(obj.val);
+        return *this;
+    }
+    TV& operator[](wordrep::VocaIndex vidx) {return val[vidx.val];}
+    TV operator[](wordrep::VocaIndex vidx) const {return val[vidx.val];}
+    std::vector<TV> val;
+};
+class WordSimCache{
+public:
+    using voca_info_t  = wordrep::VocaInfo;
+    using word_block_t = voca_info_t::voca_vecs_t;
+    using val_t        = word_block_t::val_t;
+    using dist_cache_t = DistanceCache<val_t>;
+
+    WordSimCache() {}
+    void cache(std::vector<wordrep::VocaIndex> const &words, voca_info_t const &voca);
+    const dist_cache_t& distances(wordrep::VocaIndex widx) const {return distance_caches[widx];}
+    dist_cache_t& distances(wordrep::VocaIndex widx) {return distance_caches[widx];}
+private:
+    mutable std::map<wordrep::VocaIndex,dist_cache_t> distance_caches;
+};
+
+
 struct DepSimilaritySearch {
     using json_t = nlohmann::json;
     using voca_info_t = wordrep::VocaInfo;
@@ -46,6 +76,7 @@ struct DepSimilaritySearch {
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdump texts;
     wordrep::ygp::YGPindexer ygp_indexer;
+    mutable WordSimCache dists_cache{};
 };
 
 }//namespace engine
