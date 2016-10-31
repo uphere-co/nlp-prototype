@@ -214,8 +214,8 @@ int main(int /*argc*/, char** argv){
 //    return 0;
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
-    auto query_json = corenlp_client.from_query_content(input);
-//    auto query_json = corenlp_client.from_query_file(input);
+//    auto query_json = corenlp_client.from_query_content(input);
+    auto query_json = corenlp_client.from_query_file(input);
 
     util::Timer timer{};
     DepSimilaritySearch engine{config};

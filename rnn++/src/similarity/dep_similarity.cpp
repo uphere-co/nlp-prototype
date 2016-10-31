@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <map>
+#include <utils/profiling.h>
 
 #include "similarity/dep_similarity.h"
 
@@ -8,6 +9,7 @@
 #include "fmt/printf.h"
 
 #include "utils/parallel.h"
+#include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
 #include "utils/hdf5.h"
@@ -18,19 +20,37 @@ using namespace util::io;
 
 namespace {
 //TODO: merge this with BoWQuery.
+
+template<typename TV>
+struct DistanceCache{
+    DistanceCache() : val{} {}
+    DistanceCache(std::size_t n) : val(n) {}
+    DistanceCache(std::vector<TV> const &distances)
+            : val{distances} {}
+    DistanceCache& operator=(DistanceCache const &obj){
+        val = std::move(obj.val);
+        return *this;
+    }
+    TV& operator[](VocaIndex vidx) {return val[vidx.val];}
+    TV operator[](VocaIndex vidx) const {return val[vidx.val];}
+    std::vector<TV> val;
+};
 class BoWVQuery2{
 public:
     using voca_info_t  = wordrep::VocaInfo;
     using word_block_t = voca_info_t::voca_vecs_t;
     using val_t        = word_block_t::val_t;
+    using dist_cache_t = DistanceCache<val_t>;
 
     BoWVQuery2(std::vector<VocaIndex> const &words,
                voca_info_t const &voca)
-    : idxs{words}, distances(idxs.size())
+    : idxs{words}
     {
         auto n= voca.wvecs.size();
         auto n_queries=idxs.size();
-        for(auto& v: distances) v.resize(n);
+        //for(auto& v: distances) v.resize(n);
+        for(auto vidx : idxs) distance_caches[vidx] = dist_cache_t{n};
+
         tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
                           [&](tbb::blocked_range<decltype(n)> const &r){
                               for(decltype(n) i=r.begin(); i!=r.end(); ++i){
@@ -43,11 +63,12 @@ public:
                           });
     }
 
-    val_t& get_distance(WordPosition i, VocaIndex widx) { return distances[i.val][widx.val];}
-    val_t get_distance(WordPosition i, VocaIndex widx) const { return distances[i.val][widx.val];}
+    const dist_cache_t& distances(VocaIndex widx) const {return distance_caches[widx];}
+    val_t& get_distance(WordPosition i, VocaIndex widx2) { return distance_caches[idxs[i.val]][widx2];}
+    val_t get_distance(WordPosition i, VocaIndex widx2) const { return distance_caches[idxs[i.val]][widx2];}
 private:
     std::vector<VocaIndex> idxs;
-    std::vector<std::vector<val_t>> distances;
+    mutable std::map<VocaIndex,dist_cache_t> distance_caches;
 };
 
 //TODO: remove code duplication for parsing CoreNLP outputs
@@ -227,6 +248,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json) const {
+    util::Timer timer{};
     std::vector<std::string> words = get_words(sent_json);
     std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
@@ -237,9 +259,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
         if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
         vidxs.push_back(vuid);
     }
+    timer.here_then_reset("Get cutoffs");
 
     DepParsedQuery query{cutoffs, sent_json};
+    timer.here_then_reset("Query was built.");
     BoWVQuery2 similarity{vidxs, voca};
+    timer.here_then_reset("Built Similarity caches.");
 
     using scores_t = std::vector<std::pair<DPTokenIndex, val_t>>;
     tbb::concurrent_vector<std::tuple<val_t, scores_t, Sentence>> relevant_sents{};
@@ -256,6 +281,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t sent_json)
     });
     auto max_clip_len = sent_json["max_clip_len"].get<int64_t>();
     auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs, max_clip_len);
+    timer.here_then_reset("Query answered.");
     return answer;
 }
 
