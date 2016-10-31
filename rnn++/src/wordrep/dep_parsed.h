@@ -36,13 +36,14 @@ struct RawTexts{
     std::vector<std::string> lines;
 };
 
+struct DepParsedTokens; //forward declaration.
 struct Sentence{
-    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end)
-            : uid{uid}, beg{beg}, end{end} {
-    }
+    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
+            : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
     SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;
+    DepParsedTokens const *tokens;
 };
 
 struct DepParsedTokens{
@@ -55,6 +56,7 @@ struct DepParsedTokens{
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
+    void build_voca_index(VocaIndexMap const &voca);
     void build_sent_uid();
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}

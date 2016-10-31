@@ -69,6 +69,11 @@ IntegerLike<T,VAL> operator--(IntegerLike<T,VAL> &x, int ){ // post increment
     return t;
 }
 
+template<typename T, int64_t VAL>
+int64_t diff(IntegerLike<T,VAL> lhs, IntegerLike<T,VAL> rhs) {
+    return lhs.val-rhs.val;
+}
+
 template<typename T>
 std::vector<T> deserialize(std::vector<typename T::val_t> const& raw){
     std::vector<T> uids;

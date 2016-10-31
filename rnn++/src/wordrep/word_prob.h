@@ -18,11 +18,11 @@ struct WordImportance{
         return ratios[uid.val];
     }
     val_t cutoff(WordUID uid) const {
-        auto factor = ratio(uid)+0.001;
-        factor = factor<1.0? 1.0: factor;
-        return 0.9*(1- 1/(factor));
+        if(uid.val<0) return 0.0;
+        return cutoffs[uid.val];
     }
     std::vector<val_t> ratios;
+    std::vector<val_t> cutoffs;
 };
 
 }//namespace wordrep
