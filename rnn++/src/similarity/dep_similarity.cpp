@@ -23,7 +23,7 @@ namespace engine {
 void WordSimCache::cache(std::vector<VocaIndex> const &words, voca_info_t const &voca) {
     auto n= voca.wvecs.size();
     std::vector<VocaIndex> words_to_cache;
-    std::vector<WordSimCache::dist_cache_t*> dists;
+    std::vector<dist_cache_t*> dists;
     for(auto vidx : words) {
         if(distance_caches.find(vidx) == distance_caches.end()) {
             distance_caches[vidx] = dist_cache_t{n};
@@ -172,19 +172,6 @@ std::vector<std::string> get_words(nlohmann::json const &sent_json){
     return words;
 }
 
-std::vector<std::tuple<DepSimilaritySearch::val_t, std::vector<std::pair<DPTokenIndex, DepSimilaritySearch::val_t>>, Sentence>>
-deduplicate_results(tbb::concurrent_vector<std::tuple<DepSimilaritySearch::val_t, std::vector<std::pair<DPTokenIndex, DepSimilaritySearch::val_t>>, Sentence>> const &relevant_sents){
-    using val_t = DepSimilaritySearch::val_t;
-    std::map<val_t, bool> is_seen{};
-    std::vector<std::tuple<val_t, std::vector<std::pair<DPTokenIndex, val_t>>, Sentence>> dedup_sents;
-    for(auto tuple : relevant_sents){
-        auto score = std::get<0>(tuple);
-        if(is_seen.find(score)!=is_seen.cend()) continue;
-        is_seen[score] = true;
-        dedup_sents.push_back(tuple);
-    }
-    return dedup_sents;
-}
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
     json_t output{};
@@ -202,14 +189,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     assert(query_sents.size()==n_queries);
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         std::string query_str = ask["queries"][i];
-        json_t& sent_json = ask["sentences"][i];
-        sent_json["max_clip_len"] = max_clip_len;
         auto query_sent = query_sents[i];
         if(query_sent.beg==query_sent.end) continue;
         auto query_sent_beg = query_tokens.word_beg(query_sent.beg).val;
         auto query_sent_end = query_tokens.word_end(query_sent.end-1).val;
-        g.run([&answers,&sent_json,max_clip_len, query_sent,query_sent_beg,query_sent_end, query_str,this](){
-            json_t answer = this->process_query_sent(query_sent);
+        g.run([&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end, query_str,this](){
+            auto relevant_sents = this->process_query_sent(query_sent);
+            auto answer = write_output(relevant_sents, max_clip_len);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answers.push_back(answer);
@@ -220,7 +206,22 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     return output;
 }
 
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sent(Sentence query_sent) const {
+
+std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
+    using val_t = ScoredSentence::val_t;
+    std::map<val_t, bool> is_seen{};
+    std::vector<ScoredSentence> dedup_sents;
+    for(auto const &sent : relevant_sents){
+        auto score = sent.score;
+        if(is_seen.find(score)!=is_seen.cend()) continue;
+        is_seen[score] = true;
+        dedup_sents.push_back(sent);
+    }
+    return dedup_sents;
+}
+
+
+std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent) const {
     util::Timer timer{};
     std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
@@ -240,23 +241,19 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sent(Sentence que
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
     timer.here_then_reset("Query was built.");
 
-    using scores_t = std::vector<std::pair<DPTokenIndex, val_t>>;
-    tbb::concurrent_vector<std::tuple<val_t, scores_t, Sentence>> relevant_sents{};
+
+    tbb::concurrent_vector<ScoredSentence> relevant_sents{};
     auto n = sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
-    //for(auto sent: sents) {
         auto scores = query.get_scores(sent);
-        val_t score{0.0};
-        for(auto pair : scores) score += pair.second;
-        if ( score > query.n_words()*0.2) {
-            relevant_sents.push_back(std::make_tuple(score,scores, sent));
+        ScoredSentence scored_sent{sent, scores};
+        if ( scored_sent.score > query.n_words()*0.2) {
+            relevant_sents.push_back(scored_sent);
         }
     });
-    //auto max_clip_len = sent_json["max_clip_len"].get<int64_t>();
-    auto answer = write_output(deduplicate_results(relevant_sents), words, cutoffs, 200);
     timer.here_then_reset("Query answered.");
-    return answer;
+    return deduplicate_results(relevant_sents);
 }
 
 
@@ -312,27 +309,27 @@ auto get_clip_offset = [](Sentence sent,
     return std::make_pair(clip_beg, clip_end);
 };
 
-DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t relevant_sents,
-        std::vector<std::string> const &words, std::vector<val_t> const &cutoffs, int64_t max_clip_len) const{
+DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
+                                                              int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
-    for(size_t i=0; i<words.size(); ++i) {
-        fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
-                   voca.indexmap[wordUIDs[words[i]]].val, cutoffs[i]);
-    }
+//    for(size_t i=0; i<words.size(); ++i) {
+//        fmt::print("{:<10} {:6}.uid {:6}.vocaindex : {}\n", words[i], wordUIDs[words[i]].val,
+//                   voca.indexmap[wordUIDs[words[i]]].val, cutoffs[i]);
+//    }
     json_t answer{};
     if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;
     auto rank_cut = relevant_sents.begin()+n_max_result;
     std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
-                      [](auto const &x, auto const &y){return std::get<0>(x)>std::get<0>(y);});
-    auto score_cutoff = 0.5*std::get<0>(relevant_sents[0]);
+                      [](auto const &x, auto const &y){return x.score > y.score;});
+    auto score_cutoff = 0.5*relevant_sents[0].score;
     rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
-                                [score_cutoff](auto const &x){return std::get<0>(x)>score_cutoff;});
+                                [score_cutoff](auto const &x){return x.score>score_cutoff;});
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
-        auto const &tuple = *it;
-        auto score = std::get<0>(tuple);
-        auto scores = std::get<1>(tuple);
-        auto sent = std::get<2>(tuple);
+        auto const &scored_sent = *it;
+        auto score = scored_sent.score;
+        auto scores = scored_sent.scores;
+        auto sent = scored_sent.sent;
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
@@ -355,8 +352,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(scored_sents_t rel
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
-        answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
-        answer["words"] = words; //TODO: removable?
+//        answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
+//        answer["words"] = words; //TODO: removable?
     }
     return answer;
 
