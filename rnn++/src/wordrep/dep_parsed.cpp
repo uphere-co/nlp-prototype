@@ -21,11 +21,11 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 : sents_uid{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
   chunks_idx{deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))},
   sents_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
-  words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
   words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
+  words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
   words_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
-  heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
   head_words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head"}))},
+  heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
   heads_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
   words_beg{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_beg"}))},
   words_end{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_end"}))},
@@ -52,6 +52,7 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
 }
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
     for(auto uid:words_uid) words.push_back(voca[uid]);
+    for(auto uid:heads_uid) head_words.push_back(voca[uid]);
 }
 std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     auto beg=sents_uid.cbegin();

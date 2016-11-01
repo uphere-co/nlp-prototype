@@ -22,6 +22,7 @@ namespace engine {
 
 void WordSimCache::cache(std::vector<VocaIndex> const &words, voca_info_t const &voca) {
     auto n= voca.wvecs.size();
+    distance_caches[VocaIndex{}] = dist_cache_t{n};//For unknown word
     std::vector<VocaIndex> words_to_cache;
     std::vector<dist_cache_t*> dists;
     for(auto vidx : words) {
@@ -86,7 +87,9 @@ public:
         val_t total_score{0.0};
         std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
         auto i_trial{0};
+
         for(auto pair: sorted_idxs){
+            ++i_trial;
             DPTokenIndex tidx = pair.second;
             auto j = diff(tidx, query_sent.beg);
             val_t score{0.0};
@@ -96,18 +99,17 @@ public:
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
-                auto head_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
-                if(cutoffs[head_pidx]<0.4) continue;
-                if(head_pidx<0) {
+                auto qhead_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
+                if(cutoffs[qhead_pidx]<0.4) continue;
+                if(qhead_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
                     }
                 } else {
-                    auto governor_score = (*dists[head_pidx])[head_word];
-                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[head_pidx]);
-                    //auto tmp = cutoffs[j] * dependent_score * (1 + governor_score)*cutoffs[head_pidx];//more early stopping friendly scoring
+                    auto governor_score = (*dists[qhead_pidx])[head_word];
+                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
@@ -116,7 +118,7 @@ public:
             }
 
             total_score += score;
-            if(++i_trial==n_cut){
+            if(i_trial==n_cut){
                 if(total_score <cut) return scores;
             }
             else if(i_trial==n_cut2){
@@ -166,25 +168,22 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     query_tokens.build_sent_uid();
-//    auto query_sents = query_tokens.IndexSentences();
-    std::vector<Sentence> query_sents{};
-    std::vector<std::string> query_strs{};
-    auto sent_to_str=[&](auto &sent){
-        std::stringstream ss;
-        for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
-        return ss.str();
-    };
-    std::vector<int> query_uids{110};//TODO: Fix segfaults 6411,51531,258451,491959,210796};
-    for(auto uid : query_uids){
-        auto sent = sents[uid];
-        query_sents.push_back(sent);
-        query_strs.push_back(sent_to_str(sent));
-    }
-//    fmt::print("input: {}\n", sent_to_str(sents[6411]));
-//    query_sents.push_back(sents[51531]);
-//    query_strs.push_back(sent_to_str(sents[51531]));
+//    std::vector<Sentence> query_sents{};
 //    std::vector<std::string> query_strs{};
-//    for(auto x : ask["queries"]) query_strs.push_back(x);
+//    auto sent_to_str=[&](auto &sent){
+//        std::stringstream ss;
+//        for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
+//        return ss.str();
+//    };
+//    std::vector<int> query_uids{6411};//TODO: Fix segfaults 6411,51531,258451,491959,210796};
+//    for(auto uid : query_uids){
+//        auto sent = sents[uid];
+//        query_sents.push_back(sent);
+//        query_strs.push_back(sent_to_str(sent));
+//    }
+    auto query_sents = query_tokens.IndexSentences();
+    std::vector<std::string> query_strs{};
+    for(auto x : ask["queries"]) query_strs.push_back(x);
     return process_query_sents(query_sents, query_strs);
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -232,6 +231,15 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
 
 
 std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent) const {
+    for(auto i=query_sent.beg; i!=query_sent.end; ++i) {
+        auto wuid = query_sent.tokens->word_uid(i);
+        auto word = wordUIDs[wuid];
+        auto vidx = voca.indexmap[wuid];
+        auto cutoff = word_cutoff.cutoff(wuid);
+        std::cerr<<fmt::format("{:<15} {:6}.uid {:6}.vocaindex : {}",
+                               word, wuid.val, vidx.val, cutoff) << std::endl;
+    }
+
     util::Timer timer{};
     std::vector<val_t> cutoffs;
     std::vector<VocaIndex> vidxs;
@@ -251,28 +259,19 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
     timer.here_then_reset("Query was built.");
 
-
     tbb::concurrent_vector<ScoredSentence> relevant_sents{};
     auto n = sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if ( scored_sent.score > query.n_words()*0.2) {
+        if (scored_sent.score > query.n_words() * 0.2) {
             relevant_sents.push_back(scored_sent);
         }
     });
     timer.here_then_reset("Query answered.");
     return deduplicate_results(relevant_sents);
 }
-
-
-struct QueryResultBuilder{
-    using json_t = DepSimilaritySearch::json_t;
-    QueryResultBuilder(){}
-
-    json_t answer;
-};
 
 auto get_clip_offset = [](Sentence sent,
                           auto &scores, auto const &tokens, auto max_clip_len){
@@ -288,7 +287,7 @@ auto get_clip_offset = [](Sentence sent,
 
     for(auto pair : scores){
         auto idx = pair.first;
-        auto score = pair.second;
+        //auto score = pair.second;
         auto beg = tokens.word_beg(idx);
         auto end = tokens.word_end(idx);
         if(beg<clip_beg && clip_end < beg+max_len ) {
