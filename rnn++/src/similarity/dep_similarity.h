@@ -77,10 +77,11 @@ struct DepSimilaritySearch {
     using val_t = voca_info_t::voca_vecs_t::val_t;
     DepSimilaritySearch(json_t const& config);
 
-    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent) const;
+    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
+                                                   std::vector<val_t> const &cutoffs) const;
     json_t process_query_sents(std::vector<wordrep::Sentence> query_sents,
                                std::vector<std::string> query_strs) const;
-    json_t process_queries(json_t ask) ;
+    //json_t process_queries(json_t ask) ;
     json_t register_documents(json_t ask) ;
     json_t process_query(json_t ask) const;
     json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;

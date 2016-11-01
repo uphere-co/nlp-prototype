@@ -226,11 +226,30 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
         auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
         g.run([&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end, query_str,this](){
-            auto relevant_sents = this->process_query_sent(query_sent);
+            util::Timer timer{};
+            std::vector<val_t> cutoffs;
+            std::vector<VocaIndex> vidxs;
+            std::vector<std::string> words;
+            for(auto idx = query_sent.beg; idx!=query_sent.end; ++idx) {
+                auto wuid = query_sent.tokens->word_uid(idx);
+                auto word = wordUIDs[wuid];
+                words.push_back(word);
+                cutoffs.push_back(word_cutoff.cutoff(wuid));
+                auto vuid = voca.indexmap[wuid];
+                if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
+                vidxs.push_back(vuid);
+            }
+            timer.here_then_reset("Get cutoffs");
+            dists_cache.cache(vidxs);
+            timer.here_then_reset("Built Similarity caches.");
+            auto relevant_sents = this->process_query_sent(query_sent, cutoffs);
+            timer.here_then_reset("Query answered.");
             auto answer = write_output(relevant_sents, max_clip_len);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answer["input_uid"] = query_sent.uid.val;
+            answer["cutoffs"] = cutoffs;
+            answer["words"] = words;
             answers.push_back(answer);
         });
     }
@@ -254,7 +273,8 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
 }
 
 
-std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent) const {
+std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent,
+                                                                    std::vector<val_t> const &cutoffs) const {
     for(auto i=query_sent.beg; i!=query_sent.end; ++i) {
         auto wuid = query_sent.tokens->word_uid(i);
         auto word = wordUIDs[wuid];
@@ -264,24 +284,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
                                word, wuid.val, vidx.val, cutoff) << std::endl;
     }
 
-    util::Timer timer{};
-    std::vector<val_t> cutoffs;
-    std::vector<VocaIndex> vidxs;
-    std::vector<std::string> words;
-    for(auto idx = query_sent.beg; idx!=query_sent.end; ++idx) {
-        auto wuid = query_sent.tokens->word_uid(idx);
-        auto word = wordUIDs[wuid];
-        words.push_back(word);
-        cutoffs.push_back(word_cutoff.cutoff(wuid));
-        auto vuid = voca.indexmap[wuid];
-        if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
-        vidxs.push_back(vuid);
-    }
-    timer.here_then_reset("Get cutoffs");
-    dists_cache.cache(vidxs);
-    timer.here_then_reset("Built Similarity caches.");
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
-    timer.here_then_reset("Query was built.");
 
     tbb::concurrent_vector<ScoredSentence> relevant_sents{};
     auto n = sents.size();
@@ -293,7 +296,6 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
             relevant_sents.push_back(scored_sent);
         }
     });
-    timer.here_then_reset("Query answered.");
     return deduplicate_results(relevant_sents);
 }
 
@@ -384,8 +386,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
-//        answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
-//        answer["words"] = words; //TODO: removable?
     }
     return answer;
 
