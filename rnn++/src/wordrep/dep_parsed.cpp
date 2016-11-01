@@ -51,8 +51,15 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
     outfile.writeRawData(H5name{prefix+".arclabel_uid"},serialize(arclabels));
 }
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
-    for(auto uid:words_uid) words.push_back(voca[uid]);
-    for(auto uid:heads_uid) head_words.push_back(voca[uid]);
+    auto n = words.size();
+    for(auto it=words_uid.cbegin()+n; it!=words_uid.cend(); ++it) {
+        auto uid = *it;
+        words.push_back(voca[uid]);
+    }
+    for(auto it=heads_uid.cbegin()+n; it!=heads_uid.cend(); ++it) {
+        auto uid = *it;
+        head_words.push_back(voca[uid]);
+    }
 }
 std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     auto beg=sents_uid.cbegin();
@@ -125,9 +132,10 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
 }
 
 void DepParsedTokens::build_sent_uid(){
-    auto beg=sents_idx.cbegin();
+    auto n = sents_uid.size();
+    auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
-    auto chunk_beg=chunks_idx.cbegin();
+    auto chunk_beg=chunks_idx.cbegin()+n;
     auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
