@@ -28,7 +28,7 @@ struct SimilaritySearch{
 
     json_t static parse(const char *query) {return json_t::parse(query);}
 
-    json_t process_queries(json_t ask) const;
+    //json_t process_queries(json_t ask) const;
 
     voca_info_t::voca_vecs_t sent_vecs;
     voca_info_t::voca_t  phrase_voca;

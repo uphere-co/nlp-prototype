@@ -72,9 +72,9 @@ json_t_p query( json_t_p input )
     auto uids = engine0->register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     std::cout << uids.dump(4) << std::endl;
-    auto answer0 = engine0->process_queries(uids);
+    auto answer0 = engine0->process_query(uids);
     std::cout << answer0.dump(4) << std::endl;
-    auto answer = make_unique<json_t>( engine0->process_queries(uids)) ;
+    auto answer = make_unique<json_t>( answer0 );
     timer.here_then_reset("Query is answered.");
     return new unique_ptr_wrapper<json_t>( answer ) ;
 }
