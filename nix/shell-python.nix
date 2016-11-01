@@ -45,6 +45,7 @@ stdenv.mkDerivation {
                    doxygen graphviz
                    libcgroup 
                    redis
+                   libpqxx
                  ];
   shellHook = ''
      PS1="\n\[\033[0;34m\][\u@\h.devel:\w]\$\[\033[0m\] "
