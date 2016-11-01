@@ -80,7 +80,9 @@ struct DepSimilaritySearch {
     std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent) const;
     json_t process_query_sents(std::vector<wordrep::Sentence> query_sents,
                                std::vector<std::string> query_strs) const;
-    json_t process_queries(json_t ask) const;
+    json_t process_queries(json_t ask) ;
+    json_t register_documents(json_t ask) ;
+    json_t process_query(json_t ask) const;
     json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;
 //                        , std::vector<std::string> const &words,
 //                        std::vector<val_t> const &cutoff, int64_t max_clip_len) const;
@@ -95,6 +97,8 @@ struct DepSimilaritySearch {
     wordrep::ygp::YGPdump texts;
     wordrep::ygp::YGPindexer ygp_indexer;
     mutable WordSimCache dists_cache{voca};
+    wordrep::DepParsedTokens query_tokens{};
+
 };
 
 }//namespace engine

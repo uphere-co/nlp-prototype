@@ -161,25 +161,47 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
 
-DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) const {
+//TODO: fix it to be thread-safe
+DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t ask) {
+    if (ask.find("sentences") == ask.end()) return json_t{};
+    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.build_voca_index(voca.indexmap);
+    auto uids = query_tokens.build_sent_uid();
+    std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
+    json_t answer{};
+    for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
+    return answer;
+}
+DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const {
+    if (ask.find("sent_uids") == ask.end() || ask.find("max_clip_len") == ask.end()) return json_t{};
+    std::vector<SentUID> query_uids;
+    for(SentUID::val_t uid : ask["sent_uids"] ) query_uids.push_back(SentUID{uid});
+    std::vector<Sentence> query_sents{};
+    std::vector<std::string> query_strs{};
+    auto sent_to_str=[&](auto &sent){
+        std::stringstream ss;
+        for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[sent.tokens->word(i)]]<< " ";}
+        return ss.str();
+    };
+    //TODO: fix it to be incremental
+    auto qsents = query_tokens.IndexSentences();
+    for(auto uid : query_uids){
+        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==qsents.cend()) continue;
+        auto sent = *it;
+        query_sents.push_back(sent);
+        query_strs.push_back(sent_to_str(sent));
+    }
+    return process_query_sents(query_sents, query_strs);
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+}
+DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask)  {
     if (ask.find("sentences") == ask.end() || ask.find("max_clip_len") == ask.end()) return json_t{};
-    DepParsedTokens query_tokens{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     query_tokens.build_sent_uid();
-//    std::vector<Sentence> query_sents{};
-//    std::vector<std::string> query_strs{};
-//    auto sent_to_str=[&](auto &sent){
-//        std::stringstream ss;
-//        for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
-//        return ss.str();
-//    };
-//    std::vector<int> query_uids{6411};//TODO: Fix segfaults 6411,51531,258451,491959,210796};
-//    for(auto uid : query_uids){
-//        auto sent = sents[uid];
-//        query_sents.push_back(sent);
-//        query_strs.push_back(sent_to_str(sent));
-//    }
+
     auto query_sents = query_tokens.IndexSentences();
     std::vector<std::string> query_strs{};
     for(auto x : ask["queries"]) query_strs.push_back(x);
@@ -344,7 +366,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["score"].push_back(score);
         auto sent_to_str=[&](auto &sent){
             std::stringstream ss;
-            for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[tokens.word(i)]]<< " ";}
+            for(auto i=sent.beg; i!=sent.end; ++i) {ss <<  wordUIDs[voca.indexmap[sent.tokens->word(i)]]<< " ";}
             return ss.str();
         };
         answer["result_DEBUG"].push_back(sent_to_str(sent));

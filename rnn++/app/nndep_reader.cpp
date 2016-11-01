@@ -221,7 +221,10 @@ int main(int /*argc*/, char** argv){
     DepSimilaritySearch engine{config};
     timer.here_then_reset("Data loaded.");
 //    auto answer = engine.process_queries(query_json);
-    auto answer = engine.process_queries(query_json);
+    auto uids = engine.register_documents(query_json);
+    uids["max_clip_len"] = query_json["max_clip_len"];
+    fmt::print("{}\n", uids.dump(4));
+    auto answer = engine.process_query(uids);
     timer.here_then_reset("Queries are answered.");
     fmt::print("{}\n", answer.dump(4));
     return 0;
