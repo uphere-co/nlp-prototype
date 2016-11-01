@@ -46,12 +46,16 @@ public:
     using val_t        = word_block_t::val_t;
     using dist_cache_t = DistanceCache<val_t>;
 
-    WordSimCache() {}
-    void cache(std::vector<wordrep::VocaIndex> const &words, voca_info_t const &voca);
+    WordSimCache(voca_info_t const &voca) : voca{voca} {
+        auto n= voca.wvecs.size();
+        distance_caches[wordrep::VocaIndex{}] = dist_cache_t{n};//For unknown word
+    }
+    void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const {return distance_caches[widx];}
     dist_cache_t& distances(wordrep::VocaIndex widx) {return distance_caches[widx];}
 private:
     mutable std::map<wordrep::VocaIndex,dist_cache_t> distance_caches;
+    voca_info_t const &voca;
 };
 
 struct ScoredSentence{
@@ -90,7 +94,7 @@ struct DepSimilaritySearch {
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdump texts;
     wordrep::ygp::YGPindexer ygp_indexer;
-    mutable WordSimCache dists_cache{};
+    mutable WordSimCache dists_cache{voca};
 };
 
 }//namespace engine

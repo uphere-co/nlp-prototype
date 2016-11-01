@@ -20,9 +20,8 @@ using namespace util::io;
 
 namespace engine {
 
-void WordSimCache::cache(std::vector<VocaIndex> const &words, voca_info_t const &voca) {
+void WordSimCache::cache(std::vector<VocaIndex> const &words) {
     auto n= voca.wvecs.size();
-    distance_caches[VocaIndex{}] = dist_cache_t{n};//For unknown word
     std::vector<VocaIndex> words_to_cache;
     std::vector<dist_cache_t*> dists;
     for(auto vidx : words) {
@@ -254,7 +253,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
         vidxs.push_back(vuid);
     }
     timer.here_then_reset("Get cutoffs");
-    dists_cache.cache(vidxs, voca);
+    dists_cache.cache(vidxs);
     timer.here_then_reset("Built Similarity caches.");
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
     timer.here_then_reset("Query was built.");
