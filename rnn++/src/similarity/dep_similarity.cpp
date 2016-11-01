@@ -384,6 +384,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
+        for(auto x : scores){
+            answer["cutoffs"].push_back(0.0);
+            answer["words"].push_back("_");
+        }
 //        answer["cutoffs"] = cutoffs; //TODO : meaningless unless user can adjust these
 //        answer["words"] = words; //TODO: removable?
     }
