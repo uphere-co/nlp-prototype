@@ -70,7 +70,7 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
 
 add_executable(nndep_reader app/nndep_reader ${simple_model_parsers}
                ${similarity_files} ${wordrep_files} ${util_files})
-target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt)
+target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt pq pqxx)
 
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)

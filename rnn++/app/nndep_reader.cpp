@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include "pqxx/pqxx"
 #include "fmt/printf.h"
 #include "csv/csv.h"
 
@@ -196,7 +197,33 @@ void GenerateExtraIndexes(nlohmann::json const &config) {
     write_voca_index_col(voca, filename, prefix);
 }
 
+int psql(){
+    try
+    {
+        pqxx::connection C{"dbname=C291145_gbi_test"};
+        std::cout << "Connected to " << C.dbname() << std::endl;
+        pqxx::work W(C);
+
+        pqxx::result R = W.exec("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';");
+
+        std::cout << "Found " << R.size() << "Tables:" << std::endl;
+        for (auto row: R)
+            std::cout << row[0].c_str() << std::endl;
+
+        W.commit();
+        std::cout << "ok." << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int main(int /*argc*/, char** argv){
+    psql();
+    return 0;
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
 //    convert_h5py_to_native();
