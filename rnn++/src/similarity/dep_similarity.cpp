@@ -90,13 +90,14 @@ public:
             DPTokenIndex tidx = pair.second;
             auto j = diff(tidx, query_sent.beg);
             val_t score{0.0};
+            if(cutoffs[j]<0.4) continue;
             assert(query_sent.tokens->words_pidx[tidx.val].val==j);
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
-                auto head_word = sent.tokens->head_word(i);
                 auto dependent_score = (*dists[j])[word];
+                auto head_word = sent.tokens->head_word(i);
                 auto head_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
-                auto j_head = query_sent.beg + head_pidx;
+                if(cutoffs[head_pidx]<0.4) continue;
                 if(head_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
@@ -105,7 +106,8 @@ public:
                     }
                 } else {
                     auto governor_score = (*dists[head_pidx])[head_word];
-                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score)*cutoffs[head_pidx];
+                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[head_pidx]);
+                    //auto tmp = cutoffs[j] * dependent_score * (1 + governor_score)*cutoffs[head_pidx];//more early stopping friendly scoring
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
@@ -140,13 +142,6 @@ private:
     val_t cut2;
     val_t cut3;
     std::vector<WordSimCache::dist_cache_t const*> dists;
-};
-
-
-struct SentenceProb{
-    int get_rank_cutoff(Sentence const &sent) const {
-        return 5;
-    }
 };
 
 
@@ -190,6 +185,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
             auto answer = write_output(relevant_sents, max_clip_len);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
+            answer["input_uid"] = query_sent.uid.val;
             answers.push_back(answer);
         });
     }
@@ -268,7 +264,6 @@ auto get_clip_offset = [](Sentence sent,
     max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
     auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
 
-    int i_trial=0;
     for(auto pair : scores){
         auto idx = pair.first;
         auto score = pair.second;
