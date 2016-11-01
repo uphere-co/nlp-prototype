@@ -46,12 +46,16 @@ public:
     using val_t        = word_block_t::val_t;
     using dist_cache_t = DistanceCache<val_t>;
 
-    WordSimCache() {}
-    void cache(std::vector<wordrep::VocaIndex> const &words, voca_info_t const &voca);
+    WordSimCache(voca_info_t const &voca) : voca{voca} {
+        auto n= voca.wvecs.size();
+        distance_caches[wordrep::VocaIndex{}] = dist_cache_t{n};//For unknown word
+    }
+    void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const {return distance_caches[widx];}
     dist_cache_t& distances(wordrep::VocaIndex widx) {return distance_caches[widx];}
 private:
     mutable std::map<wordrep::VocaIndex,dist_cache_t> distance_caches;
+    voca_info_t const &voca;
 };
 
 struct ScoredSentence{
@@ -73,8 +77,13 @@ struct DepSimilaritySearch {
     using val_t = voca_info_t::voca_vecs_t::val_t;
     DepSimilaritySearch(json_t const& config);
 
-    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent) const;
-    json_t process_queries(json_t ask) const;
+    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
+                                                   std::vector<val_t> const &cutoffs) const;
+    json_t process_query_sents(std::vector<wordrep::Sentence> query_sents,
+                               std::vector<std::string> query_strs) const;
+    //json_t process_queries(json_t ask) ;
+    json_t register_documents(json_t ask) ;
+    json_t process_query(json_t ask) const;
     json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;
 //                        , std::vector<std::string> const &words,
 //                        std::vector<val_t> const &cutoff, int64_t max_clip_len) const;
@@ -88,7 +97,9 @@ struct DepSimilaritySearch {
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdump texts;
     wordrep::ygp::YGPindexer ygp_indexer;
-    mutable WordSimCache dists_cache{};
+    mutable WordSimCache dists_cache{voca};
+    wordrep::DepParsedTokens query_tokens{};
+
 };
 
 }//namespace engine

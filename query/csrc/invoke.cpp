@@ -60,7 +60,6 @@ const char* json_serialize( json_t_p p )
 void query_init( char* configfile )
 {
     config = util::load_json(configfile);
-    // engine = new SimilaritySearch(config);
     engine0 = new engine::DepSimilaritySearch(config);
     std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded."); 
@@ -68,7 +67,14 @@ void query_init( char* configfile )
 
 json_t_p query( json_t_p input )
 {
-    auto answer = make_unique<json_t>( engine0->process_queries(*(input->get()) )) ;
+    auto query_json = *(input->get());
+    std::cout << query_json.dump(4) << std::endl;
+    auto uids = engine0->register_documents(query_json);
+    uids["max_clip_len"] = query_json["max_clip_len"];
+    std::cout << uids.dump(4) << std::endl;
+    auto answer0 = engine0->process_query(uids);
+    std::cout << answer0.dump(4) << std::endl;
+    auto answer = make_unique<json_t>( answer0 );
     timer.here_then_reset("Query is answered.");
     return new unique_ptr_wrapper<json_t>( answer ) ;
 }

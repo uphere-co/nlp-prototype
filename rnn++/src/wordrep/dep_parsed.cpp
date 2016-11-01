@@ -21,11 +21,11 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 : sents_uid{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
   chunks_idx{deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))},
   sents_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
-  words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
   words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
+  words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
   words_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
-  heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
   head_words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head"}))},
+  heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
   heads_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
   words_beg{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_beg"}))},
   words_end{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_end"}))},
@@ -40,10 +40,10 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
     outfile.writeRawData(H5name{prefix+".chunk_idx"}, serialize(chunks_idx));
     outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sents_idx));
     outfile.writeRawData(H5name{prefix+".word_uid"}, serialize(words_uid));
-//    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
+    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
     outfile.writeRawData(H5name{prefix+".word_pidx"},serialize(words_pidx));
     outfile.writeRawData(H5name{prefix+".head_uid"}, serialize(heads_uid));
-//    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
+    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
     outfile.writeRawData(H5name{prefix+".head_pidx"},serialize(heads_pidx));
     outfile.writeRawData(H5name{prefix+".word_beg"},serialize(words_beg));
     outfile.writeRawData(H5name{prefix+".word_end"},serialize(words_end));
@@ -51,7 +51,15 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
     outfile.writeRawData(H5name{prefix+".arclabel_uid"},serialize(arclabels));
 }
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
-    for(auto uid:words_uid) words.push_back(voca[uid]);
+    auto n = words.size();
+    for(auto it=words_uid.cbegin()+n; it!=words_uid.cend(); ++it) {
+        auto uid = *it;
+        words.push_back(voca[uid]);
+    }
+    for(auto it=heads_uid.cbegin()+n; it!=heads_uid.cend(); ++it) {
+        auto uid = *it;
+        head_words.push_back(voca[uid]);
+    }
 }
 std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     auto beg=sents_uid.cbegin();
@@ -123,27 +131,32 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
-void DepParsedTokens::build_sent_uid(){
-    auto beg=sents_idx.cbegin();
+std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
+    auto n = sents_uid.size();
+    auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
-    auto chunk_beg=chunks_idx.cbegin();
+    auto chunk_beg=chunks_idx.cbegin()+n;
     auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
-    if(it==end) return;
+    decltype(sents_uid) new_uids;
+    if(it==end) return new_uids;
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
-    SentUID current_uid{};
+    SentUID current_uid = n>0? sents_uid.back()+1: SentUID{SentUID::val_t{0x80000000}};
+    new_uids.push_back(current_uid);
     while(it!=end) {
         if( *it == current_idx && *it_chunk==current_chunk) {sents_uid.push_back(current_uid);}
         else {
             current_idx=*it;
             current_chunk = *it_chunk;
             sents_uid.push_back(++current_uid);
+            new_uids.push_back(current_uid);
         }
         ++it;
         ++it_chunk;
     }
+    return new_uids;
 }
 
 namespace ygp{
