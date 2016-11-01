@@ -40,10 +40,10 @@ void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) co
     outfile.writeRawData(H5name{prefix+".chunk_idx"}, serialize(chunks_idx));
     outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sents_idx));
     outfile.writeRawData(H5name{prefix+".word_uid"}, serialize(words_uid));
-//    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
+    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
     outfile.writeRawData(H5name{prefix+".word_pidx"},serialize(words_pidx));
     outfile.writeRawData(H5name{prefix+".head_uid"}, serialize(heads_uid));
-//    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
+    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
     outfile.writeRawData(H5name{prefix+".head_pidx"},serialize(heads_pidx));
     outfile.writeRawData(H5name{prefix+".word_beg"},serialize(words_beg));
     outfile.writeRawData(H5name{prefix+".word_end"},serialize(words_end));
@@ -131,7 +131,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
-void DepParsedTokens::build_sent_uid(){
+std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
     auto n = sents_uid.size();
     auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
@@ -139,20 +139,24 @@ void DepParsedTokens::build_sent_uid(){
     auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
-    if(it==end) return;
+    decltype(sents_uid) new_uids;
+    if(it==end) return new_uids;
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
-    SentUID current_uid{};
+    SentUID current_uid = n>0? sents_uid.back(): SentUID{SentUID::val_t{0x80000000}};
+    new_uids.push_back(current_uid);
     while(it!=end) {
         if( *it == current_idx && *it_chunk==current_chunk) {sents_uid.push_back(current_uid);}
         else {
             current_idx=*it;
             current_chunk = *it_chunk;
             sents_uid.push_back(++current_uid);
+            new_uids.push_back(current_uid);
         }
         ++it;
         ++it_chunk;
     }
+    return new_uids;
 }
 
 namespace ygp{
