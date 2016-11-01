@@ -104,7 +104,8 @@ public:
                     }
                 } else {
                     auto governor_score = (*dists[head_pidx])[head_word];
-                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score)*cutoffs[head_pidx];
+                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[head_pidx]);
+//                    auto tmp = cutoffs[j] * dependent_score * (1 + governor_score)*cutoffs[head_pidx];
                     if(tmp>score){
                         score = tmp;
                         scores[j] = {i, score};
