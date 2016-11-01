@@ -7,6 +7,7 @@ let toolz     = callPackage ../nix/default-python.nix {
                   buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
                 };
     toolz_cpp = callPackage ../nix/default-cpp.nix { };
+    config = import ./config.nix { inherit pkgs toolz_cpp; };
 in
 stdenv.mkDerivation {
   name = "python-env";
@@ -32,18 +33,11 @@ stdenv.mkDerivation {
                  [
                    wget jdk zip unzip which stress htop
                    cmake pkgconfig clang_38 clang-analyzer
-                   boost
-                   hdf5 hdf5-cpp liblbfgs cppzmq zeromq
-                   tbb openblas  
                    linuxPackages_4_6.perf
-                   toolz_cpp.msgsl
-                   toolz_cpp.spdlog
-                   toolz_cpp.fmt
-                   toolz_cpp.json
-		   toolz_cpp.csv
+                   zeromq
                    doxygen graphviz
                    libcgroup 
-                 ];
+                 ] ++ config;
   shellHook = ''
      EDITOR=vim
      CC=clang
