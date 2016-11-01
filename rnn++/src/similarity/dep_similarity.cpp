@@ -185,6 +185,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const
     };
     //TODO: fix it to be incremental
     auto qsents = query_tokens.IndexSentences();
+    for(auto sent : qsents) fmt::print("{} user documents\n", qsents.size());
     for(auto uid : query_uids){
         auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
         if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
@@ -193,6 +194,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const
         query_sents.push_back(sent);
         query_strs.push_back(sent_to_str(sent));
     }
+    fmt::print("Will process {} user documents\n", query_sents.size());
     return process_query_sents(query_sents, query_strs);
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
