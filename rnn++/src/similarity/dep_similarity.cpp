@@ -93,10 +93,9 @@ public:
             assert(query_sent.tokens->words_pidx[tidx.val].val==j);
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
-                auto head_word = sent.tokens->head_word(i);
                 auto dependent_score = (*dists[j])[word];
+                auto head_word = sent.tokens->head_word(i);
                 auto head_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
-                auto j_head = query_sent.beg + head_pidx;
                 if(head_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
@@ -143,13 +142,6 @@ private:
 };
 
 
-struct SentenceProb{
-    int get_rank_cutoff(Sentence const &sent) const {
-        return 5;
-    }
-};
-
-
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 : voca{config["wordvec_store"], config["voca_name"],
        config["w2vmodel_name"], config["w2v_float_t"]},
@@ -190,6 +182,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask) con
             auto answer = write_output(relevant_sents, max_clip_len);
             answer["input"]=query_str;
             answer["input_offset"]={query_sent_beg,query_sent_end};
+            answer["input_uid"] = query_sent.uid.val;
             answers.push_back(answer);
         });
     }
@@ -268,7 +261,6 @@ auto get_clip_offset = [](Sentence sent,
     max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
     auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
 
-    int i_trial=0;
     for(auto pair : scores){
         auto idx = pair.first;
         auto score = pair.second;
