@@ -99,15 +99,13 @@ json_serialize p = withForeignPtr p c_json_serialize
 
 runCoreNLP body = do
   lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
-  liftIO $ BL.putStrLn lbstr
   let r_bstr = BL.toStrict lbstr
-        -- (TE.encodeUtf8 . T.filter (>=' ') . TE.decodeUtf8 . BL.toStrict) lbstr
   let Just c' = do
         o@(Object c) <- A.maybeResult (A.parse json r_bstr)
         NLPResult ss <- decodeStrict' r_bstr
         let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
         return . Object . HM.insert "max_clip_len" (toJSON (200 :: Int)) . HM.insert "queries" (Array (V.fromList queries)) $ c
-  print c'
+  -- print c'
   (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c' -- r_bstr
   
 queryWorker :: SendPort BL.ByteString -> Query -> Process ()
@@ -169,7 +167,9 @@ server url = do
   return ()
 
 makeJson :: Query -> Value
-makeJson (Query qs) = object [ "queries" .= toJSON qs ]
+makeJson (Query qs) = object [ "queries" .= toJSON qs
+                             -- , "max_clip_len" .= (200 :: Int)
+                             ]
 
 main = do
   configurl <- liftIO (getEnv "CONFIGURL")
