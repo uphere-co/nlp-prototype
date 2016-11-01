@@ -216,7 +216,7 @@ rec {
 
     };
 
-liblinear = stdenv.mkDerivation rec {
+    liblinear = stdenv.mkDerivation rec {
       name = "liblinear-${version}";
       version = "2.1";
       src = fetchgit {
