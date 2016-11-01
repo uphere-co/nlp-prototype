@@ -5,22 +5,24 @@
 with pkgs;
 
 let toolz_cpp = callPackage ../nix/default-cpp.nix {};
-    hsenv = haskellPackages.ghcWithPackages (p: with p; [
+    hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
+    newHaskellPackages = haskellPackages.override { overrides = hsconfig; };
+    hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
               distributed-process
 	      network-transport-zeromq
 	      monad-loops uuid aeson
 	      cabal-install conduit conduit-extra
 	      base64-bytestring aeson
 	      http-client http-client-tls
+	      hdf5
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
-  buildInputs = [ hsenv hdf5 hdf5-cpp liblbfgs cppzmq zeromq
+  buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq
 		  rnnpp tbb
 		  toolz_cpp.fmt
                   toolz_cpp.msgsl
 		  toolz_cpp.json
-		  #boost
                 ];
   shellHook = ''
   '';
