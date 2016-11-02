@@ -365,12 +365,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_idx.val);
+        answer["result_table_name"].push_back(ygpdb.table(col_uid));
+        answer["result_column_name"].push_back(ygpdb.column(col_uid));
         answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg);
         auto end = tokens.word_end(--sent.end);
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["result_offset"].push_back({beg.val,end.val});
-        answer["result_raw"].push_back(ygpdb.raw_text(col_uid, row_idx));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
     }
