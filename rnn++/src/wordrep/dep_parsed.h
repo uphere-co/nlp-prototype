@@ -57,7 +57,7 @@ struct DepParsedTokens{
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
     void build_voca_index(VocaIndexMap const &voca);
-    std::vector<SentUID> build_sent_uid();
+    std::vector<SentUID> build_sent_uid(SentUID init_uid);
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}

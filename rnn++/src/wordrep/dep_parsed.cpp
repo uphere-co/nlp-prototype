@@ -131,7 +131,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
-std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
+std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto n = sents_uid.size();
     auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
@@ -143,7 +143,7 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
     if(it==end) return new_uids;
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
-    SentUID current_uid = n>0? sents_uid.back()+1: SentUID{SentUID::val_t{0x80000000}};
+    SentUID current_uid = n>0? sents_uid.back()+1: init_uid;
     new_uids.push_back(current_uid);
     while(it!=end) {
         if( *it == current_idx && *it_chunk==current_chunk) {sents_uid.push_back(current_uid);}

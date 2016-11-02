@@ -187,12 +187,11 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
             row_idxs.push_back(row_idx);
             row_uids.push_back(row_uid);
 
-            if(i>100) break;
+            ++row_uid;
         }
         ++col_uid;
-        ++row_uid;
     }
-    tokens.build_sent_uid();
+    tokens.build_sent_uid(SentUID{SentUID::val_t{0}});
     tokens.build_voca_index(voca.indexmap);
     tokens.write_to_disk(output_filename, prefix);
 
@@ -243,7 +242,7 @@ void ParseWithCoreNLP(nlohmann::json const &config, const char* raw_csv, const c
         row_idxs.push_back(row_idx);
         row_uids.push_back(row_uid);
     }
-    tokens.build_sent_uid();
+    tokens.build_sent_uid(SentUID{SentUID::val_t{0}});
     tokens.build_voca_index(voca.indexmap);
     tokens.write_to_disk(output_filename, prefix);
 
@@ -332,10 +331,10 @@ int list_columns(const char *cols_to_exports){
 }
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-//    auto col_uids = argv[2];
+    auto col_uids = argv[2];
 //    dump_psql(col_uids);
-//    parse_json_dumps(config, col_uids);
-//    return 0;
+    parse_json_dumps(config, col_uids);
+    return 0;
 //    ParseWithCoreNLP(config, csvfile, dumpfile_prefix);
 //    pruning_voca();
 //    convert_h5py_to_native();

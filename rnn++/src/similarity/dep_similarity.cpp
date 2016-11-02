@@ -166,7 +166,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t ask) 
     if (ask.find("sentences") == ask.end()) return json_t{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
-    auto uids = query_tokens.build_sent_uid();
+    auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     json_t answer{};
     for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
