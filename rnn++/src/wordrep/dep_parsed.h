@@ -106,12 +106,28 @@ struct YGPindexer{
     std::vector<ColumnUID> chunk2col_uid;
 };
 
+
 struct YGPdump{
     YGPdump(std::string filename);
     std::string getline(RowUID i) const {return lines[i.val];}
 
     std::vector<std::string> lines;
 };
+
+struct YGPdb{
+    YGPdb(const char *column_uids);
+    std::string table(ColumnUID idx) const {return tables[idx.val];}
+    std::string index_col(ColumnUID idx) const {return columns[idx.val];}
+    std::string column(ColumnUID idx) const {return index_cols[idx.val];}
+    ColumnUID beg() const {return ColumnUID{};}
+    ColumnUID end() const {return ColumnUID{tables.size()};}
+    std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
+
+    std::vector<std::string> tables;
+    std::vector<std::string> columns;
+    std::vector<std::string> index_cols;
+};
+
 } //namespace wordrep::ygp
 
 }//namespace wordrep

@@ -176,6 +176,26 @@ YGPdump::YGPdump(std::string filename) {
     }
 }
 
+YGPdb::YGPdb(const char *column_uids){
+    auto lines = util::string::readlines(column_uids);
+    for(auto line : lines){
+        auto cols = util::string::split(line, ".");
+        tables.push_back(cols[0]);
+        columns.push_back(cols[1]);
+        index_cols.push_back(cols[2]);
+    }
+}
+
+std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
+    pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+    pqxx::work W(C);
+    auto query=fmt::format("SELECT {} FROM {} where {}={};",
+                           column(col_uid), table(col_uid), index_col(col_uid), idx.val);
+    auto body= W.exec(query);
+    W.commit();
+    return body[0].c_str();
+}
+
 }//namespace ygp
 
 
