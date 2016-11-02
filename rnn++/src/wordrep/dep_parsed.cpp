@@ -1,6 +1,5 @@
 #include <algorithm>
 
-#include "csv/csv.h"
 #include "fmt/printf.h"
 #include "pqxx/pqxx"
 
@@ -167,16 +166,6 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
           chunk2row_uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
           chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
 {}
-
-YGPdump::YGPdump(std::string filename) {
-    ::io::CSVReader<3, ::io::trim_chars<' ', '\t'>, ::io::double_quote_escape<',', '"'>> in(filename);
-//    in.read_header(::io::ignore_extra_column, "row_str");
-    int64_t col_uid, row_idx;
-    std::string row_str;
-    while(in.read_row(col_uid, row_idx, row_str)) {
-        lines.push_back(row_str);
-    }
-}
 
 YGPdb::YGPdb(std::string column_uids){
     auto lines = util::string::readlines(column_uids);

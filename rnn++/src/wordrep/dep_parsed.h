@@ -107,13 +107,6 @@ struct YGPindexer{
 };
 
 
-struct YGPdump{
-    YGPdump(std::string filename);
-    std::string getline(RowUID i) const {return lines[i.val];}
-
-    std::vector<std::string> lines;
-};
-
 struct YGPdb{
     YGPdb(std::string column_uids);
     std::string table(ColumnUID idx) const {return tables[idx.val];}
