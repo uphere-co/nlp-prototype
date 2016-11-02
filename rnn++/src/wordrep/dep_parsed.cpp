@@ -1,6 +1,7 @@
 #include <algorithm>
 
-#include "csv/csv.h"
+#include "fmt/printf.h"
+#include "pqxx/pqxx"
 
 #include "wordrep/dep_parsed.h"
 
@@ -131,7 +132,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
-std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
+std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto n = sents_uid.size();
     auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
@@ -143,7 +144,7 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(){
     if(it==end) return new_uids;
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
-    SentUID current_uid = n>0? sents_uid.back()+1: SentUID{SentUID::val_t{0x80000000}};
+    SentUID current_uid = n>0? sents_uid.back()+1: init_uid;
     new_uids.push_back(current_uid);
     while(it!=end) {
         if( *it == current_idx && *it_chunk==current_chunk) {sents_uid.push_back(current_uid);}
@@ -166,14 +167,24 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
           chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
 {}
 
-YGPdump::YGPdump(std::string filename) {
-    ::io::CSVReader<3, ::io::trim_chars<' ', '\t'>, ::io::double_quote_escape<',', '"'>> in(filename);
-//    in.read_header(::io::ignore_extra_column, "row_str");
-    int64_t col_uid, row_idx;
-    std::string row_str;
-    while(in.read_row(col_uid, row_idx, row_str)) {
-        lines.push_back(row_str);
+YGPdb::YGPdb(std::string column_uids){
+    auto lines = util::string::readlines(column_uids);
+    for(auto line : lines){
+        auto cols = util::string::split(line, ".");
+        tables.push_back(cols[0]);
+        columns.push_back(cols[1]);
+        index_cols.push_back(cols[2]);
     }
+}
+
+std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
+    pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+    pqxx::work W(C);
+    auto query=fmt::format("SELECT {} FROM {} where {}={};",
+                           column(col_uid), table(col_uid), index_col(col_uid), idx.val);
+    auto body= W.exec(query);
+    W.commit();
+    return body[0][0].c_str();
 }
 
 }//namespace ygp

@@ -57,7 +57,7 @@ struct DepParsedTokens{
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
     void build_voca_index(VocaIndexMap const &voca);
-    std::vector<SentUID> build_sent_uid();
+    std::vector<SentUID> build_sent_uid(SentUID init_uid);
 
     WordUID word_uid(DPTokenIndex idx) const { return words_uid[idx.val];}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
@@ -106,12 +106,21 @@ struct YGPindexer{
     std::vector<ColumnUID> chunk2col_uid;
 };
 
-struct YGPdump{
-    YGPdump(std::string filename);
-    std::string getline(RowUID i) const {return lines[i.val];}
 
-    std::vector<std::string> lines;
+struct YGPdb{
+    YGPdb(std::string column_uids);
+    std::string table(ColumnUID idx) const {return tables[idx.val];}
+    std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
+    std::string column(ColumnUID idx) const {return columns[idx.val];}
+    ColumnUID beg() const {return ColumnUID{};}
+    ColumnUID end() const {return ColumnUID{tables.size()};}
+    std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
+
+    std::vector<std::string> tables;
+    std::vector<std::string> columns;
+    std::vector<std::string> index_cols;
 };
+
 } //namespace wordrep::ygp
 
 }//namespace wordrep

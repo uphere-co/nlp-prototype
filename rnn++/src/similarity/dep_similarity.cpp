@@ -156,7 +156,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
-  texts{config["plain_text"].get<std::string>()},
+  ygpdb{config["column_uids_dump"].get<std::string>()},
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
@@ -166,7 +166,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t ask) 
     if (ask.find("sentences") == ask.end()) return json_t{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
-    auto uids = query_tokens.build_sent_uid();
+    auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     json_t answer{};
     for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
@@ -198,19 +198,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const
     return process_query_sents(query_sents, query_strs);
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
-
-//DepSimilaritySearch::json_t DepSimilaritySearch::process_queries(json_t ask)  {
-//    if (ask.find("sentences") == ask.end() || ask.find("max_clip_len") == ask.end()) return json_t{};
-//    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
-//    query_tokens.build_voca_index(voca.indexmap);
-//    query_tokens.build_sent_uid();
-//
-//    auto query_sents = query_tokens.IndexSentences();
-//    std::vector<std::string> query_strs{};
-//    for(auto x : ask["queries"]) query_strs.push_back(x);
-//    return process_query_sents(query_sents, query_strs);
-//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-//}
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> query_sents, std::vector<std::string> query_strs) const {
@@ -367,7 +354,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
-        auto row_id = ygp_indexer.row_idx(chunk_idx);
+        auto row_idx = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(score);
         auto sent_to_str=[&](auto &sent){
             std::stringstream ss;
@@ -377,13 +364,15 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_DEBUG"].push_back(sent_to_str(sent));
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
-        answer["result_row_idx"].push_back(row_id.val);
+        answer["result_row_idx"].push_back(row_idx.val);
+        answer["result_table_name"].push_back(ygpdb.table(col_uid));
+        answer["result_column_name"].push_back(ygpdb.column(col_uid));
+        answer["result_index_col_name"].push_back(ygpdb.index_col(col_uid));
         answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg);
         auto end = tokens.word_end(--sent.end);
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["result_offset"].push_back({beg.val,end.val});
-        answer["result_raw"].push_back(texts.getline(row_uid));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
     }

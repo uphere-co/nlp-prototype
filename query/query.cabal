@@ -60,7 +60,7 @@ Executable query
                         -fno-warn-unused-do-bind
 
   ghc-prof-options:     -auto-all
-  extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, stdc++
+  extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++
   -- tbb, hdf5_cpp, fmt
   c-sources:            csrc/invoke.cpp
   cc-options:           -std=c++14
