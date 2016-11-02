@@ -1,6 +1,8 @@
 #include <algorithm>
 
 #include "csv/csv.h"
+#include "fmt/printf.h"
+#include "pqxx/pqxx"
 
 #include "wordrep/dep_parsed.h"
 
@@ -176,7 +178,7 @@ YGPdump::YGPdump(std::string filename) {
     }
 }
 
-YGPdb::YGPdb(const char *column_uids){
+YGPdb::YGPdb(std::string column_uids){
     auto lines = util::string::readlines(column_uids);
     for(auto line : lines){
         auto cols = util::string::split(line, ".");
@@ -193,7 +195,7 @@ std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
                            column(col_uid), table(col_uid), index_col(col_uid), idx.val);
     auto body= W.exec(query);
     W.commit();
-    return body[0].c_str();
+    return body[0][0].c_str();
 }
 
 }//namespace ygp

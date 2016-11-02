@@ -115,10 +115,10 @@ struct YGPdump{
 };
 
 struct YGPdb{
-    YGPdb(const char *column_uids);
+    YGPdb(std::string column_uids);
     std::string table(ColumnUID idx) const {return tables[idx.val];}
-    std::string index_col(ColumnUID idx) const {return columns[idx.val];}
-    std::string column(ColumnUID idx) const {return index_cols[idx.val];}
+    std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
+    std::string column(ColumnUID idx) const {return columns[idx.val];}
     ColumnUID beg() const {return ColumnUID{};}
     ColumnUID end() const {return ColumnUID{tables.size()};}
     std::string raw_text(ColumnUID col_uid, RowIndex idx) const;

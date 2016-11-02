@@ -156,7 +156,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
-  texts{config["plain_text"].get<std::string>()},
+  ygpdb{config["column_uids_dump"].get<std::string>()},
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
 {}
@@ -367,7 +367,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
-        auto row_id = ygp_indexer.row_idx(chunk_idx);
+        auto row_idx = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(score);
         auto sent_to_str=[&](auto &sent){
             std::stringstream ss;
@@ -377,13 +377,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_DEBUG"].push_back(sent_to_str(sent));
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
-        answer["result_row_idx"].push_back(row_id.val);
+        answer["result_row_idx"].push_back(row_idx.val);
         answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg);
         auto end = tokens.word_end(--sent.end);
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["result_offset"].push_back({beg.val,end.val});
-        answer["result_raw"].push_back(texts.getline(row_uid));
+        answer["result_raw"].push_back(ygpdb.raw_text(col_uid, row_idx));
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
     }

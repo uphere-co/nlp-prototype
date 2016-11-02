@@ -95,7 +95,7 @@ struct DepSimilaritySearch {
     wordrep::ArcLabelUIDindex arclabelUIDs;
     wordrep::WordImportance word_cutoff;
     std::vector<wordrep::Sentence> sents;
-    wordrep::ygp::YGPdump texts;
+    wordrep::ygp::YGPdb ygpdb;
     wordrep::ygp::YGPindexer ygp_indexer;
     mutable WordSimCache dists_cache{voca};
     wordrep::DepParsedTokens query_tokens{};
