@@ -1,15 +1,15 @@
 #include "zmq.hpp"
 
-#include "similarity/similarity.h"
+#include "similarity/dep_similarity.h"
 #include "similarity/corenlp_helper.h"
 
 #include "utils/profiling.h"
+#include "utils/parallel.h"
 
 int main(int /*argc*/, char** argv){
     using namespace engine;
     using namespace util;
     Timer timer{};
-    tbb::task_group g;
 
 //    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     auto config = load_json(argv[1]);
@@ -31,12 +31,13 @@ int main(int /*argc*/, char** argv){
         socket.recv (&request);
 
         std::string input{(const char*)request.data()};
-        auto query = corenlp_client.from_query_content(input);
-//        auto query = SimilaritySearch::parse((const char*)request.data());
-        std::cerr << query.dump(4) << std::endl;
-
-        auto answer = engine.process_queries(query);
-        timer.here_then_reset("Query is answered.");
+        auto query_json = corenlp_client.from_query_content(input);
+//        std::cerr << query_json.dump(4) << std::endl;
+        auto uids = engine.register_documents(query_json);
+        uids["max_clip_len"] = query_json["max_clip_len"];
+        std::cerr<<uids.dump(4)<<std::endl;
+        auto answer = engine.process_query(uids);
+//        std::cerr<<answer.dump(4)<<std::endl;
         std::string aa{answer.dump(4)};
         zmq::message_t reply(aa.size());
         std::cerr<<aa.size()<<std::endl;
@@ -44,31 +45,5 @@ int main(int /*argc*/, char** argv){
         std::memcpy ((void *) reply.data (), (void*)aa.data(), aa.size());
         socket.send (reply);
     }
-
-    auto query = load_json(argv[2]);
-    for(auto cutoff : query["cutoffs"]){
-        for(double x : cutoff) std::cerr<<x << " ";
-        std::cerr<<":Cut-off\n";
-    }
-    auto answer = engine.process_queries(query);
-    timer.here_then_reset("Finished to answer.");
-    std::cout << answer.dump(4) << std::endl;
-    return 0;
-
-//    auto input = load_json("/data/groups/uphere/similarity_test/queries.json");
-    auto input = load_json(argv[2]);
-    auto task=[&]() {
-        auto answer = engine.process_queries(input);
-        timer.here_then_reset("Query is answered.");
-        std::cout << answer.dump(4) << std::endl;
-    };
-    for(int i=0; i<1; ++i) {
-        g.run(task);
-        std::cerr << i << std::endl;
-    }
-    g.wait();
-//    task();
-
-    timer.here_then_reset("All queries are answered.");
     return 0;
 }

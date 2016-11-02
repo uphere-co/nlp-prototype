@@ -31,10 +31,10 @@ add_executable(trainer app/trainer wordrep/sentence2vec
                ${parser_files} ${util_files})
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
-add_executable(query_similarity app/query_similarity wordrep/sentence2vec
-               ${similarity_files} ${wordrep_files} 
-               ${parser_files} ${util_files})
-target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq)
+add_executable(query_similarity app/query_similarity
+               ${similarity_files} ${wordrep_files} ${util_files})
+#target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)
+target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
 
 add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
                ${parser_files} ${util_files})
