@@ -367,6 +367,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_row_idx"].push_back(row_idx.val);
         answer["result_table_name"].push_back(ygpdb.table(col_uid));
         answer["result_column_name"].push_back(ygpdb.column(col_uid));
+        answer["result_index_col_name"].push_back(ygpdb.index_col(col_uid));
         answer["result_column_uid"].push_back(col_uid.val);
         auto beg = tokens.word_beg(sent.beg);
         auto end = tokens.word_end(--sent.end);
