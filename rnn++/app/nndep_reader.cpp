@@ -197,18 +197,73 @@ void GenerateExtraIndexes(nlohmann::json const &config) {
     write_voca_index_col(voca, filename, prefix);
 }
 
-int psql(){
+int dump_column(std::string table, std::string column, std::string index_col){
+    CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
     try
     {
-        pqxx::connection C{"dbname=C291145_gbi_test"};
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+        std::cout << "Connected to " << C.dbname() << std::endl;
+        pqxx::work W(C);
+
+
+        auto query=fmt::format("SELECT {}, {} FROM {};", column, index_col, table);
+        auto body= W.exec(query);
+        W.commit();
+        auto n = body.size();
+        tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+            auto row = body[i];
+            std::string raw_text = row[0].c_str();
+            auto index = row[1];
+            auto dumpfile_name=fmt::format("corenlp/{}.{}.{}.{}", table, column, index_col, index);
+            if(raw_text.size()<6) {
+                fmt::print("{} is missing.\n", dumpfile_name);
+                return;
+            }
+            //fmt::print("{:<6} : {} --------------------------\n{}",  index, dumpfile_name, raw_text);
+            auto const &parsed_json = corenlp_client.from_query_content(raw_text);
+            std::ofstream dump_file;
+            dump_file.open(dumpfile_name);
+            dump_file << parsed_json.dump(4);
+            dump_file.close();
+        });
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+void dump_psql(const char *cols_to_exports){
+
+    auto lines = util::string::readlines(cols_to_exports);
+    for(auto line : lines){
+        auto cols = util::string::split(line, ".");
+        auto table = cols[0];
+        auto column = cols[1];
+        auto index_col = cols[2];
+        std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
+        dump_column(table, column, index_col);
+    }
+}
+int list_columns(const char *cols_to_exports){
+    try
+    {
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         std::cout << "Connected to " << C.dbname() << std::endl;
         pqxx::work W(C);
 
         pqxx::result R = W.exec("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';");
 
         std::cout << "Found " << R.size() << "Tables:" << std::endl;
-        for (auto row: R)
-            std::cout << row[0].c_str() << std::endl;
+        for (auto row: R) {
+            for(auto elm : row) fmt::print("{} ",  elm);
+            fmt::print("\n");
+            auto table = row[0];
+            auto query=fmt::format("select column_name from information_schema.columns where table_name='{}';", table);
+            pqxx::result R = W.exec(query);
+            for (auto column: R) fmt::print("{} ",  column[0]);
+        }
 
         W.commit();
         std::cout << "ok." << std::endl;
@@ -220,9 +275,10 @@ int psql(){
     }
     return 0;
 }
-
 int main(int /*argc*/, char** argv){
-    psql();
+    dump_psql(argv[1]);
+//    ParseWithCoreNLP(config, csvfile, dumpfile_prefix);
+//    GenerateExtraIndexes(config);
     return 0;
     auto config = util::load_json(argv[1]);
 //    pruning_voca();
