@@ -152,14 +152,14 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
     std::vector<ygp::RowIndex> row_idxs;
     std::vector<ygp::RowUID> row_uids;
     DepParsedTokens tokens{};
-    auto lines = util::string::readlines(cols_to_exports);
     ygp::ColumnUID col_uid{};
     ygp::RowUID row_uid{};
-    for(auto line : lines){
-        auto cols = util::string::split(line, ".");
-        auto table = cols[0];
-        auto column = cols[1];
-        auto index_col = cols[2];
+
+    ygp::YGPdb db{cols_to_exports};
+    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.column(col_uid);
 
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         pqxx::work W(C);
@@ -289,17 +289,16 @@ int dump_column(std::string table, std::string column, std::string index_col){
     return 0;
 }
 void dump_psql(const char *cols_to_exports){
-
-    auto lines = util::string::readlines(cols_to_exports);
-    for(auto line : lines){
-        auto cols = util::string::split(line, ".");
-        auto table = cols[0];
-        auto column = cols[1];
-        auto index_col = cols[2];
+    ygp::YGPdb db{cols_to_exports};
+    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.column(col_uid);
         std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
         dump_column(table, column, index_col);
     }
 }
+
 int list_columns(const char *cols_to_exports){
     try
     {
@@ -331,10 +330,10 @@ int list_columns(const char *cols_to_exports){
 }
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    auto col_uids = argv[2];
+//    auto col_uids = argv[2];
 //    dump_psql(col_uids);
-    parse_json_dumps(config, col_uids);
-    return 0;
+//    parse_json_dumps(config, col_uids);
+//    return 0;
 //    ParseWithCoreNLP(config, csvfile, dumpfile_prefix);
 //    pruning_voca();
 //    convert_h5py_to_native();
