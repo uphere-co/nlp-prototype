@@ -35,7 +35,8 @@ stdenv.mkDerivation {
                    wget jdk zip unzip which stress htop
                    cmake pkgconfig clang_38 clang-analyzer
                    boost
-                   hdf5 hdf5-cpp liblbfgs cppzmq zeromq
+                   hdf5 hdf5-cpp liblbfgs 
+                   cppzmq zeromq
                    tbb openblas  
                    linuxPackages_4_6.perf
                    toolz_cpp.msgsl
@@ -45,6 +46,8 @@ stdenv.mkDerivation {
                    doxygen graphviz
                    libcgroup
 		   rnnpp
+                   redis
+                   libpqxx
                  ];
   shellHook = ''
      EDITOR=vim

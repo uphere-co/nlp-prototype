@@ -215,6 +215,8 @@ int list_columns(const char *cols_to_exports){
     }
     return 0;
 }
+
+
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    auto col_uids = argv[2];
