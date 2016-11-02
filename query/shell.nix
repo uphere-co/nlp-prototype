@@ -18,7 +18,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
-  buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq
+  buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq libpqxx
 		  rnnpp tbb
 		  toolz_cpp.fmt
                   toolz_cpp.msgsl
