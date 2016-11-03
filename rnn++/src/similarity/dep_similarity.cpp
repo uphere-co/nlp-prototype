@@ -20,12 +20,38 @@ using namespace util::io;
 
 namespace engine {
 
+WordSimCache::WordSimCache(voca_info_t const &voca) : voca{voca} {
+    auto n= voca.wvecs.size();
+    data_t::accessor a;
+    distance_caches.insert(a, wordrep::VocaIndex{});
+    a->second = dist_cache_t{n};//For unknown word
+}
+
+bool WordSimCache::find(wordrep::VocaIndex idx) const{
+    data_t::const_accessor a;
+    return distance_caches.find(a, idx);
+}
+bool WordSimCache::insert(wordrep::VocaIndex idx, dist_cache_t const &dist){
+    data_t::accessor a;
+    distance_caches.find(a, idx);
+    if(distance_caches.find(a, idx)) return false;
+    distance_caches.insert(a, idx);
+    a->second = dist;
+    return true;
+}
+const WordSimCache::dist_cache_t& WordSimCache::distances(wordrep::VocaIndex widx) const {
+    data_t::const_accessor a;
+    bool is_exist=distance_caches.find(a,widx);
+    //TODO:     make cache private method and remove this assert.
+    if(!is_exist) assert(0);
+    return a->second;
+}
 void WordSimCache::cache(std::vector<VocaIndex> const &words) {
     auto n= voca.wvecs.size();
     std::vector<VocaIndex> words_to_cache;
     std::vector<dist_cache_t> dists;
     for(auto vidx : words) {
-        if(distance_caches.find(vidx) != distance_caches.end()) continue;
+        if(find(vidx)) continue;
         words_to_cache.push_back(vidx);
         dists.push_back(dist_cache_t{n});
     }
@@ -46,9 +72,31 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
 
     for(decltype(n_words)i=0; i!=n_words; ++i){
         auto vidx=words_to_cache[i];
-        if(distance_caches.find(vidx) != distance_caches.end()) continue;
-        distance_caches[vidx] = dists[i];
+        insert(vidx,dists[i]);
     }
+}
+
+
+
+void QueryResultCache::insert(wordrep::SentUID uid, json_t const&result) {
+    data_t::accessor a;
+    caches.insert(a, uid);
+    a->second = result;
+    std::cerr<<fmt::format("Insert {} to a cache", uid.val)<<std::endl;
+}
+QueryResultCache::json_t QueryResultCache::get(wordrep::SentUID uid) const {
+    data_t::const_accessor a;
+    if(caches.find(a, uid)) {
+        std::cerr<<fmt::format("Cache hits: {}", uid.val)<<std::endl;
+        return a->second;
+    }
+    std::cerr<<fmt::format("Cache misses: {}", uid.val)<<std::endl;
+    return json_t{};
+}
+QueryResultCache::json_t QueryResultCache::find(wordrep::SentUID uid) const {
+    data_t::const_accessor a;
+    std::cerr<<fmt::format("Look for a cache {} ", uid.val)<<std::endl;
+    return caches.find(a, uid);
 }
 
 
@@ -201,7 +249,21 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
         query_sents.push_back(sent);
     }
     fmt::print("Will process {} user documents\n", query_sents.size());
-    return process_query_sents(query_sents);
+    auto results = process_query_sents(query_sents);
+//    tbb::task_group g;
+//    g.run([&ask,&results,this](){
+//        json_t new_query{};
+//        new_query["max_clip_len"] = ask["max_clip_len"];
+//        for(auto const &result : results){
+//            for(auto uid : result["result_sent_uid"]){
+//                new_query["sent_uids"].push_back(uid);
+//            }
+//        }
+//        this->process_query(new_query);
+//        std::cerr<<fmt::format("Completes pre-computation.") <<std::endl;
+//    });
+//    g.wait();
+    return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
@@ -219,8 +281,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
         auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
         g.run([&timer,&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
-            if(result_cache.caches.find(query_sent.uid)!=result_cache.caches.end()){
-                auto answer = result_cache.caches[query_sent.uid];
+            if(result_cache.find(query_sent.uid)){
+                auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
                 timer.here("Query answered using cache.");
                 return;
@@ -248,7 +310,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             answer["words"] = words;
             answers.push_back(answer);
             timer.here("Query answered.");
-            result_cache.caches[query_sent.uid]=answer;
+            result_cache.insert(query_sent.uid, answer);
         });
     }
     timer.here_then_reset("All Queries are answered.");
