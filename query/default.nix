@@ -1,27 +1,29 @@
-{ mkDerivation, aeson, base, binary, bytestring, conduit
-, conduit-extra, directory, distributed-process, filepath, hdf5_cpp
-, monad-loops, network-transport-zeromq,stdenv
-, stm, tbb, text, unix, uuid
-, rnnpp, msgsl, json, fmt, libpqxx
-, base64-bytestring
-, http-client
-, http-client-tls
+{ mkDerivation, aeson, attoparsec, base, base64-bytestring, binary
+, bytestring, conduit, conduit-extra, connection, containers
+, directory, distributed-process, filepath
+, http-client, http-client-tls, http-types, monad-loops
+, network-transport-zeromq, process, query-common
+, scientific, stdenv, stm, text, transformers
+, unix, unordered-containers, uuid, vector
+
+, json, rnnpp, pqxx, tbb, fmt, hdf5_cpp
 }:
 mkDerivation {
   pname = "query";
   version = "0.1";
   src = ./.;
-  isLibrary = true;
+  isLibrary = false;
   isExecutable = true;
-  libraryHaskellDepends = [
-    base binary bytestring conduit conduit-extra unix http-client http-client-tls
-  ];
   executableHaskellDepends = [
-    aeson base binary bytestring conduit conduit-extra directory
-    distributed-process filepath monad-loops network-transport-zeromq
-    stm text unix uuid base64-bytestring
+    aeson attoparsec base base64-bytestring binary bytestring conduit
+    conduit-extra connection containers directory distributed-process
+    filepath http-client http-client-tls http-types monad-loops
+    network-transport-zeromq process query-common scientific stm text
+    transformers unix unordered-containers uuid vector
   ];
-  executableSystemDepends = [ hdf5_cpp rnnpp tbb msgsl json fmt libpqxx ];
+  executableSystemDepends = [
+    hdf5_cpp rnnpp tbb json fmt pqxx
+  ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";
   license = "unknown";

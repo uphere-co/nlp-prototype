@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -55,8 +56,9 @@ import           System.IO                                 (hClose, hGetContents
 import           System.Process                            (readProcess)
 --
 import           Type
-import           Util.Json
 
+data RawJson
+type Json_t = Ptr RawJson
 
 foreign import ccall "json_create"    c_json_create   :: CString -> IO Json_t
 foreign import ccall "&json_finalize" c_json_finalize :: FunPtr (Json_t -> IO ())

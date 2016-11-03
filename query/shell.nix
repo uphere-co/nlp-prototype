@@ -1,5 +1,6 @@
 { pkgs ? import <nixpkgs> {}
 , rnnpp ? import ../rnn++ {}
+, query-common ? import ../query-common {}
 }:
 
 with pkgs;
@@ -14,7 +15,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      cabal-install conduit conduit-extra
 	      base64-bytestring aeson
 	      http-client http-client-tls
-	      hdf5
+	      hdf5 query-common
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
