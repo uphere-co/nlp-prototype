@@ -52,6 +52,23 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
 }
 
 
+
+void QueryResultCache::insert(wordrep::SentUID uid, json_t const&result) {
+    data_t::accessor a;
+    caches.insert(a, uid);
+    a->second = result;
+}
+QueryResultCache::json_t QueryResultCache::get(wordrep::SentUID uid) const {
+    data_t::const_accessor a;
+    if(caches.find(a, uid)) return a->second;
+    return json_t{};
+}
+QueryResultCache::json_t QueryResultCache::find(wordrep::SentUID uid) const {
+    data_t::const_accessor a;
+    return caches.find(a, uid);
+}
+
+
 //TODO: remove code duplication for parsing CoreNLP outputs
 class DepParsedQuery{
 public:
@@ -219,8 +236,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
         auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
         g.run([&timer,&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
-            if(result_cache.caches.find(query_sent.uid)!=result_cache.caches.end()){
-                auto answer = result_cache.caches[query_sent.uid];
+            if(result_cache.find(query_sent.uid)){
+                auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
                 timer.here("Query answered using cache.");
                 return;
@@ -248,7 +265,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             answer["words"] = words;
             answers.push_back(answer);
             timer.here("Query answered.");
-            result_cache.caches[query_sent.uid]=answer;
+            result_cache.insert(query_sent.uid, answer);
         });
     }
     timer.here_then_reset("All Queries are answered.");

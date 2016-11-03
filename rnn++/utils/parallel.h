@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tbb/concurrent_vector.h"
+#include "tbb/concurrent_hash_map.h"
 #include "tbb/task_group.h"
 #include "tbb/tbb.h"
 #include "tbb/parallel_reduce.h"

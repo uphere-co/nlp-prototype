@@ -41,6 +41,12 @@ struct Distances{
     std::vector<TV> val;
 };
 
+struct IndexHashCompare {
+    static size_t hash(wordrep::SentUID const& x) {return x.val;}
+    static bool equal(wordrep::SentUID const& x, wordrep::SentUID const& y ) {
+        return x==y;
+    }
+};
 
 class WordSimCache{
 public:
@@ -63,8 +69,13 @@ private:
 class QueryResultCache{
 public:
     using json_t = nlohmann::json;
+    using data_t = tbb::concurrent_hash_map<wordrep::SentUID,json_t,IndexHashCompare>;
     QueryResultCache() {}
-    mutable std::unordered_map<wordrep::SentUID,json_t> caches;
+    void insert(wordrep::SentUID uid, json_t const&result);
+    json_t get(wordrep::SentUID uid) const;
+    json_t find(wordrep::SentUID uid) const;
+private:
+    data_t caches;
 };
 
 struct ScoredSentence{
