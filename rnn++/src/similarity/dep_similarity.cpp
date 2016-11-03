@@ -23,13 +23,11 @@ namespace engine {
 void WordSimCache::cache(std::vector<VocaIndex> const &words) {
     auto n= voca.wvecs.size();
     std::vector<VocaIndex> words_to_cache;
-    std::vector<dist_cache_t*> dists;
+    std::vector<dist_cache_t> dists;
     for(auto vidx : words) {
-        if(distance_caches.find(vidx) == distance_caches.end()) {
-            distance_caches[vidx] = dist_cache_t{n};
-            words_to_cache.push_back(vidx);
-            dists.push_back(&distance_caches[vidx]);
-        }
+        if(distance_caches.find(vidx) != distance_caches.end()) continue;
+        words_to_cache.push_back(vidx);
+        dists.push_back(dist_cache_t{n});
     }
     auto n_words = dists.size();
 
@@ -41,10 +39,16 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
                                   auto qidx = words_to_cache[j];
                                   auto q = voca.wvecs[qidx];
                                   auto widx = VocaIndex{i};
-                                  (*dists[j])[widx] = dist_measure(voca.wvecs[widx], q);
+                                  dists[j][widx] = dist_measure(voca.wvecs[widx], q);
                               }
                           }
                       });
+
+    for(decltype(n_words)i=0; i!=n_words; ++i){
+        auto vidx=words_to_cache[i];
+        if(distance_caches.find(vidx) != distance_caches.end()) continue;
+        distance_caches[vidx] = dists[i];
+    }
 }
 
 
@@ -362,3 +366,4 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
 }
 
 }//namespace engine
+

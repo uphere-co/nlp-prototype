@@ -52,7 +52,6 @@ public:
     }
     void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const {return distance_caches[widx];}
-    dist_cache_t& distances(wordrep::VocaIndex widx) {return distance_caches[widx];}
 private:
     mutable std::map<wordrep::VocaIndex,dist_cache_t> distance_caches;
     voca_info_t const &voca;
