@@ -20,12 +20,38 @@ using namespace util::io;
 
 namespace engine {
 
+WordSimCache::WordSimCache(voca_info_t const &voca) : voca{voca} {
+    auto n= voca.wvecs.size();
+    data_t::accessor a;
+    distance_caches.insert(a, wordrep::VocaIndex{});
+    a->second = dist_cache_t{n};//For unknown word
+}
+
+bool WordSimCache::find(wordrep::VocaIndex idx) const{
+    data_t::const_accessor a;
+    return distance_caches.find(a, idx);
+}
+bool WordSimCache::insert(wordrep::VocaIndex idx, dist_cache_t const &dist){
+    data_t::accessor a;
+    distance_caches.find(a, idx);
+    if(distance_caches.find(a, idx)) return false;
+    distance_caches.insert(a, idx);
+    a->second = dist;
+    return true;
+}
+const WordSimCache::dist_cache_t& WordSimCache::distances(wordrep::VocaIndex widx) const {
+    data_t::const_accessor a;
+    bool is_exist=distance_caches.find(a,widx);
+    //TODO:     make cache private method and remove this assert.
+    if(!is_exist) assert(0);
+    return a->second;
+}
 void WordSimCache::cache(std::vector<VocaIndex> const &words) {
     auto n= voca.wvecs.size();
     std::vector<VocaIndex> words_to_cache;
     std::vector<dist_cache_t> dists;
     for(auto vidx : words) {
-        if(distance_caches.find(vidx) != distance_caches.end()) continue;
+        if(find(vidx)) continue;
         words_to_cache.push_back(vidx);
         dists.push_back(dist_cache_t{n});
     }
@@ -46,8 +72,7 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
 
     for(decltype(n_words)i=0; i!=n_words; ++i){
         auto vidx=words_to_cache[i];
-        if(distance_caches.find(vidx) != distance_caches.end()) continue;
-        distance_caches[vidx] = dists[i];
+        insert(vidx,dists[i]);
     }
 }
 

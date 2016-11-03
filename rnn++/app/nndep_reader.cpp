@@ -264,6 +264,7 @@ int main(int /*argc*/, char** argv){
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
     auto answers = engine.process_query(uids);
+    annotation_on_result(config, answers);
     fmt::print("{}\n", answers.dump(4));
     timer.here_then_reset("Queries are answered.");
     return 0;
