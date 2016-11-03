@@ -162,7 +162,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 {}
 
 //TODO: fix it to be thread-safe
-DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t ask) {
+DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
@@ -172,10 +172,20 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t ask) 
     for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
     return answer;
 }
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const {
-    if (ask.find("sent_uids") == ask.end() || ask.find("max_clip_len") == ask.end()) return json_t{};
-    std::vector<SentUID> query_uids;
-    for(SentUID::val_t uid : ask["sent_uids"] ) query_uids.push_back(SentUID{uid});
+
+struct Query{
+    using json_t = DepSimilaritySearch::json_t;
+    Query(json_t const &ask){
+        for(SentUID::val_t uid : ask["sent_uids"] ) uids.push_back(SentUID{uid});
+    }
+    static bool is_valid(json_t const &query){
+        return query.find("sent_uids")!=query.end() && query.find("max_clip_len")!=query.end();
+    }
+    std::vector<SentUID> uids;
+};
+DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask) const {
+    if (!Query::is_valid(ask)) return json_t{};
+    Query query{ask};
     std::vector<Sentence> query_sents{};
     std::vector<std::string> query_strs{};
     auto sent_to_str=[&](auto &sent){
@@ -186,7 +196,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t ask) const
     //TODO: fix it to be incremental
     auto qsents = query_tokens.IndexSentences();
     for(auto sent : qsents) fmt::print("{} user documents\n", qsents.size());
-    for(auto uid : query_uids){
+    for(auto uid : query.uids){
         auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
         if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
         if(it==qsents.cend()) continue;
@@ -262,15 +272,6 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
 
 std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent,
                                                                     std::vector<val_t> const &cutoffs) const {
-    for(auto i=query_sent.beg; i!=query_sent.end; ++i) {
-        auto wuid = query_sent.tokens->word_uid(i);
-        auto word = wordUIDs[wuid];
-        auto vidx = voca.indexmap[wuid];
-        auto cutoff = word_cutoff.cutoff(wuid);
-        std::cerr<<fmt::format("{:<15} {:6}.uid {:6}.vocaindex : {}",
-                               word, wuid.val, vidx.val, cutoff) << std::endl;
-    }
-
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
 
     tbb::concurrent_vector<ScoredSentence> relevant_sents{};
