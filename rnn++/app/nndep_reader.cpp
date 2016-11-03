@@ -175,6 +175,7 @@ int dump_column(std::string table, std::string column, std::string index_col){
     }
     return 0;
 }
+
 void dump_psql(const char *cols_to_exports){
     ygp::YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
@@ -238,10 +239,10 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    auto query_result = util::load_json(argv[2]);
-    annotation_on_result(config, query_result);
-    fmt::print("{}\n", query_result.dump(4));
-    return 0;
+//    auto query_result = util::load_json(argv[2]);
+//    annotation_on_result(config, query_result);
+//    fmt::print("{}\n", query_result.dump(4));
+//    return 0;
 //    auto col_uids = argv[2];
 //    dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids);
@@ -263,8 +264,7 @@ int main(int /*argc*/, char** argv){
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
     auto answers = engine.process_query(uids);
-
-
+    fmt::print("{}\n", answers.dump(4));
     timer.here_then_reset("Queries are answered.");
     return 0;
 }
