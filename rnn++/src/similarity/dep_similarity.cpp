@@ -57,14 +57,20 @@ void QueryResultCache::insert(wordrep::SentUID uid, json_t const&result) {
     data_t::accessor a;
     caches.insert(a, uid);
     a->second = result;
+    std::cerr<<fmt::format("Insert {} to a cache", uid.val)<<std::endl;
 }
 QueryResultCache::json_t QueryResultCache::get(wordrep::SentUID uid) const {
     data_t::const_accessor a;
-    if(caches.find(a, uid)) return a->second;
+    if(caches.find(a, uid)) {
+        std::cerr<<fmt::format("Cache hits: {}", uid.val)<<std::endl;
+        return a->second;
+    }
+    std::cerr<<fmt::format("Cache misses: {}", uid.val)<<std::endl;
     return json_t{};
 }
 QueryResultCache::json_t QueryResultCache::find(wordrep::SentUID uid) const {
     data_t::const_accessor a;
+    std::cerr<<fmt::format("Look for a cache {} ", uid.val)<<std::endl;
     return caches.find(a, uid);
 }
 
@@ -218,7 +224,21 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
         query_sents.push_back(sent);
     }
     fmt::print("Will process {} user documents\n", query_sents.size());
-    return process_query_sents(query_sents);
+    auto results = process_query_sents(query_sents);
+//    tbb::task_group g;
+//    g.run([&ask,&results,this](){
+//        json_t new_query{};
+//        new_query["max_clip_len"] = ask["max_clip_len"];
+//        for(auto const &result : results){
+//            for(auto uid : result["result_sent_uid"]){
+//                new_query["sent_uids"].push_back(uid);
+//            }
+//        }
+//        this->process_query(new_query);
+//        std::cerr<<fmt::format("Completes pre-computation.") <<std::endl;
+//    });
+//    g.wait();
+    return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 

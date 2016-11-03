@@ -47,12 +47,12 @@ int main(int /*argc*/, char** argv){
         auto input_json= nlohmann::json::parse(input);
         std::cerr << input_json.dump(4) << std::endl;
         if(input_json.find("raw_text")!=input_json.end()) {
+            std::cerr << "Register documents"<<std::endl;
             auto query_json = corenlp_client.from_query_content(input);
 //        std::cerr << query_json.dump(4) << std::endl;
             auto uids = engine.register_documents(query_json);
             uids["max_clip_len"] = query_json["max_clip_len"];
-            std::cerr << uids.dump(4) << std::endl;
-
+            //std::cerr << uids.dump(4) << std::endl;
             std::string aa{uids.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
@@ -60,11 +60,9 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("sent_uids")!=input_json.end()){
             std::cerr << "Ask query"<<std::endl;
             auto answer = engine.process_query(input_json);
-            std::cerr << answer.dump(4) << std::endl;
+            //std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
-            std::cerr << aa.size() << std::endl;
-            std::cerr << answer.size() << std::endl;
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
             socket.send(reply);
         } else {
