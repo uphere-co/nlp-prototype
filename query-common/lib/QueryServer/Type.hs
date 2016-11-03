@@ -1,4 +1,4 @@
-module Type where
+module QueryServer.Type where
 
 import qualified Data.Binary as Bi
 import           Data.Text         (Text)

@@ -33,7 +33,7 @@ Library
                         text
 
   Exposed-modules:
-                        Type
+                        QueryServer.Type
                   
   Other-modules:        
 

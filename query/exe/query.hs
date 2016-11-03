@@ -55,7 +55,7 @@ import           System.FilePath
 import           System.IO                                 (hClose, hGetContents, hPutStrLn, stderr)
 import           System.Process                            (readProcess)
 --
-import           Type
+import           QueryServer.Type
 
 data RawJson
 type Json_t = Ptr RawJson
