@@ -122,7 +122,7 @@ queryWorker sc q = do
           bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
           bstr' <- liftIO $ B.useAsCString bstr $ 
             json_create >=> query >=> json_serialize >=> unsafePackCString
-          liftIO $ B.putStrLn bstr'
+          -- liftIO $ B.putStrLn bstr'
           sendChan sc (BL.fromStrict bstr')
         else 
           sendChan sc failed 
@@ -169,9 +169,7 @@ server url = do
   return ()
 
 makeJson :: Query -> Value
-makeJson (Query qs) = object [ "queries" .= toJSON qs
-                             -- , "max_clip_len" .= (200 :: Int)
-                             ]
+makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
   configurl <- liftIO (getEnv "CONFIGURL")
