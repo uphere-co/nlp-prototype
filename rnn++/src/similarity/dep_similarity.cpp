@@ -212,13 +212,19 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     assert(query_sents.size()==n_queries);
+    util::Timer timer{};
     for(decltype(n_queries)i=0; i!=n_queries; ++i){
         auto query_sent = query_sents[i];
         if(query_sent.beg==query_sent.end) continue;
         auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
         auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
-        g.run([&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
-            util::Timer timer{};
+        g.run([&timer,&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
+            if(result_cache.caches.find(query_sent.uid)!=result_cache.caches.end()){
+                auto answer = result_cache.caches[query_sent.uid];
+                answers.push_back(answer);
+                timer.here("Query answered using cache.");
+                return;
+            }
             std::vector<val_t> cutoffs;
             std::vector<VocaIndex> vidxs;
             std::vector<std::string> words;
@@ -235,15 +241,17 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             dists_cache.cache(vidxs);
             timer.here_then_reset("Built Similarity caches.");
             auto relevant_sents = this->process_query_sent(query_sent, cutoffs);
-            timer.here_then_reset("Query answered.");
             auto answer = write_output(relevant_sents, max_clip_len);
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answer["input_uid"] = query_sent.uid.val;
             answer["cutoffs"] = cutoffs;
             answer["words"] = words;
             answers.push_back(answer);
+            timer.here("Query answered.");
+            result_cache.caches[query_sent.uid]=answer;
         });
     }
+    timer.here_then_reset("All Queries are answered.");
     g.wait();
     json_t output{};
     for(auto &answer : answers) output.push_back(answer);
