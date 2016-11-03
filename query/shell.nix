@@ -1,13 +1,16 @@
 { pkgs ? import <nixpkgs> {}
 , rnnpp ? import ../rnn++ {}
-, query-common ? import ../query-common {}
 }:
 
 with pkgs;
 
 let toolz_cpp = callPackage ../nix/default-cpp.nix {};
     hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
-    newHaskellPackages = haskellPackages.override { overrides = hsconfig; };
+    hsconfig2= self: super: {
+      query-common = self.callPackage ../query-common {};
+    };
+    
+    newHaskellPackages = haskellPackages.override { overrides = self: super: hsconfig self super // hsconfig2 self super; };
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
               distributed-process
 	      network-transport-zeromq
