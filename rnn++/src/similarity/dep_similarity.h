@@ -8,6 +8,7 @@
 #include "wordrep/wordvec.h"
 
 #include "utils/hdf5.h"
+#include "utils/parallel.h"
 
 namespace wordrep{
 struct VocaInfo{
@@ -26,12 +27,12 @@ struct VocaInfo{
 namespace engine {
 
 template<typename TV>
-struct DistanceCache{
-    DistanceCache() : val{} {}
-    DistanceCache(std::size_t n) : val(n) {}
-    DistanceCache(std::vector<TV> const &distances)
+struct Distances{
+    Distances() : val{} {}
+    Distances(std::size_t n) : val(n) {}
+    Distances(std::vector<TV> const &distances)
     : val{distances} {}
-    DistanceCache& operator=(DistanceCache const &obj){
+    Distances& operator=(Distances const &obj){
         val = std::move(obj.val);
         return *this;
     }
@@ -39,12 +40,14 @@ struct DistanceCache{
     TV operator[](wordrep::VocaIndex vidx) const {return val[vidx.val];}
     std::vector<TV> val;
 };
+
+
 class WordSimCache{
 public:
     using voca_info_t  = wordrep::VocaInfo;
     using word_block_t = voca_info_t::voca_vecs_t;
     using val_t        = word_block_t::val_t;
-    using dist_cache_t = DistanceCache<val_t>;
+    using dist_cache_t = Distances<val_t>;
 
     WordSimCache(voca_info_t const &voca) : voca{voca} {
         auto n= voca.wvecs.size();
@@ -52,10 +55,16 @@ public:
     }
     void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const {return distance_caches[widx];}
-    dist_cache_t& distances(wordrep::VocaIndex widx) {return distance_caches[widx];}
 private:
     mutable std::map<wordrep::VocaIndex,dist_cache_t> distance_caches;
     voca_info_t const &voca;
+};
+
+class QueryResultCache{
+public:
+    using json_t = nlohmann::json;
+    QueryResultCache() {}
+    mutable std::unordered_map<wordrep::SentUID,json_t> caches;
 };
 
 struct ScoredSentence{
@@ -79,10 +88,9 @@ struct DepSimilaritySearch {
 
     std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs) const;
-    json_t process_query_sents(std::vector<wordrep::Sentence> query_sents,
-                               std::vector<std::string> query_strs) const;
-    json_t register_documents(json_t ask) ;
-    json_t process_query(json_t ask) const;
+    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents) const;
+    json_t register_documents(json_t const &ask) ;
+    json_t process_query(json_t const &ask) const;
     json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;
 
     voca_info_t voca;
@@ -95,6 +103,7 @@ struct DepSimilaritySearch {
     wordrep::ygp::YGPdb ygpdb;
     wordrep::ygp::YGPindexer ygp_indexer;
     mutable WordSimCache dists_cache{voca};
+    mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
 
 };

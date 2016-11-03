@@ -175,6 +175,7 @@ int dump_column(std::string table, std::string column, std::string index_col){
     }
     return 0;
 }
+
 void dump_psql(const char *cols_to_exports){
     ygp::YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
@@ -216,9 +217,32 @@ int list_columns(const char *cols_to_exports){
     return 0;
 }
 
+void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers){
+    ygp::YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
+    for(auto &answer : answers){
+        //answer["result_sent_uid"].push_back(sent.uid.val);
+        //answer["result_row_uid"].push_back(row_uid.val);
+        auto col_uids = answer["result_column_uid"];
+        auto row_idxs = answer["result_row_idx"];
+        auto offsets = answer["result_offset"];
+        auto n = col_uids.size();
+        for(decltype(n)i=0; i!=n; ++i){
+            ygp::ColumnUID col_uid{col_uids[i].get<ygp::ColumnUID::val_t>()};
+            ygp::RowIndex  row_idx{row_idxs[i].get<ygp::RowIndex::val_t>()};
+            auto row_str = ygpdb.raw_text(col_uid, row_idx);
+            auto offset_beg = offsets[i][0].get<int64_t>();
+            auto offset_end = offsets[i][1].get<int64_t>();
+            answer["result_DEBUG"].push_back(row_str.substr(offset_beg, offset_end-offset_beg));
+        }
+    }
+}
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
+//    auto query_result = util::load_json(argv[2]);
+//    annotation_on_result(config, query_result);
+//    fmt::print("{}\n", query_result.dump(4));
+//    return 0;
 //    auto col_uids = argv[2];
 //    dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids);
@@ -239,16 +263,8 @@ int main(int /*argc*/, char** argv){
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
-    auto answer = engine.process_query(uids);
-    fmt::print("{}\n", answer.dump(4));
-    {
-        auto query_json = corenlp_client.from_query_file(argv[3]);
-        auto uids = engine.register_documents(query_json);
-        uids["max_clip_len"] = query_json["max_clip_len"];
-        fmt::print("{}\n", uids.dump(4));
-        auto answer = engine.process_query(uids);
-    fmt::print("{}\n", answer.dump(4));
-    }
+    auto answers = engine.process_query(uids);
+    fmt::print("{}\n", answers.dump(4));
     timer.here_then_reset("Queries are answered.");
     return 0;
 }
