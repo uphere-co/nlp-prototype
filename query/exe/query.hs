@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -54,9 +55,10 @@ import           System.FilePath
 import           System.IO                                 (hClose, hGetContents, hPutStrLn, stderr)
 import           System.Process                            (readProcess)
 --
-import           Type
-import           Util.Json
+import           QueryServer.Type
 
+data RawJson
+type Json_t = Ptr RawJson
 
 foreign import ccall "json_create"    c_json_create   :: CString -> IO Json_t
 foreign import ccall "&json_finalize" c_json_finalize :: FunPtr (Json_t -> IO ())
@@ -120,7 +122,7 @@ queryWorker sc q = do
           bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
           bstr' <- liftIO $ B.useAsCString bstr $ 
             json_create >=> query >=> json_serialize >=> unsafePackCString
-          liftIO $ B.putStrLn bstr'
+          -- liftIO $ B.putStrLn bstr'
           sendChan sc (BL.fromStrict bstr')
         else 
           sendChan sc failed 
@@ -167,9 +169,7 @@ server url = do
   return ()
 
 makeJson :: Query -> Value
-makeJson (Query qs) = object [ "queries" .= toJSON qs
-                             -- , "max_clip_len" .= (200 :: Int)
-                             ]
+makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
   configurl <- liftIO (getEnv "CONFIGURL")

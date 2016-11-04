@@ -22,34 +22,6 @@ source-repository HEAD
   location:             https://github.com/uphere-co/nlp-prototype
   branch:               master
 
--------------------------------------------------------
-  
-Library
-  hs-source-dirs:       lib
-  Build-depends:        base,
-                        --
-                        binary,
-                        bytestring,
-                        conduit,
-                        conduit-extra,
-                        text,
-                        unix
-
-  Exposed-modules:
-                        Util.Json
-                        Type
-                  
-  Other-modules:        
-
-  ghc-options:          -O2 -Wall
-                        -funbox-strict-fields
-                        -fno-warn-unused-do-bind
-                        -fno-warn-orphans
-
-  ghc-prof-options:     -caf-all -auto-all
-
--------------------------------------------------------
-
 Executable query
   Main-is:              query.hs
   hs-source-dirs:       exe
@@ -61,7 +33,6 @@ Executable query
 
   ghc-prof-options:     -auto-all
   extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++
-  -- tbb, hdf5_cpp, fmt
   c-sources:            csrc/invoke.cpp
   cc-options:           -std=c++14
   build-depends:        base,
@@ -95,36 +66,5 @@ Executable query
                         uuid,
                         vector,
                         --
-                        query
+                        query-common
 
--------------------------------------------------------
-
-                        
-Executable client
-  Main-is:              client.hs
-  hs-source-dirs:       exe
-
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
-                        -fno-warn-unused-do-bind
-
-  ghc-prof-options:     -auto-all
-  extra-libraries:     
-  c-sources:            
-                        
-  build-depends:        base,
-                        --
-                        aeson,
-                        base64-bytestring,
-                        binary,
-                        bytestring,
-                        containers,
-                        distributed-process,
-                        network-transport-zeromq,
-                        process,
-                        text,
-                        --
-                        query
-                        
