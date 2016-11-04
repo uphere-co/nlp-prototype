@@ -60,6 +60,7 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("sent_uids")!=input_json.end()){
             std::cerr << "Ask query"<<std::endl;
             auto answer = engine.process_query(input_json);
+            wordrep::ygp::annotation_on_result(config, answer);
             //std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());

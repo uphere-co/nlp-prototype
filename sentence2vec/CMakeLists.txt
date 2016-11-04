@@ -27,7 +27,7 @@ FILE(GLOB similarity_files ${RNNPP_PATH}/src/similarity/*cpp)
 FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 
 
-add_executable(trainer app/trainer wordrep/sentence2vec
+add_executable(trainer app/trainer wordrep/sentence2vec tests/test_sent2vec
                ${parser_files} ${util_files})
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
