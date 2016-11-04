@@ -2,12 +2,10 @@
 
 #include <fstream>
 
-using json = nlohmann::json;
-
 namespace util{
 
-json load_json(std::string filename){
-    json j;
+json_t  load_json(std::string filename){
+    json_t  j;
     std::ifstream jsonData(filename, std::ifstream::in);
     if(jsonData.is_open()) {
         jsonData >> j;

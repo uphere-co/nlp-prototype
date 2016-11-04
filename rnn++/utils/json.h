@@ -4,9 +4,10 @@
 
 namespace util{
 
-nlohmann::json load_json(std::string filename);
+using json_t = nlohmann::json;
+json_t  load_json(std::string filename);
 
-auto get_string_val=[](nlohmann::json const &json, std::string field)->std::string {
+auto get_string_val=[](json_t const &json, std::string field)->std::string {
     return json[field];
 };
 
