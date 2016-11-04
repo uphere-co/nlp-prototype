@@ -1,6 +1,6 @@
 #include "tests/test_sent2vec.h"
 
-#include "wordrep/sentence2vec.h"
+#include "models/sentence2vec.h"
 
 #include "utils/profiling.h"
 
@@ -10,7 +10,6 @@ namespace sent2vec{
 namespace test{
 
 void word_count(util::json_t const &config){
-
 }
 
 void sampler(){

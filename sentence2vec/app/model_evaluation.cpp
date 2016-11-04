@@ -1,4 +1,4 @@
-#include "wordrep/sentence2vec.h"
+#include "models/sentence2vec.h"
 
 #include "parser/parser.h"
 #include "parser/wordvec.h"

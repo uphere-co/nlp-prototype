@@ -27,7 +27,7 @@ FILE(GLOB similarity_files ${RNNPP_PATH}/src/similarity/*cpp)
 FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 
 
-add_executable(trainer app/trainer wordrep/sentence2vec tests/test_sent2vec
+add_executable(trainer app/trainer models/sentence2vec tests/test_sent2vec
                ${parser_files} ${util_files})
 target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
 
@@ -36,7 +36,7 @@ add_executable(query_similarity app/query_similarity
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)
 target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
 
-add_executable(model_evaluation app/model_evaluation wordrep/sentence2vec
+add_executable(model_evaluation app/model_evaluation models/sentence2vec
                ${parser_files} ${util_files})
 target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)
 

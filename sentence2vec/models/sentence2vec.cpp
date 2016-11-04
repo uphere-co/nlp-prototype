@@ -1,4 +1,4 @@
-#include "wordrep/sentence2vec.h"
+#include "models/sentence2vec.h"
 
 namespace sent2vec  {
 

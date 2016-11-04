@@ -1,6 +1,6 @@
 #include "tests/test_sent2vec.h"
 
-#include "wordrep/sentence2vec.h"
+#include "models/sentence2vec.h"
 
 #include "utils/print.h"
 #include "utils/profiling.h"
