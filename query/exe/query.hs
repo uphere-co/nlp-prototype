@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Concurrent                        (forkIO, threadDelay)
-import           Control.Concurrent.STM.TQueue
+import           Control.Concurrent.STM
 import           Control.Monad
 import           Control.Monad.IO.Class 
 import           Control.Monad.Loops
@@ -110,24 +110,29 @@ runCoreNLP body = do
   -- print c'
   (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c' -- r_bstr
   
-queryWorker :: SendPort BL.ByteString -> Query -> Process ()
-queryWorker sc q = do
-  liftIO $ print q
-  let failed =encode Null
-      ss = querySentences q
-  case ss of
-    (s:_) -> do
-      if (not . T.null) s
-        then do
-          bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
-          bstr' <- liftIO $ B.useAsCString bstr $ 
-            json_create >=> query >=> json_serialize >=> unsafePackCString
-          -- liftIO $ B.putStrLn bstr'
-          sendChan sc (BL.fromStrict bstr')
-        else 
-          sendChan sc failed 
-    [] -> sendChan sc failed
-  
+queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
+queryWorker ref sc q = do
+  m <- liftIO $ readTVarIO ref
+  case HM.lookup q m of
+    Nothing -> do
+      let failed =encode Null
+          ss = querySentences q
+      case ss of
+        (s:_) -> do
+          if (not . T.null) s
+            then do
+              bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
+              bstr' <- liftIO $ B.useAsCString bstr $ 
+                json_create >=> query >=> json_serialize >=> unsafePackCString
+              let resultbstr = BL.fromStrict bstr' -- liftIO $ B.putStrLn bstr'
+              liftIO $ atomically (modifyTVar' ref (HM.insert q resultbstr))
+              sendChan sc resultbstr
+            else 
+              sendChan sc failed 
+        [] -> sendChan sc failed
+    Just resultbstr -> sendChan sc resultbstr
+
+    
 simpleHttpClient :: Bool -> Method -> String -> Maybe ByteString -> IO BL.ByteString
 simpleHttpClient isurlenc mth url mbstr = do
   request0' <- parseRequest url
@@ -162,10 +167,12 @@ server url = do
       send them (sc,us)
       sc' <- expect :: Process (SendPort BL.ByteString)
       spawnLocal (heartbeat 0)
+
+      ref <- liftIO $ newTVarIO HM.empty
       forever $ do
         q <- receiveChan rc
         liftIO $ hPutStrLn stderr (show q)
-        spawnLocal (queryWorker sc' q)
+        spawnLocal (queryWorker ref sc' q)
   return ()
 
 makeJson :: Query -> Value
