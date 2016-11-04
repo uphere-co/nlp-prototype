@@ -121,6 +121,9 @@ struct YGPdb{
     std::vector<std::string> index_cols;
 };
 
+void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers);
+
+
 } //namespace wordrep::ygp
 
 }//namespace wordrep
