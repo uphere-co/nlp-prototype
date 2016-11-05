@@ -107,8 +107,7 @@ runCoreNLP body = do
         NLPResult ss <- decodeStrict' r_bstr
         let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
         return . Object . HM.insert "max_clip_len" (toJSON (200 :: Int)) . HM.insert "queries" (Array (V.fromList queries)) $ c
-  -- print c'
-  (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c' -- r_bstr
+  (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c'
   
 queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
 queryWorker ref sc q = do
@@ -124,7 +123,7 @@ queryWorker ref sc q = do
               bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
               bstr' <- liftIO $ B.useAsCString bstr $ 
                 json_create >=> query >=> json_serialize >=> unsafePackCString
-              let resultbstr = BL.fromStrict bstr' -- liftIO $ B.putStrLn bstr'
+              let resultbstr = BL.fromStrict bstr'
               liftIO $ atomically (modifyTVar' ref (HM.insert q resultbstr))
               sendChan sc resultbstr
             else 
@@ -179,7 +178,9 @@ makeJson :: Query -> Value
 makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
-  configurl <- liftIO (getEnv "CONFIGURL")
+  serverurl <- liftIO (getEnv "SERVERURL")
+  apilevel <- liftIO (getEnv "APILEVEL")
+  let configurl = serverurl </> apilevel </> "config"
   
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
