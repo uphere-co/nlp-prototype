@@ -17,6 +17,7 @@ import           Data.Maybe                                (listToMaybe)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
+import qualified Data.Text.IO                        as TIO
 import           Foreign.ForeignPtr
 --
 import           QueryServer.Type
@@ -44,7 +45,6 @@ queryRegisteredSentences r = do
 queryWorker :: TVar (HM.HashMap Text [Int]) -> SendPort BL.ByteString -> Query -> Process ()
 queryWorker ref sc QueryText {..} = do
   m <- liftIO $ readTVarIO ref
-
   case HM.lookup query_text m of
     Just ids ->
       liftIO (queryRegisteredSentences RS { rs_sent_uids = ids, rs_max_clip_len = Nothing })
@@ -62,3 +62,25 @@ queryWorker ref sc QueryText {..} = do
       case r of
         Just resultbstr -> sendChan sc resultbstr
         Nothing         -> sendChan sc failed 
+queryWorker ref sc QueryRegister {..} = do
+  liftIO  $ putStrLn "QueryRegister api is called"
+  liftIO $ TIO.putStrLn query_register
+  m <- liftIO $ readTVarIO ref
+  case HM.lookup query_register m of
+    Just ids -> do
+      let rs = RS { rs_sent_uids = ids, rs_max_clip_len = Nothing }
+      sendChan sc (encode rs) 
+    Nothing -> do
+      r <- runMaybeT $ do
+        guard ((not . T.null) query_register)
+        bstr_nlp <- (liftIO . runCoreNLP . TE.encodeUtf8) query_register
+        bstr0 <- liftIO $ B.useAsCString bstr_nlp $
+          json_create >=> register_documents >=> json_serialize >=> unsafePackCString
+        r :: RegisteredSentences <- (MaybeT . return . decodeStrict') bstr0
+        liftIO $ atomically (modifyTVar' ref (HM.insert query_register (rs_sent_uids r)))
+        let resultbstr = encode r
+        return resultbstr
+      case r of
+        Just resultbstr -> sendChan sc resultbstr
+        Nothing         -> sendChan sc failed 
+
