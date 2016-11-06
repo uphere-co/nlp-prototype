@@ -1,64 +1,34 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 
-import           Control.Concurrent                        (forkIO, threadDelay)
+import           Control.Concurrent                        (threadDelay)
 import           Control.Concurrent.STM
 import           Control.Monad
 import           Control.Monad.IO.Class 
-import           Control.Monad.Loops
 import           Control.Monad.Trans.Class                 (lift)
 import           Control.Monad.Trans.Maybe
 import           Control.Distributed.Process
-import           Control.Distributed.Process.Closure
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
-import           Control.Distributed.Process.Serializable
 import           Data.Aeson
-import           Data.Aeson.Types
-import qualified Data.Attoparsec                     as A
-import qualified Data.Binary                         as Bi (encode,decode)
+import qualified Data.Binary                         as Bi (decode)
 import qualified Data.ByteString.Base64.Lazy         as B64
-import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
-
 import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Map                            as M
-import           Data.Maybe                                (maybeToList)
-import           Data.Scientific
-
-import           Data.Text                                 (Text)
-import qualified Data.Text                           as T
-import qualified Data.Text.Lazy.Encoding             as TLE
-import qualified Data.Text.IO                        as TIO
-import           Data.UUID                                 (toString)
-import           Data.UUID.V4                              (nextRandom)
 import           Foreign.C.String
-import           Foreign.C.Types                           (CInt(..))
-import           Foreign.ForeignPtr
-import           Foreign.Ptr
-import           Network.HTTP.Types                        (Method,methodGet,methodPost)
+import           Network.HTTP.Types                        (methodGet)
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
-import           System.Directory
 import           System.Environment
 import           System.FilePath
-import           System.IO                                 (hClose, hGetContents, hPutStrLn, stderr)
-import           System.Process                            (readProcess)
+import           System.IO                                 (hPutStrLn, stderr)
 --
 import           QueryServer.Type
-import           CoreNLP
-import           JsonUtil
 import           Network
 import           Worker
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
-
-
-
-  
-    
   
 server :: String -> Process ()
 server url = do
@@ -83,7 +53,7 @@ server url = do
         spawnLocal (queryWorker ref sc' q)
   return ()
 
-
+main :: IO ()
 main = do
   serverurl <- liftIO (getEnv "SERVERURL")
   apilevel <- liftIO (getEnv "APILEVEL")

@@ -4,22 +4,15 @@ module Worker where
 
 import           Control.Concurrent.STM
 import           Control.Distributed.Process
-import           Control.Distributed.Process.Closure
-import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
-import           Control.Distributed.Process.Serializable
 import           Control.Monad
 import           Data.Aeson
-
 import qualified Data.ByteString.Char8               as B
-
 import qualified Data.ByteString.Lazy.Char8          as BL
-import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen,unsafePackCString)
-
+import           Data.ByteString.Unsafe                    (unsafePackCString)
 import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
 import           Foreign.ForeignPtr
-
 --
 import           QueryServer.Type
 import           CoreNLP

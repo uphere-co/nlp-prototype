@@ -9,7 +9,7 @@ import qualified Data.Text.IO                        as TIO
 import           Network.Connection                        (TLSSettings(..))
 import           Network.HTTP.Client
 import           Network.HTTP.Client.TLS
-import           Network.HTTP.Types                        (Method,methodGet,methodPost)
+import           Network.HTTP.Types                        (Method)
 
 simpleHttpClient :: Bool -> Method -> String -> Maybe ByteString -> IO BL.ByteString
 simpleHttpClient isurlenc mth url mbstr = do

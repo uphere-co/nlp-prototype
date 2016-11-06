@@ -5,7 +5,6 @@
 module JsonUtil where
 
 import Data.Aeson
-import Foreign.C.Types
 import Foreign.C.String
 import Foreign.ForeignPtr
 import Foreign.Ptr
