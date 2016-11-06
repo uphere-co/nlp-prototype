@@ -5,14 +5,10 @@
 namespace wordrep{
 
 template<typename TUID>
-UIDIndex<TUID>::UIDIndex(std::string file){
+UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}} {
     auto words = util::string::readlines(file);
-    auto n = words.size();
-    for(decltype(n)i=0;i!=n; ++i) {
-        uid2word[uid_t{i}]=words[i];
-        word2uid[words[i]] = uid_t{i};
-    }
-    uid2word[uid_t{}]="-UNKNOWN-";
+    for(auto &word : words) insert(word);
+    uid2word[uid_t{typename uid_t::val_t{-1}}]="-UNKNOWN-";
 }
 //using WordUIDindex = UIDIndex<WordUID>;
 
