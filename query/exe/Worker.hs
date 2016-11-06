@@ -30,13 +30,23 @@ query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 register_documents :: Json -> IO Json
 register_documents q = withForeignPtr q c_register_documents >>= newForeignPtr c_json_finalize
 
+queryRegisteredSentences :: RegisteredSentences -> IO BL.ByteString
+queryRegisteredSentences r = do
+  -- need to be configured.  
+  let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })  
+  bstr' <- B.useAsCString bstr $ 
+    json_create >=> query >=> json_serialize >=> unsafePackCString
+  return (BL.fromStrict bstr')
 
-queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
+
+queryWorker :: TVar (HM.HashMap Query [Int]) -> SendPort BL.ByteString -> Query -> Process ()
 queryWorker ref sc q = do
   m <- liftIO $ readTVarIO ref
 
   case HM.lookup q m of
-    Just resultbstr -> sendChan sc resultbstr
+    Just ids ->
+      liftIO (queryRegisteredSentences RS { rs_sent_uids = ids, rs_max_clip_len = Nothing })
+      >>= sendChan sc
     Nothing -> do
       r <- runMaybeT $ do
         s <- MaybeT . return $ listToMaybe (querySentences q)
@@ -45,11 +55,8 @@ queryWorker ref sc q = do
         bstr0 <- liftIO $ B.useAsCString bstr_nlp $
           json_create >=> register_documents >=> json_serialize >=> unsafePackCString
         r :: RegisteredSentences <- (MaybeT . return . decodeStrict') bstr0
-        let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })  -- need to be configured.
-        bstr' <- liftIO $ B.useAsCString bstr $ 
-          json_create >=> query >=> json_serialize >=> unsafePackCString
-        let resultbstr = BL.fromStrict bstr'
-        liftIO $ atomically (modifyTVar' ref (HM.insert q resultbstr))
+        resultbstr <- liftIO (queryRegisteredSentences r)
+        liftIO $ atomically (modifyTVar' ref (HM.insert q (rs_sent_uids r)))
         return resultbstr
       case r of
         Just resultbstr -> sendChan sc resultbstr
