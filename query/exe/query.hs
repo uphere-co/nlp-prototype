@@ -21,9 +21,8 @@ import qualified Data.Binary                         as Bi (encode,decode)
 import qualified Data.ByteString.Base64.Lazy         as B64
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
-
 import qualified Data.ByteString.Lazy.Char8          as BL
-import           Data.ByteString.Unsafe                    (unsafeUseAsCStringLen,unsafePackCString)
+
 import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Map                            as M
 import           Data.Maybe                                (maybeToList)
@@ -31,7 +30,6 @@ import           Data.Scientific
 
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
-import qualified Data.Text.Encoding                  as TE
 import qualified Data.Text.Lazy.Encoding             as TLE
 import qualified Data.Text.IO                        as TIO
 import           Data.UUID                                 (toString)
@@ -52,40 +50,14 @@ import           QueryServer.Type
 import           CoreNLP
 import           JsonUtil
 import           Network
+import           Worker
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 
 
-query :: Json -> IO Json
-query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
-
-
   
-queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
-queryWorker ref sc q = do
-  m <- liftIO $ readTVarIO ref
-  case HM.lookup q m of
-    Nothing -> do
-      let failed =encode Null
-          ss = querySentences q
-      case ss of
-        (s:_) -> do
-          if (not . T.null) s
-            then do
-              bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
-              bstr' <- liftIO $ B.useAsCString bstr $ 
-                json_create >=> query >=> json_serialize >=> unsafePackCString
-              let resultbstr = BL.fromStrict bstr'
-              liftIO $ atomically (modifyTVar' ref (HM.insert q resultbstr))
-              sendChan sc resultbstr
-            else 
-              sendChan sc failed 
-        [] -> sendChan sc failed
-    Just resultbstr -> sendChan sc resultbstr
-
     
   
 server :: String -> Process ()
