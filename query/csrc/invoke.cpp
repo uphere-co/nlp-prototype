@@ -75,9 +75,9 @@ json_t_p register_documents( json_t_p input )
 json_t_p query( json_t_p input )
 {
     auto query_json = *(input->get());
-    auto uids = engine0->register_documents(query_json);
-    uids["max_clip_len"] = query_json["max_clip_len"];
-    auto answer0 = engine0->process_query(uids);
+    //auto uids = engine0->register_documents(query_json);
+    // uids["max_clip_len"] = query_json["max_clip_len"];
+    auto answer0 = engine0->process_query(query_json);
     auto answer = make_unique<json_t>( answer0 );
     timer.here_then_reset("Query is answered.");
     return new unique_ptr_wrapper<json_t>( answer ) ;

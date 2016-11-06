@@ -43,5 +43,5 @@ runCoreNLP body = do
         Object c <- A.maybeResult (A.parse json r_bstr)
         NLPResult ss <- decodeStrict' r_bstr
         let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
-        return . Object . HM.insert "max_clip_len" (toJSON (200 :: Int)) . HM.insert "queries" (Array (V.fromList queries)) $ c
+        return . Object . HM.insert "queries" (Array (V.fromList queries)) $ c
   (return . BL.toStrict . toLazyByteString . encodeToBuilder) c'
