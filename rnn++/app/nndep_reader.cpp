@@ -97,7 +97,7 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
-        auto index_col = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
 
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         pqxx::work W(C);
@@ -118,6 +118,7 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
                 fmt::print("{} has null contents.\n", dumpfile_name);
                 continue;
             }
+            fmt::print("{} is found.\n", dumpfile_name);
 
             ygp::RowIndex row_idx{ygp::RowIndex::val_t{index}};
             tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, parsed_json);
@@ -127,7 +128,6 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
 
             ++row_uid;
         }
-        ++col_uid;
     }
     tokens.build_sent_uid(SentUID{SentUID::val_t{0}});
     tokens.build_voca_index(voca.indexmap);
@@ -136,6 +136,7 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
     write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
     write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
     write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
+    wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
 
 int dump_column(std::string table, std::string column, std::string index_col){
@@ -187,7 +188,7 @@ void dump_psql(const char *cols_to_exports){
     }
 }
 
-int list_columns(const char *cols_to_exports){
+int list_columns(){
     try
     {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
@@ -223,10 +224,10 @@ int main(int /*argc*/, char** argv){
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-//    auto col_uids = argv[2];
+    auto col_uids = argv[2];
 //    dump_psql(col_uids);
-//    parse_json_dumps(config, col_uids);
-//    return 0;
+    parse_json_dumps(config, col_uids);
+    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");

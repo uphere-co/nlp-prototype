@@ -77,7 +77,7 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     return sents;
 }
 
-void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
+void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
                                             nlohmann::json const &output){
@@ -101,7 +101,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
             chunks_idx.push_back(current_chunk_idx);
             sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-            words_uid.push_back(wordUIDs[word]);
+            words_uid.push_back(wordUIDs.insert(word));
             words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
             heads_uid.push_back(WordUID{});//
@@ -122,7 +122,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
             auto i= word_pidx;
             assert(words_uid[offset+i] == wordUIDs[word]);
             assert(words_pidx[offset+i]==WordPosition{word_pidx});
-            heads_uid[offset+i] = wordUIDs[head_word];
+            heads_uid[offset+i] = wordUIDs.insert(head_word);
             heads_pidx[offset+i] = WordPosition{head_pidx};
             arclabels[offset+i] = arclabelUIDs[arc_label];
 
@@ -203,6 +203,7 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
             auto offset_beg = offsets[i][0].get<int64_t>();
             auto offset_end = offsets[i][1].get<int64_t>();
             answer["result_DEBUG"].push_back(row_str.substr(offset_beg, offset_end-offset_beg));
+            answer["result_row_rawtext"].push_back(row_str);
         }
     }
 }

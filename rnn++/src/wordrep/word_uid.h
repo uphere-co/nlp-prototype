@@ -32,6 +32,7 @@ public:
         if(it==uid2word.cend()) it = uid2word.find(uid_t{});
         return it->second;
     }
+    void write_to_disk(std::string filename);
 
 private:
     std::unordered_map<uid_t, std::string> uid2word;
