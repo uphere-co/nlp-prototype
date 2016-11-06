@@ -15,11 +15,9 @@ import           Control.Distributed.Process.Closure
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Distributed.Process.Serializable
 import           Data.Aeson
-import           Data.Aeson.Encode                         (encodeToBuilder)
 import           Data.Aeson.Types
 import qualified Data.Attoparsec                     as A
 import qualified Data.Binary                         as Bi (encode,decode)
-import qualified Data.Binary.Builder                 as B  (toLazyByteString)
 import qualified Data.ByteString.Base64.Lazy         as B64
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Char8               as B
@@ -38,7 +36,6 @@ import qualified Data.Text.Lazy.Encoding             as TLE
 import qualified Data.Text.IO                        as TIO
 import           Data.UUID                                 (toString)
 import           Data.UUID.V4                              (nextRandom)
-import qualified Data.Vector                         as V
 import           Foreign.C.String
 import           Foreign.C.Types                           (CInt(..))
 import           Foreign.ForeignPtr
@@ -52,6 +49,7 @@ import           System.IO                                 (hClose, hGetContents
 import           System.Process                            (readProcess)
 --
 import           QueryServer.Type
+import           CoreNLP
 import           JsonUtil
 import           Network
 
@@ -60,38 +58,11 @@ foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 
-data NLPResult = NLPResult [Sentence] deriving Show
-instance FromJSON NLPResult where
-  parseJSON (Object o) = NLPResult <$> o .: "sentences"
-  parseJSON invalid = typeMismatch "NLPResult" invalid
-
-data Sentence = Sentence { unSentence :: [Token]} deriving Show
-
-instance FromJSON Sentence where
-  parseJSON (Object o) = Sentence <$> o .: "tokens"
-  parseJSON invalid = typeMismatch "Sentence" invalid
-
-
-data Token = Token { unToken :: Text} deriving Show
-
-instance FromJSON Token where
-  parseJSON (Object o) = Token <$> o .: "word"
-  parseJSON invalid = typeMismatch "Token" invalid
-
 
 query :: Json -> IO Json
 query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 
 
-runCoreNLP body = do
-  lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
-  let r_bstr = BL.toStrict lbstr
-  let Just c' = do
-        o@(Object c) <- A.maybeResult (A.parse json r_bstr)
-        NLPResult ss <- decodeStrict' r_bstr
-        let queries = map (String . T.intercalate " " . map unToken . unSentence) ss 
-        return . Object . HM.insert "max_clip_len" (toJSON (200 :: Int)) . HM.insert "queries" (Array (V.fromList queries)) $ c
-  (return . BL.toStrict . B.toLazyByteString . encodeToBuilder) c'
   
 queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
 queryWorker ref sc q = do
