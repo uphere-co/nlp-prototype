@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -56,21 +55,13 @@ import           System.IO                                 (hClose, hGetContents
 import           System.Process                            (readProcess)
 --
 import           QueryServer.Type
-
-data RawJson
-type Json_t = Ptr RawJson
-
-foreign import ccall "json_create"    c_json_create   :: CString -> IO Json_t
-foreign import ccall "&json_finalize" c_json_finalize :: FunPtr (Json_t -> IO ())
-foreign import ccall "json_serialize" c_json_serialize :: Json_t -> IO CString
-
+import           JsonUtil
 
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
-type Json = ForeignPtr RawJson
 
 data NLPResult = NLPResult [Sentence] deriving Show
 instance FromJSON NLPResult where
@@ -90,14 +81,10 @@ instance FromJSON Token where
   parseJSON (Object o) = Token <$> o .: "word"
   parseJSON invalid = typeMismatch "Token" invalid
 
-json_create :: CString -> IO Json
-json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
 query :: Json -> IO Json
 query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
 
-json_serialize :: Json -> IO CString
-json_serialize p = withForeignPtr p c_json_serialize
 
 runCoreNLP body = do
   lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
@@ -174,8 +161,6 @@ server url = do
         spawnLocal (queryWorker ref sc' q)
   return ()
 
-makeJson :: Query -> Value
-makeJson (Query qs) = object [ "queries" .= toJSON qs ]
 
 main = do
   serverurl <- liftIO (getEnv "SERVERURL")
