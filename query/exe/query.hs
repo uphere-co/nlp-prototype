@@ -43,9 +43,6 @@ import           Foreign.C.String
 import           Foreign.C.Types                           (CInt(..))
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
-import           Network.Connection                        (TLSSettings(..))
-import           Network.HTTP.Client
-import           Network.HTTP.Client.TLS
 import           Network.HTTP.Types                        (Method,methodGet,methodPost)
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
 import           System.Directory
@@ -56,7 +53,7 @@ import           System.Process                            (readProcess)
 --
 import           QueryServer.Type
 import           JsonUtil
-
+import           Network
 
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
@@ -119,24 +116,6 @@ queryWorker ref sc q = do
     Just resultbstr -> sendChan sc resultbstr
 
     
-simpleHttpClient :: Bool -> Method -> String -> Maybe ByteString -> IO BL.ByteString
-simpleHttpClient isurlenc mth url mbstr = do
-  request0' <- parseRequest url
-  let request0 = request0' { requestHeaders = requestHeaders request0' ++ [ ("Accept","application/json") ] }
-  let request' = maybe (request0 { method = mth }) (\bstr -> request0 { method = mth, requestBody = RequestBodyBS bstr }) mbstr
-      request = if isurlenc then urlEncodedBody [] request' else request'
-  print (requestHeaders request)
-  case mbstr of
-    Nothing -> return ()
-    Just bstr -> TIO.putStrLn (TE.decodeUtf8 bstr)
-  manager <- if (secure request)
-               then do
-                 let tlssetting = TLSSettingsSimple True False False
-                     mansetting = mkManagerSettings tlssetting Nothing
-                 newManager mansetting
-               else newManager defaultManagerSettings
-  response <- httpLbs request manager
-  return (responseBody response)
   
 server :: String -> Process ()
 server url = do
