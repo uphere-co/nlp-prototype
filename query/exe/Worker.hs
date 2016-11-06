@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Worker where
 
@@ -18,10 +19,14 @@ import           QueryServer.Type
 import           CoreNLP
 import           JsonUtil
 
-foreign import ccall "query"          c_query          :: Json_t -> IO Json_t
+foreign import ccall "register_documents" c_register_documents :: Json_t -> IO Json_t
+foreign import ccall "query"              c_query              :: Json_t -> IO Json_t
 
 query :: Json -> IO Json
 query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
+
+register_documents :: Json -> IO Json
+register_documents q = withForeignPtr q c_register_documents >>= newForeignPtr c_json_finalize
 
 
 queryWorker :: TVar (HM.HashMap Query BL.ByteString) -> SendPort BL.ByteString -> Query -> Process ()
@@ -29,13 +34,16 @@ queryWorker ref sc q = do
   m <- liftIO $ readTVarIO ref
   case HM.lookup q m of
     Nothing -> do
-      let failed =encode Null
-          ss = querySentences q
-      case ss of
+      case querySentences q of
         (s:_) -> do
           if (not . T.null) s
             then do
               bstr <- (liftIO . runCoreNLP . TE.encodeUtf8) s
+              bstr0 <- liftIO $ B.useAsCString bstr $
+                json_create >=> register_documents >=> json_serialize >=> unsafePackCString
+              liftIO $ B.putStrLn bstr0
+              let r :: Either String RegisteredSentences  = eitherDecodeStrict' bstr0
+              liftIO $ print r
               bstr' <- liftIO $ B.useAsCString bstr $ 
                 json_create >=> query >=> json_serialize >=> unsafePackCString
               let resultbstr = BL.fromStrict bstr'
