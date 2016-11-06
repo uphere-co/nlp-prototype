@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Worker where
@@ -13,6 +14,7 @@ import qualified Data.ByteString.Lazy.Char8          as BL
 import           Data.ByteString.Unsafe                    (unsafePackCString)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Maybe                                (listToMaybe)
+import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
 import           Foreign.ForeignPtr
@@ -39,24 +41,23 @@ queryRegisteredSentences r = do
   return (BL.fromStrict bstr')
 
 
-queryWorker :: TVar (HM.HashMap Query [Int]) -> SendPort BL.ByteString -> Query -> Process ()
-queryWorker ref sc q = do
+queryWorker :: TVar (HM.HashMap Text [Int]) -> SendPort BL.ByteString -> Query -> Process ()
+queryWorker ref sc QueryText {..} = do
   m <- liftIO $ readTVarIO ref
 
-  case HM.lookup q m of
+  case HM.lookup query_text m of
     Just ids ->
       liftIO (queryRegisteredSentences RS { rs_sent_uids = ids, rs_max_clip_len = Nothing })
       >>= sendChan sc
     Nothing -> do
       r <- runMaybeT $ do
-        s <- MaybeT . return $ listToMaybe (querySentences q)
-        guard ((not . T.null) s)
-        bstr_nlp <- (liftIO . runCoreNLP . TE.encodeUtf8) s
+        guard ((not . T.null) query_text)
+        bstr_nlp <- (liftIO . runCoreNLP . TE.encodeUtf8) query_text
         bstr0 <- liftIO $ B.useAsCString bstr_nlp $
           json_create >=> register_documents >=> json_serialize >=> unsafePackCString
         r :: RegisteredSentences <- (MaybeT . return . decodeStrict') bstr0
         resultbstr <- liftIO (queryRegisteredSentences r)
-        liftIO $ atomically (modifyTVar' ref (HM.insert q (rs_sent_uids r)))
+        liftIO $ atomically (modifyTVar' ref (HM.insert query_text (rs_sent_uids r)))
         return resultbstr
       case r of
         Just resultbstr -> sendChan sc resultbstr

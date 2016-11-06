@@ -11,15 +11,15 @@ import qualified Data.Binary      as Bi
 import           Data.Hashable
 import           Data.Text              (Text)
 
-data Query = Query { querySentences :: [ Text ] }
+data Query = QueryText { query_text :: Text }
   deriving (Show,Eq,Ord)
 
 instance Bi.Binary Query where
-  put (Query xs) = Bi.put xs
-  get = Query <$> Bi.get
+  put (QueryText txt) = Bi.put txt
+  get = QueryText <$> Bi.get
 
 instance Hashable Query where
-  hashWithSalt n (Query txts) = hashWithSalt n txts
+  hashWithSalt n (QueryText txt) = hashWithSalt n txt
 
 
 data RegisteredSentences = RS { rs_sent_uids :: [ Int ]
