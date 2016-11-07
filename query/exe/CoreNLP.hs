@@ -14,6 +14,7 @@ import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Vector                         as V
 import           Network.HTTP.Types                        (methodPost)
+import           System.Environment                        (getEnv)
 --
 import           Network
 
@@ -37,7 +38,8 @@ instance FromJSON Token where
 
 runCoreNLP :: ByteString -> IO ByteString
 runCoreNLP body = do
-  lbstr <- simpleHttpClient False methodPost "http://192.168.1.104:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}" (Just body)
+  corenlp_server <- getEnv "CORENLPSERVER"
+  lbstr <- simpleHttpClient False methodPost (corenlp_server ++"/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}") (Just body)
   let r_bstr = BL.toStrict lbstr
   let Just c' = do
         Object c <- A.maybeResult (A.parse json r_bstr)

@@ -15,6 +15,7 @@ rec {
                      inherit rnnpp;
                      json = toolz_cpp.json;
 		     fmt = toolz_cpp.fmt;
+		     msgsl = toolz_cpp.msgsl;
 		     libpqxx =pkgs.libpqxx;
                    };
   
