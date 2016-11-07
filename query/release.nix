@@ -5,6 +5,7 @@
 , json
 , libpqxx
 , fmt
+, msgsl
 }:
 
 with pkgs;
@@ -15,7 +16,7 @@ let
       query-common = self.callPackage ../query-common {
       };
       query = self.callPackage (import ./default.nix) {
-        inherit hdf5_cpp tbb rnnpp json fmt  ;
+        inherit hdf5_cpp tbb rnnpp json fmt msgsl ;
 	pqxx = libpqxx;
       };
     };
