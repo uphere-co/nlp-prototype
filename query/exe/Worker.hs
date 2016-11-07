@@ -69,8 +69,6 @@ queryWorker ref sc QueryText {..} = do
         Just resultbstr -> sendChan sc resultbstr
         Nothing         -> sendChan sc failed 
 queryWorker ref sc QueryRegister {..} = do
-  liftIO  $ putStrLn "QueryRegister api is called"
-  liftIO $ TIO.putStrLn query_register
   m <- liftIO $ readTVarIO ref
   case HM.lookup query_register m of
     Just ids -> sendChan sc . encode $ RS { rs_sent_uids = ids, rs_max_clip_len = Nothing}
@@ -83,4 +81,13 @@ queryWorker ref sc QueryRegister {..} = do
       case r of
         Just resultbstr -> sendChan sc resultbstr
         Nothing         -> sendChan sc failed 
+queryWorker ref sc QueryById {..} = do
+  m <- liftIO $ readTVarIO ref
+  r <- runMaybeT $ do
+    let rs = RS { rs_sent_uids = query_ids, rs_max_clip_len = Nothing}
+    resultbstr <- liftIO (queryRegisteredSentences rs)
+    return resultbstr
+  case r of
+    Just resultbstr -> sendChan sc resultbstr
+    Nothing         -> sendChan sc failed 
 
