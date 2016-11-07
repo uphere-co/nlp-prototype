@@ -44,8 +44,9 @@ server url = do
       (sc,rc) <- newChan :: Process (SendPort Query, ReceivePort Query)
       send them (sc,us)
       sc' <- expect :: Process (SendPort BL.ByteString)
+      liftIO $ putStrLn "connected"  
+      
       spawnLocal (heartbeat 0)
-
       ref <- liftIO $ newTVarIO HM.empty
       forever $ do
         q <- receiveChan rc
