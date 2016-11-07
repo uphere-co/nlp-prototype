@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "utils/json.h"
 
 #include "wordrep/dep_parsed.h"
@@ -115,7 +117,7 @@ struct DepSimilaritySearch {
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
-
+    std::mutex query_tokens_update;
 };
 
 }//namespace engine

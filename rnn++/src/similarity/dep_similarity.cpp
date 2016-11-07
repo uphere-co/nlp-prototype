@@ -216,6 +216,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 //TODO: fix it to be thread-safe
 DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
+    std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
