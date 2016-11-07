@@ -322,13 +322,16 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
     using val_t = ScoredSentence::val_t;
-    std::map<val_t, bool> is_seen{};
+    using hash_t = size_t;
+    std::map<hash_t, bool> is_seen{};
     std::vector<ScoredSentence> dedup_sents;
-    for(auto const &sent : relevant_sents){
-        auto score = sent.score;
-        if(is_seen.find(score)!=is_seen.cend()) continue;
-        is_seen[score] = true;
-        dedup_sents.push_back(sent);
+    for(auto const &scored_sent : relevant_sents){
+        auto sent = scored_sent.sent;
+        hash_t hash(0);
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            hash += std::hash<VocaIndex>{}(sent.tokens->word(idx));
+        }
+        dedup_sents.push_back(scored_sent);
     }
     return dedup_sents;
 }
@@ -398,6 +401,7 @@ auto get_clip_offset = [](Sentence sent,
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
                                                               int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
+    std::cerr<<n_found << " results are found"<<std::endl;
     json_t answer{};
     if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;
