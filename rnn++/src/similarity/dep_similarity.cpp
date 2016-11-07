@@ -127,6 +127,7 @@ public:
         cut = *it * 0.21;
         cut2 = *it * 0.35;
         cut3 = *it * 0.5;
+        //fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
 
         for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx)
             dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
@@ -151,7 +152,6 @@ public:
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
                 auto qhead_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
-                if(cutoffs[qhead_pidx]<0.4) continue;
                 if(qhead_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
@@ -331,6 +331,8 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
         for(auto idx=sent.beg; idx!=sent.end; ++idx){
             hash += std::hash<VocaIndex>{}(sent.tokens->word(idx));
         }
+        if(is_seen.find(hash)!=is_seen.cend()) continue;
+        is_seen[hash]=true;
         dedup_sents.push_back(scored_sent);
     }
     return dedup_sents;
