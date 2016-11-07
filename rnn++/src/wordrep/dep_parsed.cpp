@@ -210,7 +210,7 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
             auto wsubstr = wstr.substr(offset_beg, offset_end-offset_beg);
             auto substr = converter.to_bytes(wsubstr);
             answer["result_DEBUG"].push_back(substr);
-//            answer["result_DEBUG"].push_back(row_str);
+            answer["result_row_DEBUG"].push_back(row_str);
         }
     }
 }

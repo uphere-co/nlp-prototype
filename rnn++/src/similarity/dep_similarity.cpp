@@ -160,6 +160,7 @@ public:
                         scores[j] = {i, score};
                     }
                 } else {
+                    if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
@@ -351,7 +352,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
         auto sent = sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > util::math::sum(cutoffs) *0.8){
+        if (scored_sent.score > util::math::sum(cutoffs) *0.5){
             relevant_sents.push_back(scored_sent);
         }
     });
