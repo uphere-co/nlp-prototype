@@ -10,16 +10,20 @@ namespace util{
 namespace math{
 
 template<typename T, std::size_t M>
-auto to_span(std::array<T,M> &val){
+auto to_span(std::array<T,M> const &val){
     return span_1d<T,M>{val};
 }
 template<typename T>
-auto to_span(std::vector<T> &val){
+auto to_span(std::vector<T> const &val){
     return span_dyn<T>{val};
 }
 
 template<typename T>
-auto sum(span_dyn<T> const vec){
+auto sum(std::vector<T> vec){
+    return std::accumulate(vec.cbegin(), vec.cend(), T{});
+}
+template<typename T>
+auto sum(span_dyn<T> vec){
     return std::accumulate(vec.cbegin(), vec.cend(), T{});
 }
 template<typename T, int64_t M>

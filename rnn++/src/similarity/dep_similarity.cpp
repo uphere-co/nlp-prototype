@@ -14,6 +14,7 @@
 #include "utils/string.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
+#include "utils/linear_algebra.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -124,10 +125,10 @@ public:
         n_cut = it - cutoff_cumsum.cbegin();
         n_cut2 = it2 - cutoff_cumsum.cbegin();
         n_cut3 = it3 - cutoff_cumsum.cbegin();
-        cut = *it * 0.21;
-        cut2 = *it * 0.35;
-        cut3 = *it * 0.5;
-        //fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
+        cut = *it * 0.5;
+        cut2 = *it2 * 0.5;
+        cut3 = *it3 * 0.5;
+        fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
 
         for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx)
             dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
@@ -350,7 +351,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
         auto sent = sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > query.n_words() * 0.2) {
+        if (scored_sent.score > util::math::sum(cutoffs) *0.8){
             relevant_sents.push_back(scored_sent);
         }
     });
