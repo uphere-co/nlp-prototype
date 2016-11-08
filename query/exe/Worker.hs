@@ -51,8 +51,9 @@ queryRegisteredSentences r = do
     json_create >=> query >=> json_serialize >=> unsafePackCString
   return (BL.fromStrict bstr')
 
+type ResultBstr = BL.ByteString
 
-queryWorker :: TVar (HM.HashMap Text [Int]) -> SendPort BL.ByteString -> Query -> Process ()
+queryWorker :: TVar (HM.HashMap Text [Int]) -> SendPort ResultBstr -> Query -> Process ()
 queryWorker ref sc QueryText {..} = do
   m <- liftIO $ readTVarIO ref
   case HM.lookup query_text m of
