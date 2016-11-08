@@ -43,9 +43,7 @@ server url = do
       us <- getSelfPid
       (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
       send them sc
-      -- sc' <- expect :: Process (SendPort BL.ByteString)
       liftIO $ putStrLn "connected"  
-      
       spawnLocal (heartbeat 0)
       ref <- liftIO $ newTVarIO HM.empty
       forever $ do
