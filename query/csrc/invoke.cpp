@@ -13,19 +13,18 @@
 
 using json_t = nlohmann::json;
 using namespace std;
-//using namespace engine;
 
 unique_ptr_wrapper_type(json_t)
 
 extern "C" {
+    json_t_p    json_create        ( char*   str         );
+    void        json_finalize      ( json_t_p p          );
+    const char* json_serialize     ( json_t_p output     );
     
-    json_t_p    json_create    ( char*  str      );
-    void        json_finalize  ( json_t_p p      );
-    const char* json_serialize ( json_t_p output );
-    
-    void        query_init     ( char*   configfile );
-    json_t_p    query          ( json_t_p input     );
-    void        query_finalize ( void               );
+    void        query_init         ( char*    configfile );
+    json_t_p    register_documents ( json_t_p input      ); 
+    json_t_p    query              ( json_t_p input      );
+    void        query_finalize     ( void                );
 }
 
 using json = nlohmann::json;
@@ -52,7 +51,7 @@ const char* json_serialize( json_t_p p )
     stringstream ss;
     ss << output->dump(4);
     const std::string& str = ss.str();
-    char* n_str= new char[str.size()+1];   // memory leak
+    char* n_str= new char[str.size()+1];   // memory leak (?). need to check
     strcpy (n_str, str.c_str() ); 
     return n_str;
 }
@@ -65,12 +64,20 @@ void query_init( char* configfile )
     timer.here_then_reset("Search engine loaded."); 
 }
 
+json_t_p register_documents( json_t_p input )
+{
+    auto query_json = *(input->get());
+    auto uids0 = engine0->register_documents(query_json);
+    auto uids = make_unique<json_t>( uids0 );
+    return new unique_ptr_wrapper<json_t>( uids ) ;
+}
+
 json_t_p query( json_t_p input )
 {
     auto query_json = *(input->get());
-    auto uids = engine0->register_documents(query_json);
-    uids["max_clip_len"] = query_json["max_clip_len"];
-    auto answer0 = engine0->process_query(uids);
+    //auto uids = engine0->register_documents(query_json);
+    // uids["max_clip_len"] = query_json["max_clip_len"];
+    auto answer0 = engine0->process_query(query_json);
     auto answer = make_unique<json_t>( answer0 );
     timer.here_then_reset("Query is answered.");
     return new unique_ptr_wrapper<json_t>( answer ) ;

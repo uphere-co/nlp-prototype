@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <codecvt>
+#include <locale>
 
 #include "fmt/printf.h"
 #include "pqxx/pqxx"
@@ -199,11 +201,16 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
         for(decltype(n)i=0; i!=n; ++i){
             ygp::ColumnUID col_uid{col_uids[i].get<ygp::ColumnUID::val_t>()};
             ygp::RowIndex  row_idx{row_idxs[i].get<ygp::RowIndex::val_t>()};
-            auto row_str = ygpdb.raw_text(col_uid, row_idx);
             auto offset_beg = offsets[i][0].get<int64_t>();
             auto offset_end = offsets[i][1].get<int64_t>();
-            answer["result_DEBUG"].push_back(row_str.substr(offset_beg, offset_end-offset_beg));
-            answer["result_row_rawtext"].push_back(row_str);
+
+            auto row_str = ygpdb.raw_text(col_uid, row_idx);
+            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+            std::wstring wstr = converter.from_bytes(row_str);
+            auto wsubstr = wstr.substr(offset_beg, offset_end-offset_beg);
+            auto substr = converter.to_bytes(wsubstr);
+            answer["result_DEBUG"].push_back(substr);
+            answer["result_row_DEBUG"].push_back(row_str);
         }
     }
 }

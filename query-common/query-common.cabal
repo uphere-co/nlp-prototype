@@ -28,6 +28,7 @@ Library
   hs-source-dirs:       lib
   Build-depends:        base,
                         --
+                        aeson,
                         binary,
                         bytestring,
                         hashable,

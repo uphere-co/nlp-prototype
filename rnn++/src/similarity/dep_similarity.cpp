@@ -14,6 +14,7 @@
 #include "utils/string.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
+#include "utils/linear_algebra.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -124,9 +125,10 @@ public:
         n_cut = it - cutoff_cumsum.cbegin();
         n_cut2 = it2 - cutoff_cumsum.cbegin();
         n_cut3 = it3 - cutoff_cumsum.cbegin();
-        cut = *it * 0.21;
-        cut2 = *it * 0.35;
-        cut3 = *it * 0.5;
+        cut = *it * 0.5;
+        cut2 = *it2 * 0.5;
+        cut3 = *it3 * 0.5;
+        fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
 
         for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx)
             dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
@@ -151,7 +153,6 @@ public:
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
                 auto qhead_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
-                if(cutoffs[qhead_pidx]<0.4) continue;
                 if(qhead_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
@@ -159,6 +160,7 @@ public:
                         scores[j] = {i, score};
                     }
                 } else {
+                    if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
@@ -216,6 +218,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 //TODO: fix it to be thread-safe
 DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
+    std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
@@ -266,7 +269,27 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
+void matched_highlighter(Sentence sent_ref, Sentence sent,
+                         std::vector<DepSimilaritySearch::val_t> const &cutoffs,
+                         WordSimCache &dists_cache){
+    for(auto ridx=sent_ref.beg; ridx!=sent_ref.end; ++ridx){
+        auto ref_vidx = sent_ref.tokens->word(ridx);
+        auto ref_head_vidx = sent_ref.tokens->head_word(ridx);
+        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
+        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
 
+        auto j = util::diff(ridx, sent_ref.beg);
+        auto j_head = util::diff(sent_ref.tokens->head_pos(ridx), sent_ref.tokens->head_pos(sent_ref.beg));
+        for(auto widx=sent.beg; widx!=sent.end; ++widx){
+            auto word_vidx = sent.tokens->word(widx);
+            auto word_head_vidx = sent.tokens->head_word(widx);
+
+            auto dependent_score = dists_cache.distances(ref_vidx)[word_vidx];
+            auto governor_score = dists_cache.distances(ref_head_vidx)[word_head_vidx];
+            cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
+        }
+    }
+}
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents) const {
     auto max_clip_len = 200;
@@ -322,13 +345,18 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
     using val_t = ScoredSentence::val_t;
-    std::map<val_t, bool> is_seen{};
+    using hash_t = size_t;
+    std::map<hash_t, bool> is_seen{};
     std::vector<ScoredSentence> dedup_sents;
-    for(auto const &sent : relevant_sents){
-        auto score = sent.score;
-        if(is_seen.find(score)!=is_seen.cend()) continue;
-        is_seen[score] = true;
-        dedup_sents.push_back(sent);
+    for(auto const &scored_sent : relevant_sents){
+        auto sent = scored_sent.sent;
+        hash_t hash(0);
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            hash += std::hash<VocaIndex>{}(sent.tokens->word(idx));
+        }
+        if(is_seen.find(hash)!=is_seen.cend()) continue;
+        is_seen[hash]=true;
+        dedup_sents.push_back(scored_sent);
     }
     return dedup_sents;
 }
@@ -344,7 +372,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
         auto sent = sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > query.n_words() * 0.2) {
+        if (scored_sent.score > util::math::sum(cutoffs) *0.5){
             relevant_sents.push_back(scored_sent);
         }
     });
@@ -398,6 +426,7 @@ auto get_clip_offset = [](Sentence sent,
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
                                                               int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
+    std::cerr<<n_found << " results are found"<<std::endl;
     json_t answer{};
     if(!n_found) return answer;
     auto n_max_result=n_found>5? 5 : n_found;

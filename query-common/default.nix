@@ -1,4 +1,4 @@
-{ mkDerivation, base, binary, bytestring, conduit, conduit-extra
+{ mkDerivation, base, aeson, binary, bytestring, conduit, conduit-extra
 , stdenv, text, unix, hashable
 }:
 mkDerivation {
@@ -6,7 +6,7 @@ mkDerivation {
   version = "0.1";
   src = ./.;
   libraryHaskellDepends = [
-    base binary bytestring conduit conduit-extra text unix hashable
+    base aeson binary bytestring conduit conduit-extra text unix hashable
   ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";

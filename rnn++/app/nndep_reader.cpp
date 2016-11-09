@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <cctype>
 
+#include <codecvt>
+#include <locale>
+
 #include "pqxx/pqxx"
 #include "fmt/printf.h"
 #include "csv/csv.h"
@@ -76,7 +79,8 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
 }
 
 
-void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports){
+void parse_json_dumps(nlohmann::json const &config,
+                      const char *cols_to_exports, int64_t n_max=-1){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -104,7 +108,7 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
         auto query=fmt::format("SELECT {} FROM {};", index_col, table);
         auto body= W.exec(query);
         W.commit();
-        auto n = body.size();
+        auto n = n_max<0? body.size(): n_max;
         for(decltype(n)i=0; i!=n; ++i){
             auto row = body[i];
             auto index = std::stoi(row[0].c_str());
@@ -182,7 +186,7 @@ void dump_psql(const char *cols_to_exports){
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
-        auto index_col = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
         std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
         dump_column(table, column, index_col);
     }
@@ -218,16 +222,29 @@ int list_columns(){
     return 0;
 }
 
+void test_unicode_conversion(){
+    auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
+//    std::wstring wstr =  L"This is 테스트 of unicode-UTF8 conversion.";
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> to_unicode;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> to_utf8;
+//    std::wstring wstr = to_unicode.from_bytes(row_str);
+    std::wstring wstr = to_utf8.from_bytes(row_str);
+    auto wsubstr = wstr.substr(8, 3);
+    auto substr = to_utf8.to_bytes(wsubstr);
+    fmt::print("{}\n", substr);
+}
+
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-    auto col_uids = argv[2];
-//    dump_psql(col_uids);
-    parse_json_dumps(config, col_uids);
-    return 0;
+//    auto col_uids = argv[2];
+//    auto n_max = std::stoi(argv[3]);
+    //dump_psql(col_uids);
+//    parse_json_dumps(config, col_uids, n_max);
+//    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
