@@ -261,7 +261,8 @@ int main(int /*argc*/, char** argv){
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
-    auto answers = engine.process_query(uids);
+    auto answers = engine.ask_query(uids);
+//    auto answers = engine.ask_query_chain(uids);
     ygp::annotation_on_result(config, answers);
     fmt::print("{}\n", answers.dump(4));
     timer.here_then_reset("Queries are answered.");

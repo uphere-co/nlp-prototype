@@ -238,7 +238,7 @@ struct Query{
     }
     std::vector<SentUID> uids;
 };
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask) const {
+DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -253,22 +253,30 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
     }
     fmt::print("Will process {} user documents\n", query_sents.size());
     auto results = process_query_sents(query_sents);
-//    tbb::task_group g;
-//    g.run([&ask,&results,this](){
-//        json_t new_query{};
-//        new_query["max_clip_len"] = ask["max_clip_len"];
-//        for(auto const &result : results){
-//            for(auto uid : result["result_sent_uid"]){
-//                new_query["sent_uids"].push_back(uid);
-//            }
-//        }
-//        this->process_query(new_query);
-//        std::cerr<<fmt::format("Completes pre-computation.") <<std::endl;
-//    });
-//    g.wait();
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
+
+DepSimilaritySearch::json_t DepSimilaritySearch::ask_query_chain(json_t const &ask) const {
+    if (!Query::is_valid(ask)) return json_t{};
+    Query query{ask};
+    std::vector<Sentence> query_sents{};
+    //TODO: fix it to be incremental
+    auto qsents = query_tokens.IndexSentences();
+    for(auto uid : query.uids){
+        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==qsents.cend()) continue;
+        auto sent = *it;
+        query_sents.push_back(sent);
+    }
+    fmt::print("Will process a query chain of length {}.\n", query_sents.size());
+    auto results = process_query_chain(query_sents);
+    return results;
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+}
+
+
 void matched_highlighter(Sentence sent_ref, Sentence sent,
                          std::vector<DepSimilaritySearch::val_t> const &cutoffs,
                          WordSimCache &dists_cache){
