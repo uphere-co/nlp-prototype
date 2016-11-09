@@ -238,10 +238,10 @@ int main(int /*argc*/, char** argv){
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-    auto col_uids = argv[2];
-    auto n_max = std::stoi(argv[3]);
+//    auto col_uids = argv[2];
+//    auto n_max = std::stoi(argv[3]);
     //dump_psql(col_uids);
-    parse_json_dumps(config, col_uids, n_max);
+//    parse_json_dumps(config, col_uids, n_max);
 //    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();

@@ -269,7 +269,27 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
+void matched_highlighter(Sentence sent_ref, Sentence sent,
+                         std::vector<DepSimilaritySearch::val_t> const &cutoffs,
+                         WordSimCache &dists_cache){
+    for(auto ridx=sent_ref.beg; ridx!=sent_ref.end; ++ridx){
+        auto ref_vidx = sent_ref.tokens->word(ridx);
+        auto ref_head_vidx = sent_ref.tokens->head_word(ridx);
+        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
+        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
 
+        auto j = util::diff(ridx, sent_ref.beg);
+        auto j_head = util::diff(sent_ref.tokens->head_pos(ridx), sent_ref.tokens->head_pos(sent_ref.beg));
+        for(auto widx=sent.beg; widx!=sent.end; ++widx){
+            auto word_vidx = sent.tokens->word(widx);
+            auto word_head_vidx = sent.tokens->head_word(widx);
+
+            auto dependent_score = dists_cache.distances(ref_vidx)[word_vidx];
+            auto governor_score = dists_cache.distances(ref_head_vidx)[word_head_vidx];
+            cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
+        }
+    }
+}
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents) const {
     auto max_clip_len = 200;
