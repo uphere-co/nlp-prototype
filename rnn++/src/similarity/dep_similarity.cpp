@@ -293,17 +293,12 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents) const {
     auto max_clip_len = 200;
-    auto n_queries = query_sents.size();
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
-    assert(query_sents.size()==n_queries);
     util::Timer timer{};
-    for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        auto query_sent = query_sents[i];
+    for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
-        auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
-        g.run([&timer,&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
+        g.run([&timer,&answers,max_clip_len, query_sent,this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -327,6 +322,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             timer.here_then_reset("Built Similarity caches.");
             auto relevant_sents = this->process_query_sent(query_sent, cutoffs);
             auto answer = write_output(relevant_sents, max_clip_len);
+            auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
+            auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answer["input_uid"] = query_sent.uid.val;
             answer["cutoffs"] = cutoffs;
@@ -372,7 +369,7 @@ std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence que
         auto sent = sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > util::math::sum(cutoffs) *0.5){
+        if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
             relevant_sents.push_back(scored_sent);
         }
     });
