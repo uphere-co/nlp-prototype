@@ -79,7 +79,8 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
 }
 
 
-void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports){
+void parse_json_dumps(nlohmann::json const &config,
+                      const char *cols_to_exports, int64_t n_max=-1){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -100,14 +101,14 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
-        auto index_col = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
 
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         pqxx::work W(C);
         auto query=fmt::format("SELECT {} FROM {};", index_col, table);
         auto body= W.exec(query);
         W.commit();
-        auto n = body.size();
+        auto n = n_max<0? body.size(): n_max;
         for(decltype(n)i=0; i!=n; ++i){
             auto row = body[i];
             auto index = std::stoi(row[0].c_str());
@@ -130,7 +131,6 @@ void parse_json_dumps(nlohmann::json const &config, const char *cols_to_exports)
 
             ++row_uid;
         }
-        ++col_uid;
     }
     tokens.build_sent_uid(SentUID{SentUID::val_t{0}});
     tokens.build_voca_index(voca.indexmap);
@@ -184,7 +184,7 @@ void dump_psql(const char *cols_to_exports){
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
-        auto index_col = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
         std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
         dump_column(table, column, index_col);
     }
@@ -238,9 +238,10 @@ int main(int /*argc*/, char** argv){
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-//    auto col_uids = argv[2];
-//    dump_psql(col_uids);
-//    parse_json_dumps(config, col_uids);
+    auto col_uids = argv[2];
+    auto n_max = std::stoi(argv[3]);
+    //dump_psql(col_uids);
+    parse_json_dumps(config, col_uids, n_max);
 //    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
