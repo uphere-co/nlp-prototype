@@ -41,15 +41,13 @@ server url = do
     lift $ do
       let heartbeat n = send them (HB n) >> liftIO (threadDelay 5000000) >> heartbeat (n+1)
       us <- getSelfPid
-      (sc,rc) <- newChan :: Process (SendPort Query, ReceivePort Query)
-      send them (sc,us)
-      sc' <- expect :: Process (SendPort BL.ByteString)
+      (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+      send them sc
       liftIO $ putStrLn "connected"  
-      
       spawnLocal (heartbeat 0)
       ref <- liftIO $ newTVarIO HM.empty
       forever $ do
-        q <- receiveChan rc
+        (q,sc') <- receiveChan rc
         liftIO $ hPutStrLn stderr (show q)
         spawnLocal (queryWorker ref sc' q)
   return ()
