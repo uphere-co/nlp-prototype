@@ -225,7 +225,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     auto sents = query_tokens.IndexSentences();
     Sentences uid2sent{sents};
     json_t answer{};
-    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) answer["sent_uids"].push_back(uid.val);
+    std::vector<SentUID::val_t> uid_vals;
+    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", answer.size()) << std::endl;
     return answer;
 }
