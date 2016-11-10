@@ -42,6 +42,9 @@ struct Sentence{
     Sentence() : tokens(nullptr) {}
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
             : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
+    CharOffset beg_offset() const;
+    CharOffset end_offset() const;
+    SentUID::val_t chrlen() const;
     SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;

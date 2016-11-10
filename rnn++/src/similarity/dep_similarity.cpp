@@ -222,9 +222,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
+    auto sents = query_tokens.IndexSentences();
+    Sentences uid2sent{sents};
     json_t answer{};
-    for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
+    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) answer["sent_uids"].push_back(uid.val);
+    std::cerr<<fmt::format("# of sents : {}\n", answer.size()) << std::endl;
     return answer;
 }
 
@@ -523,12 +525,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_column_name"].push_back(ygpdb.column(col_uid));
         answer["result_index_col_name"].push_back(ygpdb.index_col(col_uid));
         answer["result_column_uid"].push_back(col_uid.val);
-        auto beg = tokens.word_beg(sent.beg);
-        auto end = tokens.word_end(--sent.end);
-        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
+        auto beg=sent.beg_offset();
+        auto end=sent.end_offset();
         answer["result_offset"].push_back({beg.val,end.val});
-        answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
         answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
+        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
+        answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
     }
     return answer;
 
