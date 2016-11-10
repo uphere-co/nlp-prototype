@@ -257,7 +257,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
-DepSimilaritySearch::json_t DepSimilaritySearch::ask_query_chain(json_t const &ask) const {
+DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -271,7 +271,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query_chain(json_t const &a
         query_sents.push_back(sent);
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    auto results = process_query_chain(query_sents);
+    auto results = process_chain_query(query_sents);
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -349,7 +349,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
     return output;
 }
 
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query_chain(
+DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         std::vector<wordrep::Sentence> const &query_chain) const {
     auto max_clip_len = 200;
     util::Timer timer{};
@@ -388,13 +388,15 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_chain(
 
         candidate_sents.clear();
         assert(sents.size()==n0);
+        assert(candidate_sents.size()==0);
         auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
-                                               [](auto x, auto y){return x.score>y.score;});
+                                               [](auto x, auto y){return x.score<y.score;});
         auto score_cutoff = best_candidate->score * 0.7;
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
             candidate_sents.push_back(scored_sent.sent);
         }
+        std::cerr<<fmt::format("score cutoff {} : {} of {} passed.", score_cutoff, candidate_sents.size(), n0)<<std::endl;
         timer.here_then_reset("Prepared next pass in a query chain.");
     }
     return output;
