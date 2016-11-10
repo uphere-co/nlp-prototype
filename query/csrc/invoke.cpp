@@ -75,7 +75,7 @@ json_t_p register_documents( json_t_p input )
 json_t_p query( json_t_p input )
 {
     auto query_json = *(input->get());
-    auto answer0 = engine0->ask_query(query_json);
+    auto answer0 = engine0->ask_chain_query(query_json);
     auto answer = make_unique<json_t>( answer0 );
     timer.here_then_reset("Query is answered.");
     return new unique_ptr_wrapper<json_t>( answer ) ;
