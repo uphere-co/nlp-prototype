@@ -376,6 +376,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         dists_cache.cache(vidxs);
         timer.here_then_reset("Built Similarity caches.");
         auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
+        candidate_sents.clear();
+        assert(sents.size()==n0);
+        assert(candidate_sents.size()==0);
+        if(!relevant_sents.size()) continue;
 
         auto answer = write_output(relevant_sents, max_clip_len);
         auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
@@ -387,9 +391,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         output.push_back(answer);
         timer.here_then_reset("One pass in a query chain is finished.");
 
-        candidate_sents.clear();
-        assert(sents.size()==n0);
-        assert(candidate_sents.size()==0);
         auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
                                                [](auto x, auto y){return x.score<y.score;});
         auto score_cutoff = best_candidate->score * 0.7;
