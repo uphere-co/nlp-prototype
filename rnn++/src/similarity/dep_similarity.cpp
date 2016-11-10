@@ -396,8 +396,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
             auto sent = scored_sent.sent;
+//            candidate_sents.push_back(sent);
             auto uids = sent.tokens->sentences_in_chunk(sent);
             for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+            //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
+            assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
+            assert(uid2sent[sent.uid].uid == sent.uid);
         }
         std::cerr<<fmt::format("score cutoff {} : {} of {} passed.", score_cutoff, candidate_sents.size(), n0)<<std::endl;
         timer.here_then_reset("Prepared next pass in a query chain.");
