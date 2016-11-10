@@ -459,7 +459,7 @@ auto get_clip_offset = [](Sentence sent,
     auto i_word_end = pair.first;
     CharOffset clip_beg = tokens.word_beg(i_word_beg);
     CharOffset clip_end = tokens.word_end(i_word_end);
-    auto len_sent = tokens.word_end(sent.end).val - tokens.word_beg(sent.beg).val;
+    auto len_sent = sent.chrlen();
     max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
     auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
 
@@ -479,16 +479,16 @@ auto get_clip_offset = [](Sentence sent,
     }
     auto len = clip_end.val-clip_beg.val;
     while(max_len-len>0) {
-        if(i_word_beg>sent.beg) {
+        if(i_word_beg>sent.front()) {
             --i_word_beg;
             clip_beg = tokens.word_beg(i_word_beg);
         }
-        if(i_word_end<sent.end){
+        if(i_word_end<sent.back()){
             ++i_word_end;
             clip_end = tokens.word_end(i_word_end);
         }
         len = clip_end.val-clip_beg.val;
-        if(i_word_beg==sent.beg && i_word_end==sent.end) break;
+        if(i_word_beg==sent.front() && i_word_end==sent.back()) break;
     }
 
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
@@ -528,7 +528,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto beg=sent.beg_offset();
         auto end=sent.end_offset();
         answer["result_offset"].push_back({beg.val,end.val});
-        answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
+        answer["highlight_offset"].push_back({0,0});
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
     }
