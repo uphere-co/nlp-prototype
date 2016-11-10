@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 
 #include "utils/base_types.h"
 #include "utils/json.h"
@@ -38,6 +39,7 @@ struct RawTexts{
 
 struct DepParsedTokens; //forward declaration.
 struct Sentence{
+    Sentence() : tokens(nullptr) {}
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
             : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
     SentUID uid;
@@ -46,12 +48,27 @@ struct Sentence{
     DepParsedTokens const *tokens;
 };
 
+
+struct Sentences{
+    Sentences(std::vector<Sentence> const &sents) {
+        for(auto &sent : sents) uid2sent[sent.uid]=sent;
+    }
+    Sentence operator[](SentUID uid) const {
+        auto it=uid2sent.find(uid);
+        assert(it!=uid2sent.end());
+        return it->second;
+    }
+    std::map<SentUID,Sentence> uid2sent{};
+};
+
 struct DepParsedTokens{
     DepParsedTokens(util::io::H5file const &file, std::string prefix);
     DepParsedTokens(){}
 
     void write_to_disk(std::string filename, std::string prefix) const;
     std::vector<Sentence> IndexSentences() const;
+    std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;
+    //std::vector<Chunk> IndexChunks() const;
     void append_corenlp_output(WordUIDindex &wordUIDs,
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,

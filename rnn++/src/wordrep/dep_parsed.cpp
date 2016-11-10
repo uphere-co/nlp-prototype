@@ -79,6 +79,27 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
     return sents;
 }
 
+std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) const{
+    std::vector<SentUID> uids;
+
+    auto offset=sent.beg.val;
+    auto reversed_offset=n_tokens()-offset;
+    auto chk_idx = chunk_idx(sent.beg);
+    auto chk_beg = std::find_if_not(chunks_idx.crbegin()+reversed_offset, chunks_idx.crend(),
+                                [chk_idx](auto x) { return x == chk_idx; }).base();
+    auto chk_end = std::find_if_not(chunks_idx.cbegin()+offset, chunks_idx.cend(),
+                                [chk_idx](auto x) { return x == chk_idx; });
+    auto beg = sents_uid.cbegin() + std::distance(chk_beg, chunks_idx.cbegin());
+    auto end = sents_uid.cbegin() + std::distance(chk_end, chunks_idx.cbegin());
+    auto it=beg;
+    while(it!=end){
+        auto uid=*it;
+        uids.push_back(uid);
+        it = std::find_if_not(it, end, [uid](auto x) { return x == uid; });
+    }
+    return uids;
+}
+
 void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
@@ -139,7 +160,6 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
     auto chunk_beg=chunks_idx.cbegin()+n;
-    auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
     decltype(sents_uid) new_uids;

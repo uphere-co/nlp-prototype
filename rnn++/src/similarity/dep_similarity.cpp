@@ -355,6 +355,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
     util::Timer timer{};
     auto candidate_sents = sents;
     auto n0 = sents.size();
+    Sentences uid2sent{sents};
 
     json_t output{};
     for(auto const &query_sent : query_chain){
@@ -394,7 +395,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         auto score_cutoff = best_candidate->score * 0.7;
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
-            candidate_sents.push_back(scored_sent.sent);
+            auto sent = scored_sent.sent;
+            auto uids = sent.tokens->sentences_in_chunk(sent);
+            for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
         }
         std::cerr<<fmt::format("score cutoff {} : {} of {} passed.", score_cutoff, candidate_sents.size(), n0)<<std::endl;
         timer.here_then_reset("Prepared next pass in a query chain.");
