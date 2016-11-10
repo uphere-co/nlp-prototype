@@ -143,6 +143,49 @@ void parse_json_dumps(nlohmann::json const &config,
     wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
 
+void get_contry_code(nlohmann::json const &config,
+                      const char *cols_to_exports, int64_t n_max=-1){
+    using namespace ygp;
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+
+    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+
+    std::map<std::string,std::string> table2country_code;
+    table2country_code["reach_reports"] = "country_code";
+    table2country_code["regulation"] ="countrycode";
+    table2country_code["autchklist2"] ="countrycode";
+
+    DepParsedTokens tokens{H5file{H5name{output_filename},hdf5::FileMode::rw_exist}, prefix};
+    RowUID row_uid{};
+    YGPdb db{cols_to_exports};
+    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
+        auto country_code_col = table2country_code[table];
+        fmt::print("{} {} {}\n", table, country_code_col, index_col);
+
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+        pqxx::work W(C);
+        auto query=fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
+                                    INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
+                                   table, index_col, country_code_col);
+        auto body= W.exec(query);
+        W.commit();
+        auto n = n_max<0? body.size(): n_max;
+        for(decltype(n)i=0; i!=n; ++i){
+            auto row = body[i];
+            auto index = std::stoi(row[0].c_str());
+            auto country = row[1].c_str();
+            fmt::print("{} {} : {} {}\n", table, index, country, wordUIDs[country].val);
+        }
+    }
+//    write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
+}
+
 int dump_column(std::string table, std::string column, std::string index_col){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
     try
@@ -240,11 +283,12 @@ int main(int /*argc*/, char** argv){
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-//    auto col_uids = argv[2];
-//    auto n_max = std::stoi(argv[3]);
+    auto col_uids = argv[2];
+    auto n_max = std::stoi(argv[3]);
+    get_contry_code(config, col_uids, 100);
     //dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids, n_max);
-//    return 0;
+    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
