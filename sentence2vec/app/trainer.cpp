@@ -132,11 +132,11 @@ voca_vecs[i] = alpha*grad[i]/std::sqrt(ada_grad[i]);
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    test::negative_sampling();
-    test::context_words();
+//    test::negative_sampling();
+//    test::context_words();
+//    test::sampler();
 //    test_voca_update();
 //    test_word2vec_grad_update();
-    test::sampler();
     test::word_count(config);
     return 0;
 

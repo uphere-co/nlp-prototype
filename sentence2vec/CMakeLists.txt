@@ -29,7 +29,7 @@ FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 
 add_executable(trainer app/trainer models/sentence2vec tests/test_sent2vec
                ${parser_files} ${util_files})
-target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb)
+target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(query_similarity app/query_similarity
                ${similarity_files} ${wordrep_files} ${util_files})

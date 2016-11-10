@@ -1,15 +1,59 @@
+#include <unordered_map>
+#include "wordrep/voca.h"
+
+#include "fmt/printf.h"
+
 #include "tests/test_sent2vec.h"
 
 #include "models/sentence2vec.h"
 
 #include "utils/profiling.h"
+#include "utils/string.h"
+#include "utils/json.h"
 
 using namespace util;
 using namespace util::io;
+using namespace wordrep;
+
 namespace sent2vec{
 namespace test{
 
 void word_count(util::json_t const &config){
+    Timer timer{};
+    //std::unordered_map<VocaIndex,size_t> wc_serial, wc;
+    using wcounts_t = std::unordered_map<std::string,size_t>;
+    wcounts_t wc_serial, owc_serial;
+    wcounts_t wc, owc;
+    wcounts_t pos_count, arclabel_count;
+    auto files = string::readlines("results.1k");
+    timer.here_then_reset("Begins serial word count");
+    for(auto file : files){
+        auto parsed_json = load_json(file);
+        for(auto const& sent_json : parsed_json["sentences"] ) {
+            for (auto const &token : sent_json["tokens"]) {
+                auto originalText = token["originalText"].get<std::string>();
+                auto word = token["word"].get<std::string>();
+                auto pos = token["pos"].get<std::string>();
+                ++wc[word];
+                ++owc[originalText];
+                ++pos_count[pos];
+            }
+            for (auto const &x : sent_json["basicDependencies"]) {
+                auto arc_label = x["dep"].get<std::string>();
+                ++arclabel_count[arc_label];
+            }
+        }
+    }
+    timer.here_then_reset("Finish serial word count.");
+    //std::vector<wcounts_t::value_type> wc_sorted;
+    std::vector<std::pair<wcounts_t::key_type,wcounts_t::mapped_type>> wc_sorted;
+    //std::vector<std::pair<std::string,size_t>> wc_sorted;
+    for(auto x : wc) wc_sorted.push_back(x);
+    std::sort(wc_sorted.begin(), wc_sorted.end(), [](auto x, auto y){return x.second>y.second;});
+    timer.here_then_reset("Sort word counts.");
+
+    for(auto x : wc_sorted) fmt::print("{} {}\n", x.first, x.second);
+    fmt::print("\n");
 }
 
 void sampler(){

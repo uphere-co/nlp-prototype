@@ -19,16 +19,25 @@ public:
         if(it==word2uid.cend()) return uid_t{};
         return it->second;
     }
+    uid_t insert(std::string const &word) {
+        auto it=word2uid.find(word);
+        if(it!=word2uid.cend()) return it->second;
+        uid2word[current_idx]=word;
+        word2uid[word] = current_idx;
+        return current_idx++;
+    }
     std::string operator[](uid_t uid) const {
         //return uid2word[uid];
         auto it=uid2word.find(uid);
         if(it==uid2word.cend()) it = uid2word.find(uid_t{});
         return it->second;
     }
+    void write_to_disk(std::string filename);
 
 private:
     std::unordered_map<uid_t, std::string> uid2word;
     std::unordered_map<std::string, uid_t> word2uid;
+    uid_t current_idx;
 };
 
 
