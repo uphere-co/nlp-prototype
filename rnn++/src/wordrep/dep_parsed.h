@@ -74,7 +74,7 @@ struct DepParsedTokens{
     std::vector<Sentence> IndexSentences() const;
     std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;
     //std::vector<Chunk> IndexChunks() const;
-    void append_corenlp_output(WordUIDindex &wordUIDs,
+    void append_corenlp_output(WordUIDindex const &wordUIDs,
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);

@@ -280,7 +280,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
             auto wuid = sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
             auto cutoff = word_cutoff.cutoff(wuid);
-            std::cerr<<fmt::format("{} {}", word, cutoff)<<std::endl;
+            std::cerr<<fmt::format("{} {} {}", wuid.val, word, cutoff)<<std::endl;
         }
         std::cerr<<fmt::format("End of cached sent\n")<<std::endl;
     }

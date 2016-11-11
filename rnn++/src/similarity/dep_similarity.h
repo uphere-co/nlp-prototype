@@ -109,14 +109,14 @@ struct DepSimilaritySearch {
     json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;
 
     voca_info_t voca;
-    wordrep::DepParsedTokens tokens;
-    wordrep::WordUIDindex wordUIDs;
-    wordrep::POSUIDindex posUIDs;
-    wordrep::ArcLabelUIDindex arclabelUIDs;
-    wordrep::WordImportance word_cutoff;
+    wordrep::DepParsedTokens const tokens;
+    wordrep::WordUIDindex const wordUIDs;
+    wordrep::POSUIDindex const posUIDs;
+    wordrep::ArcLabelUIDindex const arclabelUIDs;
+    wordrep::WordImportance const word_cutoff;
     std::vector<wordrep::Sentence> sents;
-    wordrep::ygp::YGPdb ygpdb;
-    wordrep::ygp::YGPindexer ygp_indexer;
+    wordrep::ygp::YGPdb const ygpdb;
+    wordrep::ygp::YGPindexer const ygp_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
