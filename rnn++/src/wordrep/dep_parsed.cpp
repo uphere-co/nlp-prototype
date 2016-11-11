@@ -116,7 +116,7 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
     return uids;
 }
 
-void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
+void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
                                             nlohmann::json const &output){
@@ -140,7 +140,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
             chunks_idx.push_back(current_chunk_idx);
             sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-            words_uid.push_back(wordUIDs.insert(word));
+            words_uid.push_back(wordUIDs[word]);
             words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
             heads_uid.push_back(WordUID{});//
@@ -161,7 +161,7 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
             auto i= word_pidx;
             assert(words_uid[offset+i] == wordUIDs[word]);
             assert(words_pidx[offset+i]==WordPosition{word_pidx});
-            heads_uid[offset+i] = wordUIDs.insert(head_word);
+            heads_uid[offset+i] = wordUIDs[head_word];
             heads_pidx[offset+i] = WordPosition{head_pidx};
             arclabels[offset+i] = arclabelUIDs[arc_label];
 

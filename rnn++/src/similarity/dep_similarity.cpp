@@ -228,7 +228,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     std::vector<SentUID::val_t> uid_vals;
     for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
-    std::cerr<<fmt::format("# of sents : {}\n", answer.size()) << std::endl;
+    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     return answer;
 }
 
@@ -262,6 +262,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
+    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -371,7 +372,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
             auto wuid = query_sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
             words.push_back(word);
-            cutoffs.push_back(word_cutoff.cutoff(wuid));
+            auto cutoff = word_cutoff.cutoff(wuid);
+            cutoffs.push_back(cutoff>1.0?0.0:cutoff);
             auto vuid = voca.indexmap[wuid];
             if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
             vidxs.push_back(vuid);

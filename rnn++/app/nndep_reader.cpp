@@ -265,7 +265,8 @@ int list_columns(){
     return 0;
 }
 
-void test_unicode_conversion(){
+namespace test {
+void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
 //    std::wstring wstr =  L"This is 테스트 of unicode-UTF8 conversion.";
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> to_unicode;
@@ -277,8 +278,32 @@ void test_unicode_conversion(){
     fmt::print("{}\n", substr);
 }
 
+void word_importance(util::json_t const &config){
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+    POSUIDindex const posUIDs{config["pos_uids_dump"].get<std::string>()};
+    ArcLabelUIDindex const arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
+    WordImportance word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()},
+                                      hdf5::FileMode::read_exist}};
+    auto ask = util::load_json("query.unittest.inf_cutoff.corenlp");
+    DepParsedTokens query_tokens{};
+    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
+    auto sents = query_tokens.IndexSentences();
+    for(auto sent : sents){
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            auto wuid = sent.tokens->word_uid(idx);
+            auto word = wordUIDs[wuid];
+            auto cutoff = word_cutoff.cutoff(wuid);
+            assert(cutoff == 0.0);
+        }
+    }
+}
+
+}//namespace test
+
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
+    test::word_importance(config);
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
@@ -305,10 +330,10 @@ int main(int /*argc*/, char** argv){
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
-    auto answers = engine.ask_query(uids);
-    ygp::annotation_on_result(config, answers);
-    fmt::print("{}\n", answers.dump(4));
-    fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
+//    auto answers = engine.ask_query(uids);
+//    ygp::annotation_on_result(config, answers);
+//    fmt::print("{}\n", answers.dump(4));
+//    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     auto chain_answers = engine.ask_chain_query(uids);
     ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
