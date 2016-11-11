@@ -264,7 +264,7 @@ int main(int /*argc*/, char** argv){
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
-    return 0;
+//    return 0;
 //    auto col_uids = argv[2];
 //    auto n_max = std::stoi(argv[3]);
     //dump_psql(col_uids);

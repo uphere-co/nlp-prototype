@@ -274,15 +274,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         if(it==qsents.cend()) continue;
         auto sent = *it;
         query_sents.push_back(sent);
-
-        std::cerr<<fmt::format("Cached sent:\n")<<std::endl;
-        for(auto idx=sent.beg; idx!=sent.end; ++idx){
-            auto wuid = sent.tokens->word_uid(idx);
-            auto word = wordUIDs[wuid];
-            auto cutoff = word_cutoff.cutoff(wuid);
-            std::cerr<<fmt::format("{} {} {}", wuid.val, word, cutoff)<<std::endl;
-        }
-        std::cerr<<fmt::format("End of cached sent\n")<<std::endl;
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
     auto results = process_chain_query(query_sents);
