@@ -381,7 +381,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
             auto wuid = query_sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
             words.push_back(word);
-            cutoffs.push_back(word_cutoff.cutoff(wuid));
+            auto cutoff = word_cutoff.cutoff(wuid);
+            cutoffs.push_back(cutoff>1.0?0.0:cutoff);
             auto vuid = voca.indexmap[wuid];
             if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
             vidxs.push_back(vuid);
