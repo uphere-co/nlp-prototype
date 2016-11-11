@@ -19,6 +19,9 @@ RawTexts::RawTexts(std::string filename)
         :lines(util::string::readlines(filename))
 {}
 
+CharOffset Sentence::beg_offset() const {return tokens->word_beg(front());}
+CharOffset Sentence::end_offset() const {return tokens->word_end(back());}
+SentUID::val_t Sentence::chrlen() const{ return util::diff(end_offset(), beg_offset());}
 
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
 : sents_uid{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
@@ -77,6 +80,40 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
         sents.push_back(Sentence{uid, sbeg, send, this});
     }
     return sents;
+}
+
+std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) const{
+    std::vector<SentUID> uids;
+
+    auto offset=sent.beg.val;
+    auto reversed_offset=n_tokens()-offset;
+    auto chk_idx = chunk_idx(sent.beg);
+//    auto chk_beg = std::find_if_not(chunks_idx.crbegin()+reversed_offset, chunks_idx.crend(),
+//                                [chk_idx](auto x) { return x == chk_idx; }).base();
+//    auto chk_end = std::find_if_not(chunks_idx.cbegin()+offset, chunks_idx.cend(),
+//                                [chk_idx](auto x) { return x == chk_idx; });
+    auto first_elm=DPTokenIndex{DPTokenIndex::val_t{0}};
+    auto last_elm =DPTokenIndex{n_tokens()};
+    auto chk_beg = sent.beg;
+    for(;chk_beg!=first_elm; --chk_beg)
+        if(chunk_idx(chk_beg)!=chk_idx) break;
+    auto chk_end = sent.end;
+    for(;chk_end!=last_elm; ++chk_end)
+        if(chunk_idx(chk_end)!=chk_idx) break;
+    //std::cerr<<fmt::format("Chunk : {} of {}", chk_beg.val, chk_end.val)<<std::endl;
+    assert(chunk_idx(chk_beg)!=chk_idx);
+    chk_beg++;
+    assert(chunk_idx(chk_beg)==chk_idx);
+    auto beg = sents_uid.cbegin() + diff(chk_beg, first_elm);
+    auto end = sents_uid.cbegin() + diff(chk_end, first_elm);
+    //std::cerr<<fmt::format("TokenIndex : {} of {}", beg->val, end->val)<<std::endl;
+    auto it=beg;
+    while(it!=end){
+        auto uid=*it;
+        uids.push_back(uid);
+        it = std::find_if_not(it, end, [uid](auto x) { return x == uid; });
+    }
+    return uids;
 }
 
 void DepParsedTokens::append_corenlp_output(WordUIDindex &wordUIDs,
@@ -139,7 +176,6 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto beg=sents_idx.cbegin()+n;
     auto end=sents_idx.cend();
     auto chunk_beg=chunks_idx.cbegin()+n;
-    auto chunk_end=chunks_idx.cend();
     auto it=beg;
     auto it_chunk=chunk_beg;
     decltype(sents_uid) new_uids;

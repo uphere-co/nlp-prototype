@@ -222,9 +222,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
+    auto sents = query_tokens.IndexSentences();
+    Sentences uid2sent{sents};
     json_t answer{};
-    for(auto uid :uids ) answer["sent_uids"].push_back(uid.val);
+    std::vector<SentUID::val_t> uid_vals;
+    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    answer["sent_uids"]=uid_vals;
+    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     return answer;
 }
 
@@ -238,7 +242,7 @@ struct Query{
     }
     std::vector<SentUID> uids;
 };
-DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask) const {
+DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -253,22 +257,40 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query(json_t const &ask
     }
     fmt::print("Will process {} user documents\n", query_sents.size());
     auto results = process_query_sents(query_sents);
-//    tbb::task_group g;
-//    g.run([&ask,&results,this](){
-//        json_t new_query{};
-//        new_query["max_clip_len"] = ask["max_clip_len"];
-//        for(auto const &result : results){
-//            for(auto uid : result["result_sent_uid"]){
-//                new_query["sent_uids"].push_back(uid);
-//            }
-//        }
-//        this->process_query(new_query);
-//        std::cerr<<fmt::format("Completes pre-computation.") <<std::endl;
-//    });
-//    g.wait();
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
+
+DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
+    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
+    if (!Query::is_valid(ask)) return json_t{};
+    Query query{ask};
+    std::vector<Sentence> query_sents{};
+    //TODO: fix it to be incremental
+    auto qsents = query_tokens.IndexSentences();
+    for(auto uid : query.uids){
+        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
+        if(it==qsents.cend()) continue;
+        auto sent = *it;
+        query_sents.push_back(sent);
+
+        std::cerr<<fmt::format("Cached sent:\n")<<std::endl;
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            auto wuid = sent.tokens->word_uid(idx);
+            auto word = wordUIDs[wuid];
+            auto cutoff = word_cutoff.cutoff(wuid);
+            std::cerr<<fmt::format("{} {}", word, cutoff)<<std::endl;
+        }
+        std::cerr<<fmt::format("End of cached sent\n")<<std::endl;
+    }
+    fmt::print("Will process a query chain of length {}.\n", query_sents.size());
+    auto results = process_chain_query(query_sents);
+    return results;
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+}
+
+
 void matched_highlighter(Sentence sent_ref, Sentence sent,
                          std::vector<DepSimilaritySearch::val_t> const &cutoffs,
                          WordSimCache &dists_cache){
@@ -290,20 +312,16 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
         }
     }
 }
+
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents) const {
     auto max_clip_len = 200;
-    auto n_queries = query_sents.size();
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
-    assert(query_sents.size()==n_queries);
     util::Timer timer{};
-    for(decltype(n_queries)i=0; i!=n_queries; ++i){
-        auto query_sent = query_sents[i];
+    for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
-        auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
-        g.run([&timer,&answers,max_clip_len, query_sent,query_sent_beg,query_sent_end,this](){
+        g.run([&timer,&answers,max_clip_len, query_sent,this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -325,8 +343,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             timer.here_then_reset("Get cutoffs");
             dists_cache.cache(vidxs);
             timer.here_then_reset("Built Similarity caches.");
-            auto relevant_sents = this->process_query_sent(query_sent, cutoffs);
+            auto relevant_sents = this->process_query_sent(query_sent, cutoffs, sents);
             auto answer = write_output(relevant_sents, max_clip_len);
+            auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
+            auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
             answer["input_offset"]={query_sent_beg,query_sent_end};
             answer["input_uid"] = query_sent.uid.val;
             answer["cutoffs"] = cutoffs;
@@ -342,6 +362,69 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
     for(auto &answer : answers) output.push_back(answer);
     return output;
 }
+
+DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
+        std::vector<wordrep::Sentence> const &query_chain) const {
+    auto max_clip_len = 200;
+    util::Timer timer{};
+    auto candidate_sents = sents;
+    auto n0 = sents.size();
+    Sentences uid2sent{sents};
+
+    json_t output{};
+    for(auto const &query_sent : query_chain){
+        if(query_sent.beg==query_sent.end) continue;
+        std::vector<val_t> cutoffs;
+        std::vector<VocaIndex> vidxs;
+        std::vector<std::string> words;
+        for(auto idx = query_sent.beg; idx!=query_sent.end; ++idx) {
+            auto wuid = query_sent.tokens->word_uid(idx);
+            auto word = wordUIDs[wuid];
+            words.push_back(word);
+            auto cutoff = word_cutoff.cutoff(wuid);
+            cutoffs.push_back(cutoff>1.0?0.0:cutoff);
+            auto vuid = voca.indexmap[wuid];
+            if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
+            vidxs.push_back(vuid);
+        }
+        timer.here_then_reset("Get cutoffs");
+        dists_cache.cache(vidxs);
+        timer.here_then_reset("Built Similarity caches.");
+        auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
+        candidate_sents.clear();
+        assert(sents.size()==n0);
+        assert(candidate_sents.size()==0);
+        if(!relevant_sents.size()) continue;
+
+        auto answer = write_output(relevant_sents, max_clip_len);
+        auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
+        auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
+        answer["input_offset"]={query_sent_beg,query_sent_end};
+        answer["input_uid"] = query_sent.uid.val;
+        answer["cutoffs"] = cutoffs;
+        answer["words"] = words;
+        output.push_back(answer);
+        timer.here_then_reset("One pass in a query chain is finished.");
+
+        auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
+                                               [](auto x, auto y){return x.score<y.score;});
+        auto score_cutoff = best_candidate->score * 0.7;
+        for(auto scored_sent : relevant_sents){
+            if(scored_sent.score < score_cutoff) continue;
+            auto sent = scored_sent.sent;
+//            candidate_sents.push_back(sent);
+            auto uids = sent.tokens->sentences_in_chunk(sent);
+            for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+            //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
+            assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
+            assert(uid2sent[sent.uid].uid == sent.uid);
+        }
+        std::cerr<<fmt::format("score cutoff {} : {} of {} passed.", score_cutoff, candidate_sents.size(), n0)<<std::endl;
+        timer.here_then_reset("Prepared next pass in a query chain.");
+    }
+    return output;
+}
+
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
     using val_t = ScoredSentence::val_t;
@@ -362,17 +445,19 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
 }
 
 
-std::vector<ScoredSentence> DepSimilaritySearch::process_query_sent(Sentence query_sent,
-                                                                    std::vector<val_t> const &cutoffs) const {
+std::vector<ScoredSentence>
+DepSimilaritySearch::process_query_sent(Sentence query_sent,
+                                        std::vector<val_t> const &cutoffs,
+                                        std::vector<Sentence> const &data_sents) const {
     DepParsedQuery query{cutoffs, query_sent, dists_cache};
 
     tbb::concurrent_vector<ScoredSentence> relevant_sents{};
-    auto n = sents.size();
+    auto n = data_sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
-        auto sent = sents[i];
+        auto sent = data_sents[i];
         auto scores = query.get_scores(sent);
         ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > util::math::sum(cutoffs) *0.5){
+        if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
             relevant_sents.push_back(scored_sent);
         }
     });
@@ -387,7 +472,7 @@ auto get_clip_offset = [](Sentence sent,
     auto i_word_end = pair.first;
     CharOffset clip_beg = tokens.word_beg(i_word_beg);
     CharOffset clip_end = tokens.word_end(i_word_end);
-    auto len_sent = tokens.word_end(sent.end).val - tokens.word_beg(sent.beg).val;
+    auto len_sent = sent.chrlen();
     max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
     auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
 
@@ -407,16 +492,16 @@ auto get_clip_offset = [](Sentence sent,
     }
     auto len = clip_end.val-clip_beg.val;
     while(max_len-len>0) {
-        if(i_word_beg>sent.beg) {
+        if(i_word_beg>sent.front()) {
             --i_word_beg;
             clip_beg = tokens.word_beg(i_word_beg);
         }
-        if(i_word_end<sent.end){
+        if(i_word_end<sent.back()){
             ++i_word_end;
             clip_end = tokens.word_end(i_word_end);
         }
         len = clip_end.val-clip_beg.val;
-        if(i_word_beg==sent.beg && i_word_end==sent.end) break;
+        if(i_word_beg==sent.front() && i_word_end==sent.back()) break;
     }
 
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
@@ -453,12 +538,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         answer["result_column_name"].push_back(ygpdb.column(col_uid));
         answer["result_index_col_name"].push_back(ygpdb.index_col(col_uid));
         answer["result_column_uid"].push_back(col_uid.val);
-        auto beg = tokens.word_beg(sent.beg);
-        auto end = tokens.word_end(--sent.end);
-        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
+        auto beg=sent.beg_offset();
+        auto end=sent.end_offset();
         answer["result_offset"].push_back({beg.val,end.val});
+        answer["highlight_offset"].push_back({0,0});
+        auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
-        answer["highlight_offset"].push_back({beg.val+10, beg.val+60<end.val?beg.val+60:end.val});
     }
     return answer;
 
