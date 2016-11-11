@@ -261,10 +261,10 @@ int main(int /*argc*/, char** argv){
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     fmt::print("{}\n", uids.dump(4));
-    auto answers = engine.ask_query(uids);
-    ygp::annotation_on_result(config, answers);
-    fmt::print("{}\n", answers.dump(4));
-    fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
+//    auto answers = engine.ask_query(uids);
+//    ygp::annotation_on_result(config, answers);
+//    fmt::print("{}\n", answers.dump(4));
+//    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     auto chain_answers = engine.ask_chain_query(uids);
     ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));

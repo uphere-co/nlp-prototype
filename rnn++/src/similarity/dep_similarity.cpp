@@ -228,7 +228,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     std::vector<SentUID::val_t> uid_vals;
     for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
-    std::cerr<<fmt::format("# of sents : {}\n", answer.size()) << std::endl;
+    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     return answer;
 }
 
@@ -262,6 +262,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
+    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -273,6 +274,15 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         if(it==qsents.cend()) continue;
         auto sent = *it;
         query_sents.push_back(sent);
+
+        std::cerr<<fmt::format("Cached sent:\n")<<std::endl;
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            auto wuid = sent.tokens->word_uid(idx);
+            auto word = wordUIDs[wuid];
+            auto cutoff = word_cutoff.cutoff(wuid);
+            std::cerr<<fmt::format("{} {}", word, cutoff)<<std::endl;
+        }
+        std::cerr<<fmt::format("End of cached sent\n")<<std::endl;
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
     auto results = process_chain_query(query_sents);
