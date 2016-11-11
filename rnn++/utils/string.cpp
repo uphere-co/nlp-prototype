@@ -4,6 +4,9 @@
 #include <fstream>
 #include <algorithm>
 #include <functional>
+#include <codecvt>
+#include <locale>
+
 #include <boost/algorithm/string.hpp>
 
 namespace util{
@@ -79,6 +82,14 @@ std::vector<util::cstring_span<>> unpack_tokenized_sentence(util::cstring_span<>
         it=std::find_if_not(it, end, [](auto x){return x==' ';});
     }
     return words;
+}
+
+std::string substring_unicode_offset(std::string str, int beg, int end){
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> to_utf8;
+    std::wstring wstr = to_utf8.from_bytes(str);
+    auto wsubstr = wstr.substr(beg, end-beg);
+    auto substr = to_utf8.to_bytes(wsubstr);
+    return substr;
 }
 
 }//namespace util::string
