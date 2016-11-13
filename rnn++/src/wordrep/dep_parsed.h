@@ -123,7 +123,12 @@ struct YGPindexer{
     ColumnUID column_uid(ChunkIndex idx) const {return chunk2col_uid[idx.val];}
     RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
     RowUID row_uid(ChunkIndex idx) const {return chunk2row_uid[idx.val];}
-    RowUID row_uid(ColumnUID uid, RowIndex idx) {return map_to_uid[{uid,idx}];}
+    bool is_empty(ColumnUID uid, RowIndex idx) const {return map_to_uid.find({uid,idx})==map_to_uid.cend();}
+    RowUID row_uid(ColumnUID uid, RowIndex idx) const {
+        if(is_empty(uid,idx)) return RowUID{-1};
+        auto it=map_to_uid.find({uid,idx});
+        return it->second;
+    }
 
     std::vector<RowIndex> chunk2idx;
     std::vector<RowUID> chunk2row_uid;

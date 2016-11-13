@@ -65,8 +65,9 @@ void pruning_voca(){
 
 
 void write_column(std::vector<int64_t> rows, std::string filename,
-                  std::string prefix, std::string colname){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+                  std::string prefix, std::string colname,
+                  hdf5::FileMode mode=hdf5::FileMode::rw_exist){
+    H5file file{H5name{filename}, mode};
     file.writeRawData(H5name{prefix+colname}, rows);
 }
 void overwrite_column(std::vector<int64_t> rows, std::string filename,
@@ -140,8 +141,22 @@ void parse_json_dumps(nlohmann::json const &config,
     wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
 
+struct CountryColumn{
+    CountryColumn() {
+        table2country_code["reach_reports"] = "country_code";
+        table2country_code["regulation"] = "countrycode";
+        table2country_code["autchklist2"] = "countrycode";
+    }
+    std::string operator[](std::string table) const {
+        auto it = table2country_code.find(table);
+        if(it==table2country_code.cend()) return "";
+        return it->second;
+    }
+    std::map<std::string, std::string> table2country_code;
+};
+
 void get_contry_code(nlohmann::json const &config,
-                      const char *cols_to_exports, int64_t n_max=-1){
+                      const char *cols_to_exports, int64_t n_max=-1) {
     using namespace ygp;
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
@@ -150,17 +165,15 @@ void get_contry_code(nlohmann::json const &config,
     auto output_filename = config["dep_parsed_store"].get<std::string>();
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
-    std::map<std::string,std::string> table2country_code;
-    table2country_code["reach_reports"] = "country_code";
-    table2country_code["regulation"] ="countrycode";
-    table2country_code["autchklist2"] ="countrycode";
+    CountryColumn table2country_code{};
 
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
     YGPindexer ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                                   hdf5::FileMode::read_exist},
                            config["dep_parsed_prefix"].get<std::string>()};
-    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+    std::map<std::string, std::vector<RowUID>> country_indexer;
+    for (auto col_uid = db.beg(); col_uid != db.end(); ++col_uid) {
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
         auto index_col = db.index_col(col_uid);
@@ -169,21 +182,28 @@ void get_contry_code(nlohmann::json const &config,
 
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         pqxx::work W(C);
-        auto query=fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
+        auto query = fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
                                     INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
-                                   table, index_col, country_code_col);
-        auto body= W.exec(query);
+                                 table, index_col, country_code_col);
+        auto body = W.exec(query);
         W.commit();
-        auto n = n_max<0? body.size(): n_max;
-        for(decltype(n)i=0; i!=n; ++i){
-            auto row = body[i];
-            auto index = std::stoi(row[0].c_str());
-            auto country = row[1].c_str();
-            fmt::print("{} {} : {} {}\n", table, index, country, wordUIDs[country].val);
+        auto n = n_max < 0 ? body.size() : n_max;
+        for (decltype(n) i = 0; i != n; ++i) {
+            auto elm = body[i];
+            RowIndex row_idx{std::stoi(elm[0].c_str())};
+            std::string country = elm[1].c_str();
+            if(ygp_indexer.is_empty(col_uid,row_idx)) continue;
+            auto row_uid = ygp_indexer.row_uid(col_uid, row_idx);
+            country_indexer[country].push_back(row_uid);
         }
     }
-//    write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
+
+    for(auto x : country_indexer){
+        write_column(util::serialize(x.second), "country.h5", x.first, ".row_uid");
+    }
+
 }
+
 
 int dump_column(std::string table, std::string column, std::string index_col){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
@@ -308,7 +328,7 @@ int main(int /*argc*/, char** argv){
 //    return 0;
     auto col_uids = argv[2];
     auto n_max = std::stoi(argv[3]);
-    get_contry_code(config, col_uids, 100);
+    get_contry_code(config, col_uids, n_max);
     //dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids, n_max);
     return 0;
