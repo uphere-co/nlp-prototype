@@ -4,7 +4,11 @@ import Control.Monad.IO.Class  (liftIO)
 import Database.Redis
 
 main = do
-  conn <- connect defaultConnectInfo
+  let cinfo = defaultConnectInfo
+              { connectHost = "localhost"
+              , connectPort = PortNumber 6379 }
+                
+  conn <- connect cinfo
   runRedis conn $ do
     set "hello" "hello"
     set "world" "world"

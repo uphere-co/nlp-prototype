@@ -51,6 +51,7 @@ Executable query
                         directory,
                         distributed-process,
                         filepath,
+                        hedis,
                         http-client,
                         http-client-tls,
                         http-types,
