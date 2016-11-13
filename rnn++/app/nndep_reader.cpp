@@ -2,9 +2,6 @@
 #include <algorithm>
 #include <cctype>
 
-#include <codecvt>
-#include <locale>
-
 #include "pqxx/pqxx"
 #include "fmt/printf.h"
 #include "csv/csv.h"
@@ -265,16 +262,14 @@ int list_columns(){
     return 0;
 }
 
+
 namespace test {
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
-//    std::wstring wstr =  L"This is 테스트 of unicode-UTF8 conversion.";
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> to_unicode;
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> to_utf8;
-//    std::wstring wstr = to_unicode.from_bytes(row_str);
-    std::wstring wstr = to_utf8.from_bytes(row_str);
-    auto wsubstr = wstr.substr(8, 3);
-    auto substr = to_utf8.to_bytes(wsubstr);
+    auto substr = util::string::substring_unicode_offset(row_str, 8, 11);
+    assert(substr==u8"테스트");
+    assert(substr!=u8"테스트 ");
+    assert(substr!=u8" 테스트");
     fmt::print("{}\n", substr);
 }
 

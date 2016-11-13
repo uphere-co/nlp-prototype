@@ -18,5 +18,6 @@ std::vector<const char *> unpack_word_views(std::vector<char> const &concat_word
 
 std::vector<util::cstring_span<>> unpack_tokenized_sentence(util::cstring_span<> sentence);
 
+std::string substring_unicode_offset(std::string str, int beg, int end);
 }//namespace util::string
 }//namespace util

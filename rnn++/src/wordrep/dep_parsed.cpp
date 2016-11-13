@@ -241,10 +241,7 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
             auto offset_end = offsets[i][1].get<int64_t>();
 
             auto row_str = ygpdb.raw_text(col_uid, row_idx);
-            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-            std::wstring wstr = converter.from_bytes(row_str);
-            auto wsubstr = wstr.substr(offset_beg, offset_end-offset_beg);
-            auto substr = converter.to_bytes(wsubstr);
+            auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
         }
