@@ -11,9 +11,10 @@ struct IntegerLike{
     using val_t = int64_t;
 
     IntegerLike() : val{DEFAULT} {}
-    explicit IntegerLike(val_t val) : val{val} {}
-    explicit IntegerLike(std::size_t uval) : val{static_cast<val_t>(uval)}{
-        assert(uval<std::numeric_limits<val_t>::max());
+    IntegerLike(val_t val) : val{val} {}
+    static IntegerLike from_unsigned(std::size_t uval){
+        assert(uval <std::numeric_limits<val_t>::max());
+        return IntegerLike{static_cast<val_t>(uval)};
     }
     val_t val;
 };

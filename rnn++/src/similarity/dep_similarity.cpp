@@ -65,7 +65,7 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
                               for(decltype(n_words)j=0; j!=n_words; ++j ){
                                   auto qidx = words_to_cache[j];
                                   auto q = voca.wvecs[qidx];
-                                  auto widx = VocaIndex{i};
+                                  auto widx = VocaIndex::from_unsigned(i);
                                   dists[j][widx] = dist_measure(voca.wvecs[widx], q);
                               }
                           }

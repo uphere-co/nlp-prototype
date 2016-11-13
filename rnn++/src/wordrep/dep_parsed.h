@@ -136,7 +136,7 @@ struct YGPdb{
     std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
     std::string column(ColumnUID idx) const {return columns[idx.val];}
     ColumnUID beg() const {return ColumnUID{};}
-    ColumnUID end() const {return ColumnUID{tables.size()};}
+    ColumnUID end() const {return ColumnUID::from_unsigned(tables.size());}
     std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
 
     std::vector<std::string> tables;

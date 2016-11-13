@@ -93,7 +93,7 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
 //    auto chk_end = std::find_if_not(chunks_idx.cbegin()+offset, chunks_idx.cend(),
 //                                [chk_idx](auto x) { return x == chk_idx; });
     auto first_elm=DPTokenIndex{DPTokenIndex::val_t{0}};
-    auto last_elm =DPTokenIndex{n_tokens()};
+    auto last_elm =DPTokenIndex::from_unsigned(n_tokens());
     auto chk_beg = sent.beg;
     for(;chk_beg!=first_elm; --chk_beg)
         if(chunk_idx(chk_beg)!=chk_idx) break;
@@ -207,6 +207,7 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
 
 YGPdb::YGPdb(std::string column_uids){
     auto lines = util::string::readlines(column_uids);
+    ColumnUID uid{0};
     for(auto line : lines){
         auto cols = util::string::split(line, ".");
         tables.push_back(cols[0]);

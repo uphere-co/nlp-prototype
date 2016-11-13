@@ -155,9 +155,11 @@ void get_contry_code(nlohmann::json const &config,
     table2country_code["regulation"] ="countrycode";
     table2country_code["autchklist2"] ="countrycode";
 
-    DepParsedTokens tokens{H5file{H5name{output_filename},hdf5::FileMode::rw_exist}, prefix};
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
+    YGPindexer ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+                                  hdf5::FileMode::read_exist},
+                           config["dep_parsed_prefix"].get<std::string>()};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
@@ -298,7 +300,8 @@ void word_importance(util::json_t const &config){
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    test::word_importance(config);
+//    test::word_importance(config);
+    test::unicode_conversion();
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));

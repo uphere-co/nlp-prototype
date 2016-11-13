@@ -13,7 +13,7 @@ VocaIndexMap::VocaIndexMap(std::vector<idx_t::val_t> const &uids_val) {
     auto n = uids_val.size();
     for(decltype(n)i=0; i!=n; ++i){
         idx_t uid{uids_val[i]};
-        VocaIndex idx{i};
+        auto idx=VocaIndex::from_unsigned(i);
         uid2idx[uid]=idx;
         idx2uid[idx]=uid;
     }
