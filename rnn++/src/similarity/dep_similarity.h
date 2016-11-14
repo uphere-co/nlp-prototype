@@ -117,6 +117,7 @@ struct DepSimilaritySearch {
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdb const ygpdb;
     wordrep::ygp::YGPindexer const ygp_indexer;
+    wordrep::ygp::DBbyCountry const ygpdb_country;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};

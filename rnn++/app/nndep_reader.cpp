@@ -186,8 +186,8 @@ private:
 };
 
 
-void get_contry_code(nlohmann::json const &config,
-                      const char *cols_to_exports, int64_t n_max=-1) {
+void write_contry_code(nlohmann::json const &config,
+                       const char *cols_to_exports, int64_t n_max = -1) {
     using namespace ygp;
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
@@ -243,7 +243,7 @@ void get_contry_code(nlohmann::json const &config,
         }
     }
 
-    std::ofstream country_list{"country.list"};
+    std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
     for(auto x : rows_by_country){
         ygp_h5store.writeRawData(H5name{x.first+".row_uid"}, util::serialize(x.second));
         country_list << x.first << std::endl;
@@ -372,17 +372,17 @@ void word_importance(util::json_t const &config){
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    test::word_importance(config);
-    test::unicode_conversion();
+//    test::unicode_conversion();
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-    auto col_uids = argv[2];
-    auto n_max = std::stoi(argv[3]);
-    get_contry_code(config, col_uids, n_max);
+//    auto col_uids = argv[2];
+//    auto n_max = std::stoi(argv[3]);
+//    write_contry_code(config, col_uids, n_max);
     //dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids, n_max);
-    return 0;
+//    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");

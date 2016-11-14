@@ -137,6 +137,18 @@ struct YGPindexer{
 };
 
 
+struct DBbyCountry{
+    DBbyCountry(util::io::H5file const &file, std::string country_list);
+    std::vector<SentUID> sents(std::string country) const {
+        auto it=sents_by_country.find(country);
+        if(it==sents_by_country.cend()) return {};
+        return it->second;
+    }
+private:
+    std::map<std::string, std::vector<ygp::RowUID>> rows_by_country;
+    std::map<std::string, std::vector<SentUID>> sents_by_country;
+};
+
 struct YGPdb{
     YGPdb(std::string column_uids);
     std::string table(ColumnUID idx) const {return tables[idx.val];}

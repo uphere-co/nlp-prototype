@@ -218,6 +218,16 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
     }
 }
 
+DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
+    auto countries =util::string::readlines(country_list);
+    for(auto country : countries) {
+    auto rows=util::deserialize<ygp::RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
+    auto sents=util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
+    rows_by_country[country]=rows;
+    sents_by_country[country]=sents;
+    }
+}
+
 YGPdb::YGPdb(std::string column_uids){
     auto lines = util::string::readlines(column_uids);
     assert(ColumnUID{}==ColumnUID{0});

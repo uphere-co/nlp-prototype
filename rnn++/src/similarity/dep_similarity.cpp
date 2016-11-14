@@ -212,7 +212,9 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   sents{tokens.IndexSentences()},
   ygpdb{config["column_uids_dump"].get<std::string>()},
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                     hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
+                     hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()},
+  ygpdb_country{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+                     hdf5::FileMode::read_exist}, config["country_uids_dump"].get<std::string>()}
 {}
 
 //TODO: fix it to be thread-safe
@@ -358,9 +360,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         std::vector<wordrep::Sentence> const &query_chain) const {
     auto max_clip_len = 200;
     util::Timer timer{};
-    auto candidate_sents = sents;
-    auto n0 = sents.size();
     Sentences uid2sent{sents};
+    std::vector<Sentence> candidate_sents;
+    auto uids=ygpdb_country.sents("South Korea");
+    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+    assert(uids.size()>0);
+    auto n0 = sents.size();
 
     json_t output{};
     for(auto const &query_sent : query_chain){
