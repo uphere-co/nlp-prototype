@@ -1,6 +1,9 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
+
+#include <set>
 
 #include "pqxx/pqxx"
 #include "fmt/printf.h"
@@ -155,6 +158,29 @@ struct CountryColumn{
     std::map<std::string, std::string> table2country_code;
 };
 
+struct Chunks{
+    using idx_t = std::pair<ChunkIndex,SentUID>;
+    Chunks(util::io::H5file const &file, std::string prefix)
+            : sents_uid{util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
+              chunks_idx{util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))}
+    {}
+    ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
+    SentUID sent_uid(DPTokenIndex idx) const {return sents_uid[idx.val];}
+    idx_t at(DPTokenIndex idx) const {return {chunk_idx(idx),sent_uid(idx)};}
+
+    DPTokenIndex next_sent_beg(DPTokenIndex idx) const {
+        auto current_sent_beg = at(idx);
+        auto end = DPTokenIndex::from_unsigned(sents_uid.size());
+        auto it=idx;
+        while(it!=end) if(at(it++)!=current_sent_beg) break;
+        return idx;
+    }
+private:
+    std::vector<ChunkIndex>   chunks_idx;
+    std::vector<SentUID>      sents_uid;
+};
+
+
 void get_contry_code(nlohmann::json const &config,
                       const char *cols_to_exports, int64_t n_max=-1) {
     using namespace ygp;
@@ -167,11 +193,12 @@ void get_contry_code(nlohmann::json const &config,
 
     CountryColumn table2country_code{};
 
+    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::read_exist};
+    std::string ygp_prefix = config["dep_parsed_prefix"];
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
-    YGPindexer ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                                  hdf5::FileMode::read_exist},
-                           config["dep_parsed_prefix"].get<std::string>()};
+    YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
+    Chunks ygp_chunks{ygp_h5store, ygp_prefix};
     std::map<std::string, std::vector<RowUID>> country_indexer;
     for (auto col_uid = db.beg(); col_uid != db.end(); ++col_uid) {
         auto table = db.table(col_uid);
@@ -198,11 +225,15 @@ void get_contry_code(nlohmann::json const &config,
         }
     }
 
+    std::ofstream country_list{"country.list"};
     for(auto x : country_indexer){
         write_column(util::serialize(x.second), "country.h5", x.first, ".row_uid");
+        country_list << x.first << std::endl;
     }
+    country_list.close();
 
 }
+
 
 
 int dump_column(std::string table, std::string column, std::string index_col){

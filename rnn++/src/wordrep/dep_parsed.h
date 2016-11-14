@@ -53,7 +53,6 @@ struct Sentence{
     DepParsedTokens const *tokens;
 };
 
-
 struct Sentences{
     Sentences(std::vector<Sentence> const &sents) {
         for(auto &sent : sents) uid2sent[sent.uid]=sent;
@@ -65,6 +64,7 @@ struct Sentences{
     }
     std::map<SentUID,Sentence> uid2sent{};
 };
+
 
 struct DepParsedTokens{
     DepParsedTokens(util::io::H5file const &file, std::string prefix);
