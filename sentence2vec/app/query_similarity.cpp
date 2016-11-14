@@ -37,7 +37,6 @@ int main(int /*argc*/, char** argv){
         socket.send(reply);
     }
     DepSimilaritySearch engine{config};
-    CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){

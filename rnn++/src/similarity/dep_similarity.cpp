@@ -12,6 +12,7 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
+#include "utils/algorithm.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
@@ -304,8 +305,8 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
     for(auto ridx=sent_ref.beg; ridx!=sent_ref.end; ++ridx){
         auto ref_vidx = sent_ref.tokens->word(ridx);
         auto ref_head_vidx = sent_ref.tokens->head_word(ridx);
-        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
-        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
+//        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
+//        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
 
         auto j = util::diff(ridx, sent_ref.beg);
         auto j_head = util::diff(sent_ref.tokens->head_pos(ridx), sent_ref.tokens->head_pos(sent_ref.beg));
@@ -315,7 +316,7 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
 
             auto dependent_score = dists_cache.distances(ref_vidx)[word_vidx];
             auto governor_score = dists_cache.distances(ref_head_vidx)[word_head_vidx];
-            cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
+            //cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
         }
     }
 }
@@ -331,10 +332,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
     Sentences uid2sent{sents};
     std::vector<Sentence> candidate_sents;
     std::vector<SentUID> uids;
-    for(auto country : countries) {
-        auto uids_country = ygpdb_country.sents(country);
-        std::copy(uids_country.cbegin(),uids_country.cend(), std::back_inserter(uids));
-    }
+    for(auto country : countries) append(uids, ygpdb_country.sents(country));
+
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(countries.size()==0) {
         std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
@@ -393,10 +392,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
     Sentences uid2sent{sents};
     std::vector<Sentence> candidate_sents;
     std::vector<SentUID> uids;
-    for(auto country : countries) {
-        auto uids_country = ygpdb_country.sents(country);
-        std::copy(uids_country.cbegin(),uids_country.cend(), std::back_inserter(uids));
-    }
+    for(auto country : countries) append(uids, ygpdb_country.sents(country));
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(countries.size()==0) {
         std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
@@ -460,7 +456,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
 
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
-    using val_t = ScoredSentence::val_t;
     using hash_t = size_t;
     std::map<hash_t, bool> is_seen{};
     std::vector<ScoredSentence> dedup_sents;

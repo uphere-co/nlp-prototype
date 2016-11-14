@@ -13,14 +13,9 @@ namespace wordrep{
 struct WordImportance{
     using val_t = double;
     WordImportance(util::io::H5file const& stats);
-    val_t ratio(WordUID uid)  const {
-        if(uid.val<0 || uid.val>=ratios.size()) return 0.0;
-        return ratios[uid.val];
-    }
-    val_t cutoff(WordUID uid) const {
-        if(uid.val<0 || uid.val>=cutoffs.size()) return 0.0;
-        return cutoffs[uid.val];
-    }
+    val_t ratio(WordUID uid)  const;
+    val_t cutoff(WordUID uid) const;
+
     std::vector<val_t> ratios;
     std::vector<val_t> cutoffs;
 };

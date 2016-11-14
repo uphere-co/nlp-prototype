@@ -1,8 +1,9 @@
 #pragma once
 #include <functional>
 #include <vector>
-#include <limits>
 #include <cassert>
+
+#include "utils/algorithm.h"
 
 namespace util{
 
@@ -13,8 +14,7 @@ struct IntegerLike{
     IntegerLike() : val{DEFAULT} {}
     IntegerLike(val_t val) : val{val} {}
     static IntegerLike from_unsigned(std::size_t uval){
-        assert(uval <std::numeric_limits<val_t>::max());
-        return IntegerLike{static_cast<val_t>(uval)};
+        return IntegerLike{util::to_signed<val_t>(uval)};
     }
     val_t val;
 };
