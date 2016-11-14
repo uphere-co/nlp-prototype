@@ -37,6 +37,7 @@ int main(int /*argc*/, char** argv){
         socket.send(reply);
     }
     DepSimilaritySearch engine{config};
+    CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){
@@ -50,10 +51,11 @@ int main(int /*argc*/, char** argv){
             std::cerr << "Register documents"<<std::endl;
             auto query_str=input_json["raw_text"].get<std::string>();
             auto query_json = corenlp_client.from_query_content(query_str);
+            query_json["query_str"] = query_str;
 //        std::cerr << query_json.dump(4) << std::endl;
             auto uids = engine.register_documents(query_json);
             uids["max_clip_len"] = query_json["max_clip_len"];
-            //std::cerr << uids.dump(4) << std::endl;
+//            std::cerr << uids.dump(4) << std::endl;
             std::string aa{uids.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());

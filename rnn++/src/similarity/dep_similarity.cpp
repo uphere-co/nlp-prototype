@@ -261,8 +261,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
         auto sent = *it;
         query_sents.push_back(sent);
     }
+    std::vector<std::string> countries;
+    for(auto country : ask["Countries"]) countries.push_back(country);
+    std::cerr<<"Find for a query in DB of : ";
+    for(auto country : ask["Countries"]) std::cerr<<country << ", ";
+    std::cerr<<std::endl;
     fmt::print("Will process {} user documents\n", query_sents.size());
-    auto results = process_query_sents(query_sents);
+    auto results = process_query_sents(query_sents, countries);
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -316,14 +321,29 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
-        std::vector<wordrep::Sentence> const &query_sents) const {
+        std::vector<wordrep::Sentence> const &query_sents,
+        std::vector<std::string> const &countries) const {
     auto max_clip_len = 200;
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     util::Timer timer{};
+
+    Sentences uid2sent{sents};
+    std::vector<Sentence> candidate_sents;
+    std::vector<SentUID> uids;
+    for(auto country : countries) {
+        auto uids_country = ygpdb_country.sents(country);
+        std::copy(uids_country.cbegin(),uids_country.cend(), std::back_inserter(uids));
+    }
+    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+    if(countries.size()==0) {
+        std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
+        candidate_sents=sents;
+    }
+
     for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        g.run([&timer,&answers,max_clip_len, query_sent,this](){
+        g.run([&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -345,7 +365,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             timer.here_then_reset("Get cutoffs");
             dists_cache.cache(vidxs);
             timer.here_then_reset("Built Similarity caches.");
-            auto relevant_sents = this->process_query_sent(query_sent, cutoffs, sents);
+            auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
             auto answer = write_output(relevant_sents, max_clip_len);
             auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
             auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
