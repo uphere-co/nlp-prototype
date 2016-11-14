@@ -35,8 +35,8 @@ foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 
-writeProcessId :: String -> Process ()
-writeProcessId redisip = do
+writeProcessId :: String -> String -> Process ()
+writeProcessId redisip apilevel = do
   usb64 <- BL.toStrict . B64.encode . Bi.encode <$> getSelfPid
 
   (liftIO . print . B64.decodeLenient . BL.fromStrict) usb64
@@ -45,16 +45,16 @@ writeProcessId redisip = do
   liftIO $ print us
   
   let cinfo = DR.defaultConnectInfo
-              { DR.connectHost = redisip -- "192.168.1.104"
+              { DR.connectHost = redisip
               , DR.connectPort = DR.PortNumber 6379 }
   conn <- liftIO $ DR.connect cinfo
-  void . liftIO $ DR.runRedis conn $ DR.set "query.devel.pid" usb64
+  void . liftIO $ DR.runRedis conn $ DR.set (B.pack ("query." ++ apilevel ++ ".pid")) usb64
   
 
 
-server :: String -> Process ()
-server serverip = do
-  writeProcessId serverip
+server :: String -> String -> Process ()
+server serverip apilevel = do
+  writeProcessId serverip apilevel
   them :: ProcessId <- expect
 
   let heartbeat n = send them (HB n) >> liftIO (threadDelay 5000000) >> heartbeat (n+1)
@@ -82,7 +82,7 @@ server serverip = do
 main :: IO ()
 main = do
   redisip <- liftIO (getEnv "REDISIP")
-  -- apilevel <- liftIO (getEnv "APILEVEL")
+  apilevel <- liftIO (getEnv "APILEVEL")
   -- let configurl = serverurl </> apilevel </> "config"
   
   [host] <- getArgs
@@ -91,6 +91,6 @@ main = do
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node (server redisip)
+    runProcess node (server redisip apilevel)
     c_query_finalize
 
