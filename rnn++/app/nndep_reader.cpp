@@ -163,17 +163,22 @@ struct Chunks{
     Chunks(util::io::H5file const &file, std::string prefix)
             : sents_uid{util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
               chunks_idx{util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))}
-    {}
+    {
+        assert(sents_uid.size()==chunks_idx.size());
+    }
+
+    DPTokenIndex token_beg() const {return DPTokenIndex{0};}
+    DPTokenIndex token_end() const {return DPTokenIndex::from_unsigned(sents_uid.size());}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
     SentUID sent_uid(DPTokenIndex idx) const {return sents_uid[idx.val];}
     idx_t at(DPTokenIndex idx) const {return {chunk_idx(idx),sent_uid(idx)};}
 
     DPTokenIndex next_sent_beg(DPTokenIndex idx) const {
         auto current_sent_beg = at(idx);
-        auto end = DPTokenIndex::from_unsigned(sents_uid.size());
+        auto end = token_end();
         auto it=idx;
-        while(it!=end) if(at(it++)!=current_sent_beg) break;
-        return idx;
+        while(it<end) if(at(it++)!=current_sent_beg) break;
+        return it;
     }
 private:
     std::vector<ChunkIndex>   chunks_idx;
@@ -193,13 +198,24 @@ void get_contry_code(nlohmann::json const &config,
 
     CountryColumn table2country_code{};
 
-    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::read_exist};
+    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
     YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
     Chunks ygp_chunks{ygp_h5store, ygp_prefix};
-    std::map<std::string, std::vector<RowUID>> country_indexer;
+    std::map<std::string, std::vector<RowUID>> rows_by_country;
+    std::map<std::string, std::vector<SentUID>> sents_by_country;
+    std::map<RowUID,std::vector<SentUID>> sents_in_row;
+
+    for(auto idx=ygp_chunks.token_beg();idx!=ygp_chunks.token_end(); idx = ygp_chunks.next_sent_beg(idx)){
+        auto ch_idx=ygp_chunks.chunk_idx(idx);
+        auto sent_uid=ygp_chunks.sent_uid(idx);
+        auto row_uid=ygp_indexer.row_uid(ch_idx);
+        sents_in_row[row_uid].push_back(sent_uid);
+        assert(row_uid.val==ch_idx.val);
+    }
+
     for (auto col_uid = db.beg(); col_uid != db.end(); ++col_uid) {
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
@@ -221,17 +237,21 @@ void get_contry_code(nlohmann::json const &config,
             std::string country = elm[1].c_str();
             if(ygp_indexer.is_empty(col_uid,row_idx)) continue;
             auto row_uid = ygp_indexer.row_uid(col_uid, row_idx);
-            country_indexer[country].push_back(row_uid);
+            rows_by_country[country].push_back(row_uid);
+            auto& tmp = sents_by_country[country];
+            for(auto sent_uid : sents_in_row[row_uid]) tmp.push_back(sent_uid);
         }
     }
 
     std::ofstream country_list{"country.list"};
-    for(auto x : country_indexer){
-        write_column(util::serialize(x.second), "country.h5", x.first, ".row_uid");
+    for(auto x : rows_by_country){
+        ygp_h5store.writeRawData(H5name{x.first+".row_uid"}, util::serialize(x.second));
         country_list << x.first << std::endl;
     }
+    for(auto x : sents_by_country){
+        ygp_h5store.writeRawData(H5name{x.first+".sent_uid"}, util::serialize(x.second));
+    }
     country_list.close();
-
 }
 
 
