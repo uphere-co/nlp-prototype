@@ -1,6 +1,6 @@
 { mkDerivation, aeson, attoparsec, base, base64-bytestring, binary
 , bytestring, conduit, conduit-extra, connection, containers
-, directory, distributed-process, filepath
+, directory, distributed-process, filepath, hedis
 , http-client, http-client-tls, http-types, monad-loops
 , network-transport-zeromq, process, query-common
 , scientific, stdenv, stm, text, transformers
@@ -17,12 +17,12 @@ mkDerivation {
   executableHaskellDepends = [
     aeson attoparsec base base64-bytestring binary bytestring conduit
     conduit-extra connection containers directory distributed-process
-    filepath http-client http-client-tls http-types monad-loops
+    filepath hedis http-client http-client-tls http-types monad-loops
     network-transport-zeromq process query-common scientific stm text
     transformers unix unordered-containers uuid vector
   ];
   executableSystemDepends = [
-    hdf5_cpp rnnpp tbb json fmt pqxx msgsl
+    fmt hdf5_cpp json msgsl pqxx rnnpp tbb
   ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";

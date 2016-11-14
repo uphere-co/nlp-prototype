@@ -19,6 +19,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      base64-bytestring aeson
 	      http-client http-client-tls
 	      hdf5 query-common
+	      hedis
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
