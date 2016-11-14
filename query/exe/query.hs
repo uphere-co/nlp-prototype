@@ -7,7 +7,8 @@ module Main where
 import           Control.Concurrent                        (threadDelay)
 import           Control.Concurrent.STM
 import           Control.Monad
-import           Control.Monad.IO.Class 
+import           Control.Monad.IO.Class
+import           Control.Monad.Loops                       (whileJust_)
 import           Control.Monad.Trans.Class                 (lift)
 import           Control.Monad.Trans.Maybe
 import           Control.Distributed.Process
@@ -51,22 +52,34 @@ writeProcessId redisip apilevel = do
   void . liftIO $ DR.runRedis conn $ DR.set (B.pack ("query." ++ apilevel ++ ".pid")) usb64
   
 
+-- heartBeat n = do
 
+withHeartBeat :: {- ProcessId -> -} Process ProcessId -> Process ()
+withHeartBeat {- them -} action = do
+  forever $ do                                               -- forever looping
+    pid <- action                                            -- main process launch
+    whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
+      liftIO $ hPutStrLn stderr ("heartbeat: " ++ show n)
+      -- send them (HB n)
+      
+    liftIO $ hPutStrLn stderr "heartbeat failed: reload"     -- when fail, it prints messages  
+    kill pid "connection closed"                             -- and start over the whole process.
+
+  
 server :: String -> String -> Process ()
 server serverip apilevel = do
   writeProcessId serverip apilevel
   them :: ProcessId <- expect
-
-  let heartbeat n = send them (HB n) >> liftIO (threadDelay 5000000) >> heartbeat (n+1)
-  (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
-  send them sc
-  liftIO $ putStrLn "connected"  
-  spawnLocal (heartbeat 0)
-  ref <- liftIO $ newTVarIO HM.empty
-  forever $ do
-    (q,sc') <- receiveChan rc
-    liftIO $ hPutStrLn stderr (show q)
-    spawnLocal (queryWorker ref sc' q)
+  withHeartBeat $ spawnLocal $ do
+    (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+    send them sc
+    liftIO $ putStrLn "connected"  
+    -- spawnLocal (heartBeat 0)
+    ref <- liftIO $ newTVarIO HM.empty
+    forever $ do
+      (q,sc') <- receiveChan rc
+      liftIO $ hPutStrLn stderr (show q)
+      spawnLocal (queryWorker ref sc' q)
 
 main :: IO ()
 main = do
