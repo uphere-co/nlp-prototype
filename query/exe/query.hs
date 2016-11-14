@@ -54,13 +54,13 @@ writeProcessId redisip apilevel = do
 
 -- heartBeat n = do
 
-withHeartBeat :: {- ProcessId -> -} Process ProcessId -> Process ()
-withHeartBeat {- them -} action = do
+withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
+withHeartBeat them action = do
   forever $ do                                               -- forever looping
     pid <- action                                            -- main process launch
     whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
       liftIO $ hPutStrLn stderr ("heartbeat: " ++ show n)
-      -- send them (HB n)
+      send them (HB n)
       
     liftIO $ hPutStrLn stderr "heartbeat failed: reload"     -- when fail, it prints messages  
     kill pid "connection closed"                             -- and start over the whole process.
@@ -69,8 +69,8 @@ withHeartBeat {- them -} action = do
 server :: String -> String -> Process ()
 server serverip apilevel = do
   writeProcessId serverip apilevel
-  them :: ProcessId <- expect
-  withHeartBeat $ spawnLocal $ do
+  them <- expect
+  withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
     liftIO $ putStrLn "connected"  
