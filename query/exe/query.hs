@@ -68,22 +68,10 @@ server serverip apilevel = do
     liftIO $ hPutStrLn stderr (show q)
     spawnLocal (queryWorker ref sc' q)
 
-
-{-  
-  str <- liftIO (BL.unpack <$> simpleHttpClient False methodGet url Nothing)
-  runMaybeT $ do
-    m <- (MaybeT . return) (Data.Aeson.decode (BL.pack str)) :: MaybeT Process (M.Map String String)
-    pidstr <- (MaybeT . return) (M.lookup "result" m)
-    liftIO $ hPutStrLn stderr (show pidstr)
-    let them = (Bi.decode . B64.decodeLenient . BL.pack) pidstr
--}
-
-
 main :: IO ()
 main = do
   redisip <- liftIO (getEnv "REDISIP")
   apilevel <- liftIO (getEnv "APILEVEL")
-  -- let configurl = serverurl </> apilevel </> "config"
   
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
