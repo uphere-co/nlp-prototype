@@ -9,6 +9,7 @@ namespace string{
 
 std::vector<std::string> split(std::string words, const char *delim=" \t");
 std::vector<std::string> readlines(std::string file);
+std::string read_whole(std::string file);
 
 std::vector<char> pack_words(std::vector<std::string> const &words);
 std::vector<char> pack_words(std::vector<const char*> const &words);

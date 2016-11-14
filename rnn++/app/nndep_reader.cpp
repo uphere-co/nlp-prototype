@@ -391,14 +391,17 @@ int main(int /*argc*/, char** argv){
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
 //    auto query_json = corenlp_client.from_query_content(input);
-    auto query_json = corenlp_client.from_query_file(input);
+    auto query_str = util::string::read_whole(input);
+    auto query_json = corenlp_client.from_query_content(query_str);
+    query_json["query_str"] = query_str;
 
     util::Timer timer{};
+
     DepSimilaritySearch engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
-    fmt::print("{}\n", uids.dump(4));
+    //fmt::print("{}\n", uids.dump(4));
 //    auto answers = engine.ask_query(uids);
 //    ygp::annotation_on_result(config, answers);
 //    fmt::print("{}\n", answers.dump(4));
@@ -409,4 +412,3 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Queries are answered.");
     return 0;
 }
-

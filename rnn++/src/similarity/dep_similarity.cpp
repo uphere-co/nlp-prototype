@@ -214,7 +214,8 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
                      hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()},
   ygpdb_country{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                     hdf5::FileMode::read_exist}, config["country_uids_dump"].get<std::string>()}
+                     hdf5::FileMode::read_exist}, config["country_uids_dump"].get<std::string>()},
+  country_tagger{config["country_uids_dump"].get<std::string>()}
 {}
 
 //TODO: fix it to be thread-safe
@@ -231,6 +232,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
+
+    auto found_countries = country_tagger.tag(ask["query_str"]);
+    answer["Countries"]=found_countries;
     return answer;
 }
 
@@ -277,8 +281,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         auto sent = *it;
         query_sents.push_back(sent);
     }
+    std::vector<std::string> countries;
+    for(auto country : ask["Countries"]) countries.push_back(country);
+    std::cerr<<"Find for a query in DB of : ";
+    for(auto country : ask["Countries"]) std::cerr<<country << ", ";
+    std::cerr<<std::endl;
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    auto results = process_chain_query(query_sents);
+    auto results = process_chain_query(query_sents, countries);
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -357,14 +366,22 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
-        std::vector<wordrep::Sentence> const &query_chain) const {
+        std::vector<wordrep::Sentence> const &query_chain,
+        std::vector<std::string> const &countries) const {
     auto max_clip_len = 200;
     util::Timer timer{};
     Sentences uid2sent{sents};
     std::vector<Sentence> candidate_sents;
-    auto uids=ygpdb_country.sents("South Korea");
+    std::vector<SentUID> uids;
+    for(auto country : countries) {
+        auto uids_country = ygpdb_country.sents(country);
+        std::copy(uids_country.cbegin(),uids_country.cend(), std::back_inserter(uids));
+    }
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
-    assert(uids.size()>0);
+    if(countries.size()==0) {
+        std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
+        candidate_sents=sents;
+    }
     auto n0 = sents.size();
 
     json_t output{};

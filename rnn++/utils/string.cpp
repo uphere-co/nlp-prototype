@@ -26,6 +26,13 @@ std::vector<std::string> readlines(std::string file){
     return lines;
 }
 
+std::string read_whole(std::string file){
+    std::ifstream t(file);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    return buffer.str();
+}
+
 std::vector<char> pack_words(std::vector<std::string> const &words){
     std::vector<char> vec;
     for(auto const &x:words){

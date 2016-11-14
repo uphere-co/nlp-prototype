@@ -218,6 +218,21 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
     }
 }
 
+CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
+    auto countries = util::string::readlines(country_list);
+    for(auto const& country : countries) codes[country]=country;
+    codes["Korea"]="South Korea";
+}
+std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
+    std::vector<std::string> countries;
+    auto words = util::string::split(content);
+    for(auto word : words) {
+        auto it = codes.find(word);
+        if(it != codes.cend()) countries.push_back(it->second);
+    }
+    return countries;
+}
+
 DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
     auto countries =util::string::readlines(country_list);
     for(auto country : countries) {

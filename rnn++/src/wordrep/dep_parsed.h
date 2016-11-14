@@ -136,6 +136,12 @@ struct YGPindexer{
     std::map<std::pair<ColumnUID,RowIndex>,RowUID> map_to_uid;
 };
 
+struct CountryCodeAnnotator{
+    static std::string unknown() {return "All";}
+    CountryCodeAnnotator(std::string country_list);
+    std::vector<std::string> tag(std::string content) const;
+    std::map<std::string,std::string> codes;
+};
 
 struct DBbyCountry{
     DBbyCountry(util::io::H5file const &file, std::string country_list);
