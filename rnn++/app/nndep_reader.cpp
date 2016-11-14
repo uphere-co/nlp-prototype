@@ -1,9 +1,9 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 
-#include <codecvt>
-#include <locale>
+#include <set>
 
 #include "pqxx/pqxx"
 #include "fmt/printf.h"
@@ -68,8 +68,9 @@ void pruning_voca(){
 
 
 void write_column(std::vector<int64_t> rows, std::string filename,
-                  std::string prefix, std::string colname){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+                  std::string prefix, std::string colname,
+                  hdf5::FileMode mode=hdf5::FileMode::rw_exist){
+    H5file file{H5name{filename}, mode};
     file.writeRawData(H5name{prefix+colname}, rows);
 }
 void overwrite_column(std::vector<int64_t> rows, std::string filename,
@@ -142,6 +143,118 @@ void parse_json_dumps(nlohmann::json const &config,
     write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
     wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
+
+struct CountryColumn{
+    CountryColumn() {
+        table2country_code["reach_reports"] = "country_code";
+        table2country_code["regulation"] = "countrycode";
+        table2country_code["autchklist2"] = "countrycode";
+    }
+    std::string operator[](std::string table) const {
+        auto it = table2country_code.find(table);
+        if(it==table2country_code.cend()) return "";
+        return it->second;
+    }
+    std::map<std::string, std::string> table2country_code;
+};
+
+struct Chunks{
+    using idx_t = std::pair<ChunkIndex,SentUID>;
+    Chunks(util::io::H5file const &file, std::string prefix)
+            : sents_uid{util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
+              chunks_idx{util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))}
+    {
+        assert(sents_uid.size()==chunks_idx.size());
+    }
+
+    DPTokenIndex token_beg() const {return DPTokenIndex{0};}
+    DPTokenIndex token_end() const {return DPTokenIndex::from_unsigned(sents_uid.size());}
+    ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
+    SentUID sent_uid(DPTokenIndex idx) const {return sents_uid[idx.val];}
+    idx_t at(DPTokenIndex idx) const {return {chunk_idx(idx),sent_uid(idx)};}
+
+    DPTokenIndex next_sent_beg(DPTokenIndex idx) const {
+        auto current_sent_beg = at(idx);
+        auto end = token_end();
+        auto it=idx;
+        while(it<end) if(at(it++)!=current_sent_beg) break;
+        return it;
+    }
+private:
+    std::vector<ChunkIndex>   chunks_idx;
+    std::vector<SentUID>      sents_uid;
+};
+
+
+void write_contry_code(nlohmann::json const &config,
+                       const char *cols_to_exports, int64_t n_max = -1) {
+    using namespace ygp;
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+
+    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+
+    CountryColumn table2country_code{};
+
+    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::rw_exist};
+    std::string ygp_prefix = config["dep_parsed_prefix"];
+    RowUID row_uid{};
+    YGPdb db{cols_to_exports};
+    YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
+    Chunks ygp_chunks{ygp_h5store, ygp_prefix};
+    std::map<std::string, std::vector<RowUID>> rows_by_country;
+    std::map<std::string, std::vector<SentUID>> sents_by_country;
+    std::map<RowUID,std::vector<SentUID>> sents_in_row;
+
+    for(auto idx=ygp_chunks.token_beg();idx!=ygp_chunks.token_end(); idx = ygp_chunks.next_sent_beg(idx)){
+        auto ch_idx=ygp_chunks.chunk_idx(idx);
+        auto sent_uid=ygp_chunks.sent_uid(idx);
+        auto row_uid=ygp_indexer.row_uid(ch_idx);
+        sents_in_row[row_uid].push_back(sent_uid);
+        assert(row_uid.val==ch_idx.val);
+    }
+
+    for (auto col_uid = db.beg(); col_uid != db.end(); ++col_uid) {
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
+        auto country_code_col = table2country_code[table];
+        fmt::print("{} {} {}\n", table, country_code_col, index_col);
+
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+        pqxx::work W(C);
+        auto query = fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
+                                    INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
+                                 table, index_col, country_code_col);
+        auto body = W.exec(query);
+        W.commit();
+        auto n = n_max < 0 ? body.size() : n_max;
+        for (decltype(n) i = 0; i != n; ++i) {
+            auto elm = body[i];
+            RowIndex row_idx{std::stoi(elm[0].c_str())};
+            std::string country = elm[1].c_str();
+            if(ygp_indexer.is_empty(col_uid,row_idx)) continue;
+            auto row_uid = ygp_indexer.row_uid(col_uid, row_idx);
+            rows_by_country[country].push_back(row_uid);
+            auto& tmp = sents_by_country[country];
+            for(auto sent_uid : sents_in_row[row_uid]) tmp.push_back(sent_uid);
+        }
+    }
+
+    std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
+    for(auto x : rows_by_country){
+        ygp_h5store.writeRawData(H5name{x.first+".row_uid"}, util::serialize(x.second));
+        country_list << x.first << std::endl;
+    }
+    for(auto x : sents_by_country){
+        ygp_h5store.writeRawData(H5name{x.first+".sent_uid"}, util::serialize(x.second));
+    }
+    country_list.close();
+}
+
+
 
 int dump_column(std::string table, std::string column, std::string index_col){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
@@ -222,16 +335,14 @@ int list_columns(){
     return 0;
 }
 
+
 namespace test {
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
-//    std::wstring wstr =  L"This is 테스트 of unicode-UTF8 conversion.";
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> to_unicode;
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> to_utf8;
-//    std::wstring wstr = to_unicode.from_bytes(row_str);
-    std::wstring wstr = to_utf8.from_bytes(row_str);
-    auto wsubstr = wstr.substr(8, 3);
-    auto substr = to_utf8.to_bytes(wsubstr);
+    auto substr = util::string::substring_unicode_offset(row_str, 8, 11);
+    assert(substr==u8"테스트");
+    assert(substr!=u8"테스트 ");
+    assert(substr!=u8" 테스트");
     fmt::print("{}\n", substr);
 }
 
@@ -260,13 +371,15 @@ void word_importance(util::json_t const &config){
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    test::word_importance(config);
+//    test::word_importance(config);
+//    test::unicode_conversion();
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
 //    auto col_uids = argv[2];
 //    auto n_max = std::stoi(argv[3]);
+//    write_contry_code(config, col_uids, n_max);
     //dump_psql(col_uids);
 //    parse_json_dumps(config, col_uids, n_max);
 //    return 0;
@@ -278,22 +391,24 @@ int main(int /*argc*/, char** argv){
     std::string input = argv[2];
     CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
 //    auto query_json = corenlp_client.from_query_content(input);
-    auto query_json = corenlp_client.from_query_file(input);
+    auto query_str = util::string::read_whole(input);
+    auto query_json = corenlp_client.from_query_content(query_str);
+    query_json["query_str"] = query_str;
 
     util::Timer timer{};
+
     DepSimilaritySearch engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
-    fmt::print("{}\n", uids.dump(4));
-//    auto answers = engine.ask_query(uids);
-//    ygp::annotation_on_result(config, answers);
-//    fmt::print("{}\n", answers.dump(4));
-//    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
+    //fmt::print("{}\n", uids.dump(4));
+    auto answers = engine.ask_query(uids);
+    ygp::annotation_on_result(config, answers);
+    fmt::print("{}\n", answers.dump(4));
+    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     auto chain_answers = engine.ask_chain_query(uids);
     ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
     timer.here_then_reset("Queries are answered.");
     return 0;
 }
-

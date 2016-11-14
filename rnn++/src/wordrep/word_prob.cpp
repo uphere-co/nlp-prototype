@@ -1,6 +1,7 @@
 #include "wordrep/word_prob.h"
 
 #include "utils/hdf5.h"
+#include "utils/algorithm.h"
 
 using namespace util::io;
 
@@ -17,4 +18,12 @@ WordImportance::WordImportance(H5file const& stats)
     }
 }
 
+WordImportance::val_t WordImportance::ratio(WordUID uid)  const {
+    if(uid.val<0 || uid.val>=util::to_signed<val_t>(ratios.size())) return 0.0;
+    return ratios[uid.val];
+}
+WordImportance::val_t WordImportance::cutoff(WordUID uid) const {
+    if(uid.val<0 || uid.val>=cutoffs.size()) return 0.0;
+    return cutoffs[uid.val];
+}
 }//namespace wordrep

@@ -4,6 +4,9 @@
 #include <fstream>
 #include <algorithm>
 #include <functional>
+#include <codecvt>
+#include <locale>
+
 #include <boost/algorithm/string.hpp>
 
 namespace util{
@@ -21,6 +24,13 @@ std::vector<std::string> readlines(std::string file){
     std::string line;
     while(std::getline(val, line)) lines.push_back(line);
     return lines;
+}
+
+std::string read_whole(std::string file){
+    std::ifstream t(file);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    return buffer.str();
 }
 
 std::vector<char> pack_words(std::vector<std::string> const &words){
@@ -79,6 +89,14 @@ std::vector<util::cstring_span<>> unpack_tokenized_sentence(util::cstring_span<>
         it=std::find_if_not(it, end, [](auto x){return x==' ';});
     }
     return words;
+}
+
+std::string substring_unicode_offset(std::string str, int beg, int end){
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> to_utf8;
+    std::wstring wstr = to_utf8.from_bytes(str);
+    auto wsubstr = wstr.substr(beg, end-beg);
+    auto substr = to_utf8.to_bytes(wsubstr);
+    return substr;
 }
 
 }//namespace util::string
