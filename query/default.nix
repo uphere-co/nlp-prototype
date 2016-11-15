@@ -1,7 +1,7 @@
 { mkDerivation, aeson, attoparsec, base, base64-bytestring, binary
 , bytestring, conduit, conduit-extra, connection, containers
-, directory, distributed-process, filepath, hedis
-, http-client, http-client-tls, http-types, monad-loops
+, directory, distributed-process, filepath
+, http-client, http-client-tls, http-types, monad-loops, network-simple
 , network-transport-zeromq, process, query-common
 , scientific, stdenv, stm, text, transformers
 , unix, unordered-containers, uuid, vector
@@ -17,7 +17,7 @@ mkDerivation {
   executableHaskellDepends = [
     aeson attoparsec base base64-bytestring binary bytestring conduit
     conduit-extra connection containers directory distributed-process
-    filepath hedis http-client http-client-tls http-types monad-loops
+    filepath http-client http-client-tls http-types monad-loops network-simple
     network-transport-zeromq process query-common scientific stm text
     transformers unix unordered-containers uuid vector
   ];
