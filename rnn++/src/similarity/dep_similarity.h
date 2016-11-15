@@ -101,8 +101,10 @@ struct DepSimilaritySearch {
     std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
                                                    std::vector<wordrep::Sentence> const &data_sents) const;
-    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents) const;
-    json_t process_chain_query(std::vector<wordrep::Sentence> const &query_chain) const;
+    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents,
+                               std::vector<std::string> const &countries) const;
+    json_t process_chain_query(std::vector<wordrep::Sentence> const &query_chain,
+                               std::vector<std::string> const &countries) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
@@ -117,6 +119,8 @@ struct DepSimilaritySearch {
     std::vector<wordrep::Sentence> sents;
     wordrep::ygp::YGPdb const ygpdb;
     wordrep::ygp::YGPindexer const ygp_indexer;
+    wordrep::ygp::DBbyCountry const ygpdb_country;
+    wordrep::ygp::CountryCodeAnnotator country_tagger;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};

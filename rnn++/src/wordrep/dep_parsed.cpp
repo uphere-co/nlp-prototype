@@ -93,7 +93,7 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
 //    auto chk_end = std::find_if_not(chunks_idx.cbegin()+offset, chunks_idx.cend(),
 //                                [chk_idx](auto x) { return x == chk_idx; });
     auto first_elm=DPTokenIndex{DPTokenIndex::val_t{0}};
-    auto last_elm =DPTokenIndex{n_tokens()};
+    auto last_elm =DPTokenIndex::from_unsigned(n_tokens());
     auto chk_beg = sent.beg;
     for(;chk_beg!=first_elm; --chk_beg)
         if(chunk_idx(chk_beg)!=chk_idx) break;
@@ -203,10 +203,49 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
         : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))},
           chunk2row_uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
           chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
-{}
+{
+    auto n = chunk2idx.size();
+    assert(chunk2row_uid.size()==n);
+    assert(chunk2col_uid.size()==n);
+    //for(decltype(n)i=0; i!=n; ++i) {
+    for(auto it=chunk2idx.cbegin(); it!=chunk2idx.cend(); ){
+        auto i = std::distance(chunk2idx.cbegin(), it);
+        auto row_idx=*it;
+        auto row_uid=chunk2row_uid[i];
+        auto col_uid=chunk2col_uid[i];
+        map_to_uid[{col_uid,row_idx}]=row_uid;
+        it = std::find_if_not(it, chunk2idx.cend(), [it](auto x){return x==*it;});
+    }
+}
+
+CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
+    auto countries = util::string::readlines(country_list);
+    for(auto const& country : countries) codes[country]=country;
+    codes["Korea"]="South Korea";
+}
+std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
+    std::vector<std::string> countries;
+    auto words = util::string::split(content);
+    for(auto word : words) {
+        auto it = codes.find(word);
+        if(it != codes.cend()) countries.push_back(it->second);
+    }
+    return countries;
+}
+
+DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
+    auto countries =util::string::readlines(country_list);
+    for(auto country : countries) {
+    auto rows=util::deserialize<ygp::RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
+    auto sents=util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
+    rows_by_country[country]=rows;
+    sents_by_country[country]=sents;
+    }
+}
 
 YGPdb::YGPdb(std::string column_uids){
     auto lines = util::string::readlines(column_uids);
+    assert(ColumnUID{}==ColumnUID{0});
     for(auto line : lines){
         auto cols = util::string::split(line, ".");
         tables.push_back(cols[0]);
@@ -241,10 +280,7 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
             auto offset_end = offsets[i][1].get<int64_t>();
 
             auto row_str = ygpdb.raw_text(col_uid, row_idx);
-            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-            std::wstring wstr = converter.from_bytes(row_str);
-            auto wsubstr = wstr.substr(offset_beg, offset_end-offset_beg);
-            auto substr = converter.to_bytes(wsubstr);
+            auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
         }

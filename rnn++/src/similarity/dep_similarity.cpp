@@ -12,6 +12,7 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
+#include "utils/algorithm.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
@@ -65,7 +66,7 @@ void WordSimCache::cache(std::vector<VocaIndex> const &words) {
                               for(decltype(n_words)j=0; j!=n_words; ++j ){
                                   auto qidx = words_to_cache[j];
                                   auto q = voca.wvecs[qidx];
-                                  auto widx = VocaIndex{i};
+                                  auto widx = VocaIndex::from_unsigned(i);
                                   dists[j][widx] = dist_measure(voca.wvecs[widx], q);
                               }
                           }
@@ -212,7 +213,10 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   sents{tokens.IndexSentences()},
   ygpdb{config["column_uids_dump"].get<std::string>()},
   ygp_indexer{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                     hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()}
+                     hdf5::FileMode::read_exist}, config["dep_parsed_prefix"].get<std::string>()},
+  ygpdb_country{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
+                     hdf5::FileMode::read_exist}, config["country_uids_dump"].get<std::string>()},
+  country_tagger{config["country_uids_dump"].get<std::string>()}
 {}
 
 //TODO: fix it to be thread-safe
@@ -229,6 +233,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
+
+    auto found_countries = country_tagger.tag(ask["query_str"]);
+    answer["Countries"]=found_countries;
     return answer;
 }
 
@@ -255,8 +262,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
         auto sent = *it;
         query_sents.push_back(sent);
     }
+    std::vector<std::string> countries;
+    for(auto country : ask["Countries"]) countries.push_back(country);
+    std::cerr<<"Find for a query in DB of : ";
+    for(auto country : ask["Countries"]) std::cerr<<country << ", ";
+    std::cerr<<std::endl;
     fmt::print("Will process {} user documents\n", query_sents.size());
-    auto results = process_query_sents(query_sents);
+    auto results = process_query_sents(query_sents, countries);
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -275,8 +287,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         auto sent = *it;
         query_sents.push_back(sent);
     }
+    std::vector<std::string> countries;
+    for(auto country : ask["Countries"]) countries.push_back(country);
+    std::cerr<<"Find for a query in DB of : ";
+    for(auto country : ask["Countries"]) std::cerr<<country << ", ";
+    std::cerr<<std::endl;
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    auto results = process_chain_query(query_sents);
+    auto results = process_chain_query(query_sents, countries);
     return results;
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -288,8 +305,8 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
     for(auto ridx=sent_ref.beg; ridx!=sent_ref.end; ++ridx){
         auto ref_vidx = sent_ref.tokens->word(ridx);
         auto ref_head_vidx = sent_ref.tokens->head_word(ridx);
-        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
-        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
+//        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
+//        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
 
         auto j = util::diff(ridx, sent_ref.beg);
         auto j_head = util::diff(sent_ref.tokens->head_pos(ridx), sent_ref.tokens->head_pos(sent_ref.beg));
@@ -299,20 +316,33 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
 
             auto dependent_score = dists_cache.distances(ref_vidx)[word_vidx];
             auto governor_score = dists_cache.distances(ref_head_vidx)[word_head_vidx];
-            cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
+            //cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
         }
     }
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
-        std::vector<wordrep::Sentence> const &query_sents) const {
+        std::vector<wordrep::Sentence> const &query_sents,
+        std::vector<std::string> const &countries) const {
     auto max_clip_len = 200;
     tbb::concurrent_vector<json_t> answers;
     tbb::task_group g;
     util::Timer timer{};
+
+    Sentences uid2sent{sents};
+    std::vector<Sentence> candidate_sents;
+    std::vector<SentUID> uids;
+    for(auto country : countries) append(uids, ygpdb_country.sents(country));
+
+    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+    if(countries.size()==0) {
+        std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
+        candidate_sents=sents;
+    }
+
     for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        g.run([&timer,&answers,max_clip_len, query_sent,this](){
+        g.run([&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -334,7 +364,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             timer.here_then_reset("Get cutoffs");
             dists_cache.cache(vidxs);
             timer.here_then_reset("Built Similarity caches.");
-            auto relevant_sents = this->process_query_sent(query_sent, cutoffs, sents);
+            auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
             auto answer = write_output(relevant_sents, max_clip_len);
             auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
             auto query_sent_end = query_sent.tokens->word_end(query_sent.end-1).val;
@@ -355,12 +385,20 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
-        std::vector<wordrep::Sentence> const &query_chain) const {
+        std::vector<wordrep::Sentence> const &query_chain,
+        std::vector<std::string> const &countries) const {
     auto max_clip_len = 200;
     util::Timer timer{};
-    auto candidate_sents = sents;
-    auto n0 = sents.size();
     Sentences uid2sent{sents};
+    std::vector<Sentence> candidate_sents;
+    std::vector<SentUID> uids;
+    for(auto country : countries) append(uids, ygpdb_country.sents(country));
+    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+    if(countries.size()==0) {
+        std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
+        candidate_sents=sents;
+    }
+    auto n0 = sents.size();
 
     json_t output{};
     for(auto const &query_sent : query_chain){
@@ -418,7 +456,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
 
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
-    using val_t = ScoredSentence::val_t;
     using hash_t = size_t;
     std::map<hash_t, bool> is_seen{};
     std::vector<ScoredSentence> dedup_sents;

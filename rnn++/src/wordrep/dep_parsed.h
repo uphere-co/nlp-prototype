@@ -53,7 +53,6 @@ struct Sentence{
     DepParsedTokens const *tokens;
 };
 
-
 struct Sentences{
     Sentences(std::vector<Sentence> const &sents) {
         for(auto &sent : sents) uid2sent[sent.uid]=sent;
@@ -65,6 +64,7 @@ struct Sentences{
     }
     std::map<SentUID,Sentence> uid2sent{};
 };
+
 
 struct DepParsedTokens{
     DepParsedTokens(util::io::H5file const &file, std::string prefix);
@@ -120,15 +120,40 @@ using RowUID    = util::IntegerLike<RowUIDDummy>;
 
 struct YGPindexer{
     YGPindexer(util::io::H5file const &file, std::string prefix);
+    ColumnUID column_uid(ChunkIndex idx) const {return chunk2col_uid[idx.val];}
     RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
     RowUID row_uid(ChunkIndex idx) const {return chunk2row_uid[idx.val];}
-    ColumnUID column_uid(ChunkIndex idx) const {return chunk2col_uid[idx.val];}
+    bool is_empty(ColumnUID uid, RowIndex idx) const {return map_to_uid.find({uid,idx})==map_to_uid.cend();}
+    RowUID row_uid(ColumnUID uid, RowIndex idx) const {
+        if(is_empty(uid,idx)) return RowUID{-1};
+        auto it=map_to_uid.find({uid,idx});
+        return it->second;
+    }
 
     std::vector<RowIndex> chunk2idx;
     std::vector<RowUID> chunk2row_uid;
     std::vector<ColumnUID> chunk2col_uid;
+    std::map<std::pair<ColumnUID,RowIndex>,RowUID> map_to_uid;
 };
 
+struct CountryCodeAnnotator{
+    static std::string unknown() {return "All";}
+    CountryCodeAnnotator(std::string country_list);
+    std::vector<std::string> tag(std::string content) const;
+    std::map<std::string,std::string> codes;
+};
+
+struct DBbyCountry{
+    DBbyCountry(util::io::H5file const &file, std::string country_list);
+    std::vector<SentUID> sents(std::string country) const {
+        auto it=sents_by_country.find(country);
+        if(it==sents_by_country.cend()) return {};
+        return it->second;
+    }
+private:
+    std::map<std::string, std::vector<ygp::RowUID>> rows_by_country;
+    std::map<std::string, std::vector<SentUID>> sents_by_country;
+};
 
 struct YGPdb{
     YGPdb(std::string column_uids);
@@ -136,7 +161,7 @@ struct YGPdb{
     std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
     std::string column(ColumnUID idx) const {return columns[idx.val];}
     ColumnUID beg() const {return ColumnUID{};}
-    ColumnUID end() const {return ColumnUID{tables.size()};}
+    ColumnUID end() const {return ColumnUID::from_unsigned(tables.size());}
     std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
 
     std::vector<std::string> tables;
