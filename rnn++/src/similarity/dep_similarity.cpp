@@ -392,7 +392,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
     Sentences uid2sent{sents};
     std::vector<Sentence> candidate_sents;
     std::vector<SentUID> uids;
-    for(auto country : countries) append(uids, ygpdb_country.sents(country));
+    for(auto country : countries) {
+        append(uids, ygpdb_country.sents(country));
+        std::cerr<<fmt::format("Add {}. {} sentences.",country, uids.size())<<std::endl;
+    }
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(countries.size()==0) {
         std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
@@ -559,6 +562,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(score);
+        answer["result_sent_country"].push_back(ygpdb_country.get_country(sent.uid));
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_idx.val);
