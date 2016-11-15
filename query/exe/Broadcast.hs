@@ -18,8 +18,8 @@ packAndSend sock x = do
   send sock sizebstr
   send sock msg
 
-broadcastProcessId :: ProcessId -> IO ()
-broadcastProcessId pid = do
-  serve HostAny "5002" $ \(sock,addr) -> do
+broadcastProcessId :: ProcessId -> String -> IO ()
+broadcastProcessId pid port = do
+  serve HostAny port $ \(sock,addr) -> do
     putStrLn $ "TCP connection established from " ++ show addr
     packAndSend sock pid
