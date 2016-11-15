@@ -336,7 +336,46 @@ int list_columns(){
 }
 
 
+
+
+void test_contry_code(nlohmann::json const &config,
+                      const char *cols_to_exports, int64_t n_max=-1){
+//    using namespace ygp;
+//    using idx_by_country_t = std::map<std::string, std::set<RowIndex>>;
+//    std::map<ColumnUID, idx_by_country_t> country_indexer;
+//    YGPdb db{cols_to_exports};
+//    std::map<std::string, std::string> table2country_code;
+//    table2country_code["reach_reports"] = "country_code";
+//    table2country_code["regulation"] = "countrycode";
+//    table2country_code["autchklist2"] = "countrycode";
+//    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+//        auto table = db.table(col_uid);
+//        auto column = db.column(col_uid);
+//        auto index_col = db.index_col(col_uid);
+//        auto country_code_col = table2country_code[table];
+//        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+//        pqxx::work W(C);
+//        auto query=fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
+//                                    INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
+//                               tabale, index_col, country_code_col);
+//        auto body= W.exec(query);
+//        W.commit();
+//        auto n = n_max<0? body.size(): n_max;
+//        auto& mm = country_indexer[col_uid];
+//        for(decltype(n)i=0; i!=n; ++i){
+//            auto elm = body[i];
+//            RowIndex row_idx{std::stoi(elm[0].c_str())};
+//            std::string country = elm[1].c_str();
+//            assert(mm[country].find(row_idx)!=mm[country].cend());
+//            //fmt::print("{} {} : {} {}\n", table, row_idx.val, country, wordUIDs[country].val);
+//        }
+//    }
+//    write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
+}
+
+
 namespace test {
+
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
     auto substr = util::string::substring_unicode_offset(row_str, 8, 11);
@@ -367,12 +406,54 @@ void word_importance(util::json_t const &config){
     }
 }
 
+
+
+void test_chunks(){
+}
+
+}//namespace test
+
+namespace test {
+namespace ygp {
+
+void country_annotator(util::json_t const &config) {
+    using wordrep::ygp::CountryCodeAnnotator;
+    CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
+    {
+        auto tags = country_tagger.tag("Seoul is a capital city of South Korea.\n");
+        assert(!util::isin(tags, "Japan"));
+        assert(util::isin(tags, "South Korea"));
+    }
+    {
+        //Test a special logic that treats "Korea" as "South Korea"
+        auto tags = country_tagger.tag("Seoul is a capital city of Korea.\n");
+        assert(!util::isin(tags, "Japan"));
+        assert(util::isin(tags, "South Korea"));
+    }
+
+    {
+        //"China" should also includes "Hong Kong"
+        auto tags = country_tagger.tag("China is in Asia.\n");
+        assert(!util::isin(tags, "Japan"));
+        assert(util::isin(tags, "China"));
+        assert(util::isin(tags, "Hong Kong"));
+    }
+}
+
+
+void YGPindexer(){
+    //col_uid,row_idx -> row_uid;
+}
+
+}//namespace test::ygp
 }//namespace test
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
+//    test::ygp::country_annotator(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
+//    return 0;
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));

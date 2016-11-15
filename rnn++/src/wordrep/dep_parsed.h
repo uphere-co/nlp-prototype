@@ -140,7 +140,8 @@ struct CountryCodeAnnotator{
     static std::string unknown() {return "All";}
     CountryCodeAnnotator(std::string country_list);
     std::vector<std::string> tag(std::string content) const;
-    std::map<std::string,std::string> codes;
+private:
+    std::map<std::string, std::vector<std::string>> codes;
 };
 
 struct DBbyCountry{
@@ -149,6 +150,13 @@ struct DBbyCountry{
         auto it=sents_by_country.find(country);
         if(it==sents_by_country.cend()) return {};
         return it->second;
+    }
+    std::string get_country(SentUID uid) const{
+        for(auto it : sents_by_country){
+            auto country = it.first;
+            for(auto suid : it.second) if(uid==suid) return country;
+        }
+        return "Unknown";
     }
 private:
     std::map<std::string, std::vector<ygp::RowUID>> rows_by_country;

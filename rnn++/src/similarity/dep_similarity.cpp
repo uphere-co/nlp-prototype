@@ -364,6 +364,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
             timer.here_then_reset("Get cutoffs");
             dists_cache.cache(vidxs);
             timer.here_then_reset("Built Similarity caches.");
+            std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
             auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
             auto answer = write_output(relevant_sents, max_clip_len);
             auto query_sent_beg = query_sent.tokens->word_beg(query_sent.beg).val;
@@ -392,7 +393,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
     Sentences uid2sent{sents};
     std::vector<Sentence> candidate_sents;
     std::vector<SentUID> uids;
-    for(auto country : countries) append(uids, ygpdb_country.sents(country));
+    for(auto country : countries) {
+        append(uids, ygpdb_country.sents(country));
+        std::cerr<<fmt::format("Add {}. {} sentences.",country, uids.size())<<std::endl;
+    }
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(countries.size()==0) {
         std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
@@ -419,9 +423,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
         timer.here_then_reset("Get cutoffs");
         dists_cache.cache(vidxs);
         timer.here_then_reset("Built Similarity caches.");
+        std::cerr<<fmt::format("Chain query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
         auto relevant_sents = this->process_query_sent(query_sent, cutoffs, candidate_sents);
         candidate_sents.clear();
-        assert(sents.size()==n0);
         assert(candidate_sents.size()==0);
         if(!relevant_sents.size()) continue;
 
@@ -437,7 +441,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
 
         auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
                                                [](auto x, auto y){return x.score<y.score;});
-        auto score_cutoff = best_candidate->score * 0.7;
+        auto score_cutoff = best_candidate->score * 0.5;
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
             auto sent = scored_sent.sent;
@@ -559,6 +563,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
         answer["score"].push_back(score);
+        answer["result_sent_country"].push_back(ygpdb_country.get_country(sent.uid));
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);
         answer["result_row_idx"].push_back(row_idx.val);
