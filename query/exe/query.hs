@@ -20,7 +20,6 @@ import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
 import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Map                            as M
-import qualified Database.Redis                      as DR
 import           Foreign.C.String
 import           Network.HTTP.Types                        (methodGet)
 import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
@@ -37,28 +36,6 @@ import           Worker
 foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
 foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
-
-writeProcessId :: String -> String -> Process ()
-writeProcessId redisip apilevel = do
-  pid <- getSelfPid
-  liftIO $ forkIO (broadcastProcessId pid)
-  
-  let usb64 = (BL.toStrict . B64.encode . Bi.encode) pid
-
-  (liftIO . print . B64.decodeLenient . BL.fromStrict) usb64
-
-  let us :: ProcessId = (Bi.decode . B64.decodeLenient . BL.fromStrict) usb64
-  liftIO $ print us
-  
-  let cinfo = DR.defaultConnectInfo
-              { DR.connectHost = redisip
-              , DR.connectPort = DR.PortNumber 6379 }
-  conn <- liftIO $ DR.connect cinfo
-  void . liftIO $ DR.runRedis conn $ DR.set (B.pack ("query." ++ apilevel ++ ".pid")) usb64
-  
-
--- heartBeat n = do
-
 withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
 withHeartBeat them action = do
   forever $ do                                               -- forever looping
@@ -71,9 +48,10 @@ withHeartBeat them action = do
     kill pid "connection closed"                             -- and start over the whole process.
 
   
-server :: String -> String -> Process ()
-server serverip apilevel = do
-  writeProcessId serverip apilevel
+server :: Process ()
+server = do
+  pid <- getSelfPid
+  void . liftIO $ forkIO (broadcastProcessId pid)
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
@@ -89,16 +67,12 @@ server serverip apilevel = do
 
 main :: IO ()
 main = do
-  redisip <- liftIO (getEnv "REDISIP")
-  apilevel <- liftIO (getEnv "APILEVEL")
-  
-  
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node (server redisip apilevel)
+    runProcess node server
     c_query_finalize
 
