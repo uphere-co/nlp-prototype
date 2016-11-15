@@ -220,17 +220,16 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
 
 CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
     auto countries = util::string::readlines(country_list);
-    for(auto const& country : countries) codes[country]=country;
-    codes["Korea"]="South Korea";
+    for(auto const& country : countries) codes[country].push_back(country);
+    codes["Korea"].push_back("South Korea");
+    codes["China"].push_back("Hong Kong");
 }
 std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
     std::vector<std::string> countries;
     for(auto const& it : codes){
-        auto country_repr = it.first;
-        auto country = it.second;
-        auto n = content.find(country_repr);
+        auto n = content.find(it.first);
         if(n==decltype(content)::npos) continue;
-        countries.push_back(country);
+        util::append(countries, it.second);
     }
     return countries;
 }

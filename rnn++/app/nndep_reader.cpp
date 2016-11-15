@@ -338,12 +338,6 @@ int list_columns(){
 
 
 
-void test_chunks(){
-}
-void YGPindexer(){
-    //col_uid,row_idx -> row_uid;
-}
-
 void test_contry_code(nlohmann::json const &config,
                       const char *cols_to_exports, int64_t n_max=-1){
 //    using namespace ygp;
@@ -412,6 +406,11 @@ void word_importance(util::json_t const &config){
     }
 }
 
+
+
+void test_chunks(){
+}
+
 }//namespace test
 
 namespace test {
@@ -431,6 +430,19 @@ void country_annotator(util::json_t const &config) {
         assert(!util::isin(tags, "Japan"));
         assert(util::isin(tags, "South Korea"));
     }
+
+    {
+        //"China" should also includes "Hong Kong"
+        auto tags = country_tagger.tag("China is in Asia.\n");
+        assert(!util::isin(tags, "Japan"));
+        assert(util::isin(tags, "China"));
+        assert(util::isin(tags, "Hong Kong"));
+    }
+}
+
+
+void YGPindexer(){
+    //col_uid,row_idx -> row_uid;
 }
 
 }//namespace test::ygp
@@ -438,10 +450,10 @@ void country_annotator(util::json_t const &config) {
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    test::ygp::country_annotator(config);
-    return 0;
+//    test::ygp::country_annotator(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
+//    return 0;
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
