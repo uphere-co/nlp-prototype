@@ -225,10 +225,12 @@ CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
 }
 std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
     std::vector<std::string> countries;
-    auto words = util::string::split(content);
-    for(auto word : words) {
-        auto it = codes.find(word);
-        if(it != codes.cend()) countries.push_back(it->second);
+    for(auto const& it : codes){
+        auto country_repr = it.first;
+        auto country = it.second;
+        auto n = content.find(country_repr);
+        if(n==decltype(content)::npos) continue;
+        countries.push_back(country);
     }
     return countries;
 }

@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <limits>
+#include <algorithm>
 
 namespace util {
 
@@ -16,4 +17,13 @@ T to_signed(size_t uval){
     return static_cast<T>(uval);
 }
 
+template<typename T>
+auto find(T const &elms, typename T::value_type const &elm){
+    return std::find(elms.cbegin(), elms.cend(), elm);
+}
+
+template<typename T>
+auto isin(T const &elms, typename T::value_type const &elm){
+    return find(elms, elm)!=elms.cend();
+}
 }//namespace util

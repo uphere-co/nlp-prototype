@@ -140,6 +140,7 @@ struct CountryCodeAnnotator{
     static std::string unknown() {return "All";}
     CountryCodeAnnotator(std::string country_list);
     std::vector<std::string> tag(std::string content) const;
+private:
     std::map<std::string,std::string> codes;
 };
 
