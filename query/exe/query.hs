@@ -4,7 +4,7 @@
 
 module Main where
 
-import           Control.Concurrent                        (threadDelay)
+import           Control.Concurrent                        (forkIO,threadDelay)
 import           Control.Concurrent.STM
 import           Control.Monad
 import           Control.Monad.IO.Class
@@ -29,6 +29,8 @@ import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
 --
 import           QueryServer.Type
+--
+import           Broadcast
 import           Network
 import           Worker
 
@@ -38,7 +40,10 @@ foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 writeProcessId :: String -> String -> Process ()
 writeProcessId redisip apilevel = do
-  usb64 <- BL.toStrict . B64.encode . Bi.encode <$> getSelfPid
+  pid <- getSelfPid
+  liftIO $ forkIO (broadcastProcessId pid)
+  
+  let usb64 = (BL.toStrict . B64.encode . Bi.encode) pid
 
   (liftIO . print . B64.decodeLenient . BL.fromStrict) usb64
 
@@ -81,10 +86,12 @@ server serverip apilevel = do
       liftIO $ hPutStrLn stderr (show q)
       spawnLocal (queryWorker ref sc' q)
 
+
 main :: IO ()
 main = do
   redisip <- liftIO (getEnv "REDISIP")
   apilevel <- liftIO (getEnv "APILEVEL")
+  
   
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
