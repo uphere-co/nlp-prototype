@@ -101,7 +101,6 @@ QueryResultCache::json_t QueryResultCache::find(wordrep::SentUID uid) const {
     return caches.find(a, uid);
 }
 
-
 //TODO: remove code duplication for parsing CoreNLP outputs
 class DepParsedQuery{
 public:
@@ -135,11 +134,12 @@ public:
             dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
     }
 
-    auto get_scores(Sentence const &sent) const {
+    DepSearchScore get_scores(Sentence const &sent) const {
         auto beg=sent.beg;
         auto end=sent.end;
         val_t total_score{0.0};
-        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
+//        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
+        DepSearchScore scores(len);
         auto i_trial{0};
 
         for(auto pair: sorted_idxs){
@@ -158,7 +158,8 @@ public:
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
-                        scores[j] = {i, score};
+//                        scores[j] = {i, score};
+                        scores.set(j, tidx, i, score);
                     }
                 } else {
                     if(cutoffs[qhead_pidx]<0.4) continue;
@@ -166,7 +167,8 @@ public:
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
                         score = tmp;
-                        scores[j] = {i, score};
+                        scores.set(j, tidx, i, score);
+//                        scores[j] = {i, score};
                     }
                 }
             }
@@ -497,7 +499,7 @@ DepSimilaritySearch::process_query_sent(Sentence query_sent,
 }
 
 auto get_clip_offset = [](Sentence sent,
-                          auto &scores, auto const &tokens, auto max_clip_len){
+                          auto scores, auto const &tokens, auto max_clip_len){
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
     auto i_word_beg = pair.first;
@@ -556,7 +558,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
         auto const &scored_sent = *it;
         auto score = scored_sent.score;
-        auto scores = scored_sent.scores;
+        auto scores = scored_sent.scores.scores;
         auto sent = scored_sent.sent;
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid

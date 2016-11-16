@@ -79,15 +79,33 @@ private:
     data_t caches;
 };
 
+
+struct DepSearchScore{
+    using val_t = WordSimCache::val_t;
+    DepSearchScore(size_t len) : scores(len) {}z`
+
+    void set(size_t j, wordrep::DPTokenIndex idx_query, wordrep::DPTokenIndex idx_matched, val_t score){
+        scores[j]={idx_matched, score};
+        //scores.push_back(score);
+        //score_sum += score;
+    }
+
+//    val_t score_sum;
+//    std::vector<val_t> scores;
+//private:
+    std::vector<std::pair<wordrep::DPTokenIndex, val_t>>  scores;
+    //word;
+//    word;
+};
+
 struct ScoredSentence{
     using val_t = WordSimCache::val_t;
-    using scores_t = std::vector<std::pair<wordrep::DPTokenIndex, val_t>>;
-    ScoredSentence(wordrep::Sentence sent, scores_t const &scores)
+    ScoredSentence(wordrep::Sentence sent, DepSearchScore const &scores)
     :sent{sent}, scores{scores}, score{0.0} {
-        for(auto pair : scores) score += pair.second;
+        for(auto pair : scores.scores) score += pair.second;
     }
     wordrep::Sentence sent;
-    std::vector<std::pair<wordrep::DPTokenIndex, val_t>> scores;
+    DepSearchScore scores;
     val_t score;
 
 };
