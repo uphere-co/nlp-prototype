@@ -101,6 +101,11 @@ QueryResultCache::json_t QueryResultCache::find(wordrep::SentUID uid) const {
     return caches.find(a, uid);
 }
 
+
+DepSearchScore::val_t DepSearchScore::score_sum() const {return util::math::sum(scores);}
+
+
+
 //TODO: remove code duplication for parsing CoreNLP outputs
 class DepParsedQuery{
 public:
@@ -498,8 +503,10 @@ DepSimilaritySearch::process_query_sent(Sentence query_sent,
     return deduplicate_results(relevant_sents);
 }
 
-auto get_clip_offset = [](Sentence sent,
-                          auto scores, auto const &tokens, auto max_clip_len){
+auto get_clip_offset = [](Sentence sent, DepSearchScore const &score, auto const &tokens,
+                          auto max_clip_len)->std::pair<CharOffset,CharOffset> {
+    auto scores = score.scores_with_idx();
+    if(!scores.size()) return {{},{}};
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
     auto i_word_beg = pair.first;
@@ -539,7 +546,7 @@ auto get_clip_offset = [](Sentence sent,
     }
 
 //    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
-    return std::make_pair(clip_beg, clip_end);
+    return {clip_beg, clip_end};
 };
 
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
@@ -557,14 +564,13 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
                                 [score_cutoff](auto const &x){return x.score>score_cutoff;});
     for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
         auto const &scored_sent = *it;
-        auto score = scored_sent.score;
-        auto scores = scored_sent.scores.scores;
+        auto scores = scored_sent.scores;
         auto sent = scored_sent.sent;
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
-        answer["score"].push_back(score);
+        answer["score"].push_back(scores.score_sum());
         answer["result_sent_country"].push_back(ygpdb_country.get_country(sent.uid));
         answer["result_sent_uid"].push_back(sent.uid.val);
         answer["result_row_uid"].push_back(row_uid.val);

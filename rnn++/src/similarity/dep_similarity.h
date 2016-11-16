@@ -82,32 +82,30 @@ private:
 
 struct DepSearchScore{
     using val_t = WordSimCache::val_t;
-    DepSearchScore(size_t len) : scores(len) {}z`
-
-    void set(size_t j, wordrep::DPTokenIndex idx_query, wordrep::DPTokenIndex idx_matched, val_t score){
-        scores[j]={idx_matched, score};
-        //scores.push_back(score);
-        //score_sum += score;
+    DepSearchScore(size_t len) : idxs_lhs(len),idxs_rhs(len), scores(len) {}
+    void set(size_t j, wordrep::DPTokenIndex idx_lhs, wordrep::DPTokenIndex idx_rhs, val_t score){
+        scores[j]=score;
+        idxs_lhs[j]=idx_lhs;
+        idxs_rhs[j]=idx_rhs;
     }
-
-//    val_t score_sum;
-//    std::vector<val_t> scores;
-//private:
-    std::vector<std::pair<wordrep::DPTokenIndex, val_t>>  scores;
-    //word;
-//    word;
+    std::vector<std::pair<wordrep::DPTokenIndex,val_t>> scores_with_idx() const {
+        return util::zip(idxs_rhs, scores);
+    };
+    val_t score_sum() const;
+private:
+    std::vector<wordrep::DPTokenIndex> idxs_lhs;
+    std::vector<wordrep::DPTokenIndex> idxs_rhs;
+    std::vector<val_t> scores;
 };
 
 struct ScoredSentence{
     using val_t = WordSimCache::val_t;
     ScoredSentence(wordrep::Sentence sent, DepSearchScore const &scores)
-    :sent{sent}, scores{scores}, score{0.0} {
-        for(auto pair : scores.scores) score += pair.second;
+    :sent{sent}, scores{scores}, score{scores.score_sum()} {
     }
     wordrep::Sentence sent;
     DepSearchScore scores;
     val_t score;
-
 };
 
 struct DepSimilaritySearch {
