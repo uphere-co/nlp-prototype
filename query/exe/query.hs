@@ -48,10 +48,10 @@ withHeartBeat them action = do
     kill pid "connection closed"                             -- and start over the whole process.
 
   
-server :: Process ()
-server = do
+server :: String -> Process ()
+server port = do
   pid <- getSelfPid
-  void . liftIO $ forkIO (broadcastProcessId pid)
+  void . liftIO $ forkIO (broadcastProcessId pid port)
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
@@ -67,12 +67,13 @@ server = do
 
 main :: IO ()
 main = do
+  port <- getEnv "PORT"
   [host] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
-    runProcess node server
+    runProcess node (server port)
     c_query_finalize
 
