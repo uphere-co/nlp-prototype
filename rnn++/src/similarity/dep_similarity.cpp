@@ -566,6 +566,20 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto const &scored_sent = *it;
         auto scores = scored_sent.scores;
         auto sent = scored_sent.sent;
+
+        auto scores_with_idxs = scored_sent.scores.serialize();
+        std::sort(scores_with_idxs.begin(), scores_with_idxs.end(),
+                  [](auto const &x, auto const &y){return std::get<2>(x)>std::get<2>(y);});
+        json_t score_with_offset{};
+        for(auto elm : scores_with_idxs){
+            auto lhs_idx = std::get<0>(elm);
+            auto rhs_idx = std::get<1>(elm);
+            auto score   = std::get<2>(elm);
+            score_with_offset.push_back({score,
+                        query_tokens.word_beg(lhs_idx).val, query_tokens.word_end(lhs_idx).val,
+                        tokens.word_beg(rhs_idx).val, tokens.word_end(rhs_idx).val});
+        }
+
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
@@ -583,6 +597,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto end=sent.end_offset();
         answer["result_offset"].push_back({beg.val,end.val});
         answer["highlight_offset"].push_back({0,0});
+        answer["score_with_offset"].push_back(score_with_offset);
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
     }

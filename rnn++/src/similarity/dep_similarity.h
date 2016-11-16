@@ -91,6 +91,9 @@ struct DepSearchScore{
     std::vector<std::pair<wordrep::DPTokenIndex,val_t>> scores_with_idx() const {
         return util::zip(idxs_rhs, scores);
     };
+    auto serialize() const {
+        return util::zip(idxs_lhs, idxs_rhs, scores);
+    };
     val_t score_sum() const;
 private:
     std::vector<wordrep::DPTokenIndex> idxs_lhs;

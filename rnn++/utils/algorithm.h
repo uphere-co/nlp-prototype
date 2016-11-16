@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <vector>
 #include <limits>
 #include <algorithm>
@@ -15,8 +16,17 @@ template<typename T1, typename T2>
 auto zip(T1 const &x, T2 const &y) {
     using elm_t = std::pair<typename T1::value_type, typename T2::value_type>;
     std::vector<elm_t> elms;
-    auto n = x.size()<y.size()? x.size():y.size();
+    auto n = std::min(x.size(),y.size());
     for(decltype(n)i=0; i!=n; ++i) elms.push_back({x[i],y[i]});
+    return elms;
+}
+
+template<typename T1, typename T2, typename T3>
+auto zip(T1 const &x, T2 const &y, T3 const &z) {
+    using elm_t = std::tuple<typename T1::value_type, typename T2::value_type, typename T3::value_type>;
+    std::vector<elm_t> elms;
+    auto n = std::min({x.size(),y.size(), z.size()});
+    for(decltype(n)i=0; i!=n; ++i) elms.push_back(std::make_tuple(x[i],y[i],z[i]));
     return elms;
 }
 
