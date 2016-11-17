@@ -127,7 +127,8 @@ struct DepSimilaritySearch {
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(std::vector<ScoredSentence> const &relevant_sents,
+    json_t write_output(wordrep::Sentence const &query_sent,
+                        std::vector<ScoredSentence> const &relevant_sents,
                         int64_t max_clip_len) const;
 
     voca_info_t voca;
