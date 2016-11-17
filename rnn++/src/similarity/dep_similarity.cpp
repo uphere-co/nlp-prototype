@@ -549,21 +549,30 @@ auto get_clip_offset = [](Sentence sent, DepSearchScore const &score, auto const
     return {clip_beg, clip_end};
 };
 
-DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
-                                                              int64_t max_clip_len) const{
+
+std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
+                                           size_t n_max_result){
     auto n_found = relevant_sents.size();
-    std::cerr<<n_found << " results are found"<<std::endl;
-    json_t answer{};
-    if(!n_found) return answer;
-    auto n_max_result=n_found>5? 5 : n_found;
-    auto rank_cut = relevant_sents.begin()+n_max_result;
+    if(!n_found) return relevant_sents;
+    auto n_cut = std::min(n_max_result, n_found);
+    auto rank_cut = relevant_sents.begin()+n_cut;
     std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
                       [](auto const &x, auto const &y){return x.score > y.score;});
     auto score_cutoff = 0.5*relevant_sents[0].score;
     rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
                                 [score_cutoff](auto const &x){return x.score>score_cutoff;});
-    for(auto it=relevant_sents.cbegin(); it!=rank_cut; ++it){
-        auto const &scored_sent = *it;
+    std::vector<ScoredSentence> top_n_results;
+    //relevant_sents.resize(rank_cut-relevant_sents.begin());
+    std::copy(relevant_sents.begin(), rank_cut, std::back_inserter(top_n_results));
+    return top_n_results;
+}
+DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
+                                                              int64_t max_clip_len) const{
+    auto n_found = relevant_sents.size();
+    std::cerr<<n_found << " results are found"<<std::endl;
+    json_t answer{};
+    auto top_N_results = plain_rank_cut(relevant_sents, 5);
+    for(auto const &scored_sent : top_N_results){
         auto scores = scored_sent.scores;
         auto sent = scored_sent.sent;
 
