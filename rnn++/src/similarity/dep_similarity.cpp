@@ -2,6 +2,8 @@
 #include <map>
 #include <utils/profiling.h>
 
+#include "src/data_source/ygp_query.h"
+
 #include "similarity/dep_similarity.h"
 
 #include "similarity/similarity_measure.h"
@@ -584,39 +586,9 @@ std::vector<ScoredSentence> per_table_rank_cut(
     return plain_rank_cut(top_N_results, n_max_per_table*2);
 }
 
-struct ScoreWithOffset{
-    using val_t = double;
-    using idx_t = int64_t;
 
-    val_t score;
-    idx_t query_word_beg;
-    idx_t query_word_end;
-    idx_t matched_word_beg;
-    idx_t matched_word_end;
-};
 
-struct PerSentQueryResult{
-    using val_t = double;
-    using idx_t = int64_t;
-    using offsets_t = std::pair<int64_t,int64_t>;
-    using str_t = std::string;
-
-    val_t score;
-    std::string result_sent_country;
-    idx_t result_sent_uid;
-    idx_t result_row_uid;
-    idx_t result_row_idx;
-    idx_t result_column_uid;
-    str_t result_table_name;
-    str_t result_column_name;
-    str_t result_index_col_name;
-    offsets_t result_offset;
-    offsets_t highlight_offset;
-    offsets_t clip_offset;
-    std::vector<ScoreWithOffset> score_with_offset;
-};
-
-PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
+ygp::PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
                                           ScoredSentence const &matched_sentence,
                                           int64_t max_clip_len,
                                           ygp::YGPdb const &ygpdb,
@@ -636,18 +608,18 @@ PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
     auto col_uid = ygp_indexer.column_uid(chunk_idx);
     auto row_idx = ygp_indexer.row_idx(chunk_idx);
 
-    PerSentQueryResult result;
+    ygp::PerSentQueryResult result;
     for(auto elm : scores_with_idxs){
         auto lhs_idx = std::get<0>(elm);
         auto rhs_idx = std::get<1>(elm);
         auto score   = std::get<2>(elm);
-        ScoreWithOffset tmp;
+        ygp::ScoreWithOffset tmp;
         tmp.score = score;
-        tmp.query_word_beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_word_end; query_tokens.word_end(lhs_idx).val;
-        tmp.matched_word_beg = tokens.word_beg(rhs_idx).val;
-        tmp.matched_word_end = tokens.word_end(rhs_idx).val;
-        result.score_with_offset.push_back(tmp);
+        tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
+        tmp.query_word.end; query_tokens.word_end(lhs_idx).val;
+        tmp.matched_word.beg = tokens.word_beg(rhs_idx).val;
+        tmp.matched_word.end = tokens.word_end(rhs_idx).val;
+        result.scores_with_offset.push_back(tmp);
     }
     result.score = scores.score_sum();
     result.result_sent_country = ygpdb_country.get_country(sent.uid);
@@ -666,7 +638,7 @@ PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
     return result;
 }
 
-util::json_t to_json(std::vector<PerSentQueryResult> const &results){
+util::json_t to_json(std::vector<ygp::PerSentQueryResult> const &results){
     util::json_t answer{};
 
     for(auto const &result : results){
@@ -680,16 +652,16 @@ util::json_t to_json(std::vector<PerSentQueryResult> const &results){
         answer["result_index_col_name"].push_back(result.result_index_col_name);
         answer["result_column_uid"].push_back(result.result_column_uid);
         auto tmp = result.result_offset;
-        answer["result_offset"].push_back({tmp.first, tmp.second});
+        answer["result_offset"].push_back({tmp.beg, tmp.end});
         auto tmp2 = result.highlight_offset;
-        answer["highlight_offset"].push_back({tmp2.first, tmp2.second});
+        answer["highlight_offset"].push_back({tmp2.beg, tmp2.end});
         auto tmp3 = result.clip_offset;
-        answer["clip_offset"].push_back({tmp3.first, tmp3.second});
+        answer["clip_offset"].push_back({tmp3.end, tmp3.end});
 
-        for(auto elm :result.score_with_offset) {
+        for(auto elm :result.scores_with_offset) {
             answer["score_with_offset"].push_back({elm.score,
-                                                   elm.query_word_beg, elm.query_word_end,
-                                                   elm.matched_word_beg, elm.matched_word_end});
+                                                   elm.query_word.beg, elm.query_word.end,
+                                                   elm.matched_word.beg, elm.matched_word.end});
         }
     }
     return answer;
@@ -708,7 +680,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(
     auto top_N_results  = per_table_rank_cut(relevant_sents, 5, ygp_indexer, ygpdb);
     timer.here_then_reset("Get top N results.");
 
-    std::vector<PerSentQueryResult> results;
+    std::vector<ygp::PerSentQueryResult> results;
     for(auto const &scored_sent : top_N_results){
         auto result = build_query_result_POD(query_sent, scored_sent, max_clip_len,
                                              ygpdb, ygp_indexer, ygpdb_country);

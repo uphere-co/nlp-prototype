@@ -416,8 +416,8 @@ void test_chunks(){
 namespace test {
 namespace ygp {
 
+using namespace ::ygp;
 void country_annotator(util::json_t const &config) {
-    using wordrep::ygp::CountryCodeAnnotator;
     CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
     {
         auto tags = country_tagger.tag("Seoul is a capital city of South Korea.\n");

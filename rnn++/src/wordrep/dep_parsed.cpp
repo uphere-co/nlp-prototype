@@ -198,6 +198,10 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     return new_uids;
 }
 
+
+}//namespace wordrep
+
+
 namespace ygp{
 YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
         : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))},
@@ -237,8 +241,8 @@ std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
 DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
     auto countries =util::string::readlines(country_list);
     for(auto country : countries) {
-    auto rows=util::deserialize<ygp::RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
-    auto sents=util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
+    auto rows=util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
+    auto sents=util::deserialize<wordrep::SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
     rows_by_country[country]=rows;
     sents_by_country[country]=sents;
     }
@@ -265,8 +269,8 @@ std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
     return body[0][0].c_str();
 }
 
-void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers){
-    ygp::YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
+void annotation_on_result(util::json_t const &config, util::json_t &answers){
+    YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
     for(auto &answer : answers){
         //answer["result_sent_uid"].push_back(sent.uid.val);
         //answer["result_row_uid"].push_back(row_uid.val);
@@ -275,8 +279,8 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
         auto offsets = answer["result_offset"];
         auto n = col_uids.size();
         for(decltype(n)i=0; i!=n; ++i){
-            ygp::ColumnUID col_uid{col_uids[i].get<ygp::ColumnUID::val_t>()};
-            ygp::RowIndex  row_idx{row_idxs[i].get<ygp::RowIndex::val_t>()};
+            ColumnUID col_uid{col_uids[i].get<ColumnUID::val_t>()};
+            RowIndex  row_idx{row_idxs[i].get<RowIndex::val_t>()};
             auto offset_beg = offsets[i][0].get<int64_t>();
             auto offset_end = offsets[i][1].get<int64_t>();
 
@@ -290,7 +294,5 @@ void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers)
 
 }//namespace ygp
 
-
-}//namespace wordrep
 
 

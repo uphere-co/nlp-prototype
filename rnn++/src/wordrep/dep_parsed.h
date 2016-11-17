@@ -107,6 +107,9 @@ struct DepParsedTokens{
     ChunkIndex current_chunk_idx{ChunkIndex::val_t{0}};
 };
 
+}//namespace wordrep
+
+
 namespace ygp{
 
 struct TableUIDDummy{};
@@ -120,9 +123,9 @@ using RowUID    = util::IntegerLike<RowUIDDummy>;
 
 struct YGPindexer{
     YGPindexer(util::io::H5file const &file, std::string prefix);
-    ColumnUID column_uid(ChunkIndex idx) const {return chunk2col_uid[idx.val];}
-    RowIndex row_idx(ChunkIndex idx) const {return chunk2idx[idx.val];}
-    RowUID row_uid(ChunkIndex idx) const {return chunk2row_uid[idx.val];}
+    ColumnUID column_uid(wordrep::ChunkIndex idx) const {return chunk2col_uid[idx.val];}
+    RowIndex row_idx(wordrep::ChunkIndex idx) const {return chunk2idx[idx.val];}
+    RowUID row_uid(wordrep::ChunkIndex idx) const {return chunk2row_uid[idx.val];}
     bool is_empty(ColumnUID uid, RowIndex idx) const {return map_to_uid.find({uid,idx})==map_to_uid.cend();}
     RowUID row_uid(ColumnUID uid, RowIndex idx) const {
         if(is_empty(uid,idx)) return RowUID{-1};
@@ -146,12 +149,12 @@ private:
 
 struct DBbyCountry{
     DBbyCountry(util::io::H5file const &file, std::string country_list);
-    std::vector<SentUID> sents(std::string country) const {
+    std::vector<wordrep::SentUID> sents(std::string country) const {
         auto it=sents_by_country.find(country);
         if(it==sents_by_country.cend()) return {};
         return it->second;
     }
-    std::string get_country(SentUID uid) const{
+    std::string get_country(wordrep::SentUID uid) const{
         for(auto it : sents_by_country){
             auto country = it.first;
             for(auto suid : it.second) if(uid==suid) return country;
@@ -159,8 +162,8 @@ struct DBbyCountry{
         return "Unknown";
     }
 private:
-    std::map<std::string, std::vector<ygp::RowUID>> rows_by_country;
-    std::map<std::string, std::vector<SentUID>> sents_by_country;
+    std::map<std::string, std::vector<RowUID>> rows_by_country;
+    std::map<std::string, std::vector<wordrep::SentUID>> sents_by_country;
 };
 
 struct YGPdb{
@@ -177,9 +180,7 @@ struct YGPdb{
     std::vector<std::string> index_cols;
 };
 
-void annotation_on_result(nlohmann::json const &config, nlohmann::json &answers);
+void annotation_on_result(util::json_t const &config, util::json_t &answers);
 
 
-} //namespace wordrep::ygp
-
-}//namespace wordrep
+} //namespace ygp
