@@ -555,23 +555,44 @@ std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_
     auto n_found = relevant_sents.size();
     if(!n_found) return relevant_sents;
     auto n_cut = std::min(n_max_result, n_found);
-    auto rank_cut = relevant_sents.begin()+n_cut;
-    std::partial_sort(relevant_sents.begin(),rank_cut,relevant_sents.end(),
+    auto beg = relevant_sents.begin();
+    auto rank_cut = beg+n_cut;
+    std::partial_sort(beg,rank_cut,relevant_sents.end(),
                       [](auto const &x, auto const &y){return x.score > y.score;});
-    auto score_cutoff = 0.5*relevant_sents[0].score;
-    rank_cut = std::find_if_not(relevant_sents.begin(), rank_cut,
+    auto score_cutoff = 0.5*relevant_sents.front().score;
+    rank_cut = std::find_if_not(beg, rank_cut,
                                 [score_cutoff](auto const &x){return x.score>score_cutoff;});
     std::vector<ScoredSentence> top_n_results;
-    //relevant_sents.resize(rank_cut-relevant_sents.begin());
-    std::copy(relevant_sents.begin(), rank_cut, std::back_inserter(top_n_results));
+    std::copy(beg, rank_cut, std::back_inserter(top_n_results));
     return top_n_results;
 }
-DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> relevant_sents,
+
+std::vector<ScoredSentence> per_column_rank_cut(
+        std::vector<ScoredSentence> const &relevant_sents, size_t n_max_result,
+        ygp::YGPindexer const &ygp_indexer){
+    std::map<ygp::ColumnUID, std::vector<ScoredSentence>> outputs_per_column;
+    for(auto const &scored_sent : relevant_sents){
+        auto const &sent = scored_sent.sent;
+        auto col_uid=ygp_indexer.column_uid(sent.tokens->chunk_idx(sent.beg));
+        outputs_per_column[col_uid].push_back(scored_sent);
+    }
+    std::vector<ScoredSentence> top_N_results;
+    for(auto const &pair : outputs_per_column){
+        util::append(top_N_results, plain_rank_cut(pair.second, 5));
+    }
+    return top_N_results;
+}
+
+DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> const &relevant_sents,
                                                               int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
     std::cerr<<n_found << " results are found"<<std::endl;
     json_t answer{};
-    auto top_N_results = plain_rank_cut(relevant_sents, 5);
+
+    util::Timer timer;
+//    auto top_N_results = plain_rank_cut(relevant_sents, 5);
+    auto top_N_results  = per_column_rank_cut(relevant_sents, 5, ygp_indexer);
+    timer.here_then_reset("Get top N results.");
     for(auto const &scored_sent : top_N_results){
         auto scores = scored_sent.scores;
         auto sent = scored_sent.sent;
@@ -610,6 +631,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
         auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
         answer["clip_offset"].push_back({clip_offset.first.val, clip_offset.second.val});
     }
+
+    timer.here_then_reset("Generate JSON output.");
     return answer;
 
 }
