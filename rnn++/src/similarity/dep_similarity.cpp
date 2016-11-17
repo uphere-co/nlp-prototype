@@ -567,20 +567,21 @@ std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_
     return top_n_results;
 }
 
-std::vector<ScoredSentence> per_column_rank_cut(
-        std::vector<ScoredSentence> const &relevant_sents, size_t n_max_result,
-        ygp::YGPindexer const &ygp_indexer){
-    std::map<ygp::ColumnUID, std::vector<ScoredSentence>> outputs_per_column;
+std::vector<ScoredSentence> per_table_rank_cut(
+        std::vector<ScoredSentence> const &relevant_sents, size_t n_max_per_table,
+        ygp::YGPindexer const &ygp_indexer, ygp::YGPdb const &ygpdb){
+    std::map<std::string, std::vector<ScoredSentence>> outputs_per_column;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
         auto col_uid=ygp_indexer.column_uid(sent.tokens->chunk_idx(sent.beg));
-        outputs_per_column[col_uid].push_back(scored_sent);
+        auto table_name = ygpdb.table(col_uid);
+        outputs_per_column[table_name].push_back(scored_sent);
     }
     std::vector<ScoredSentence> top_N_results;
     for(auto const &pair : outputs_per_column){
-        util::append(top_N_results, plain_rank_cut(pair.second, 5));
+        util::append(top_N_results, plain_rank_cut(pair.second, n_max_per_table));
     }
-    return top_N_results;
+    return plain_rank_cut(top_N_results, n_max_per_table*2);
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<ScoredSentence> const &relevant_sents,
@@ -591,7 +592,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::write_output(std::vector<Scored
 
     util::Timer timer;
 //    auto top_N_results = plain_rank_cut(relevant_sents, 5);
-    auto top_N_results  = per_column_rank_cut(relevant_sents, 5, ygp_indexer);
+    auto top_N_results  = per_table_rank_cut(relevant_sents, 5, ygp_indexer, ygpdb);
     timer.here_then_reset("Get top N results.");
     for(auto const &scored_sent : top_N_results){
         auto scores = scored_sent.scores;
