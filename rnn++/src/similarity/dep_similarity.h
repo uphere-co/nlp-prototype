@@ -69,7 +69,7 @@ private:
 
 class QueryResultCache{
 public:
-    using json_t = nlohmann::json;
+    using json_t = util::json_t;
     using data_t = tbb::concurrent_hash_map<wordrep::SentUID,json_t,TBBHashCompare<wordrep::SentUID>>;
     QueryResultCache() {}
     void insert(wordrep::SentUID uid, json_t const&result);
@@ -112,7 +112,7 @@ struct ScoredSentence{
 };
 
 struct DepSimilaritySearch {
-    using json_t = nlohmann::json;
+    using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     DepSimilaritySearch(json_t const& config);
@@ -127,7 +127,8 @@ struct DepSimilaritySearch {
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(std::vector<ScoredSentence> relevant_sents, int64_t max_clip_len) const;
+    json_t write_output(std::vector<ScoredSentence> const &relevant_sents,
+                        int64_t max_clip_len) const;
 
     voca_info_t voca;
     wordrep::DepParsedTokens const tokens;
