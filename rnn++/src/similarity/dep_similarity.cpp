@@ -656,7 +656,7 @@ util::json_t to_json(std::vector<ygp::PerSentQueryResult> const &results){
         auto tmp2 = result.highlight_offset;
         answer["highlight_offset"].push_back({tmp2.beg, tmp2.end});
         auto tmp3 = result.clip_offset;
-        answer["clip_offset"].push_back({tmp3.end, tmp3.end});
+        answer["clip_offset"].push_back({tmp3.beg, tmp3.end});
 
         for(auto elm :result.scores_with_offset) {
             answer["score_with_offset"].push_back({elm.score,
