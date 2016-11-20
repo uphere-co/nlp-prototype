@@ -279,7 +279,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     fmt::print("Will process {} user documents\n", query_sents.size());
     auto results = process_query_sents(query_sents, countries);
     return results;
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
@@ -304,10 +304,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
     auto results = process_chain_query(query_sents, countries);
     return results;
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
-
+/*
 void matched_highlighter(Sentence sent_ref, Sentence sent,
                          std::vector<DepSimilaritySearch::val_t> const &cutoffs,
                          WordSimCache &dists_cache){
@@ -329,6 +329,7 @@ void matched_highlighter(Sentence sent_ref, Sentence sent,
         }
     }
 }
+*/
 
 DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents,
