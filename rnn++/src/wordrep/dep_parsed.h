@@ -39,7 +39,7 @@ struct RawTexts{
 
 struct DepParsedTokens; //forward declaration.
 struct Sentence{
-    Sentence() : tokens(nullptr) {}
+    Sentence() : tokens{nullptr} {}
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
             : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
     DPTokenIndex front() const {return beg;}

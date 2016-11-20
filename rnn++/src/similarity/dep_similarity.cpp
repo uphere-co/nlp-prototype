@@ -616,7 +616,7 @@ ygp::PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
         ygp::ScoreWithOffset tmp;
         tmp.score = score;
         tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_word.end; query_tokens.word_end(lhs_idx).val;
+        tmp.query_word.end = query_tokens.word_end(lhs_idx).val;
         tmp.matched_word.beg = tokens.word_beg(rhs_idx).val;
         tmp.matched_word.end = tokens.word_end(rhs_idx).val;
         result.scores_with_offset.push_back(tmp);
