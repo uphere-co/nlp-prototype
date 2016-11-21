@@ -85,8 +85,6 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
 std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) const{
     std::vector<SentUID> uids;
 
-    auto offset=sent.beg.val;
-    auto reversed_offset=n_tokens()-offset;
     auto chk_idx = chunk_idx(sent.beg);
 //    auto chk_beg = std::find_if_not(chunks_idx.crbegin()+reversed_offset, chunks_idx.crend(),
 //                                [chk_idx](auto x) { return x == chk_idx; }).base();
@@ -96,13 +94,11 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
     auto last_elm =DPTokenIndex::from_unsigned(n_tokens());
     auto chk_beg = sent.beg;
     for(;chk_beg!=first_elm; --chk_beg)
-        if(chunk_idx(chk_beg)!=chk_idx) break;
+        if(chunk_idx(chk_beg)!=chk_idx) {++chk_beg;break;}
     auto chk_end = sent.end;
     for(;chk_end!=last_elm; ++chk_end)
         if(chunk_idx(chk_end)!=chk_idx) break;
     //std::cerr<<fmt::format("Chunk : {} of {}", chk_beg.val, chk_end.val)<<std::endl;
-    assert(chunk_idx(chk_beg)!=chk_idx);
-    chk_beg++;
     assert(chunk_idx(chk_beg)==chk_idx);
     auto beg = sents_uid.cbegin() + diff(chk_beg, first_elm);
     auto end = sents_uid.cbegin() + diff(chk_end, first_elm);

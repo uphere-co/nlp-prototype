@@ -7,9 +7,10 @@ namespace ygp{
 
 struct WordOffset{
     using idx_t = int64_t;
-    int64_t beg;
-    int64_t end;
+    idx_t beg;
+    idx_t end;
 };
+
 struct ScoreWithOffset{
     using val_t = double;
     using idx_t = WordOffset::idx_t;
