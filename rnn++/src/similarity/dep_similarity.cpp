@@ -659,11 +659,14 @@ util::json_t to_json(std::vector<ygp::PerSentQueryResult> const &results){
         auto tmp3 = result.clip_offset;
         answer["clip_offset"].push_back({tmp3.beg, tmp3.end});
 
+
+        util::json_t score_with_offset{};
         for(auto elm :result.scores_with_offset) {
-            answer["score_with_offset"].push_back({elm.score,
-                                                   elm.query_word.beg, elm.query_word.end,
-                                                   elm.matched_word.beg, elm.matched_word.end});
+            score_with_offset.push_back({elm.score,
+                                         elm.query_word.beg, elm.query_word.end,
+                                         elm.matched_word.beg, elm.matched_word.end});
         }
+        answer["score_with_offset"].push_back(score_with_offset);
     }
     return answer;
 }
