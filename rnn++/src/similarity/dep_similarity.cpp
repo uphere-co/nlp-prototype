@@ -614,6 +614,7 @@ ygp::PerSentQueryResult build_query_result_POD(Sentence const &query_sent,
         auto lhs_idx = std::get<0>(elm);
         auto rhs_idx = std::get<1>(elm);
         auto score   = std::get<2>(elm);
+        if(score==0.0) continue;
         ygp::ScoreWithOffset tmp;
         tmp.score = score;
         tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
