@@ -9,9 +9,9 @@
 #include "fmt/printf.h"
 #include "csv/csv.h"
 
-//#include "similarity/similarity.h"
 #include "similarity/dep_similarity.h"
 #include "similarity/corenlp_helper.h"
+#include "data_source/ygp_db.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -81,7 +81,7 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
 
 
 void parse_json_dumps(nlohmann::json const &config,
-                      const char *cols_to_exports, int64_t n_max=-1){
+                      std::string cols_to_exports, int64_t n_max=-1){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -144,19 +144,6 @@ void parse_json_dumps(nlohmann::json const &config,
     wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
 
-struct CountryColumn{
-    CountryColumn() {
-        table2country_code["reach_reports"] = "country_code";
-        table2country_code["regulation"] = "countrycode";
-        table2country_code["autchklist2"] = "countrycode";
-    }
-    std::string operator[](std::string table) const {
-        auto it = table2country_code.find(table);
-        if(it==table2country_code.cend()) return "";
-        return it->second;
-    }
-    std::map<std::string, std::string> table2country_code;
-};
 
 struct Chunks{
     using idx_t = std::pair<ChunkIndex,SentUID>;
@@ -174,21 +161,24 @@ struct Chunks{
     idx_t at(DPTokenIndex idx) const {return {chunk_idx(idx),sent_uid(idx)};}
 
     DPTokenIndex next_sent_beg(DPTokenIndex idx) const {
-        auto current_sent_beg = at(idx);
+        auto current_sent_idx = at(idx);
         auto end = token_end();
         auto it=idx;
-        while(it<end) if(at(it++)!=current_sent_beg) break;
+        while(it<end) if(at(++it)!=current_sent_idx) break;
         return it;
     }
 private:
-    std::vector<ChunkIndex>   chunks_idx;
     std::vector<SentUID>      sents_uid;
+    std::vector<ChunkIndex>   chunks_idx;
 };
 
 
-void write_contry_code(nlohmann::json const &config,
-                       const char *cols_to_exports, int64_t n_max = -1) {
-    using namespace ygp;
+
+void write_country_code(util::json_t const &config,
+                       std::string cols_to_exports) {
+    using namespace ::ygp;
+    namespace ygp = data::ygp;
+
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -196,7 +186,7 @@ void write_contry_code(nlohmann::json const &config,
     auto output_filename = config["dep_parsed_store"].get<std::string>();
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
-    CountryColumn table2country_code{};
+    ygp::CountryColumn table2country_code{};
 
     H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
@@ -213,6 +203,9 @@ void write_contry_code(nlohmann::json const &config,
         auto sent_uid=ygp_chunks.sent_uid(idx);
         auto row_uid=ygp_indexer.row_uid(ch_idx);
         sents_in_row[row_uid].push_back(sent_uid);
+        if(sent_uid.val>500&&sent_uid.val<510)
+            std::cerr<<fmt::format("{}.token_idx {}.row_uid {}.sent_uid",
+                                   idx.val, row_uid.val, sent_uid.val)<<std::endl;
         assert(row_uid.val==ch_idx.val);
     }
 
@@ -230,7 +223,7 @@ void write_contry_code(nlohmann::json const &config,
                                  table, index_col, country_code_col);
         auto body = W.exec(query);
         W.commit();
-        auto n = n_max < 0 ? body.size() : n_max;
+        auto n = body.size();
         for (decltype(n) i = 0; i != n; ++i) {
             auto elm = body[i];
             RowIndex row_idx{std::stoi(elm[0].c_str())};
@@ -338,42 +331,6 @@ int list_columns(){
 
 
 
-void test_contry_code(nlohmann::json const &config,
-                      const char *cols_to_exports, int64_t n_max=-1){
-//    using namespace ygp;
-//    using idx_by_country_t = std::map<std::string, std::set<RowIndex>>;
-//    std::map<ColumnUID, idx_by_country_t> country_indexer;
-//    YGPdb db{cols_to_exports};
-//    std::map<std::string, std::string> table2country_code;
-//    table2country_code["reach_reports"] = "country_code";
-//    table2country_code["regulation"] = "countrycode";
-//    table2country_code["autchklist2"] = "countrycode";
-//    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
-//        auto table = db.table(col_uid);
-//        auto column = db.column(col_uid);
-//        auto index_col = db.index_col(col_uid);
-//        auto country_code_col = table2country_code[table];
-//        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-//        pqxx::work W(C);
-//        auto query=fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
-//                                    INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
-//                               tabale, index_col, country_code_col);
-//        auto body= W.exec(query);
-//        W.commit();
-//        auto n = n_max<0? body.size(): n_max;
-//        auto& mm = country_indexer[col_uid];
-//        for(decltype(n)i=0; i!=n; ++i){
-//            auto elm = body[i];
-//            RowIndex row_idx{std::stoi(elm[0].c_str())};
-//            std::string country = elm[1].c_str();
-//            assert(mm[country].find(row_idx)!=mm[country].cend());
-//            //fmt::print("{} {} : {} {}\n", table, row_idx.val, country, wordUIDs[country].val);
-//        }
-//    }
-//    write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
-}
-
-
 namespace test {
 
 void unicode_conversion(){
@@ -413,10 +370,9 @@ void test_chunks(){
 
 }//namespace test
 
-namespace test {
 namespace ygp {
+namespace test {
 
-using namespace ::ygp;
 void country_annotator(util::json_t const &config) {
     CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
     {
@@ -441,28 +397,77 @@ void country_annotator(util::json_t const &config) {
 }
 
 
-void YGPindexer(){
+void ygp_indexing(){
     //col_uid,row_idx -> row_uid;
 }
 
-}//namespace test::ygp
-}//namespace test
+void country_code(util::json_t  const &config){
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+    using idx_by_country_t = std::map<std::string, std::set<RowIndex>>;
+    std::map<ColumnUID, idx_by_country_t> country_indexer;
+    YGPdb db{config["column_uids_dump"].get<std::string>()};
+    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},
+                       hdf5::FileMode::rw_exist};
+    std::string ygp_prefix = config["dep_parsed_prefix"];
+    YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
+    ygp::DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
+    DepParsedTokens tokens{ygp_h5store, ygp_prefix};
+
+    auto sents=tokens.IndexSentences();
+    int i=0;
+    for(auto sent : sents) {
+        if(i++>1000) break;
+        auto chunk_idx = tokens.chunk_idx(sent.beg);
+        auto col_uid = ygp_indexer.column_uid(chunk_idx);
+        auto row_idx = ygp_indexer.row_idx(chunk_idx);
+        auto row_uid = ygp_indexer.row_uid(chunk_idx);
+        data::ygp::CountryColumn table2country_code{};
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
+        auto country_code_col = table2country_code[table];
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+        pqxx::work W(C);
+        auto query = fmt::format("SELECT {1},OT_country_code.country_name FROM {0}\
+                                INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2})\
+                                WHERE {0}.{1}={3};",
+                                 table, index_col, country_code_col, row_idx.val);
+        auto body = W.exec(query);
+        W.commit();
+        auto n = body.size();
+        for(decltype(n)j=0; j!=n; ++j){
+            auto elm = body[j];
+            assert(row_idx==RowIndex{std::stoi(elm[0].c_str())});
+            std::string country = elm[1].c_str();
+            if(country != ygpdb_country.get_country(sent.uid))
+                std::cerr<<fmt::format("{} : {} {} {} {}.uid {}.sent_uid {} {}", i,table, column, row_idx.val,
+                                       row_uid.val, sent.uid.val,
+                                       country, ygpdb_country.get_country(sent.uid))<<std::endl;
+            assert(country == ygpdb_country.get_country(sent.uid));
+        }
+    }
+}
+
+
+}//namespace ygp::test
+}//namespace ygp
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-//    test::ygp::country_annotator(config);
+    parse_json_dumps(config, config["column_uids_dump"].get<std::string>(), 100);
+    write_country_code(config, config["column_uids_dump"].get<std::string>());
+    ygp::test::country_annotator(config);
+    ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
-//    return 0;
+    return 0;
+//    auto col_uids = argv[2];
 //    auto query_result = util::load_json(argv[2]);
 //    annotation_on_result(config, query_result);
 //    fmt::print("{}\n", query_result.dump(4));
 //    return 0;
-//    auto col_uids = argv[2];
-//    auto n_max = std::stoi(argv[3]);
 //    write_contry_code(config, col_uids, n_max);
     //dump_psql(col_uids);
-//    parse_json_dumps(config, col_uids, n_max);
 //    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
