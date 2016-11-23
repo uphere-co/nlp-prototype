@@ -68,9 +68,13 @@ target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
-add_executable(nndep_reader app/nndep_reader ${simple_model_parsers}
+add_executable(nndep_reader app/nndep_reader
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
+
+add_executable(etl_ygpdb app/etl_ygpdb
+               ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(etl_ygpdb hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)

@@ -18,3 +18,15 @@ make -j8
 # Doxygen 
 ## Usages
 Just run `doxygen` inside this directory, then documentation is generated and stored in HTML_OUTPUT of `Doxyfile` file, `/data/groups/uphere/doxygen/rnn++/`, presently.
+
+# Query Engile
+## Usages
+```
+# Getting/indexing YGP db data
+./etl_ygpdb config.ygp.json -1
+
+# query engine test
+echo Batteries mercury restriction > query.0
+./nndep_reader config.ygptest.json query.0
+```
+
