@@ -127,5 +127,18 @@ rec {
     meta = {
     };
   };
+   feedparser = buildPythonPackage rec {
+     name = "feedparser-5.2.1";
+     src = pkgs.fetchurl {
+       url = "https://pypi.python.org/packages/ca/f4/91a056f11751701c24f86c692d92fee290b0ba3f99f657cdeb85ad3da402/feedparser-5.2.1.tar.gz";
+       sha256 = "1ycva69bqssalhqg45rbrfipz3l6hmycszy26k0351fhq990c0xx";
+     };
+     buildInputs = [];
+     propagatedBuildInputs = [];
+     doCheck = false;
+     meta = {
+     };
+   };
+
 
 }
