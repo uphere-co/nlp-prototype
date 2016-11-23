@@ -27,7 +27,6 @@
 
 using namespace wordrep;
 using namespace util::io;
-using namespace ::ygp;
 
 namespace {
 
@@ -118,7 +117,7 @@ int dump_column(std::string table, std::string column, std::string index_col){
 }
 
 void dump_psql(const char *cols_to_exports){
-    ::ygp::YGPdb db{cols_to_exports};
+    YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
@@ -131,7 +130,6 @@ void dump_psql(const char *cols_to_exports){
 
 void write_country_code(util::json_t const &config,
                         std::string cols_to_exports) {
-    using namespace ::ygp;
     namespace ygp = data::ygp;
 
     VocaInfo voca{config["wordvec_store"], config["voca_name"],

@@ -3,15 +3,16 @@
 #include <vector>
 #include <string>
 
-namespace ygp{
+namespace data {
+namespace ygp {
 
-struct WordOffset{
+struct WordOffset {
     using idx_t = int64_t;
     idx_t beg;
     idx_t end;
 };
 
-struct ScoreWithOffset{
+struct ScoreWithOffset {
     using val_t = double;
     using idx_t = WordOffset::idx_t;
 
@@ -20,7 +21,7 @@ struct ScoreWithOffset{
     WordOffset matched_word;
 };
 
-struct PerSentQueryResult{
+struct PerSentQueryResult {
     using val_t = double;
     using idx_t = WordOffset::idx_t;
     using str_t = std::string;
@@ -40,4 +41,5 @@ struct PerSentQueryResult{
     std::vector<ScoreWithOffset> scores_with_offset;
 };
 
-}//namespace ygp
+}//namespace data::ygp
+}//namespace data

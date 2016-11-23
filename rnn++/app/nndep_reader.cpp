@@ -4,8 +4,8 @@
 #include <fstream>
 #include <set>
 
-#include "pqxx/pqxx"
-#include "fmt/printf.h"
+#include <pqxx/pqxx>
+#include <fmt/printf.h>
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"
@@ -120,10 +120,11 @@ void word_importance(util::json_t const &config){
 
 }//namespace test
 
+namespace data {
 namespace ygp {
 namespace test {
 
-void test_chunks(){
+void test_chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
@@ -150,11 +151,11 @@ void country_annotator(util::json_t const &config) {
 }
 
 
-void ygp_indexing(){
+void ygp_indexing() {
     //col_uid,row_idx -> row_uid;
 }
 
-void country_code(util::json_t  const &config){
+void country_code(util::json_t const &config) {
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     using idx_by_country_t = std::map<std::string, std::set<RowIndex>>;
     std::map<ColumnUID, idx_by_country_t> country_indexer;
@@ -163,18 +164,18 @@ void country_code(util::json_t  const &config){
                        hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
     YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
-    ygp::DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
+    DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
     DepParsedTokens tokens{ygp_h5store, ygp_prefix};
 
-    auto sents=tokens.IndexSentences();
-    int i=0;
-    for(auto sent : sents) {
-        if(i++>1000) break;
+    auto sents = tokens.IndexSentences();
+    int i = 0;
+    for (auto sent : sents) {
+        if (i++ > 1000) break;
         auto chunk_idx = tokens.chunk_idx(sent.beg);
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);
-        data::ygp::CountryColumn table2country_code{};
+        CountryColumn table2country_code{};
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
         auto index_col = db.index_col(col_uid);
@@ -188,27 +189,28 @@ void country_code(util::json_t  const &config){
         auto body = W.exec(query);
         W.commit();
         auto n = body.size();
-        for(decltype(n)j=0; j!=n; ++j){
+        for (decltype(n) j = 0; j != n; ++j) {
             auto elm = body[j];
-            assert(row_idx==RowIndex{std::stoi(elm[0].c_str())});
+            assert(row_idx == RowIndex{std::stoi(elm[0].c_str())});
             std::string country = elm[1].c_str();
-            if(country != ygpdb_country.get_country(sent.uid))
-                std::cerr<<fmt::format("{} : {} {} {} {}.uid {}.sent_uid {} {}", i,table, column, row_idx.val,
-                                       row_uid.val, sent.uid.val,
-                                       country, ygpdb_country.get_country(sent.uid))<<std::endl;
+            if (country != ygpdb_country.get_country(sent.uid))
+                std::cerr << fmt::format("{} : {} {} {} {}.uid {}.sent_uid {} {}", i, table, column, row_idx.val,
+                                         row_uid.val, sent.uid.val,
+                                         country, ygpdb_country.get_country(sent.uid)) << std::endl;
             assert(country == ygpdb_country.get_country(sent.uid));
         }
     }
 }
 
 
-}//namespace ygp::test
-}//namespace ygp
+}//namespace data::ygp::test
+}//namespace data::ygp
+}//namespace data
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-//    ygp::test::country_annotator(config);
-//    ygp::test::country_code(config);
+//    data::ygp::test::country_annotator(config);
+//    data::ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
 //    return 0;
@@ -245,14 +247,14 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
     timer.here_then_reset("Processed a query.");
-    ygp::annotation_on_result(config, answers);
+    data::ygp::annotation_on_result(config, answers);
     timer.here_then_reset("Query output annotation.");
     fmt::print("{}\n", answers.dump(4));
     fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    ygp::annotation_on_result(config, chain_answers);
+    data::ygp::annotation_on_result(config, chain_answers);
     timer.here_then_reset("A chain query output annotatoin.");
     fmt::print("{}\n", chain_answers.dump(4));
     timer.here_then_reset("Queries are answered.");
