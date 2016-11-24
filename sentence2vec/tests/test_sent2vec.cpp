@@ -13,6 +13,9 @@
 #include "models/sentence2vec.h"
 
 #include "utils/profiling.h"
+#include "utils/base_types.h"
+#include "utils/algorithm.h"
+#include "utils/hdf5.h"
 #include "utils/string.h"
 #include "utils/json.h"
 
@@ -21,15 +24,7 @@ using namespace util::io;
 using namespace wordrep;
 
 
-template<typename T>
-auto sort_by_values(T const &wcs){
-    using TK = typename T::key_type;
-    using TV = typename T::mapped_type;
-    std::vector<std::pair<TK,TV>> wc_sorted;
-    for(auto x : wcs) wc_sorted.push_back(x);
-    std::sort(wc_sorted.begin(), wc_sorted.end(), [](auto x, auto y){return x.second>y.second;});
-    return wc_sorted;
-};
+
 
 template<typename TK, typename TV>
 void print(std::vector<std::pair<TK,TV>> const &wcs){
@@ -41,14 +36,13 @@ void print(std::vector<std::pair<TK,TV>> const &wcs){
 namespace sent2vec{
 namespace test{
 
-void word_count(util::json_t const &config){
+void word_count(util::json_t const &config, std::string corenlp_outputs){
     Timer timer{};
     //std::unordered_map<VocaIndex,size_t> wc_serial, wc;
     using wcounts_t = std::unordered_map<std::string,size_t>;
 
     wcounts_t  wc, pos_count, arclabel_count;
-    auto file_names = "results.1k";
-    auto files = string::readlines(file_names);
+    auto files = string::readlines(corenlp_outputs);
     timer.here_then_reset("Begins serial word count");
     for(auto file : files){
         data::CoreNLPjson json(file);
@@ -64,7 +58,7 @@ void word_count(util::json_t const &config){
         });
     }
     timer.here_then_reset("Finish serial word count.");
-    auto pwc = data::parallel_word_count(file_names);
+    auto pwc = data::parallel_word_count(corenlp_outputs);
     timer.here_then_reset("Finish parallel word count.");
     auto wc_serial_sorted = sort_by_values(wc);
     timer.here_then_reset("Sort serial word count.");
@@ -75,6 +69,27 @@ void word_count(util::json_t const &config){
     print(sort_by_values(pos_count));
     print(sort_by_values(arclabel_count));
     return;
+}
+
+void io_unigram_dist(util::json_t const &config, std::string corenlp_outputs){
+    Timer timer{};
+    auto wc = data::parallel_word_count(corenlp_outputs);
+    timer.here_then_reset("Finish Parallel word count.");
+    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+    timer.here_then_reset("Load wordUID table.");
+    std::cerr<<fmt::format("{} words.", wordUIDs.size())<<std::endl;
+    std::unordered_map<WordUID,size_t> unigram;
+    for(auto x : wc.val) {
+        auto uid=wordUIDs.insert(x.first);
+        unigram[uid]=x.second;
+    }
+    auto vecs = map_to_vectors(unigram);
+    timer.here_then_reset("Update wordUID table & construct unigram distribution.");
+    std::cerr<<fmt::format("{} words.", wordUIDs.size())<<std::endl;
+
+    H5file outfile{H5name{"unigram.h5"}, hdf5::FileMode::replace};
+    outfile.writeRawData(H5name{"test.uids"}, util::serialize(vecs.first));
+    outfile.writeRawData(H5name{"test.count"}, vecs.second);
 }
 
 void sampler(){

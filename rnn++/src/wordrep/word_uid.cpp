@@ -10,17 +10,17 @@ template<typename TUID>
 UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}} {
     auto words = util::string::readlines(file);
     for(auto &word : words) insert(word);
-    uid2word[uid_t{typename uid_t::val_t{-1}}]="-UNKNOWN-";
+    uid2word[uid_t{}]="-UNKNOWN-";
 }
 //using WordUIDindex = UIDIndex<WordUID>;
 
 template<typename TUID>
-void UIDIndex<TUID>::write_to_disk(std::string filename){
+void UIDIndex<TUID>::write_to_disk(std::string filename) const {
     std::ofstream file;
     file.open(filename);
-    uid_t idx{typename uid_t::val_t{0}};
+    uid_t idx{0};
     for(auto uid=idx; uid!=current_idx; ++uid){
-        auto word=uid2word[uid];
+        auto word=uid2word.at(uid);
         file<<word<<'\n';
     }
     file.close();

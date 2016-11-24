@@ -137,7 +137,8 @@ int main(int /*argc*/, char** argv){
 //    test::sampler();
 //    test_voca_update();
 //    test_word2vec_grad_update();
-    test::word_count(config);
+    //test::word_count(config, "results.100");
+    test::io_unigram_dist(config, "results.100");
     return 0;
 
     Timer timer{};
