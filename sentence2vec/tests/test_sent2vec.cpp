@@ -1,5 +1,6 @@
 #include <unordered_map>
 
+#include "data_source/corenlp_utils.h"
 #include "data_source/corenlp.h"
 #include "data_source/ygp_db.h"
 
@@ -20,15 +21,10 @@ using namespace util::io;
 using namespace wordrep;
 
 
-template<typename TK, typename TV>
-auto sort_by_values(std::map<TK,TV> const &wcs){
-    std::vector<std::pair<TK,TV>> wc_sorted;
-    for(auto x : wcs) wc_sorted.push_back(x);
-    std::sort(wc_sorted.begin(), wc_sorted.end(), [](auto x, auto y){return x.second>y.second;});
-    return wc_sorted;
-};
-template<typename TK, typename TV>
-auto sort_by_values(std::unordered_map<TK,TV> const &wcs){
+template<typename T>
+auto sort_by_values(T const &wcs){
+    using TK = typename T::key_type;
+    using TV = typename T::mapped_type;
     std::vector<std::pair<TK,TV>> wc_sorted;
     for(auto x : wcs) wc_sorted.push_back(x);
     std::sort(wc_sorted.begin(), wc_sorted.end(), [](auto x, auto y){return x.second>y.second;});
@@ -41,6 +37,7 @@ void print(std::vector<std::pair<TK,TV>> const &wcs){
     fmt::print("\n");
 }
 
+
 namespace sent2vec{
 namespace test{
 
@@ -48,33 +45,36 @@ void word_count(util::json_t const &config){
     Timer timer{};
     //std::unordered_map<VocaIndex,size_t> wc_serial, wc;
     using wcounts_t = std::unordered_map<std::string,size_t>;
-    wcounts_t wc_serial, owc_serial;
-    wcounts_t wc, owc;
-    wcounts_t pos_count, arclabel_count;
-    auto files = string::readlines("results.10");
-    auto counter1 = [&](auto const &token){
-        auto word = token["word"].template get<std::string>();
-        auto pos = token["pos"].template get<std::string>();
-        ++wc[word];
-        ++pos_count[pos];
-    };
-    auto counter2 = [&](auto const &token){
-        auto arc_label = token["dep"].template get<std::string>();
-        ++arclabel_count[arc_label];
-    };
+
+    wcounts_t  wc, pos_count, arclabel_count;
+    auto file_names = "results.1k";
+    auto files = string::readlines(file_names);
     timer.here_then_reset("Begins serial word count");
     for(auto file : files){
         data::CoreNLPjson json(file);
-        timer.here(fmt::format("Loaded : {}", file));
-        json.iter_tokens(counter1);
-        json.iter_basic_dep_tokens(counter2);
-        timer.here(fmt::format("Finished : {}", file));
+        json.iter_tokens([&](auto const &token){
+            auto word = token["word"].template get<std::string>();
+            auto pos = token["pos"].template get<std::string>();
+            ++wc[word];
+            ++pos_count[pos];
+        });
+        json.iter_basic_dep_tokens([&](auto const &token){
+            auto arc_label = token["dep"].template get<std::string>();
+            ++arclabel_count[arc_label];
+        });
     }
     timer.here_then_reset("Finish serial word count.");
-    auto wc_sorted = sort_by_values(wc);
-    print(wc_sorted);
+    auto pwc = data::parallel_word_count(file_names);
+    timer.here_then_reset("Finish parallel word count.");
+    auto wc_serial_sorted = sort_by_values(wc);
+    timer.here_then_reset("Sort serial word count.");
+    for(auto x : wc){
+        auto key = x.first;
+        assert(wc[key]==pwc.val[key]);
+    }
     print(sort_by_values(pos_count));
     print(sort_by_values(arclabel_count));
+    return;
 }
 
 void sampler(){
