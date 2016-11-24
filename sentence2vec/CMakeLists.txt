@@ -39,7 +39,7 @@ add_executable(query_similarity app/query_similarity
 target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
 
 add_executable(model_evaluation app/model_evaluation models/sentence2vec
-               ${parser_files} ${util_files})
+               ${parser_files} ${util_files} ${wordrep_files})
 target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)
 
 add_executable(indexing_text app/indexing_text ${parser_files} ${util_files})

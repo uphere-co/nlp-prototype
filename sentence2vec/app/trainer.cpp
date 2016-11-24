@@ -56,7 +56,7 @@ void test_voca_update(){
 }
 
 
-
+/*
 
 void test_word2vec_grad_update(){
     Timer timer{};
@@ -68,7 +68,7 @@ void test_word2vec_grad_update(){
     NegativeSampleDist neg_sample_dist{unigram.prob, 0.75};    
     auto negative_sampler=neg_sample_dist.get_sampler();
     SubSampler sub_sampler{0.0001, unigram};
-    OccurrenceFilter freq_filter{5, unigram};
+    //OccurrenceFilter freq_filter{5, unigram};
 
     VocavecsGradientDescent optimizer{0.025};
 
@@ -114,6 +114,7 @@ void test_word2vec_grad_update(){
     h5store.overwriteRawData(H5name{"testset"}, voca_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
 }
+*/
 
 
 /*
@@ -134,13 +135,14 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    test::negative_sampling();
 //    test::context_words();
-//    test::sampler();
+    test::sampler();
 //    test_voca_update();
 //    test_word2vec_grad_update();
     //test::word_count(config, "results.100");
     test::io_unigram_dist(config, "results.100");
     return 0;
 
+/*
     Timer timer{};
     constexpr int word_dim=100;
     val_t alpha=0.025;
@@ -268,7 +270,7 @@ int main(int /*argc*/, char** argv){
     file.overwriteRawData(H5name{"1b.training.1M"}, voca_vecs._val );
     file.writeRawData(H5name{"1b.training.1M.sentvec"}, sent_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
-
+*/
     return 0;
 }
 

@@ -7,6 +7,8 @@
 #include "parser/parser.h"
 #include "parser/wordvec.h"
 
+#include "wordrep/voca.h"
+
 #include "utils/parallel.h"
 #include "utils/hdf5.h"
 #include "utils/math.h"
@@ -21,22 +23,19 @@ using val_t = double;
 
 constexpr int word_dim=100;
 
-auto is_unknown_widx = [](auto x){return x==std::numeric_limits<decltype(x)>::max();};
-
 struct UnigramDist{
-    using char_t =  sent2vec::char_t;
     using count_t = sent2vec::wcount_t; 
 
     UnigramDist(util::io::H5file const &h5store, 
                 std::string voca_file, std::string count_file);
-    val_t get_prob(idx_t idx) const;
-    wcount_t get_count(idx_t idx) const;
-    rnn::wordrep::Voca voca;
+    val_t    get_prob (wordrep::VocaIndex idx) const;
+
+    wordrep::VocaIndexMap voca;
     std::vector<count_t> count;
     std::vector<val_t> prob;
 };
 
-
+/*
 struct OccurrenceFilter{
     OccurrenceFilter(wcount_t cutoff, UnigramDist const &unigram);
     std::vector<idx_t> operator()  (std::vector<idx_t> idxs);
@@ -44,6 +43,7 @@ struct OccurrenceFilter{
     UnigramDist const &unigram;
     wcount_t cutoff;
 };
+*/
 
 template<typename T>
 class Sampler{
@@ -62,7 +62,7 @@ private:
 class Sampler2{
 public:
     using dist_t = std::vector<val_t>;
-    using iter_t = std::vector<val_t>::const_iterator;
+    using iter_t = dist_t::const_iterator;
     Sampler2(dist_t const &dist0, idx_t n_cell)
     : dist{dist0}, cdf(dist.size()), idxs(dist.size()), cell(n_cell+1) {
         idx_t i=0;
