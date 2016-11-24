@@ -1,5 +1,3 @@
-#pragma once
-
 #include "data_source/ygp_db.h"
 
 #include <pqxx/pqxx>
