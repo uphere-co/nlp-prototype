@@ -92,7 +92,8 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)
 add_library(parser STATIC ${simple_model_parsers} ${util_files})
 target_link_libraries(parser fmt tbb hd5f_cpp)  # not effective when making query package
 
-add_library(similarity STATIC ${similarity_files} ${wordrep_files}  ${util_files})
+# etl_files may need to be splitted out as a separate package.
+add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files}  ${util_files})
 target_link_libraries(similarity fmt tbb hd5f_cpp pqxx) # not effective when making query package
 
 add_library(util STATIC ${util_files})
@@ -111,6 +112,7 @@ install(TARGETS parser DESTINATION lib)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/parser" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/similarity" DESTINATION include)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/data_source" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/wordrep" DESTINATION include)
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/dataset.h" DESTINATION include)
