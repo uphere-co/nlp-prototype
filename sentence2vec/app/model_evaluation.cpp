@@ -42,10 +42,11 @@ int main(){
 
     
     SubSampler sub_sampler{0.0001, unigram};
-    OccurrenceFilter freq_filter{5, unigram};
-    auto filtered_words=[&freq_filter,&sub_sampler](auto const &widxs_orig, auto ran){
-        auto widxs_filtered = freq_filter(widxs_orig);
-        auto widxs = sub_sampler(widxs_filtered, ran);
+    //OccurrenceFilter freq_filter{5, unigram};
+    auto filtered_words=[&sub_sampler](auto const &widxs_orig, auto ran){
+        //auto widxs_filtered = freq_filter(widxs_orig);
+        //auto widxs = sub_sampler(widxs_filtered, ran);
+        auto widxs = sub_sampler(widxs_orig, ran);
         // auto widxs = sub_sampler(widxs_orig, ran);
         return widxs;
     };
