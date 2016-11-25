@@ -64,6 +64,7 @@ struct DepParsedTokens{
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
                                nlohmann::json const &output);
+    void append(DepParsedTokens const &tokens);
     void build_voca_index(VocaIndexMap const &voca);
     std::vector<SentUID> build_sent_uid(SentUID init_uid);
 

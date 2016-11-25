@@ -233,8 +233,13 @@ int main(int /*argc*/, char** argv){
 //    auto col_uids = config["column_uids_dump"].get<std::string>();
     auto dump_files = argv[2];
 //    data::ygp::dump_psql(col_uids);
-    auto jsons = data::parallel_load_jsons(dump_files);
-    data::parse_json_dumps(config, jsons);
+    data::CoreNLPoutputParser dump_parser{config};
+    data::parallel_load_jsons(dump_files, dump_parser);
+    auto tokens = dump_parser.get();
+
+    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    tokens.write_to_disk(output_filename, prefix);
     data::ygp::write_column_indexes(config, dump_files);
     data::ygp::write_country_code(config);
     return 0;

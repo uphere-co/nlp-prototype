@@ -167,6 +167,25 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
     ++current_chunk_idx;
 }
 
+void DepParsedTokens::append(DepParsedTokens const &tokens){
+    util::append(sents_uid, tokens.sents_uid);
+    auto tmp = tokens.chunks_idx;
+    for(auto &x : tmp) x += current_chunk_idx;
+    current_chunk_idx = tmp.back()+1;
+    util::append(chunks_idx, tmp);
+    util::append(sents_idx, tokens.sents_idx);
+    util::append(words, tokens.words);
+    util::append(words_uid, tokens.words_uid);
+    util::append(words_pidx, tokens.words_pidx);
+    util::append(head_words, tokens.head_words);
+    util::append(heads_uid, tokens.heads_uid);
+    util::append(heads_pidx, tokens.heads_pidx);
+    util::append(words_beg, tokens.words_beg);
+    util::append(words_end, tokens.words_end);
+    util::append(poss, tokens.poss);
+    util::append(arclabels, tokens.arclabels);
+
+}
 std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto n = sents_uid.size();
     auto beg=sents_idx.cbegin()+n;
