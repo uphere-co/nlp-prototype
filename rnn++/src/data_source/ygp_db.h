@@ -75,6 +75,8 @@ struct YGPdb{
     std::string table(ColumnUID idx) const {return tables[idx.val];}
     std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
     std::string column(ColumnUID idx) const {return columns[idx.val];}
+    bool is_in(std::string name) const;
+    ColumnUID col_uid(std::string name) const;
     ColumnUID beg() const {return ColumnUID{};}
     ColumnUID end() const {return ColumnUID::from_unsigned(tables.size());}
     std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
@@ -82,6 +84,7 @@ struct YGPdb{
     std::vector<std::string> tables;
     std::vector<std::string> columns;
     std::vector<std::string> index_cols;
+    std::vector<std::string> full_names;
 };
 
 struct CountryColumn {

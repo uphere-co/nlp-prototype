@@ -18,6 +18,17 @@ std::vector<std::string> split(std::string words, const char *delim){
     return tokens;
 }
 
+std::string join(std::vector<std::string> words, std::string delim){
+    std::stringstream s;
+    auto n = words.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        s<<words[i];
+        if(i!=n-1) s<<delim;
+    }
+    return s.str();
+}
+
+
 std::vector<std::string> readlines(std::string file){
     std::ifstream val{file};
     std::vector<std::string> lines;

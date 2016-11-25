@@ -10,6 +10,7 @@
 
 #include "data_source/corenlp_helper.h"
 #include "data_source/ygp_db.h"
+#include "data_source/ygp_etl.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -198,7 +199,7 @@ void write_country_code(util::json_t const &config,
 }
 
 void parse_json_dumps(nlohmann::json const &config,
-                      std::string cols_to_exports, int64_t n_max=-1){
+                      std::string cols_to_exports, int64_t n_max){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};

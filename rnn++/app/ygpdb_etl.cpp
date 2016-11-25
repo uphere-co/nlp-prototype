@@ -9,7 +9,7 @@
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"
-#include "data_source/etl_ygpdb.h"
+#include "data_source/ygp_etl.h"
 #include "data_source/corenlp_helper.h"
 
 #include "utils/hdf5.h"
@@ -85,6 +85,7 @@ int list_columns(){
 
 namespace test {
 
+
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
     auto substr = util::string::substring_unicode_offset(row_str, 8, 11);
@@ -122,7 +123,29 @@ namespace data {
 namespace ygp {
 namespace test {
 
-void test_chunks() {
+void ygpdb_indexing(util::json_t const &config){
+    using util::string::split;
+    auto path = "corenlp/autchklist2.guidenote.autchkid.12668";
+    auto tokens = split(split(path, "/").back(), ".");
+    auto n = tokens.size();
+    assert(std::stoi(tokens[n-1]) == 12668);
+    assert(tokens[n-2]=="autchkid");
+    assert(tokens[n-3]=="guidenote");
+    assert(tokens[n-4]=="autchklist2");
+    std::cerr<<util::string::join(tokens, ".")<<std::endl;
+    assert(util::string::join(tokens, ".")=="autchklist2.guidenote.autchkid.12668");
+
+    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
+    YGPdb db{cols_to_exports};
+    assert(db.col_uid("regulation.regtitle.regid")==ColumnUID{3});
+    assert(db.col_uid("reach_reports.content.report_id")==ColumnUID{0});
+    assert(db.is_in("reach_reports.content.report_id"));
+    assert(!db.is_in("dsafasfafsafa.content.asfasdf"));
+
+    //col_uid,row_idx -> row_uid;
+}
+
+void chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
@@ -148,10 +171,6 @@ void country_annotator(util::json_t const &config) {
     }
 }
 
-
-void ygp_indexing() {
-    //col_uid,row_idx -> row_uid;
-}
 
 void country_code(util::json_t const &config) {
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -207,11 +226,12 @@ void country_code(util::json_t const &config) {
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
+    data::ygp::test::ygpdb_indexing(config);
 //    data::ygp::test::country_annotator(config);
 //    data::ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
-//    return 0;
+    return 0;
 
 //    auto col_uids = argv[2];
 //    data::ygp::dump_psql(col_uids);

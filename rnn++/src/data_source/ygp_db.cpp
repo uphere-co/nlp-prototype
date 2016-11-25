@@ -64,7 +64,18 @@ YGPdb::YGPdb(std::string column_uids){
         tables.push_back(cols[0]);
         columns.push_back(cols[1]);
         index_cols.push_back(cols[2]);
+        full_names.push_back(line);
     }
+}
+bool YGPdb::is_in(std::string name) const{
+    auto beg = full_names.cbegin();
+    auto end = full_names.cend();
+    return end!=std::find(beg, end, name);
+}
+ColumnUID YGPdb::col_uid(std::string name) const{
+    auto beg = full_names.cbegin();
+    auto it= std::find(beg, full_names.cend(), name);
+    return it - beg;
 }
 
 std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
