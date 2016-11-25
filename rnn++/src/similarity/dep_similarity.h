@@ -4,27 +4,15 @@
 
 #include "utils/json.h"
 
+#include "data_source/ygp_db.h"
+
 #include "wordrep/dep_parsed.h"
-#include "wordrep/voca.h"
+#include "wordrep/voca_info.h"
 #include "wordrep/word_prob.h"
-#include "wordrep/wordvec.h"
 
 #include "utils/hdf5.h"
 #include "utils/parallel.h"
 
-namespace wordrep{
-struct VocaInfo{
-    using voca_vecs_t = WordBlock_base<float,100>;
-    VocaInfo(std::string h5file, std::string voca_name,
-             std::string wvec_name, std::string w2v_float_t)
-    : indexmap{load_voca(h5file, voca_name)},
-      wvecs{load_raw_wvec(h5file, wvec_name, w2v_float_t)}
-    {}
-    VocaIndexMap indexmap;
-    voca_vecs_t wvecs;
-};
-
-}//namespace wordrep
 
 namespace engine {
 
@@ -138,10 +126,10 @@ struct DepSimilaritySearch {
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_cutoff;
     std::vector<wordrep::Sentence> sents;
-    ygp::YGPdb const ygpdb;
-    ygp::YGPindexer const ygp_indexer;
-    ygp::DBbyCountry const ygpdb_country;
-    ygp::CountryCodeAnnotator country_tagger;
+    data::ygp::YGPdb const ygpdb;
+    data::ygp::YGPindexer const ygp_indexer;
+    data::ygp::DBbyCountry const ygpdb_country;
+    data::ygp::CountryCodeAnnotator country_tagger;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};

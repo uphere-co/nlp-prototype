@@ -1,12 +1,12 @@
+#include "data_source/corenlp_helper.h"
+
 #include <sstream>
 #include <fstream>
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
-#include "similarity/corenlp_helper.h"
+#include <sys/wait.h>
 
 #include "utils/random.h"
 
@@ -40,16 +40,16 @@ static int exec_prog(const char **argv) {
 }
 
 }//nameless namespace
-namespace engine{
+namespace data{
 
-nlohmann::json CoreNLPwebclient::from_query_file(std::string content_file_path) const {
+util::json_t CoreNLPwebclient::from_query_file(std::string content_file_path) const {
     std::string command = "python "+script_path + "  "+content_file_path;
     int ret=system(command.c_str());
 //    const char    *my_argv[64] = {"python" , script_path.c_str() , content_file_path.c_str() , NULL};
 //    int ret = exec_prog(my_argv);
     return util::load_json(content_file_path+".corenlp");
 }
-nlohmann::json CoreNLPwebclient::from_query_content(std::string query_content) const {
+util::json_t CoreNLPwebclient::from_query_content(std::string query_content) const {
     std::string content_file_path = "tmp."+util::get_uuid_str();
     std::ofstream temp_file;
     temp_file.open (content_file_path);
@@ -61,4 +61,4 @@ nlohmann::json CoreNLPwebclient::from_query_content(std::string query_content) c
     return query_json;
 }
 
-}//namespace engine
+}//namespace data

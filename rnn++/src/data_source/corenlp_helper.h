@@ -3,15 +3,15 @@
 
 #include "utils/json.h"
 
-namespace engine {
+namespace data {
 
 struct CoreNLPwebclient{
     CoreNLPwebclient(std::string script_path)
     : script_path{script_path} {}
-    nlohmann::json from_query_file(std::string content_file_path) const;
-    nlohmann::json from_query_content(std::string query_content) const;
+    util::json_t from_query_file(std::string content_file_path) const;
+    util::json_t from_query_content(std::string query_content) const;
 
     std::string script_path;
 };
 
-}//namespace engine
+}//namespace data
