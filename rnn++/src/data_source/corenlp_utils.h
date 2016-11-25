@@ -18,5 +18,6 @@ struct StrCount{
 using jsons_t = tbb::concurrent_vector<data::CoreNLPjson>;
 jsons_t parallel_load_jsons(std::string file_names);
 StrCount parallel_word_count(jsons_t const &jsons);
-
+void parse_json_dumps(util::json_t const &config,
+                      jsons_t const &jsons);
 }//namespace data

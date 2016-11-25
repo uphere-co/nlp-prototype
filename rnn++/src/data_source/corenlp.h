@@ -22,8 +22,10 @@ public:
             for (auto const &token2 : sent_json["basicDependencies"]) op(token2);
         }
     }
+    void add_uid(size_t uid_) { uid=uid_;}
 
-private:
+//private:
+    size_t uid;
     util::json_t val;
 };
 
