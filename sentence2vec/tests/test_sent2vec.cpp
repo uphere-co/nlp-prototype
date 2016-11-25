@@ -58,8 +58,10 @@ void word_count(util::json_t const &config, std::string corenlp_outputs){
         });
     }
     timer.here_then_reset("Finish serial word count.");
-    auto pwc = data::parallel_word_count(corenlp_outputs);
-    timer.here_then_reset("Finish parallel word count.");
+    auto jsons = data::parallel_load_jsons(corenlp_outputs);
+    timer.here_then_reset("Finish parallel json loads.");
+    auto pwc = data::parallel_word_count(jsons);
+    timer.here_then_reset("Finish word count.");
     auto wc_serial_sorted = sort_by_values(wc);
     timer.here_then_reset("Sort serial word count.");
     for(auto x : wc){
@@ -73,8 +75,10 @@ void word_count(util::json_t const &config, std::string corenlp_outputs){
 
 void io_unigram_dist(util::json_t const &config, std::string corenlp_outputs){
     Timer timer{};
-    auto wc = data::parallel_word_count(corenlp_outputs);
-    timer.here_then_reset("Finish Parallel word count.");
+    auto jsons = data::parallel_load_jsons(corenlp_outputs);
+    timer.here_then_reset("Finish parallel json loads.");
+    auto wc = data::parallel_word_count(jsons);
+    timer.here_then_reset("Finish word count.");
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     timer.here_then_reset("Load wordUID table.");
     std::cerr<<fmt::format("{} words.", wordUIDs.size())<<std::endl;

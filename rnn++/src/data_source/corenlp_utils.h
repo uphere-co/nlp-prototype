@@ -2,6 +2,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "data_source/corenlp.h"
+
+#include "utils/parallel.h"
+
 namespace data {
 
 struct StrCount{
@@ -10,6 +14,9 @@ struct StrCount{
     wcounts_t val;
 };
 
-StrCount parallel_word_count(std::string file_names);
+
+using jsons_t = tbb::concurrent_vector<data::CoreNLPjson>;
+jsons_t parallel_load_jsons(std::string file_names);
+StrCount parallel_word_count(jsons_t const &jsons);
 
 }//namespace data
