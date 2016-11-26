@@ -9,8 +9,9 @@
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"
-#include "data_source/etl_ygpdb.h"
+#include "data_source/ygp_etl.h"
 #include "data_source/corenlp_helper.h"
+#include "data_source/corenlp_utils.h"
 
 #include "utils/hdf5.h"
 #include "utils/profiling.h"
@@ -85,6 +86,7 @@ int list_columns(){
 
 namespace test {
 
+
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
     auto substr = util::string::substring_unicode_offset(row_str, 8, 11);
@@ -122,7 +124,25 @@ namespace data {
 namespace ygp {
 namespace test {
 
-void test_chunks() {
+void ygpdb_indexing(util::json_t const &config){
+    using util::string::split;
+    auto path = "corenlp/autchklist2.guidenote.autchkid.12668";
+    RowDumpFilePath row{path};
+    assert(row.table    =="autchklist2");
+    assert(row.column   =="guidenote");
+    assert(row.index_col=="autchkid");
+    assert(row.index    == 12668);
+    assert(row.full_column_name() == "autchklist2.guidenote.autchkid");
+
+    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
+    YGPdb db{cols_to_exports};
+    assert(db.col_uid("regulation.regtitle.regid")==ColumnUID{3});
+    assert(db.col_uid("reach_reports.content.report_id")==ColumnUID{0});
+    assert(db.is_in("reach_reports.content.report_id"));
+    assert(!db.is_in("dsafasfafsafa.content.asfasdf"));
+}
+
+void chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
@@ -148,10 +168,6 @@ void country_annotator(util::json_t const &config) {
     }
 }
 
-
-void ygp_indexing() {
-    //col_uid,row_idx -> row_uid;
-}
 
 void country_code(util::json_t const &config) {
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
@@ -207,27 +223,28 @@ void country_code(util::json_t const &config) {
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
+    data::ygp::test::ygpdb_indexing(config);
 //    data::ygp::test::country_annotator(config);
 //    data::ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
 //    return 0;
 
-//    auto col_uids = argv[2];
+//    auto col_uids = config["column_uids_dump"].get<std::string>();
+    auto dump_files = argv[2];
 //    data::ygp::dump_psql(col_uids);
-    auto n_max = std::stoi(argv[2]);
-    data::ygp::parse_json_dumps(config, config["column_uids_dump"].get<std::string>(), n_max);
-    data::ygp::write_country_code(config, config["column_uids_dump"].get<std::string>());
+    data::CoreNLPoutputParser dump_parser{config};
+    data::parallel_load_jsons(dump_files, dump_parser);
+    auto tokens = dump_parser.get();
+
+    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    tokens.write_to_disk(output_filename, prefix);
+    data::ygp::write_column_indexes(config, dump_files);
+    data::ygp::write_country_code(config);
     return 0;
-//    auto query_result = util::load_json(argv[2]);
-//    annotation_on_result(config, query_result);
-//    fmt::print("{}\n", query_result.dump(4));
-//    return 0;
-//    write_contry_code(config, col_uids, n_max);
-//    return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
 //    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "s2010.h5", "s2010.words", "s2010.uids");
-
 }

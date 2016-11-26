@@ -8,6 +8,8 @@ namespace util{
 namespace string{
 
 std::vector<std::string> split(std::string words, const char *delim=" \t");
+std::string join(std::vector<std::string> words, std::string delim);
+
 std::vector<std::string> readlines(std::string file);
 std::string read_whole(std::string file);
 

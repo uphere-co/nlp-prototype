@@ -36,11 +36,13 @@ struct YGPindexer{
         auto it=map_to_uid.find({uid,idx});
         return it->second;
     }
+    wordrep::ChunkIndex chunk_idx(RowUID uid) const {return row_uid2chunk.at(uid);}
 
     std::vector<RowIndex> chunk2idx;
     std::vector<RowUID> chunk2row_uid;
     std::vector<ColumnUID> chunk2col_uid;
     std::map<std::pair<ColumnUID,RowIndex>,RowUID> map_to_uid;
+    std::map<RowUID, wordrep::ChunkIndex> row_uid2chunk;
 };
 
 struct CountryCodeAnnotator{
@@ -75,6 +77,8 @@ struct YGPdb{
     std::string table(ColumnUID idx) const {return tables[idx.val];}
     std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
     std::string column(ColumnUID idx) const {return columns[idx.val];}
+    bool is_in(std::string name) const;
+    ColumnUID col_uid(std::string name) const;
     ColumnUID beg() const {return ColumnUID{};}
     ColumnUID end() const {return ColumnUID::from_unsigned(tables.size());}
     std::string raw_text(ColumnUID col_uid, RowIndex idx) const;
@@ -82,6 +86,17 @@ struct YGPdb{
     std::vector<std::string> tables;
     std::vector<std::string> columns;
     std::vector<std::string> index_cols;
+    std::vector<std::string> full_names;
+};
+
+struct RowDumpFilePath{
+    RowDumpFilePath(std::string path);
+    std::string full_column_name() const;
+
+    std::string table;
+    std::string column;
+    std::string index_col;
+    int64_t index;
 };
 
 struct CountryColumn {

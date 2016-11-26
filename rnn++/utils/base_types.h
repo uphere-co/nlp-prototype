@@ -32,6 +32,17 @@ IntegerLike<T,VAL> operator-(IntegerLike<T,VAL> lhs, typename IntegerLike<T,VAL>
     return IntegerLike<T,VAL>{lhs.val-rhs};
 }
 template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator+=(IntegerLike<T,VAL> &lhs, IntegerLike<T,VAL> rhs) {
+    lhs.val+=rhs.val;
+    return lhs;
+}
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator-=(IntegerLike<T,VAL> &lhs, IntegerLike<T,VAL> rhs) {
+    lhs.val-=rhs.val;
+    return lhs;
+}
+
+template<typename T, int64_t VAL>
 bool operator<(IntegerLike<T,VAL> const& lhs, IntegerLike<T,VAL> const& rhs) {
     return lhs.val<rhs.val;
 }
