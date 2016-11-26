@@ -6,6 +6,7 @@ module Main where
 
 import           Control.Concurrent                        (forkIO,threadDelay)
 import           Control.Concurrent.STM
+import           Control.Exception                         (throwIO)
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Loops                       (whileJust_)
@@ -13,6 +14,9 @@ import           Control.Monad.Trans.Class                 (lift)
 import           Control.Monad.Trans.Maybe
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
+--                                                           ,createBareLocalNode
+--                                                           ,startServiceProcesses
+--                                                           )
 import           Data.Aeson
 import qualified Data.Binary                         as Bi (decode,encode)
 import qualified Data.ByteString.Base64.Lazy         as B64
@@ -22,7 +26,9 @@ import qualified Data.HashMap.Strict                 as HM
 import qualified Data.Map                            as M
 import           Foreign.C.String
 import           Network.HTTP.Types                        (methodGet)
-import           Network.Transport.ZMQ                     (createTransport, defaultZMQParameters)
+import           Network.Transport                         (Transport(..))
+import           Network.Transport.ZMQ                     (apiNewEndPoint, createTransport, createTransportExposeInternals, defaultZMQParameters, Hints(..))
+import           Network.Transport.ZMQ.Internal.Types      (TransportInternals(..))
 import           System.Environment
 import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
@@ -51,26 +57,38 @@ withHeartBeat them action = do
 server :: String -> Process ()
 server port = do
   pid <- getSelfPid
+  liftIO $ print pid
   void . liftIO $ forkIO (broadcastProcessId pid port)
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
     liftIO $ putStrLn "connected"  
-    -- spawnLocal (heartBeat 0)
     ref <- liftIO $ newTVarIO HM.empty
     forever $ do
       (q,sc') <- receiveChan rc
       liftIO $ hPutStrLn stderr (show q)
       spawnLocal (queryWorker ref sc' q)
 
+{- 
+newLocalNodeFromEndPoint ep rtable = do
+  case ep of
+    Left ex -> throwIO ex
+    Right endPoint -> do
+      localNode <- createBareLocalNode endPoint rtable
+      startServiceProcesses localNode
+      return localNode
+-}
 
 main :: IO ()
 main = do
   port <- getEnv "PORT"
   [host] <- getArgs
-  transport <- createTransport defaultZMQParameters (B.pack host)
-  node <- newLocalNode transport initRemoteTable
+  (internals,transport) <- createTransportExposeInternals defaultZMQParameters (B.pack host)
+  print (transportAddress internals)
+  let ep = apiNewEndPoint Hints {hintsPort=Just 9888} internals
+  node <- newLocalNode transport {newEndPoint = ep} initRemoteTable
+  
   
   withCString "config.json" $ \configfile -> do
     c_query_init configfile
