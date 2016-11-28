@@ -6,7 +6,7 @@
 , scientific, stdenv, stm, text, transformers
 , unix, unordered-containers, uuid, vector
 
-, json, rnnpp, pqxx, tbb, fmt, hdf5_cpp, msgsl
+, json, rnnpp, pqxx, elfutils, tbb, fmt, hdf5_cpp, msgsl, spdlog, backwardcpp
 }:
 mkDerivation {
   pname = "query";
@@ -22,7 +22,7 @@ mkDerivation {
     transformers unix unordered-containers uuid vector
   ];
   executableSystemDepends = [
-    fmt hdf5_cpp json msgsl pqxx rnnpp tbb
+    fmt hdf5_cpp json msgsl pqxx elfutils rnnpp tbb spdlog backwardcpp
   ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";
