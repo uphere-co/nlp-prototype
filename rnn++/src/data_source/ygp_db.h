@@ -58,12 +58,12 @@ struct DBbyCountry{
     std::vector<wordrep::SentUID> sents(std::string country) const {
         auto it=sents_by_country.find(country);
         if(it==sents_by_country.cend()) return {};
-        return it->second.vals;
+        return it->second.get();
     }
     std::string get_country(wordrep::SentUID uid) const{
         for(auto it : sents_by_country){
             auto country = it.first;
-            for(auto suid : it.second.vals) if(uid==suid) return country;
+            for(auto suid : it.second.get()) if(uid==suid) return country;
         }
         return "Unknown";
     }

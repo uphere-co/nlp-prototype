@@ -132,7 +132,7 @@ void persistent_vector_float(){
     {
         H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::read_exist};
         PersistentVector<float,float> vec2{h5store, "reals"};
-        for(auto x : util::zip(vec.vals, vec2.vals)) assert(x.first ==x.second);
+        for(auto x : util::zip(vec, vec2)) assert(x.first ==x.second);
     }
 }
 void persistent_vector_WordUID(){
@@ -145,8 +145,14 @@ void persistent_vector_WordUID(){
     {
         H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::read_exist};
         TypedPersistentVector<WordUID> vec2{h5store, "wuid"};
-        for(auto x : util::zip(vec.vals, vec2.vals)) assert(x.first ==x.second);
+        for(auto x : util::zip(vec, vec2)) assert(x.first ==x.second);
     }
+
+    //test copy
+    auto vec3 = vec;
+    for(auto x : util::zip(vec, vec3)) assert(x.first ==x.second);
+    vec3.front() = WordUID{1};
+    assert(vec3.front()!=vec.front());
 }
 
 }//namespace test

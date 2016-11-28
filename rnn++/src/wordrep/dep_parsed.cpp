@@ -73,10 +73,10 @@ void DepParsedTokens::write_to_disk(std::string filename) const {
     arclabels.write(outfile);
 }
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
-    auto n = words.vals.size();
+    auto n = words.size();
     for(auto it=words_uid.cbegin()+n; it!=words_uid.cend(); ++it) {
         auto uid = *it;
-        words.vals.push_back(voca[uid]);
+        words.push_back(voca[uid]);
     }
     for(auto it=heads_uid.cbegin()+n; it!=heads_uid.cend(); ++it) {
         auto uid = *it;
@@ -184,22 +184,22 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
 }
 
 void DepParsedTokens::append(DepParsedTokens const &tokens){
-    util::append(sents_uid.vals, tokens.sents_uid.vals);
-    auto tmp = tokens.chunks_idx.vals;
-    for(auto &x : tmp) x += current_chunk_idx;
+    util::append(sents_uid, tokens.sents_uid);
+    auto tmp = tokens.chunks_idx;
+    for(auto &x : tmp.get()) x += current_chunk_idx;
     current_chunk_idx = tmp.back()+1;
-    util::append(chunks_idx.vals, tmp);
-    util::append(sents_idx.vals, tokens.sents_idx.vals);
-    util::append(words.vals, tokens.words.vals);
-    util::append(words_uid.vals, tokens.words_uid.vals);
-    util::append(words_pidx.vals, tokens.words_pidx.vals);
-    util::append(head_words.vals, tokens.head_words.vals);
-    util::append(heads_uid.vals, tokens.heads_uid.vals);
-    util::append(heads_pidx.vals, tokens.heads_pidx.vals);
-    util::append(words_beg.vals, tokens.words_beg.vals);
-    util::append(words_end.vals, tokens.words_end.vals);
-    util::append(poss.vals, tokens.poss.vals);
-    util::append(arclabels.vals, tokens.arclabels.vals);
+    util::append(chunks_idx, tmp);
+    util::append(sents_idx, tokens.sents_idx);
+    util::append(words,     tokens.words);
+    util::append(words_uid, tokens.words_uid);
+    util::append(words_pidx,tokens.words_pidx);
+    util::append(head_words,tokens.head_words);
+    util::append(heads_uid, tokens.heads_uid);
+    util::append(heads_pidx,tokens.heads_pidx);
+    util::append(words_beg, tokens.words_beg);
+    util::append(words_end, tokens.words_end);
+    util::append(poss,      tokens.poss);
+    util::append(arclabels, tokens.arclabels);
 
 }
 std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
@@ -209,8 +209,8 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto chunk_beg=chunks_idx.cbegin()+n;
     auto it=beg;
     auto it_chunk=chunk_beg;
-    decltype(sents_uid) new_uids{{}, sents_uid.name};
-    if(it==end) return new_uids.vals;
+    decltype(sents_uid) new_uids{{}, sents_uid.get_name()};
+    if(it==end) return new_uids.get();
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
     SentUID current_uid = n>0? sents_uid.back()+1: init_uid;
@@ -226,7 +226,7 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
         ++it;
         ++it_chunk;
     }
-    return new_uids.vals;
+    return new_uids.get();
 }
 
 
