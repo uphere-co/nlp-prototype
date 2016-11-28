@@ -6,6 +6,7 @@
 
 #include <pqxx/pqxx>
 #include <fmt/printf.h>
+#include <utils/persistent_vector.h>
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"
@@ -16,6 +17,8 @@
 #include "utils/hdf5.h"
 #include "utils/profiling.h"
 #include "utils/string.h"
+#include "utils/type_param.h"
+#include "utils/persistent_vector.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -83,7 +86,6 @@ int list_columns(){
     return 0;
 }
 
-
 namespace test {
 
 
@@ -117,6 +119,33 @@ void word_importance(util::json_t const &config){
     }
 }
 
+using util::PersistentVector;
+void persistent_vector_float(){
+    std::vector<float> vals = {1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
+    PersistentVector<float,float> vec{vals, "reals"};
+    {
+        H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::replace};
+        vec.write(h5store);
+    }
+    {
+        H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::read_exist};
+        PersistentVector<float,float> vec2{h5store, "reals"};
+        for(auto x : util::zip(vec.vals, vec2.vals)) assert(x.first ==x.second);
+    }
+}
+void persistent_vector_WordUID(){
+    std::vector<WordUID::val_t> vals = {932,4,1,3,10};
+    PersistentVector<WordUID,WordUID::val_t> vec{vals, "wuid"};
+    {
+        H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::replace};
+        vec.write(h5store);
+    }
+    {
+        H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::read_exist};
+        PersistentVector<WordUID,WordUID::val_t> vec2{h5store, "wuid"};
+        for(auto x : util::zip(vec.vals, vec2.vals)) assert(x.first ==x.second);
+    }
+}
 
 }//namespace test
 
@@ -228,7 +257,9 @@ int main(int /*argc*/, char** argv){
 //    data::ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
-//    return 0;
+    test::persistent_vector_float();
+    test::persistent_vector_WordUID();
+    return 0;
 
 //    auto col_uids = config["column_uids_dump"].get<std::string>();
     auto dump_files = argv[2];
