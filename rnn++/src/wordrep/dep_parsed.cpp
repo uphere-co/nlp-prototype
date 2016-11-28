@@ -2,8 +2,7 @@
 #include <codecvt>
 #include <locale>
 
-#include "fmt/printf.h"
-#include "pqxx/pqxx"
+#include <fmt/printf.h>
 
 #include "wordrep/dep_parsed.h"
 

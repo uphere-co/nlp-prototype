@@ -6,7 +6,6 @@
 
 #include <pqxx/pqxx>
 #include <fmt/printf.h>
-#include <utils/persistent_vector.h>
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"

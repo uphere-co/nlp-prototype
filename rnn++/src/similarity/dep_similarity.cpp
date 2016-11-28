@@ -1,16 +1,12 @@
 #include <algorithm>
 #include <map>
 
-#include "similarity/dep_similarity.h"
-
-
-#include <utils/profiling.h>
-
-#include "fmt/printf.h"
+#include <fmt/printf.h>
 
 #include "data_source/ygp_query.h"
 #include "data_source/ygp_db.h"
 
+#include "similarity/dep_similarity.h"
 #include "similarity/similarity_measure.h"
 
 #include "utils/parallel.h"
