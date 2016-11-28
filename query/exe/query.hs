@@ -52,6 +52,7 @@ server :: String -> Process ()
 server port = do
   pid <- getSelfPid
   void . liftIO $ forkIO (broadcastProcessId pid port)
+  liftIO $ putStrLn "server started"
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
@@ -72,7 +73,7 @@ main = do
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
-  withCString "config.json" $ \configfile -> do
+  withCString "config.ygp.json" $ \configfile -> do
     c_query_init configfile
     runProcess node (server port)
     c_query_finalize
