@@ -120,6 +120,8 @@ void word_importance(util::json_t const &config){
 }
 
 using util::PersistentVector;
+using util::TypedPersistentVector;
+
 void persistent_vector_float(){
     std::vector<float> vals = {1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
     PersistentVector<float,float> vec{vals, "reals"};
@@ -135,14 +137,14 @@ void persistent_vector_float(){
 }
 void persistent_vector_WordUID(){
     std::vector<WordUID::val_t> vals = {932,4,1,3,10};
-    PersistentVector<WordUID,WordUID::val_t> vec{vals, "wuid"};
+    TypedPersistentVector<WordUID> vec{vals, "wuid"};
     {
         H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::replace};
         vec.write(h5store);
     }
     {
         H5file h5store{H5name{"tmp.1849ya98fy2qhrqr6y198r1yr.h5"}, hdf5::FileMode::read_exist};
-        PersistentVector<WordUID,WordUID::val_t> vec2{h5store, "wuid"};
+        TypedPersistentVector<WordUID> vec2{h5store, "wuid"};
         for(auto x : util::zip(vec.vals, vec2.vals)) assert(x.first ==x.second);
     }
 }
@@ -259,18 +261,18 @@ int main(int /*argc*/, char** argv){
 //    test::unicode_conversion();
     test::persistent_vector_float();
     test::persistent_vector_WordUID();
-    return 0;
+//    return 0;
 
 //    auto col_uids = config["column_uids_dump"].get<std::string>();
     auto dump_files = argv[2];
 //    data::ygp::dump_psql(col_uids);
     data::CoreNLPoutputParser dump_parser{config};
     data::parallel_load_jsons(dump_files, dump_parser);
-    auto tokens = dump_parser.get();
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    auto tokens = dump_parser.get(prefix);
 
     auto output_filename = config["dep_parsed_store"].get<std::string>();
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-    tokens.write_to_disk(output_filename, prefix);
+    tokens.write_to_disk(output_filename);
     data::ygp::write_column_indexes(config, dump_files);
     data::ygp::write_country_code(config);
     return 0;

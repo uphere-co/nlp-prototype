@@ -28,8 +28,8 @@ void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json.val);
     chunks[i]=tokens;
 }
-wordrep::DepParsedTokens CoreNLPoutputParser::get() const {
-    wordrep::DepParsedTokens tokens;
+wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
+    wordrep::DepParsedTokens tokens{prefix};
     auto n = chunks.size();
     for(decltype(n)i=0; i!=n; ++i) tokens.append(chunks.at(i));
     tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));

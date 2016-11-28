@@ -34,7 +34,7 @@ struct CoreNLPoutputParser{
     CoreNLPoutputParser(util::json_t const &config);
 
     void operator() (size_t i, CoreNLPjson const &json);
-    wordrep::DepParsedTokens get() const;
+    wordrep::DepParsedTokens get(std::string prefix) const;
 
     wordrep::VocaInfo voca;
     wordrep::WordUIDindex wordUIDs;
