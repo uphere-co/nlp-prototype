@@ -70,11 +70,11 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
 
 add_executable(nndep_reader app/nndep_reader
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
-target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
+target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(ygpdb_etl app/ygpdb_etl
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
-target_link_libraries(ygpdb_etl hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
+target_link_libraries(ygpdb_etl hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
 target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)
@@ -94,7 +94,7 @@ target_link_libraries(parser fmt tbb hd5f_cpp)  # not effective when making quer
 
 # etl_files may need to be splitted out as a separate package.
 add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files}  ${util_files})
-target_link_libraries(similarity fmt tbb hd5f_cpp pqxx) # not effective when making query package
+target_link_libraries(similarity fmt tbb hd5f_cpp pqxx dw) # not effective when making query package
 
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
