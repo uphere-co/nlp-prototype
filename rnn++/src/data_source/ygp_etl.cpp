@@ -188,6 +188,7 @@ void write_country_code(util::json_t const &config) {
     }
 
     std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
+    for(auto x : rows_by_country) country_list << x.first << std::endl;
     for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
     for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
     country_list.close();
