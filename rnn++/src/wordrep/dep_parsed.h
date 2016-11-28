@@ -73,11 +73,12 @@ struct DepParsedTokens{
     CharOffset word_beg(DPTokenIndex idx) const {return words_beg[idx.val];}
     CharOffset word_end(DPTokenIndex idx) const {return words_end[idx.val];}
     VocaIndex word(DPTokenIndex idx) const { return words[idx.val];}
+    WordPosition word_pos(DPTokenIndex idx) const {return words_pidx[idx.val];}
     VocaIndex head_word(DPTokenIndex idx) const { return head_words[idx.val];}
     WordPosition head_pos(DPTokenIndex idx) const {return heads_pidx[idx.val];}
     size_t n_tokens() const { return chunks_idx.size();}
 
-//private:
+private:
     std::vector<SentUID>      sents_uid;
     std::vector<ChunkIndex>   chunks_idx;
     std::vector<SentIndex>    sents_idx;

@@ -158,12 +158,12 @@ public:
             auto j = diff(tidx, query_sent.beg);
             val_t score{0.0};
             if(cutoffs[j]<0.4) continue;
-            assert(query_sent.tokens->words_pidx[tidx.val].val==j);
+            assert(query_sent.tokens->word_pos(tidx).val==j);
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
-                auto qhead_pidx = query_sent.tokens->heads_pidx[tidx.val].val;
+                auto qhead_pidx = query_sent.tokens->head_pos(tidx).val;
                 if(qhead_pidx<0) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
