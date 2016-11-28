@@ -916,10 +916,10 @@ void train_crnn(nlohmann::json const &config){
     };
 
     auto n_minibatch=rnn::config::n_minibatch;
-    auto testset_parsed=ParsedSentences{util::get_string_val(config,"testset_parsed")};
-    auto testset_orig=TokenizedSentences{util::get_string_val(config,"testset")};
-    auto trainset_parsed=ParsedSentences{util::get_string_val(config,"trainset_parsed")};
-    auto trainset_orig=TokenizedSentences{util::get_string_val(config,"trainset")};
+    auto testset_parsed=ParsedSentences{util::get_str(config,"testset_parsed")};
+    auto testset_orig=TokenizedSentences{util::get_str(config,"testset")};
+    auto trainset_parsed=ParsedSentences{util::get_str(config,"trainset_parsed")};
+    auto trainset_orig=TokenizedSentences{util::get_str(config,"trainset")};
     auto testset = SentencePairs{testset_parsed,testset_orig};
     auto trainset = SentencePairs{trainset_parsed,trainset_orig};
 

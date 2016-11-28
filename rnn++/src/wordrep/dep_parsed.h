@@ -1,6 +1,8 @@
 #pragma once
 #include <map>
 
+#include "data_source/corenlp.h"
+
 #include "utils/base_types.h"
 #include "utils/json.h"
 #include "utils/persistent_vector.h"
@@ -67,7 +69,7 @@ struct DepParsedTokens{
     void append_corenlp_output(WordUIDindex const &wordUIDs,
                                POSUIDindex const &posUIDs,
                                ArcLabelUIDindex const &arclabelUIDs,
-                               util::json_t const &output);
+                               data::CoreNLPjson const &output);
     void append(DepParsedTokens const &tokens);
     void build_voca_index(VocaIndexMap const &voca);
     std::vector<SentUID> build_sent_uid(SentUID init_uid);

@@ -131,55 +131,56 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
 void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
-                                            util::json_t const &output){
+                                            data::CoreNLPjson const &output){
 
     int64_t sent_idx{0};
-    for(auto const& sent_json : output["sentences"] ){
-        auto offset = sents_idx.size();
-        for(auto const &token : sent_json["tokens"]){
-            //after before characterOffsetBegin characterOffsetEnd index originalText pos word
-            auto after  = token["after"].get<std::string>();
-            auto before = token["before"].get<std::string>();
-            auto token_beg = token["characterOffsetBegin"].get<int64_t>();
-            auto token_end = token["characterOffsetEnd"].get<int64_t>();
-            auto word_pidx = token["index"].get<int64_t>()-1;
-            auto originalText = token["originalText"].get<std::string>();
-            auto pos = token["pos"].get<std::string>();
-            auto word = token["word"].get<std::string>();
-
+    size_t offset{0};
+    auto per_tokens = [this,&sent_idx,&wordUIDs, &posUIDs](auto const &token){
+        auto after  = get_str(token, "after");
+        auto before = get_str(token, "before");
+        auto token_beg = get_int(token,"characterOffsetBegin");
+        auto token_end = get_int(token,"characterOffsetEnd");
+        auto word_pidx = get_int(token,"index")-1;
+        auto originalText = get_str(token,"originalText");
+        auto pos = get_str(token,"pos");
+        auto word = get_str(token,"word");
 
 //            sents_uid;
-            chunks_idx.push_back(current_chunk_idx);
-            sents_idx.push_back(SentIndex{sent_idx});
+        chunks_idx.push_back(current_chunk_idx);
+        sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-            words_uid.push_back(wordUIDs[word]);
-            words_pidx.push_back(WordPosition{word_pidx});
+        words_uid.push_back(wordUIDs[word]);
+        words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
-            heads_uid.push_back(WordUID{});//
-            heads_pidx.push_back(WordPosition{});//
-            words_beg.push_back(CharOffset{token_beg});
-            words_end.push_back(CharOffset{token_end});
-            poss.push_back(posUIDs[pos]);
-            arclabels.push_back(ArcLabelUID{});//
-        }
-        for(auto const &x : sent_json["basicDependencies"]){
-            //dep dependent dependentGloss governor governorGloss
-            auto word      = x["dependentGloss"].get<std::string>();
-            auto word_pidx = x["dependent"].get<int64_t>()-1;
-            auto head_word = x["governorGloss"].get<std::string>();
-            auto head_pidx = x["governor"].get<int64_t>()-1;
-            auto arc_label = x["dep"].get<std::string>();
+        heads_uid.push_back(WordUID{});//
+        heads_pidx.push_back(WordPosition{});//
+        words_beg.push_back(CharOffset{token_beg});
+        words_end.push_back(CharOffset{token_end});
+        poss.push_back(posUIDs[pos]);
+        arclabels.push_back(ArcLabelUID{});//
+    };
+    auto per_dep_tokens = [this,&offset,&wordUIDs,&arclabelUIDs](auto const &x){
+        //dep dependent dependentGloss governor governorGloss
+        auto word      = get_str(x,"dependentGloss");
+        auto word_pidx = get_int(x,"dependent")-1;
+        auto head_word = get_str(x,"governorGloss");
+        auto head_pidx = get_int(x,"governor")-1;
+        auto arc_label = get_str(x,"dep");
 
-            auto i= word_pidx;
-            assert(words_uid[offset+i] == wordUIDs[word]);
-            assert(words_pidx[offset+i]==WordPosition{word_pidx});
-            heads_uid[offset+i] = wordUIDs[head_word];
-            heads_pidx[offset+i] = WordPosition{head_pidx};
-            arclabels[offset+i] = arclabelUIDs[arc_label];
-
-        }
+        auto i= word_pidx;
+        assert(words_uid[offset+i] == wordUIDs[word]);
+        assert(words_pidx[offset+i]==WordPosition{word_pidx});
+        heads_uid[offset+i] = wordUIDs[head_word];
+        heads_pidx[offset+i] = WordPosition{head_pidx};
+        arclabels[offset+i] = arclabelUIDs[arc_label];
+    };
+    auto pre_per_sent = [&offset,this](auto) {
+        offset = sents_idx.size();
+    };
+    auto post_per_sent = [&sent_idx](auto) {
         ++sent_idx;
-    }
+    };
+    output.iter_sent(pre_per_sent, per_tokens, per_dep_tokens, post_per_sent);
     ++current_chunk_idx;
 }
 

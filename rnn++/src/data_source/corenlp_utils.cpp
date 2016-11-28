@@ -25,7 +25,7 @@ CoreNLPoutputParser::CoreNLPoutputParser(util::json_t const &config)
 
 void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
     wordrep::DepParsedTokens tokens;
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json.val);
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json);
     chunks[i]=tokens;
 }
 wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
