@@ -18,6 +18,7 @@
 #include "utils/string.h"
 #include "utils/type_param.h"
 #include "utils/persistent_vector.h"
+#include "utils/versioned_name.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -33,6 +34,7 @@ void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca
     for(auto word : words) uids.push_back(wordUIDs[word].val);
     file.writeRawData(H5name{uids_name}, uids);
 }
+
 void pruning_voca(){
     VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
     VocaIndexMap pruner_uids{load_voca("s2010.h5", "s2010.uids")};
@@ -154,6 +156,18 @@ void persistent_vector_WordUID(){
     assert(vec3.front()!=vec.front());
 }
 
+
+
+void filesystem(util::json_t const &config){
+    auto data_path = util::get_str(config, "dep_parsed_store");
+    std::vector<std::string> files = {"foo.h5.1.0", "foo.h5.1.1", "foo.h5.1.2", "foo.h5.2.10", "foo.h5.2.3"};
+    auto ver = util::get_latest_version(files);
+
+    assert(ver.minor==10);
+    assert(ver.major==2);
+    assert(ver.name =="foo.h5");
+}
+
 }//namespace test
 
 namespace data {
@@ -266,7 +280,8 @@ int main(int /*argc*/, char** argv){
 //    test::unicode_conversion();
     test::persistent_vector_float();
     test::persistent_vector_WordUID();
-//    return 0;
+    test::filesystem(config);
+    return 0;
 
 //    auto col_uids = config["column_uids_dump"].get<std::string>();
     auto dump_files = argv[2];
