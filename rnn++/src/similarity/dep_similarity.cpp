@@ -17,6 +17,7 @@
 #include "utils/hdf5.h"
 #include "utils/math.h"
 #include "utils/linear_algebra.h"
+#include "utils/versioned_name.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -209,12 +210,10 @@ private:
     std::vector<WordSimCache::dist_cache_t const*> dists;
 };
 
-
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 : voca{config["wordvec_store"], config["voca_name"],
        config["w2vmodel_name"], config["w2v_float_t"]},
-  tokens{H5file{H5name{config["dep_parsed_store"].get<std::string>()},
-                hdf5::FileMode::read_exist}, config["dep_parsed_prefix"]},
+  tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
   wordUIDs{config["word_uids_dump"].get<std::string>()},
   posUIDs{config["pos_uids_dump"].get<std::string>()},
   arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},

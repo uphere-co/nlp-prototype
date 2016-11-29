@@ -146,5 +146,7 @@ struct H5file {
     H5name name;
 };
 
+H5file read(std::string path);
+
 }//namespace util::io
 }//namespace util

@@ -12,6 +12,7 @@
 #include "wordrep/indexes.h"
 
 namespace util{
+struct VersionedName; //forward declaration.
 namespace io{
 struct H5file; //forward declaration.
 }//namespace util::io
@@ -56,9 +57,11 @@ struct Sentences{
 
 
 struct DepParsedTokens{
+    static constexpr int64_t major_version = 4;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
     DepParsedTokens(util::io::H5file const &file, std::string prefix);
+    DepParsedTokens(util::VersionedName const &file, std::string prefix);
     DepParsedTokens(std::string prefix);
     DepParsedTokens(){}
 

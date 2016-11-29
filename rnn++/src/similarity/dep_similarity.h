@@ -10,9 +10,7 @@
 #include "wordrep/voca_info.h"
 #include "wordrep/word_prob.h"
 
-#include "utils/hdf5.h"
 #include "utils/parallel.h"
-
 
 namespace engine {
 

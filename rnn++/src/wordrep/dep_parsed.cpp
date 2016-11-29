@@ -6,6 +6,7 @@
 
 #include "wordrep/dep_parsed.h"
 
+#include "utils/versioned_name.h"
 #include "utils/hdf5.h"
 #include "utils/string.h"
 
@@ -38,6 +39,11 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
           arclabels {file,prefix+".arclabel_uid"}
 {}
 
+DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
+        : DepParsedTokens{read(file.fullname), prefix}
+{
+    assert(file.major==DepParsedTokens::major_version);
+}
 DepParsedTokens::DepParsedTokens(std::string prefix)
         : sents_uid {{},prefix+".sent_uid"},
           chunks_idx{{},prefix+".chunk_idx"},
