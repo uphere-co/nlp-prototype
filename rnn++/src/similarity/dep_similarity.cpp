@@ -220,9 +220,9 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   ygpdb{config["column_uids_dump"].get<std::string>()},
-  ygp_indexer{read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+  ygp_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
               config["dep_parsed_prefix"].get<std::string>()},
-  ygpdb_country{read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+  ygpdb_country{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
                 config["country_uids_dump"].get<std::string>()},
   country_tagger{config["country_uids_dump"].get<std::string>()}
 {}

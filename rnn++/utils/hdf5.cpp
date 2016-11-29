@@ -64,7 +64,7 @@ H5file::~H5file(){
 };
 
 
-H5file read(std::string path){
+H5file h5read(std::string path){
     return H5file{H5name{path}, hdf5::FileMode::read_exist};
 }
 

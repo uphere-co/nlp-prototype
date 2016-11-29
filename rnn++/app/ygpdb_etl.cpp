@@ -160,11 +160,22 @@ void persistent_vector_WordUID(){
 
 void filesystem(util::json_t const &config){
     auto data_path = util::get_str(config, "dep_parsed_store");
-    std::vector<std::string> files = {"foo.h5.1.0", "foo.h5.1.1", "foo.h5.1.2", "foo.h5.2.10", "foo.h5.2.3"};
-    auto ver = util::get_latest_version(files);
-    assert(ver.minor==10);
-    assert(ver.major==2);
-    assert(ver.name =="foo.h5");
+    {
+        std::vector <std::string> files = {"foo.h5.1.0", "foo.h5.1.1", "foo.h5.1.2", "foo.h5.1.10", "foo.h5.1.3"};
+        auto ver = util::get_latest_version(files);
+        assert(ver.minor == 10);
+        assert(ver.major == 1);
+        assert(ver.name == "foo.h5");
+    }
+
+    {
+        std::vector<std::string> files = {"/bar/foo.h5.1.0", "/bar/foo.h5.2.1"};
+        auto ver = util::get_latest_version(files);
+        assert(ver.minor == 1);
+        assert(ver.major == 2);
+        assert(ver.name == "/bar/foo.h5");
+        assert(ver.fullname == "/bar/foo.h5.2.1");
+    }
 
     std::cerr<< util::get_latest_version(data_path).fullname << std::endl;
 }

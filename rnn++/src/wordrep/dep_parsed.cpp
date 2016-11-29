@@ -40,7 +40,7 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 {}
 
 DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
-        : DepParsedTokens{read(file.fullname), prefix}
+        : DepParsedTokens{h5read(file.fullname), prefix}
 {
     assert(file.major==DepParsedTokens::major_version);
 }
