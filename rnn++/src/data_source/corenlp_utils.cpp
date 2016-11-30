@@ -34,7 +34,6 @@ wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
     for(decltype(n)i=0; i!=n; ++i) tokens.append(chunks.at(i));
     tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
     tokens.build_voca_index(voca.indexmap);
-
     return tokens;
 }
 

@@ -87,6 +87,16 @@ int list_columns(){
     return 0;
 }
 
+void parse_textfile(std::string dump_files){
+    auto files = util::string::readlines(dump_files);
+    auto n = files.size();
+    tbb::parallel_for(decltype(n){0},n, [&](auto const &i) {
+        auto file = files[i];
+        data::CoreNLPwebclient corenlp_webclient("../rnn++/scripts/corenlp.py");
+        corenlp_webclient.from_query_file(file);
+    });
+}
+
 namespace test {
 
 
@@ -285,26 +295,28 @@ void country_code(util::json_t const &config) {
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-    data::ygp::test::ygpdb_indexing(config);
+//    data::ygp::test::ygpdb_indexing(config);
 //    data::ygp::test::country_annotator(config);
 //    data::ygp::test::country_code(config);
 //    test::word_importance(config);
 //    test::unicode_conversion();
-    test::persistent_vector_float();
-    test::persistent_vector_WordUID();
-    test::filesystem(config);
-    return 0;
+//    test::persistent_vector_float();
+//    test::persistent_vector_WordUID();
+//    test::filesystem(config);
+//    return 0;
 
-//    auto col_uids = config["column_uids_dump"].get<std::string>();
     auto dump_files = argv[2];
 //    data::ygp::dump_psql(col_uids);
+//    parse_textfile(dump_files);
+//    return 0;
+
     data::CoreNLPoutputParser dump_parser{config};
     data::parallel_load_jsons(dump_files, dump_parser);
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto tokens = dump_parser.get(prefix);
-
     auto output_filename = config["dep_parsed_store"].get<std::string>();
     tokens.write_to_disk(output_filename);
+    return 0;
     data::ygp::write_column_indexes(config, dump_files);
     data::ygp::write_country_code(config);
     return 0;

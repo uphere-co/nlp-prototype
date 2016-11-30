@@ -134,4 +134,34 @@ struct DepSimilaritySearch {
     std::mutex query_tokens_update;
 };
 
+struct RSSQueryEngine {
+    using json_t = util::json_t;
+    using voca_info_t = wordrep::VocaInfo;
+    using val_t = voca_info_t::voca_vecs_t::val_t;
+    RSSQueryEngine(json_t const& config);
+
+    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
+                                                   std::vector<val_t> const &cutoffs,
+                                                   std::vector<wordrep::Sentence> const &data_sents) const;
+    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents) const;
+    json_t process_chain_query(std::vector<wordrep::Sentence> const &query_chain) const;
+    json_t register_documents(json_t const &ask) ;
+    json_t ask_query(json_t const &ask) const;
+    json_t ask_chain_query(json_t const &ask) const;
+    json_t write_output(wordrep::Sentence const &query_sent,
+                        std::vector<ScoredSentence> const &relevant_sents,
+                        int64_t max_clip_len) const;
+
+    voca_info_t voca;
+    wordrep::DepParsedTokens const tokens;
+    wordrep::WordUIDindex const wordUIDs;
+    wordrep::POSUIDindex const posUIDs;
+    wordrep::ArcLabelUIDindex const arclabelUIDs;
+    wordrep::WordImportance const word_cutoff;
+    std::vector<wordrep::Sentence> sents;
+    mutable WordSimCache dists_cache{voca};
+    mutable QueryResultCache result_cache{};
+    wordrep::DepParsedTokens query_tokens{};
+    std::mutex query_tokens_update;
+};
 }//namespace engine
