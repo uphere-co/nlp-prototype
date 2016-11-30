@@ -771,6 +771,11 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         auto sent = *it;
         query_sents.push_back(sent);
     }
+    std::vector<val_t> cutoffs;
+    if(ask.find("cutoffs")!=ask.cend()){
+        for(auto x : ask["cutoffs"]) std::cerr<<x << std::endl;
+        for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
+    }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
     auto results = process_chain_query(query_sents);
     return results;

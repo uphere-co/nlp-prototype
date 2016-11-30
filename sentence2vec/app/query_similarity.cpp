@@ -2,6 +2,7 @@
 
 #include "similarity/dep_similarity.h"
 #include "data_source/corenlp_helper.h"
+#include "data_source/rss.h"
 
 #include "utils/profiling.h"
 #include "utils/parallel.h"
@@ -14,6 +15,8 @@ int main(int /*argc*/, char** argv){
 //    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
     auto config = load_json(argv[1]);
     std::cerr << config.dump(4) << std::endl;
+
+    auto dumpfile_hashes = argv[2];
 
 //    SimilaritySearch engine{config};
 //    timer.here_then_reset("SimilaritySearch engine loaded.");
@@ -35,7 +38,8 @@ int main(int /*argc*/, char** argv){
         std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
         socket.send(reply);
     }
-    engine::DepSimilaritySearch engine{config};
+//    engine::DepSimilaritySearch engine{config};
+    engine::RSSQueryEngine engine{config};
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){
@@ -60,8 +64,9 @@ int main(int /*argc*/, char** argv){
             socket.send(reply);
         } else if (input_json.find("sent_uids")!=input_json.end()){
             std::cerr << "Ask query"<<std::endl;
-            auto answer = engine.ask_query(input_json);
-            data::ygp::annotation_on_result(config, answer);
+            auto answer = engine.ask_chain_query(input_json);
+            data::rss::annotation_on_result(config, answer, dumpfile_hashes);
+//            data::ygp::annotation_on_result(config, answer);
             //std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
