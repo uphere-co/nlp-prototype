@@ -17,6 +17,9 @@ rec {
 		     fmt = toolz_cpp.fmt;
 		     msgsl = toolz_cpp.msgsl;
 		     libpqxx =pkgs.libpqxx;
+		     elfutils = pkgs.elfutils;
+		     spdlog = toolz_cpp.spdlog;
+		     backwardcpp = toolz_cpp.backwardcpp;
                    };
   
   "rnnpp"        = import ../rnn++    { inherit pkgs; };
