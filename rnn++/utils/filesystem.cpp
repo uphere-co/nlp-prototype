@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "utils/filesystem.h"
 
 namespace util{

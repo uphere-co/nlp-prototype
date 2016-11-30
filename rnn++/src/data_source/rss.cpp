@@ -32,7 +32,8 @@ HashIndexer::HashIndexer(std::string filename)
 
 void write_column_indexes(util::json_t const &config,
                           std::string dumpfile_hashes,
-                          std::string row_rawfiles){
+                          std::string row_rawfiles,
+                          std::vector<size_t> const &idxs){
     using data::ygp::RowIndex;
     using data::ygp::RowUID;
     using data::ygp::ColumnUID;
@@ -50,7 +51,8 @@ void write_column_indexes(util::json_t const &config,
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
 
     auto files = util::string::readlines(row_rawfiles);
-    for(auto file_path : files){
+    for(auto idx : idxs){
+        auto file_path = files[idx];
         RSSRowFilePath row{file_path};
         if(util::string::read_whole(file_path).size()<2){
             fmt::print(std::cerr, "Empty file : {}\n", file_path);
@@ -101,8 +103,8 @@ void annotation_on_result(util::json_t const &config, util::json_t &answers,
             auto column = uid2col.at(col_uid);
 
             auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
-//            auto    substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
-//            answer["result_DEBUG"].push_back(substr);
+            auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
+            answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
         }
     }

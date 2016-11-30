@@ -306,7 +306,7 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
             config["dep_parsed_prefix"]};
     wordrep::WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     auto sents = tokens.IndexSentences();
-    auto sent = sents[40000];
+    auto sent = sents[513911];
     auto chunk_idx = tokens.chunk_idx(sent.beg);
 
     data::ygp::YGPindexer const &db_indexer{
@@ -359,7 +359,6 @@ int main(int /*argc*/, char** argv){
 //    data::ygp::dump_psql(col_uids);
 //    parse_textfile(dump_files);
 //    return 0;
-
     data::CoreNLPoutputParser dump_parser{config};
 
     auto json_dumps = util::string::readlines(row_files);
@@ -368,10 +367,11 @@ int main(int /*argc*/, char** argv){
     data::parallel_load_jsons(json_dumps, dump_parser);
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto tokens = dump_parser.get(prefix);
+    auto idxs = dump_parser.get_nonnull_idx();
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, hashes, row_files);
+    data::rss::write_column_indexes(config, hashes, row_files, idxs);
 //    data::ygp::write_column_indexes(config, dump_files);
 //    data::ygp::write_country_code(config);
     return 0;

@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include "data_source/corenlp_utils.h"
-
 #include "data_source/corenlp.h"
 
 #include "wordrep/word_uid.h"
@@ -28,11 +27,16 @@ void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json);
     chunks[i]=tokens;
 }
-wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
-    wordrep::DepParsedTokens tokens{prefix};
+
+std::vector<size_t> CoreNLPoutputParser::get_nonnull_idx() const{
     std::vector<size_t> idxs;
     for(auto elm : chunks) idxs.push_back(elm.first);
     std::sort(idxs.begin(), idxs.end());
+    return idxs;
+}
+wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
+    wordrep::DepParsedTokens tokens{prefix};
+    auto idxs = get_nonnull_idx();
     for(auto idx : idxs) tokens.append(chunks.at(idx));
     tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
     tokens.build_voca_index(voca.indexmap);
