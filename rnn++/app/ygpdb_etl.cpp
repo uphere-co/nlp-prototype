@@ -296,6 +296,49 @@ void country_code(util::json_t const &config) {
 }//namespace data::ygp
 }//namespace data
 
+namespace data{
+namespace rss{
+namespace test {
+
+void rss_indexing(util::json_t const &config, std::string hashes) {
+    wordrep::DepParsedTokens tokens{
+            util::get_latest_version(util::get_str(config, "dep_parsed_store")),
+            config["dep_parsed_prefix"]};
+    wordrep::WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
+    auto sents = tokens.IndexSentences();
+    auto sent = sents[500];
+    auto chunk_idx = tokens.chunk_idx(sent.beg);
+
+    data::ygp::YGPindexer const &db_indexer{
+            h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+            config["dep_parsed_prefix"].get<std::string>()};
+    auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
+    auto col_uid = db_indexer.column_uid(chunk_idx);
+    auto row_idx = db_indexer.row_idx(chunk_idx);
+    std::map<data::ygp::ColumnUID, std::string> uid2col;
+    uid2col[0] = "title";
+    uid2col[1] = "summary";
+    uid2col[2] = "maintext";
+    data::rss::HashIndexer hash2idx{hashes};
+    auto filename = fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash2idx.hash(row_idx.val), uid2col[col_uid]);
+    auto row_str = util::string::read_whole(filename);
+    std::cerr << filename << std::endl;
+    auto offset_beg = sent.beg_offset();
+    auto offset_end = sent.end_offset();
+    std::cerr << fmt::format("{}:{}", offset_beg.val, offset_end.val) << std::endl;
+    //auto    substr = util::string::substring_unicode_offset(row_str, offset_beg.val, offset_end.val);
+    std::cerr << row_str << std::endl;
+    for (auto idx = sent.beg; idx != sent.end; ++idx) {
+        auto uid = tokens.word_uid(idx);
+        std::cerr << wordUIDs[uid] << " ";
+    }
+    std::cerr << std::endl;
+}
+
+}//namespace data::rss::test
+}//namespace data::rss
+}//namespace data
+
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    data::ygp::test::ygpdb_indexing(config);
@@ -310,6 +353,8 @@ int main(int /*argc*/, char** argv){
 
     auto dump_files = argv[2];
     auto hashes = argv[3];
+    data::rss::test::rss_indexing(config, hashes);
+    return 0;
 
 //    data::ygp::dump_psql(col_uids);
 //    parse_textfile(dump_files);
