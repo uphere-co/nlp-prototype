@@ -11,7 +11,7 @@
 #include "utils/hdf5.h"
 #include "utils/json.h"
 #include "utils/base_types.h"
-
+#include "utils/persistent_vector.h"
 
 namespace data {
 namespace ygp {
@@ -58,18 +58,18 @@ struct DBbyCountry{
     std::vector<wordrep::SentUID> sents(std::string country) const {
         auto it=sents_by_country.find(country);
         if(it==sents_by_country.cend()) return {};
-        return it->second;
+        return it->second.get();
     }
     std::string get_country(wordrep::SentUID uid) const{
         for(auto it : sents_by_country){
             auto country = it.first;
-            for(auto suid : it.second) if(uid==suid) return country;
+            for(auto suid : it.second.get()) if(uid==suid) return country;
         }
         return "Unknown";
     }
 private:
-    std::map<std::string, std::vector<RowUID>> rows_by_country;
-    std::map<std::string, std::vector<wordrep::SentUID>> sents_by_country;
+    std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
+    std::map<std::string, util::TypedPersistentVector<wordrep::SentUID>> sents_by_country;
 };
 
 struct YGPdb{

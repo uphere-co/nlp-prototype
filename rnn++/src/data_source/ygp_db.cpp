@@ -52,8 +52,9 @@ std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
 DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
     auto countries =util::string::readlines(country_list);
     for(auto country : countries) {
-        auto rows=util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
-        auto sents=util::deserialize<wordrep::SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
+        util::TypedPersistentVector<RowUID> rows{file, country+".row_uid"};
+        util::TypedPersistentVector<wordrep::SentUID> sents{file, country+".sent_uid"};
+        std::cerr<<"read " << country << " sents: " << sents.size()<<std::endl;
         rows_by_country[country]=rows;
         sents_by_country[country]=sents;
     }

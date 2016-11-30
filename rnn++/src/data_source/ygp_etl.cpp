@@ -24,7 +24,7 @@
 #include "utils/parallel.h"
 #include "utils/base_types.h"
 #include "utils/random.h"
-
+#include "utils/persistent_vector.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -34,8 +34,8 @@ namespace {
 struct Chunks{
     using idx_t = std::pair<ChunkIndex,SentUID>;
     Chunks(util::io::H5file const &file, std::string prefix)
-            : sents_uid{util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
-              chunks_idx{util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))}
+            : sents_uid{file,prefix+".sent_uid"},
+              chunks_idx{file,prefix+".chunk_idx"}
     {
         assert(sents_uid.size()==chunks_idx.size());
     }
@@ -54,8 +54,8 @@ struct Chunks{
         return it;
     }
 private:
-    std::vector<SentUID>      sents_uid;
-    std::vector<ChunkIndex>   chunks_idx;
+    util::TypedPersistentVector<SentUID>      sents_uid;
+    util::TypedPersistentVector<ChunkIndex>   chunks_idx;
 };
 
 
@@ -148,8 +148,8 @@ void write_country_code(util::json_t const &config) {
     YGPdb db{cols_to_exports};
     YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
     Chunks ygp_chunks{ygp_h5store, ygp_prefix};
-    std::map<std::string, std::vector<RowUID>> rows_by_country;
-    std::map<std::string, std::vector<SentUID>> sents_by_country;
+    std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
+    std::map<std::string, util::TypedPersistentVector<SentUID>> sents_by_country;
     std::map<RowUID,std::vector<SentUID>> sents_in_row;
 
     for(auto idx=ygp_chunks.token_beg();idx!=ygp_chunks.token_end(); idx = ygp_chunks.next_sent_beg(idx)){
@@ -188,13 +188,9 @@ void write_country_code(util::json_t const &config) {
     }
 
     std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
-    for(auto x : rows_by_country){
-        ygp_h5store.writeRawData(H5name{x.first+".row_uid"}, util::serialize(x.second));
-        country_list << x.first << std::endl;
-    }
-    for(auto x : sents_by_country){
-        ygp_h5store.writeRawData(H5name{x.first+".sent_uid"}, util::serialize(x.second));
-    }
+    for(auto x : rows_by_country) country_list << x.first << std::endl;
+    for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
+    for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
     country_list.close();
 }
 

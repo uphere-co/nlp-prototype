@@ -24,37 +24,53 @@ CharOffset Sentence::end_offset() const {return tokens->word_end(back());}
 SentUID::val_t Sentence::chrlen() const{ return util::diff(end_offset(), beg_offset());}
 
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
-: sents_uid{deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
-  chunks_idx{deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))},
-  sents_idx{deserialize<SentIndex>(file.getRawData<int64_t>(H5name{prefix+".sent_idx"}))},
-  words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".word"}))},
-  words_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".word_uid"}))},
-  words_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".word_pidx"}))},
-  head_words{deserialize<VocaIndex>(file.getRawData<int64_t>(H5name{prefix+".head"}))},
-  heads_uid{deserialize<WordUID>(file.getRawData<int64_t>(H5name{prefix+".head_uid"}))},
-  heads_pidx{deserialize<WordPosition>(file.getRawData<int64_t>(H5name{prefix+".head_pidx"}))},
-  words_beg{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_beg"}))},
-  words_end{deserialize<CharOffset>(file.getRawData<int64_t>(H5name{prefix+".word_end"}))},
-  poss{deserialize<POSUID>(file.getRawData<int64_t>(H5name{prefix+".pos_uid"}))},
-  arclabels{deserialize<ArcLabelUID>(file.getRawData<int64_t>(H5name{prefix+".arclabel_uid"}))}
+        : sents_uid {file,prefix+".sent_uid"},
+          chunks_idx{file,prefix+".chunk_idx"},
+          sents_idx {file,prefix+".sent_idx"},
+          words     {file,prefix+".word"},
+          words_uid {file,prefix+".word_uid"},
+          words_pidx{file,prefix+".word_pidx"},
+          head_words{file,prefix+".head"},
+          heads_uid {file,prefix+".head_uid"},
+          heads_pidx{file,prefix+".head_pidx"},
+          words_beg {file,prefix+".word_beg"},
+          words_end {file,prefix+".word_end"},
+          poss      {file,prefix+".pos_uid"},
+          arclabels {file,prefix+".arclabel_uid"}
 {}
 
-void DepParsedTokens::write_to_disk(std::string filename, std::string prefix) const {
+DepParsedTokens::DepParsedTokens(std::string prefix)
+        : sents_uid {{},prefix+".sent_uid"},
+          chunks_idx{{},prefix+".chunk_idx"},
+          sents_idx {{},prefix+".sent_idx"},
+          words     {{},prefix+".word"},
+          words_uid {{},prefix+".word_uid"},
+          words_pidx{{},prefix+".word_pidx"},
+          head_words{{},prefix+".head"},
+          heads_uid {{},prefix+".head_uid"},
+          heads_pidx{{},prefix+".head_pidx"},
+          words_beg {{},prefix+".word_beg"},
+          words_end {{},prefix+".word_end"},
+          poss      {{},prefix+".pos_uid"},
+          arclabels {{},prefix+".arclabel_uid"}
+{}
+
+void DepParsedTokens::write_to_disk(std::string filename) const {
 //    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
     H5file outfile{H5name{filename}, hdf5::FileMode::replace};
-    outfile.writeRawData(H5name{prefix+".sent_uid"}, serialize(sents_uid));
-    outfile.writeRawData(H5name{prefix+".chunk_idx"}, serialize(chunks_idx));
-    outfile.writeRawData(H5name{prefix+".sent_idx"}, serialize(sents_idx));
-    outfile.writeRawData(H5name{prefix+".word_uid"}, serialize(words_uid));
-    outfile.writeRawData(H5name{prefix+".word"}, serialize(words));
-    outfile.writeRawData(H5name{prefix+".word_pidx"},serialize(words_pidx));
-    outfile.writeRawData(H5name{prefix+".head_uid"}, serialize(heads_uid));
-    outfile.writeRawData(H5name{prefix+".head"}, serialize(head_words));
-    outfile.writeRawData(H5name{prefix+".head_pidx"},serialize(heads_pidx));
-    outfile.writeRawData(H5name{prefix+".word_beg"},serialize(words_beg));
-    outfile.writeRawData(H5name{prefix+".word_end"},serialize(words_end));
-    outfile.writeRawData(H5name{prefix+".pos_uid"},serialize(poss));
-    outfile.writeRawData(H5name{prefix+".arclabel_uid"},serialize(arclabels));
+    sents_uid.write(outfile);
+    chunks_idx.write(outfile);
+    sents_idx.write(outfile);
+    words_uid.write(outfile);
+    words.write(outfile);
+    words_pidx.write(outfile);
+    heads_uid.write(outfile);
+    head_words.write(outfile);
+    heads_pidx.write(outfile);
+    words_beg.write(outfile);
+    words_end.write(outfile);
+    poss.write(outfile);
+    arclabels.write(outfile);
 }
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
     auto n = words.size();
@@ -115,74 +131,75 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
 void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
-                                            nlohmann::json const &output){
+                                            data::CoreNLPjson const &output){
 
     int64_t sent_idx{0};
-    for(auto const& sent_json : output["sentences"] ){
-        auto offset = sents_idx.size();
-        for(auto const &token : sent_json["tokens"]){
-            //after before characterOffsetBegin characterOffsetEnd index originalText pos word
-            auto after  = token["after"].get<std::string>();
-            auto before = token["before"].get<std::string>();
-            auto token_beg = token["characterOffsetBegin"].get<int64_t>();
-            auto token_end = token["characterOffsetEnd"].get<int64_t>();
-            auto word_pidx = token["index"].get<int64_t>()-1;
-            auto originalText = token["originalText"].get<std::string>();
-            auto pos = token["pos"].get<std::string>();
-            auto word = token["word"].get<std::string>();
-
+    size_t offset{0};
+    auto per_tokens = [this,&sent_idx,&wordUIDs, &posUIDs](auto const &token){
+        auto after  = get_str(token, "after");
+        auto before = get_str(token, "before");
+        auto token_beg = get_int(token,"characterOffsetBegin");
+        auto token_end = get_int(token,"characterOffsetEnd");
+        auto word_pidx = get_int(token,"index")-1;
+        auto originalText = get_str(token,"originalText");
+        auto pos = get_str(token,"pos");
+        auto word = get_str(token,"word");
 
 //            sents_uid;
-            chunks_idx.push_back(current_chunk_idx);
-            sents_idx.push_back(SentIndex{sent_idx});
+        chunks_idx.push_back(current_chunk_idx);
+        sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-            words_uid.push_back(wordUIDs[word]);
-            words_pidx.push_back(WordPosition{word_pidx});
+        words_uid.push_back(wordUIDs[word]);
+        words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
-            heads_uid.push_back(WordUID{});//
-            heads_pidx.push_back(WordPosition{});//
-            words_beg.push_back(CharOffset{token_beg});
-            words_end.push_back(CharOffset{token_end});
-            poss.push_back(posUIDs[pos]);
-            arclabels.push_back(ArcLabelUID{});//
-        }
-        for(auto const &x : sent_json["basicDependencies"]){
-            //dep dependent dependentGloss governor governorGloss
-            auto word      = x["dependentGloss"].get<std::string>();
-            auto word_pidx = x["dependent"].get<int64_t>()-1;
-            auto head_word = x["governorGloss"].get<std::string>();
-            auto head_pidx = x["governor"].get<int64_t>()-1;
-            auto arc_label = x["dep"].get<std::string>();
+        heads_uid.push_back(WordUID{});//
+        heads_pidx.push_back(WordPosition{});//
+        words_beg.push_back(CharOffset{token_beg});
+        words_end.push_back(CharOffset{token_end});
+        poss.push_back(posUIDs[pos]);
+        arclabels.push_back(ArcLabelUID{});//
+    };
+    auto per_dep_tokens = [this,&offset,&wordUIDs,&arclabelUIDs](auto const &x){
+        //dep dependent dependentGloss governor governorGloss
+        auto word      = get_str(x,"dependentGloss");
+        auto word_pidx = get_int(x,"dependent")-1;
+        auto head_word = get_str(x,"governorGloss");
+        auto head_pidx = get_int(x,"governor")-1;
+        auto arc_label = get_str(x,"dep");
 
-            auto i= word_pidx;
-            assert(words_uid[offset+i] == wordUIDs[word]);
-            assert(words_pidx[offset+i]==WordPosition{word_pidx});
-            heads_uid[offset+i] = wordUIDs[head_word];
-            heads_pidx[offset+i] = WordPosition{head_pidx};
-            arclabels[offset+i] = arclabelUIDs[arc_label];
-
-        }
+        auto i= word_pidx;
+        assert(words_uid[offset+i] == wordUIDs[word]);
+        assert(words_pidx[offset+i]==WordPosition{word_pidx});
+        heads_uid[offset+i] = wordUIDs[head_word];
+        heads_pidx[offset+i] = WordPosition{head_pidx};
+        arclabels[offset+i] = arclabelUIDs[arc_label];
+    };
+    auto pre_per_sent = [&offset,this](auto) {
+        offset = sents_idx.size();
+    };
+    auto post_per_sent = [&sent_idx](auto) {
         ++sent_idx;
-    }
+    };
+    output.iter_sent(pre_per_sent, per_tokens, per_dep_tokens, post_per_sent);
     ++current_chunk_idx;
 }
 
 void DepParsedTokens::append(DepParsedTokens const &tokens){
     util::append(sents_uid, tokens.sents_uid);
     auto tmp = tokens.chunks_idx;
-    for(auto &x : tmp) x += current_chunk_idx;
+    for(auto &x : tmp.get()) x += current_chunk_idx;
     current_chunk_idx = tmp.back()+1;
     util::append(chunks_idx, tmp);
     util::append(sents_idx, tokens.sents_idx);
-    util::append(words, tokens.words);
+    util::append(words,     tokens.words);
     util::append(words_uid, tokens.words_uid);
-    util::append(words_pidx, tokens.words_pidx);
-    util::append(head_words, tokens.head_words);
+    util::append(words_pidx,tokens.words_pidx);
+    util::append(head_words,tokens.head_words);
     util::append(heads_uid, tokens.heads_uid);
-    util::append(heads_pidx, tokens.heads_pidx);
+    util::append(heads_pidx,tokens.heads_pidx);
     util::append(words_beg, tokens.words_beg);
     util::append(words_end, tokens.words_end);
-    util::append(poss, tokens.poss);
+    util::append(poss,      tokens.poss);
     util::append(arclabels, tokens.arclabels);
 
 }
@@ -193,8 +210,8 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
     auto chunk_beg=chunks_idx.cbegin()+n;
     auto it=beg;
     auto it_chunk=chunk_beg;
-    decltype(sents_uid) new_uids;
-    if(it==end) return new_uids;
+    decltype(sents_uid) new_uids{{}, sents_uid.get_name()};
+    if(it==end) return new_uids.get();
     SentIndex current_idx{*it};
     ChunkIndex current_chunk{*it_chunk};
     SentUID current_uid = n>0? sents_uid.back()+1: init_uid;
@@ -210,7 +227,7 @@ std::vector<SentUID>  DepParsedTokens::build_sent_uid(SentUID init_uid){
         ++it;
         ++it_chunk;
     }
-    return new_uids;
+    return new_uids.get();
 }
 
 
