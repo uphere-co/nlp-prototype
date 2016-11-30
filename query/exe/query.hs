@@ -69,11 +69,11 @@ server port = do
 main :: IO ()
 main = do
   port <- getEnv "PORT"
-  [host] <- getArgs
+  [host, config] <- getArgs
   transport <- createTransport defaultZMQParameters (B.pack host)
   node <- newLocalNode transport initRemoteTable
   
-  withCString "config.ygp.json" $ \configfile -> do
+  withCString config $ \configfile -> do
     c_query_init configfile
     runProcess node (server port)
     c_query_finalize
