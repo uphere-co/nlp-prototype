@@ -10,6 +10,8 @@ with pkgs;
   toolz_cpp.fmt
   toolz_cpp.json
   toolz_cpp.csv
+  toolz_cpp.backwardcpp
+  elfutils
   cppzmq
   postgresql
   libpqxx

@@ -7,6 +7,7 @@
 #include "utils/profiling.h"
 #include "utils/string.h"
 
+
 using namespace wordrep;
 using namespace engine;
 
@@ -40,5 +41,6 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("A chain query output annotatoin.");
     fmt::print("{}\n", chain_answers.dump(4));
     timer.here_then_reset("Queries are answered.");
+
     return 0;
 }

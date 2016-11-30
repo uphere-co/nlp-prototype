@@ -1,15 +1,12 @@
-#include "similarity/dep_similarity.h"
-
 #include <algorithm>
 #include <map>
 
-#include <utils/profiling.h>
-
-#include "fmt/printf.h"
+#include <fmt/printf.h>
 
 #include "data_source/ygp_query.h"
 #include "data_source/ygp_db.h"
 
+#include "similarity/dep_similarity.h"
 #include "similarity/similarity_measure.h"
 
 #include "utils/parallel.h"
@@ -235,7 +232,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
     std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
-    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{ask});
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     auto sents = query_tokens.IndexSentences();
@@ -245,7 +242,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
-
     auto found_countries = country_tagger.tag(ask["query_str"]);
     answer["Countries"]=found_countries;
     return answer;

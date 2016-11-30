@@ -23,11 +23,13 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
-  buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq libpqxx
+  buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq libpqxx elfutils
 		  rnnpp tbb
 		  toolz_cpp.fmt
                   toolz_cpp.msgsl
 		  toolz_cpp.json
+                  toolz_cpp.spdlog
+                  toolz_cpp.backwardcpp
                 ];
   shellHook = ''
   '';
