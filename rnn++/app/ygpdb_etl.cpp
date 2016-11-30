@@ -306,7 +306,7 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
             config["dep_parsed_prefix"]};
     wordrep::WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     auto sents = tokens.IndexSentences();
-    auto sent = sents[500];
+    auto sent = sents[40000];
     auto chunk_idx = tokens.chunk_idx(sent.beg);
 
     data::ygp::YGPindexer const &db_indexer{
@@ -326,8 +326,8 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     auto offset_beg = sent.beg_offset();
     auto offset_end = sent.end_offset();
     std::cerr << fmt::format("{}:{}", offset_beg.val, offset_end.val) << std::endl;
-    //auto    substr = util::string::substring_unicode_offset(row_str, offset_beg.val, offset_end.val);
-    std::cerr << row_str << std::endl;
+    auto    substr = util::string::substring_unicode_offset(row_str, offset_beg.val, offset_end.val);
+    std::cerr << substr << std::endl;
     for (auto idx = sent.beg; idx != sent.end; ++idx) {
         auto uid = tokens.word_uid(idx);
         std::cerr << wordUIDs[uid] << " ";
@@ -351,7 +351,7 @@ int main(int /*argc*/, char** argv){
 //    test::filesystem(config);
 //    return 0;
 
-    auto dump_files = argv[2];
+    auto row_files = argv[2];
     auto hashes = argv[3];
     data::rss::test::rss_indexing(config, hashes);
     return 0;
@@ -361,13 +361,17 @@ int main(int /*argc*/, char** argv){
 //    return 0;
 
     data::CoreNLPoutputParser dump_parser{config};
-    data::parallel_load_jsons(dump_files, dump_parser);
+
+    auto json_dumps = util::string::readlines(row_files);
+    for(auto& path : json_dumps) path += ".corenlp";
+
+    data::parallel_load_jsons(json_dumps, dump_parser);
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto tokens = dump_parser.get(prefix);
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, hashes, dump_files);
+    data::rss::write_column_indexes(config, hashes, row_files);
 //    data::ygp::write_column_indexes(config, dump_files);
 //    data::ygp::write_country_code(config);
     return 0;

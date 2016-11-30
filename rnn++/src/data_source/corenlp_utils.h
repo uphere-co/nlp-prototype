@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include <fstream>
 
 #include "data_source/corenlp.h"
 #include "wordrep/dep_parsed.h"
@@ -8,6 +9,7 @@
 
 #include "utils/parallel.h"
 #include "utils/string.h"
+#include "utils/filesystem.h"
 
 namespace data {
 
@@ -20,11 +22,11 @@ struct StrCount{
 
 //using jsons_t = tbb::concurrent_vector<wordrep::DepParsedTokens>;
 template<typename OP>
-void parallel_load_jsons(std::string file_names, OP &op){
-    auto files = util::string::readlines(file_names);
+void parallel_load_jsons(std::vector<std::string> files, OP &op){
     auto n = files.size();
     tbb::parallel_for(decltype(n){0},n, [&](auto const &i) {
         auto const &file = files[i];
+        if(!util::file::is_exist(file)) return;
         data::CoreNLPjson json{file};
         op(i, json);
     });

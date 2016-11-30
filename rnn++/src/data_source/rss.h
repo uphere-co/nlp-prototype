@@ -13,8 +13,8 @@ namespace rss{
 struct HashIndexerDummy{};
 using HashIndex = util::IntegerLike<HashIndexerDummy, -1>;
 
-struct RSSDumpFilePath{
-    RSSDumpFilePath(std::string full_path);
+struct RSSRowFilePath{
+    RSSRowFilePath(std::string full_path);
     std::string table;
     std::string column;
     std::string hash;
@@ -31,7 +31,7 @@ struct HashIndexer{
 
 void write_column_indexes(util::json_t const &config,
                           std::string dumpfile_hashes,
-                          std::string corenlp_outputs);
+                          std::string row_rawfiles);
 
 
 void annotation_on_result(util::json_t const &config, util::json_t &answers,

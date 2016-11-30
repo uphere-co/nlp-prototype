@@ -15,13 +15,13 @@ namespace rss{
 
 
 
-RSSDumpFilePath::RSSDumpFilePath(std::string full_path)
+RSSRowFilePath::RSSRowFilePath(std::string full_path)
         : table{"nyt"}    {
     using util::string::split;
     auto tokens = split(split(full_path, "/").back(), ".");
     auto n = tokens.size();
-    column = tokens[n-2];
-    hash   = tokens[n-3];
+    column = tokens[n-1];
+    hash   = tokens[n-2];
 }
 
 HashIndexer::HashIndexer(std::string filename)
@@ -32,7 +32,7 @@ HashIndexer::HashIndexer(std::string filename)
 
 void write_column_indexes(util::json_t const &config,
                           std::string dumpfile_hashes,
-                          std::string corenlp_outputs){
+                          std::string row_rawfiles){
     using data::ygp::RowIndex;
     using data::ygp::RowUID;
     using data::ygp::ColumnUID;
@@ -49,9 +49,13 @@ void write_column_indexes(util::json_t const &config,
     RowUID row_uid{};
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
 
-    auto files = util::string::readlines(corenlp_outputs);
-    for(auto dumpfile_path : files){
-        RSSDumpFilePath row{dumpfile_path};
+    auto files = util::string::readlines(row_rawfiles);
+    for(auto file_path : files){
+        RSSRowFilePath row{file_path};
+        if(util::string::read_whole(file_path).size()<2){
+            fmt::print(std::cerr, "Empty file : {}\n", file_path);
+            continue;
+        }
         auto col_uid = col2uid.at(row.column);
         RowIndex row_idx{hash2idx.idx(row.hash).val};
 
