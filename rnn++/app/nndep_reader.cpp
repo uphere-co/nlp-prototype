@@ -2,6 +2,7 @@
 
 #include "similarity/dep_similarity.h"
 #include "data_source/ygp_db.h"
+#include "data_source/rss.h"
 #include "data_source/corenlp_helper.h"
 
 #include "utils/profiling.h"
@@ -14,6 +15,7 @@ using namespace engine;
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
+    auto dumpfile_hashes = argv[3];
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -38,6 +40,7 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
+    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
 //    data::ygp::annotation_on_result(config, chain_answers);
     timer.here_then_reset("A chain query output annotatoin.");
     fmt::print("{}\n", chain_answers.dump(4));

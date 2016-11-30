@@ -708,7 +708,9 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
           posUIDs{config["pos_uids_dump"].get<std::string>()},
           arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
           word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
-          sents{tokens.IndexSentences()}
+          sents{tokens.IndexSentences()},
+          db_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                      config["dep_parsed_prefix"].get<std::string>()}
 {}
 
 //TODO: fix it to be thread-safe
@@ -906,6 +908,9 @@ util::json_t to_rss_json(std::vector<ygp::PerSentQueryResult> const &results){
     for(auto const &result : results){
         answer["score"].push_back(result.score);
         answer["result_sent_uid"].push_back(result.result_sent_uid);
+        answer["result_row_uid"].push_back(result.result_row_uid);
+        answer["result_row_idx"].push_back(result.result_row_idx);
+        answer["result_column_uid"].push_back(result.result_column_uid);
 //        answer["result_row_uid"].push_back(result.result_row_uid);
         auto tmp = result.result_offset;
         answer["result_offset"].push_back({tmp.beg, tmp.end});
@@ -922,9 +927,9 @@ util::json_t to_rss_json(std::vector<ygp::PerSentQueryResult> const &results){
 }
 
 
-ygp::PerSentQueryResult build_rss_query_result_POD(Sentence const &query_sent,
-                                               ScoredSentence const &matched_sentence,
-                                               int64_t max_clip_len){
+ygp::PerSentQueryResult build_rss_query_result_POD(
+        Sentence const &query_sent, ScoredSentence const &matched_sentence,
+        ygp::YGPindexer const &db_indexer, int64_t max_clip_len){
     auto const &scores = matched_sentence.scores;
     auto sent = matched_sentence.sent;
     auto scores_with_idxs = scores.serialize();
@@ -935,6 +940,9 @@ ygp::PerSentQueryResult build_rss_query_result_POD(Sentence const &query_sent,
     auto const &query_tokens = *(query_sent.tokens);
 
     auto chunk_idx = tokens.chunk_idx(sent.beg);
+    auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
+    auto col_uid = db_indexer.column_uid(chunk_idx);
+    auto row_idx = db_indexer.row_idx(chunk_idx);
 
     ygp::PerSentQueryResult result;
     for(auto elm : scores_with_idxs){
@@ -952,6 +960,9 @@ ygp::PerSentQueryResult build_rss_query_result_POD(Sentence const &query_sent,
     }
     result.score = scores.score_sum();
     result.result_sent_uid = sent.uid.val;
+    result.result_row_uid  = row_uid.val;
+    result.result_row_idx  = row_idx.val;
+    result.result_column_uid  = col_uid.val;
     result.result_offset  = {sent.beg_offset().val, sent.end_offset().val};
     result.highlight_offset = {0,0};
     auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
@@ -974,7 +985,7 @@ RSSQueryEngine::json_t RSSQueryEngine::write_output(
 
     std::vector<ygp::PerSentQueryResult> results;
     for(auto const &scored_sent : top_N_results){
-        auto result = build_rss_query_result_POD(query_sent, scored_sent, max_clip_len);
+        auto result = build_rss_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
         results.push_back(result);
     }
 

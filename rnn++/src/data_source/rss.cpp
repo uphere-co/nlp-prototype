@@ -1,5 +1,7 @@
 #include "data_source/rss.h"
 
+#include <fmt/printf.h>
+
 #include "utils/string.h"
 #include "utils/versioned_name.h"
 
@@ -50,7 +52,7 @@ void write_column_indexes(util::json_t const &config,
     auto files = util::string::readlines(corenlp_outputs);
     for(auto dumpfile_path : files){
         RSSDumpFilePath row{dumpfile_path};
-        auto col_uid = col2uid.at("title");
+        auto col_uid = col2uid.at(row.column);
         RowIndex row_idx{hash2idx.idx(row.hash).val};
 
         col_uids.push_back(col_uid);
@@ -70,11 +72,17 @@ void write_column_indexes(util::json_t const &config,
 }
 
 
-void annotation_on_result(util::json_t const &config, util::json_t &answers){
-    YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
+void annotation_on_result(util::json_t const &config, util::json_t &answers,
+                          std::string dumpfile_hashes){
+    using data::ygp::ColumnUID;
+    using data::ygp::RowIndex;
+    std::map<ColumnUID,std::string> uid2col;
+    uid2col[0] = "title";
+    uid2col[1] = "summary";
+    uid2col[2] = "maintext";
+
+    HashIndexer hash2idx{dumpfile_hashes};
     for(auto &answer : answers){
-        //answer["result_sent_uid"].push_back(sent.uid.val);
-        //answer["result_row_uid"].push_back(row_uid.val);
         auto col_uids = answer["result_column_uid"];
         auto row_idxs = answer["result_row_idx"];
         auto offsets = answer["result_offset"];
@@ -85,9 +93,12 @@ void annotation_on_result(util::json_t const &config, util::json_t &answers){
             auto offset_beg = offsets[i][0].get<int64_t>();
             auto offset_end = offsets[i][1].get<int64_t>();
 
-            auto row_str = ygpdb.raw_text(col_uid, row_idx);
-            auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
-            answer["result_DEBUG"].push_back(substr);
+            auto hash = hash2idx.hash(HashIndex{row_idx.val});
+            auto column = uid2col.at(col_uid);
+
+            auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
+//            auto    substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
+//            answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
         }
     }

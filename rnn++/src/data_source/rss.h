@@ -34,7 +34,8 @@ void write_column_indexes(util::json_t const &config,
                           std::string corenlp_outputs);
 
 
-void annotation_on_result(util::json_t const &config, util::json_t &answers);
+void annotation_on_result(util::json_t const &config, util::json_t &answers,
+                          std::string dumpfile_hashes);
 
 }//namespace rss::data
 }//namespace data

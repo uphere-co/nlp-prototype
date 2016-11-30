@@ -159,6 +159,7 @@ struct RSSQueryEngine {
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_cutoff;
     std::vector<wordrep::Sentence> sents;
+    data::ygp::YGPindexer db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
