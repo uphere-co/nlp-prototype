@@ -1,5 +1,7 @@
 #include <experimental/filesystem>
 
+#include <fmt/printf.h>
+
 #include "utils/versioned_name.h"
 
 #include "utils/string.h"
@@ -17,6 +19,10 @@ VersionedName::VersionedName(std::string fullname)
     tokens.pop_back();
     name = util::string::join(tokens, ".");
 }
+VersionedName::VersionedName(std::string name, int major, int minor)
+        : name{name}, major{major}, minor{minor},
+          fullname{fmt::format("{}.{}.{}",name,major,minor)}
+{}
 bool operator< (VersionedName const &x, VersionedName const &y){
     if(x.major< y.major) return true;
     if(x.major==y.major && x.minor<y.minor) return true;

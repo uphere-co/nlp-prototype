@@ -8,6 +8,7 @@
 #include <fmt/printf.h>
 
 #include "similarity/dep_similarity.h"
+#include "data_source/rss.h"
 #include "data_source/ygp_db.h"
 #include "data_source/ygp_etl.h"
 #include "data_source/corenlp_helper.h"
@@ -97,8 +98,10 @@ void parse_textfile(std::string dump_files){
     });
 }
 
-namespace test {
 
+
+
+namespace test {
 
 void unicode_conversion(){
     auto row_str = u8"This is 테스트 of unicode-UTF8 conversion.";
@@ -306,6 +309,8 @@ int main(int /*argc*/, char** argv){
 //    return 0;
 
     auto dump_files = argv[2];
+    auto hashes = argv[3];
+
 //    data::ygp::dump_psql(col_uids);
 //    parse_textfile(dump_files);
 //    return 0;
@@ -314,11 +319,12 @@ int main(int /*argc*/, char** argv){
     data::parallel_load_jsons(dump_files, dump_parser);
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto tokens = dump_parser.get(prefix);
-    auto output_filename = config["dep_parsed_store"].get<std::string>();
-    tokens.write_to_disk(output_filename);
-    return 0;
-    data::ygp::write_column_indexes(config, dump_files);
-    data::ygp::write_country_code(config);
+    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
+                                               DepParsedTokens::major_version, 0};
+    tokens.write_to_disk(output_filename.fullname);
+    data::rss::write_column_indexes(config, hashes, dump_files);
+//    data::ygp::write_column_indexes(config, dump_files);
+//    data::ygp::write_country_code(config);
     return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
