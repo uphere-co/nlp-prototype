@@ -63,6 +63,12 @@ H5file::~H5file(){
     }
 };
 
+
+H5file h5read(std::string path){
+    return H5file{H5name{path}, hdf5::FileMode::read_exist};
+}
+
+
 }//namespace util::io
 }//namespace util
 
@@ -82,6 +88,7 @@ template<>
 H5::PredType ToH5PredType<double>()   {return H5::PredType::NATIVE_DOUBLE;}
 template<>
 H5::PredType ToH5PredType<char>()    {return H5::PredType::NATIVE_CHAR;}
+
 
 }// namespace util::io::hdf5
 }//namespace util::io
