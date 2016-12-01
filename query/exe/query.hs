@@ -57,29 +57,20 @@ withHeartBeat them action = do
 server :: String -> Process ()
 server port = do
   pid <- getSelfPid
-  liftIO $ print pid
+  liftIO $ hPutStrLn stderr (show pid)
+  
   void . liftIO $ forkIO (broadcastProcessId pid port)
   liftIO $ putStrLn "server started"
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
-    liftIO $ putStrLn "connected"  
+    liftIO $ hPutStrLn stderr "connected"  
     ref <- liftIO $ newTVarIO HM.empty
     forever $ do
       (q,sc') <- receiveChan rc
       liftIO $ hPutStrLn stderr (show q)
       spawnLocal (queryWorker ref sc' q)
-
-{- 
-newLocalNodeFromEndPoint ep rtable = do
-  case ep of
-    Left ex -> throwIO ex
-    Right endPoint -> do
-      localNode <- createBareLocalNode endPoint rtable
-      startServiceProcesses localNode
-      return localNode
--}
 
 main :: IO ()
 main = do
