@@ -59,17 +59,6 @@ private:
 };
 
 
-void write_column(std::vector<int64_t> rows, std::string filename,
-                  std::string prefix, std::string colname,
-                  hdf5::FileMode mode=hdf5::FileMode::rw_exist){
-    H5file file{H5name{filename}, mode};
-    file.writeRawData(H5name{prefix+colname}, rows);
-}
-void overwrite_column(std::vector<int64_t> rows, std::string filename,
-                      std::string prefix, std::string colname){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
-    file.overwriteRawData(H5name{prefix+colname}, rows);
-}
 
 
 
@@ -192,6 +181,18 @@ void write_country_code(util::json_t const &config) {
     for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
     for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
     country_list.close();
+}
+
+void write_column(std::vector<int64_t> rows, std::string filename,
+                  std::string prefix, std::string colname){
+    hdf5::FileMode mode=hdf5::FileMode::rw_exist;
+    H5file file{H5name{filename}, mode};
+    file.writeRawData(H5name{prefix+colname}, rows);
+}
+void overwrite_column(std::vector<int64_t> rows, std::string filename,
+                      std::string prefix, std::string colname){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+    file.overwriteRawData(H5name{prefix+colname}, rows);
 }
 
 void write_column_indexes(util::json_t const &config,

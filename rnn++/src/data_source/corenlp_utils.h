@@ -8,6 +8,7 @@
 
 #include "utils/parallel.h"
 #include "utils/string.h"
+#include "utils/filesystem.h"
 
 namespace data {
 
@@ -17,15 +18,15 @@ struct StrCount{
     wcounts_t val;
 };
 
-
 //using jsons_t = tbb::concurrent_vector<wordrep::DepParsedTokens>;
 template<typename OP>
-void parallel_load_jsons(std::string file_names, OP &op){
-    auto files = util::string::readlines(file_names);
+void parallel_load_jsons(std::vector<std::string> const &files, OP &op){
     auto n = files.size();
     tbb::parallel_for(decltype(n){0},n, [&](auto const &i) {
         auto const &file = files[i];
+        if(!util::file::is_exist(file)) return;
         data::CoreNLPjson json{file};
+        if(json.val["sentences"].size()==0) return;
         op(i, json);
     });
 }
@@ -34,6 +35,7 @@ struct CoreNLPoutputParser{
     CoreNLPoutputParser(util::json_t const &config);
 
     void operator() (size_t i, CoreNLPjson const &json);
+    std::vector<size_t> get_nonnull_idx() const;
     wordrep::DepParsedTokens get(std::string prefix) const;
 
     wordrep::VocaInfo voca;
