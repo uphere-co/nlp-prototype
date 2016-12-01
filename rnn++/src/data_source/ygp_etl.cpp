@@ -10,6 +10,7 @@
 
 #include "data_source/corenlp_helper.h"
 #include "data_source/ygp_db.h"
+#include "data_source/ygp_etl.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -23,7 +24,7 @@
 #include "utils/parallel.h"
 #include "utils/base_types.h"
 #include "utils/random.h"
-
+#include "utils/persistent_vector.h"
 
 using namespace wordrep;
 using namespace util::io;
@@ -33,8 +34,8 @@ namespace {
 struct Chunks{
     using idx_t = std::pair<ChunkIndex,SentUID>;
     Chunks(util::io::H5file const &file, std::string prefix)
-            : sents_uid{util::deserialize<SentUID>(file.getRawData<int64_t>(H5name{prefix+".sent_uid"}))},
-              chunks_idx{util::deserialize<ChunkIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk_idx"}))}
+            : sents_uid{file,prefix+".sent_uid"},
+              chunks_idx{file,prefix+".chunk_idx"}
     {
         assert(sents_uid.size()==chunks_idx.size());
     }
@@ -53,22 +54,11 @@ struct Chunks{
         return it;
     }
 private:
-    std::vector<SentUID>      sents_uid;
-    std::vector<ChunkIndex>   chunks_idx;
+    util::TypedPersistentVector<SentUID>      sents_uid;
+    util::TypedPersistentVector<ChunkIndex>   chunks_idx;
 };
 
 
-void write_column(std::vector<int64_t> rows, std::string filename,
-                  std::string prefix, std::string colname,
-                  hdf5::FileMode mode=hdf5::FileMode::rw_exist){
-    H5file file{H5name{filename}, mode};
-    file.writeRawData(H5name{prefix+colname}, rows);
-}
-void overwrite_column(std::vector<int64_t> rows, std::string filename,
-                      std::string prefix, std::string colname){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
-    file.overwriteRawData(H5name{prefix+colname}, rows);
-}
 
 
 
@@ -128,8 +118,7 @@ void dump_psql(const char *cols_to_exports){
 }
 
 
-void write_country_code(util::json_t const &config,
-                        std::string cols_to_exports) {
+void write_country_code(util::json_t const &config) {
     namespace ygp = data::ygp;
 
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
@@ -138,6 +127,7 @@ void write_country_code(util::json_t const &config,
 
     auto output_filename = config["dep_parsed_store"].get<std::string>();
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
 
     ygp::CountryColumn table2country_code{};
 
@@ -147,8 +137,8 @@ void write_country_code(util::json_t const &config,
     YGPdb db{cols_to_exports};
     YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
     Chunks ygp_chunks{ygp_h5store, ygp_prefix};
-    std::map<std::string, std::vector<RowUID>> rows_by_country;
-    std::map<std::string, std::vector<SentUID>> sents_by_country;
+    std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
+    std::map<std::string, util::TypedPersistentVector<SentUID>> sents_by_country;
     std::map<RowUID,std::vector<SentUID>> sents_in_row;
 
     for(auto idx=ygp_chunks.token_beg();idx!=ygp_chunks.token_end(); idx = ygp_chunks.next_sent_beg(idx)){
@@ -177,9 +167,9 @@ void write_country_code(util::json_t const &config,
         for (decltype(n) i = 0; i != n; ++i) {
             auto elm = body[i];
             RowIndex row_idx{std::stoi(elm[0].c_str())};
-            std::string country = elm[1].c_str();
             if(ygp_indexer.is_empty(col_uid,row_idx)) continue;
             auto row_uid = ygp_indexer.row_uid(col_uid, row_idx);
+            std::string country = elm[1].c_str();
             rows_by_country[country].push_back(row_uid);
             auto& tmp = sents_by_country[country];
             for(auto sent_uid : sents_in_row[row_uid]) tmp.push_back(sent_uid);
@@ -187,78 +177,52 @@ void write_country_code(util::json_t const &config,
     }
 
     std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
-    for(auto x : rows_by_country){
-        ygp_h5store.writeRawData(H5name{x.first+".row_uid"}, util::serialize(x.second));
-        country_list << x.first << std::endl;
-    }
-    for(auto x : sents_by_country){
-        ygp_h5store.writeRawData(H5name{x.first+".sent_uid"}, util::serialize(x.second));
-    }
+    for(auto x : rows_by_country) country_list << x.first << std::endl;
+    for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
+    for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
     country_list.close();
 }
 
-void parse_json_dumps(nlohmann::json const &config,
-                      std::string cols_to_exports, int64_t n_max=-1){
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                  config["w2vmodel_name"], config["w2v_float_t"]};
-    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
-    POSUIDindex posUIDs{config["pos_uids_dump"].get<std::string>()};
-    ArcLabelUIDindex arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
+void write_column(std::vector<int64_t> rows, std::string filename,
+                  std::string prefix, std::string colname){
+    hdf5::FileMode mode=hdf5::FileMode::rw_exist;
+    H5file file{H5name{filename}, mode};
+    file.writeRawData(H5name{prefix+colname}, rows);
+}
+void overwrite_column(std::vector<int64_t> rows, std::string filename,
+                      std::string prefix, std::string colname){
+    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
+    file.overwriteRawData(H5name{prefix+colname}, rows);
+}
 
+void write_column_indexes(util::json_t const &config,
+                          std::string corenlp_outputs){
     auto output_filename = config["dep_parsed_store"].get<std::string>();
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
-    DepParsedTokens tokens{};
-    ColumnUID col_uid{};
+
     RowUID row_uid{};
-
+    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
     YGPdb db{cols_to_exports};
-    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
-        auto table = db.table(col_uid);
-        auto column = db.column(col_uid);
-        auto index_col = db.index_col(col_uid);
+    auto files = util::string::readlines(corenlp_outputs);
+    for(auto dumpfile_path : files){
+        RowDumpFilePath row{dumpfile_path};
+        auto col_uid = db.col_uid(row.full_column_name());
+        RowIndex row_idx{row.index};
 
-        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        pqxx::work W(C);
-        auto query=fmt::format("SELECT {} FROM {};", index_col, table);
-        auto body= W.exec(query);
-        W.commit();
-        auto n = n_max<0? body.size(): n_max;
-        for(decltype(n)i=0; i!=n; ++i){
-            auto row = body[i];
-            auto index = std::stoi(row[0].c_str());
-            auto dumpfile_name=fmt::format("corenlp/{}.{}.{}.{}", table, column, index_col, index);
-            if(! std::ifstream{dumpfile_name}.good()) {
-                fmt::print("{} is missing.\n", dumpfile_name);
-                continue;
-            }
-            auto parsed_json = util::load_json(dumpfile_name);
-            if(parsed_json.size()==0) {
-                fmt::print("{} has null contents.\n", dumpfile_name);
-                continue;
-            }
-            fmt::print("{} is found.\n", dumpfile_name);
+        col_uids.push_back(col_uid);
+        row_idxs.push_back(row_idx);
+        row_uids.push_back(row_uid);
 
-            RowIndex row_idx{RowIndex::val_t{index}};
-            tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, parsed_json);
-            col_uids.push_back(col_uid);
-            row_idxs.push_back(row_idx);
-            row_uids.push_back(row_uid);
-
-            ++row_uid;
-        }
+        ++row_uid;
     }
-    tokens.build_sent_uid(SentUID{SentUID::val_t{0}});
-    tokens.build_voca_index(voca.indexmap);
-    tokens.write_to_disk(output_filename, prefix);
 
     write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
     write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
     write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
-    wordUIDs.write_to_disk(config["word_uids_dump"].get<std::string>());
 }
 
 

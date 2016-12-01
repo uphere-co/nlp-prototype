@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.4)
 SET(HOME $ENV{HOME})
 SET(CMAKE_C_COMPILER clang)
 SET(CMAKE_CXX_COMPILER clang++)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gline-tables-only")
@@ -36,8 +36,8 @@ target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(query_similarity app/query_similarity
                ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)
-target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
-
+#target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
+target_link_libraries(query_similarity stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx dw)
 add_executable(model_evaluation app/model_evaluation models/sentence2vec
                ${parser_files} ${util_files} ${wordrep_files})
 target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)

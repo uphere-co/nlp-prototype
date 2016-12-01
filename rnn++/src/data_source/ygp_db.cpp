@@ -28,6 +28,9 @@ YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
         map_to_uid[{col_uid,row_idx}]=row_uid;
         it = std::find_if_not(it, chunk2idx.cend(), [it](auto x){return x==*it;});
     }
+
+    for(decltype(n)i=0; i!=n; ++i)
+        row_uid2chunk[chunk2row_uid[i]]=wordrep::ChunkIndex::from_unsigned(i);
 }
 
 CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
@@ -49,8 +52,9 @@ std::vector<std::string> CountryCodeAnnotator::tag(std::string content) const{
 DBbyCountry::DBbyCountry(util::io::H5file const &file, std::string country_list){
     auto countries =util::string::readlines(country_list);
     for(auto country : countries) {
-        auto rows=util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{country+".row_uid"}));
-        auto sents=util::deserialize<wordrep::SentUID>(file.getRawData<int64_t>(H5name{country+".sent_uid"}));
+        util::TypedPersistentVector<RowUID> rows{file, country+".row_uid"};
+        util::TypedPersistentVector<wordrep::SentUID> sents{file, country+".sent_uid"};
+        std::cerr<<"read " << country << " sents: " << sents.size()<<std::endl;
         rows_by_country[country]=rows;
         sents_by_country[country]=sents;
     }
@@ -64,7 +68,18 @@ YGPdb::YGPdb(std::string column_uids){
         tables.push_back(cols[0]);
         columns.push_back(cols[1]);
         index_cols.push_back(cols[2]);
+        full_names.push_back(line);
     }
+}
+bool YGPdb::is_in(std::string name) const{
+    auto beg = full_names.cbegin();
+    auto end = full_names.cend();
+    return end!=std::find(beg, end, name);
+}
+ColumnUID YGPdb::col_uid(std::string name) const{
+    auto beg = full_names.cbegin();
+    auto it= std::find(beg, full_names.cend(), name);
+    return it - beg;
 }
 
 std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
@@ -77,6 +92,18 @@ std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
     return body[0][0].c_str();
 }
 
+RowDumpFilePath::RowDumpFilePath(std::string path) {
+    using util::string::split;
+    auto tokens = split(split(path, "/").back(), ".");
+    auto n = tokens.size();
+    index     = std::stoi(tokens[n-1]);
+    index_col = tokens[n-2];
+    column    = tokens[n-3];
+    table     = tokens[n-4];
+}
+std::string RowDumpFilePath::full_column_name() const{
+    return util::string::join({table, column, index_col}, ".");
+}
 void annotation_on_result(util::json_t const &config, util::json_t &answers){
     YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
     for(auto &answer : answers){

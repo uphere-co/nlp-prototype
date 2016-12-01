@@ -193,6 +193,20 @@ rec {
         cp -a *.h $out/include/csv
       '';
     };
+    backwardcpp = stdenv.mkDerivation rec {
+      name = "backward-cpp-${version}";
+      version = "d820636";
+      src = fetchgit {
+        url = "https://github.com/bombela/backward-cpp.git";
+        rev = "d820636e5af8f4114ce7839f740ff061f719d4db";
+        sha256 = "0wj115m38sl3axhypy18v50693r9j7i29lhy1sw9d8qb522i74gq";
+      };
+      installPhase = ''
+        mkdir -p $out/include/
+        cp -a *.hpp $out/include/
+      '';
+    };
+
 
 
 

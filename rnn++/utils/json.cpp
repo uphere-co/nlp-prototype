@@ -13,4 +13,11 @@ json_t  load_json(std::string filename){
     return j;
 }
 
+std::string get_str(json_t const &json, std::string key){
+    return json[key].template get<std::string>();
+}
+int64_t get_int(json_t const &json, std::string key){
+    return json[key].template get<int64_t>();
+}
+
 }//namespace util

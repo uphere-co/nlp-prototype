@@ -33,17 +33,18 @@ stdenv.mkDerivation {
                    ++ 
                  [
                    wget jdk zip unzip which stress htop
-                   cmake pkgconfig clang_38 clang-analyzer
+                   cmake pkgconfig clang_38 clang-analyzer elfutils
                    boost
                    hdf5 hdf5-cpp liblbfgs 
                    cppzmq zeromq
                    tbb openblas  
-                   linuxPackages_4_6.perf
+                   linuxPackages.perf
                    toolz_cpp.msgsl
                    toolz_cpp.spdlog
                    toolz_cpp.fmt
 		   toolz_cpp.json
                    toolz_cpp.csv
+                   toolz_cpp.backwardcpp
                    doxygen graphviz
                    libcgroup 
                    redis

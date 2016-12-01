@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.4)
 SET(HOME $ENV{HOME})
 SET(CMAKE_C_COMPILER clang)
 SET(CMAKE_CXX_COMPILER clang++)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gline-tables-only")
@@ -34,51 +34,50 @@ FILE(GLOB util_files utils/*cpp)
 add_executable(train_model0 app/train_model0 tests/test_simple_model
                ${rnn_simple_model_files} ${util_files})
 #https://www.hdfgroup.org/HDF5/Tutor/compile.html HDF5 compile.
-target_link_libraries(train_model0 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
+target_link_libraries(train_model0 stdc++fs hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
 add_executable(train_model1 app/train_model1 tests/test_simple_model
                ${rnn_simple_model_files} ${util_files})
-target_link_libraries(train_model1 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
+target_link_libraries(train_model1 stdc++fs hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
 add_executable(train_model2 app/train_model2 tests/test_context_rnn
                ${rnn_files} ${rnn_simple_model_files} ${util_files})
-target_link_libraries(train_model2 hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
+target_link_libraries(train_model2 stdc++fs hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
 
 add_executable(train_model4 app/train_model4 tests/test_dp_merging
                ${rnn_simple_model_files} ${util_files})
-target_link_libraries(train_model4 hdf5_cpp hdf5_hl_cpp tbb lbfgs)
+target_link_libraries(train_model4 stdc++fs hdf5_cpp hdf5_hl_cpp tbb lbfgs)
 
 
 add_executable(parser_model1 app/parser_model1
                ${simple_model_parsers} ${util_files})
-target_link_libraries(parser_model1 hdf5_cpp hdf5_hl_cpp tbb)
+target_link_libraries(parser_model1 stdc++fs hdf5_cpp hdf5_hl_cpp tbb)
 add_executable(parser_model4 app/parser_model4  tests/test_voca_wordvec
               ${simple_model_parsers} ${util_files})
-target_link_libraries(parser_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
+target_link_libraries(parser_model4 stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(parser_crnn app/parser_crnn tests/test_context_rnn
         ${rnn_files} ${rnn_simple_model_files} ${util_files})
-target_link_libraries(parser_crnn hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
+target_link_libraries(parser_crnn stdc++fs hdf5_cpp hdf5_hl_cpp tbb lbfgs fmt)
 
 
 add_executable(phrases_model4 app/phrases_model4  tests/test_voca_wordvec
                ${simple_model_parsers} ${util_files})
-target_link_libraries(phrases_model4 hdf5_cpp hdf5_hl_cpp tbb fmt)
+target_link_libraries(phrases_model4 stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
 add_executable(nndep_reader app/nndep_reader
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
-target_link_libraries(nndep_reader hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
+target_link_libraries(nndep_reader stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
-add_executable(etl_ygpdb app/etl_ygpdb
+add_executable(ygpdb_etl app/ygpdb_etl
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
-target_link_libraries(etl_ygpdb hdf5_cpp hdf5_hl_cpp tbb fmt pqxx)
+target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
-target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)
-
+target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb)
 
 #add_executable(gsl boilerplate/gsl)
 #add_executable(string boilerplate/string)
@@ -90,11 +89,11 @@ target_link_libraries(hdf5io hdf5_cpp hdf5_hl_cpp tbb)
 #target_link_libraries(bfgs lbfgs)
 
 add_library(parser STATIC ${simple_model_parsers} ${util_files})
-target_link_libraries(parser fmt tbb hd5f_cpp)  # not effective when making query package
+target_link_libraries(parser stdc++fs fmt tbb hd5f_cpp)  # not effective when making query package
 
 # etl_files may need to be splitted out as a separate package.
 add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files}  ${util_files})
-target_link_libraries(similarity fmt tbb hd5f_cpp pqxx) # not effective when making query package
+target_link_libraries(similarity stdc++fs fmt tbb hd5f_cpp pqxx dw) # not effective when making query package
 
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)

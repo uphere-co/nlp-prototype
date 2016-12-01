@@ -32,6 +32,17 @@ IntegerLike<T,VAL> operator-(IntegerLike<T,VAL> lhs, typename IntegerLike<T,VAL>
     return IntegerLike<T,VAL>{lhs.val-rhs};
 }
 template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator+=(IntegerLike<T,VAL> &lhs, IntegerLike<T,VAL> rhs) {
+    lhs.val+=rhs.val;
+    return lhs;
+}
+template<typename T, int64_t VAL>
+IntegerLike<T,VAL>& operator-=(IntegerLike<T,VAL> &lhs, IntegerLike<T,VAL> rhs) {
+    lhs.val-=rhs.val;
+    return lhs;
+}
+
+template<typename T, int64_t VAL>
 bool operator<(IntegerLike<T,VAL> const& lhs, IntegerLike<T,VAL> const& rhs) {
     return lhs.val<rhs.val;
 }
@@ -75,18 +86,25 @@ int64_t diff(IntegerLike<T,VAL> lhs, IntegerLike<T,VAL> rhs) {
     return lhs.val-rhs.val;
 }
 
-template<typename T>
-std::vector<T> deserialize(std::vector<typename T::val_t> const& raw){
-    std::vector<T> uids;
-    for(auto uid : raw) uids.push_back(T{uid});
-    return uids;
+template<typename T, typename TRAW>
+auto deserialize(std::vector<TRAW> const& raw){
+    std::vector<T> vals;
+    for(auto val : raw) vals.push_back(T{val});
+    return vals;
 }
-template<typename T>
-std::vector<typename T::val_t> serialize(std::vector<T> const& uids){
-    std::vector<typename T::val_t> raw;
-    for(auto uid : uids) raw.push_back(uid.val);
+
+template<typename T, int64_t VAL>
+auto serialize(std::vector<IntegerLike<T,VAL>> const& vals){
+    std::vector<typename IntegerLike<T,VAL>::val_t> raw;
+    for(auto val : vals) raw.push_back(val.val);
     return raw;
 }
+template<typename T>
+auto serialize(std::vector<T> const& vals){
+    std::vector<T> raw{vals};
+    return raw;
+}
+
 }//namespace util
 
 namespace std {

@@ -59,6 +59,7 @@ server port = do
   pid <- getSelfPid
   liftIO $ print pid
   void . liftIO $ forkIO (broadcastProcessId pid port)
+  liftIO $ putStrLn "server started"
   them <- expect
   withHeartBeat them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
@@ -83,14 +84,11 @@ newLocalNodeFromEndPoint ep rtable = do
 main :: IO ()
 main = do
   port <- getEnv "PORT"
-  [host] <- getArgs
-  (internals,transport) <- createTransportExposeInternals defaultZMQParameters (B.pack host)
-  print (transportAddress internals)
-  let ep = apiNewEndPoint Hints {hintsPort=Just 9888} internals
-  node <- newLocalNode transport {newEndPoint = ep} initRemoteTable
+  [host, config] <- getArgs
+  transport <- createTransport defaultZMQParameters (B.pack host)
+  node <- newLocalNode transport initRemoteTable
   
-  
-  withCString "config.json" $ \configfile -> do
+  withCString config $ \configfile -> do
     c_query_init configfile
     runProcess node (server port)
     c_query_finalize
