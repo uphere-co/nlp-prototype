@@ -46,6 +46,7 @@ public:
     WordSimCache(voca_info_t const &voca);
     void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const;
+    val_t max_similarity(wordrep::VocaIndex widx) const;
 private:
     bool find(wordrep::VocaIndex idx) const;
     bool insert(wordrep::VocaIndex idx, dist_cache_t const &dists);
