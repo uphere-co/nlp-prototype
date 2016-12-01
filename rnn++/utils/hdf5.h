@@ -28,7 +28,7 @@ public:
     ~impl() {
         try {
             val.close();
-            std::cerr << "Close dataset " << name.val << "\n";
+            //std::cerr << "Close dataset " << name.val << "\n";
         } catch (H5::Exception ex) {
             std::cerr << ex.getCDetailMsg() << std::endl;
         }
@@ -72,7 +72,7 @@ struct H5file {
         H5dataset data{val, dataset};
         //TODO: should use getStorageSize instead of getInMemDataSize?
         std::vector<T_RAW_ELM> data_raw(data.pimpl->val.getInMemDataSize()/sizeof(T_RAW_ELM));
-        std::cerr << "Read "<< dataset.val << ". # of elements:  " << data_raw.size() << std::endl;
+        //std::cerr << "Read "<< dataset.val << ". # of elements:  " << data_raw.size() << std::endl;
         data.pimpl->val.read(data_raw.data(), data.pimpl->val.getDataType());
         return data_raw;
     }

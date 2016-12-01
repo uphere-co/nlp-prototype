@@ -84,9 +84,12 @@ newLocalNodeFromEndPoint ep rtable = do
 main :: IO ()
 main = do
   port <- getEnv "PORT"
+  let portnum = read port
+      portnum' = portnum+1
   [host, config] <- getArgs
-  transport <- createTransport defaultZMQParameters (B.pack host)
-  node <- newLocalNode transport initRemoteTable
+  (internals,transport) <- createTransportExposeInternals defaultZMQParameters (B.pack host)
+  let transport' = transport { newEndPoint = apiNewEndPoint Hints { hintsPort = Just portnum'} internals }
+  node <- newLocalNode transport' initRemoteTable
   
   withCString config $ \configfile -> do
     c_query_init configfile
