@@ -56,10 +56,10 @@ int main(){
         // auto param = load_param(rnn_param_store_name, rnn_param_name, DataType::sp);
         auto param = randomParam(0.05);
         param.bias.span *= rnn::type::float_t{0.0};
-        auto get_grad = [&](auto sentence){
-            auto nodes = rnn.initialize_tree(sentence);
-            return get_greedy_gradient(param, nodes);
-        };                
+//        auto get_grad = [&](auto sentence){
+//            auto nodes = rnn.initialize_tree(sentence);
+//            return get_greedy_gradient(param, nodes);
+//        };
         logger.info("Prepared data.");
         
         logger.info("Begin training");

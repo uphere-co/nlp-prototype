@@ -75,7 +75,7 @@ void write_column_indexes(util::json_t const &config,
 }
 
 
-void annotation_on_result(util::json_t const &config, util::json_t &answers,
+void annotation_on_result(util::json_t const &/*config*/, util::json_t &answers,
                           std::string dumpfile_hashes){
     std::map<ColumnUID,std::string> uid2col;
     uid2col[0] = "title";

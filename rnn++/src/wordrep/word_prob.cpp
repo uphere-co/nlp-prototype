@@ -23,7 +23,7 @@ WordImportance::val_t WordImportance::ratio(WordUID uid)  const {
     return ratios[uid.val];
 }
 WordImportance::val_t WordImportance::cutoff(WordUID uid) const {
-    if(uid.val<0 || uid.val>=cutoffs.size()) return 0.0;
+    if(uid.val<0 || uid.val>=util::to_signed<val_t>(cutoffs.size())) return 0.0;
     return cutoffs[uid.val];
 }
 }//namespace wordrep

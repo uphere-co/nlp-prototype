@@ -11,7 +11,7 @@ void test_crnn_directed_backward();
 void test_grad_parallel_reduce();
 void test_minibatch_crnn();
 
-void train_crnn(nlohmann::json const &config);
+void train_crnn(util::json_t const &config);
 void crnn_parser(char** argv);
 
 }//namespace rnn::test

@@ -15,7 +15,7 @@ using namespace engine;
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    auto dumpfile_hashes = argv[3];
+    //auto dumpfile_hashes = argv[3];
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
