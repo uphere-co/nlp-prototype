@@ -20,3 +20,4 @@ void build_db_info_field(util::json_t &answer, PerSentQueryResult const &result)
 }
 
 }//namespace data
+

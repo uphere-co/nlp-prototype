@@ -9,6 +9,36 @@
 #include "utils/string.h"
 
 
+
+
+namespace wordrep{
+namespace test{
+
+void dependency_graph(){
+    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}  };
+    WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
+    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
+    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
+
+    DepParsedTokens tokens{};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
+    tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
+    //tokens.build_voca_index(voca.indexmap);
+
+    auto sents = tokens.IndexSentences();
+    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    for(auto sent : sents){
+        for (auto idx = sent.beg; idx != sent.end; ++idx) {
+            auto uid = tokens.word_uid(idx);
+            std::cerr << wordUIDs[uid] << " ";
+        }
+        std::cerr<<std::endl;
+    }
+}
+
+}//namespace wordrep::test
+}//namespace wordrep
+
 using namespace wordrep;
 using namespace engine;
 
@@ -16,6 +46,8 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
     //auto dumpfile_hashes = argv[3];
+    wordrep::test::dependency_graph();
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
