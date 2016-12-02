@@ -19,9 +19,6 @@ RawTexts::RawTexts(std::string filename)
         :lines(util::string::readlines(filename))
 {}
 
-CharOffset Sentence::beg_offset() const {return tokens->word_beg(front());}
-CharOffset Sentence::end_offset() const {return tokens->word_end(back());}
-SentUID::val_t Sentence::chrlen() const{ return util::diff(end_offset(), beg_offset());}
 
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
         : sents_uid {file,prefix+".sent_uid"},

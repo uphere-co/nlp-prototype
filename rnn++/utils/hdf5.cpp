@@ -19,10 +19,6 @@ unsigned int OpenWith(FileMode mode){
     }
 }
 
-bool is_exist(std::string filename){
-    std::ifstream f{filename};
-    return f.good();
-}
 }//nameless namespace
 
 

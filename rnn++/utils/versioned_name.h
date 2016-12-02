@@ -19,3 +19,4 @@ VersionedName get_latest_version(std::vector<std::string> files);
 VersionedName get_latest_version(std::string data_path);
 
 }//namespace util
+
