@@ -9,30 +9,55 @@
 #include "utils/string.h"
 
 
+namespace wordrep {
 
+struct DependencyNode {
+    DPTokenIndex idx;
+    DependencyNode *governor;
+    std::vector<DependencyNode *> dependents;
+};
+
+}//namespace wordrep;
 
 namespace wordrep{
 namespace test{
 
 void dependency_graph(){
     data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}  };
+    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}  };
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.build_sent_uid(0);
     //tokens.build_voca_index(voca.indexmap);
 
     auto sents = tokens.IndexSentences();
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
+        std::vector<DependencyNode> nodes(sent.size());
         for (auto idx = sent.beg; idx != sent.end; ++idx) {
-            auto uid = tokens.word_uid(idx);
-            std::cerr << wordUIDs[uid] << " ";
+            auto &node = nodes[tokens.word_pos(idx).val];
+            auto head_pos = tokens.head_pos(idx).val;
+            if(head_pos<0) continue;
+            auto &head = nodes[head_pos];
+            node.idx = idx;
+            node.governor = &head;
+            head.dependents.push_back(&node);
         }
-        std::cerr<<std::endl;
+        for(auto const &node : nodes){
+            auto uid = tokens.word_uid(node.idx);
+            fmt::print(std::cerr, "{:<15} ", wordUIDs[uid]);
+            if(node.governor) fmt::print(std::cerr, "head :{:<15} ", wordUIDs[tokens.word_uid(node.governor->idx)]);
+            else fmt::print(std::cerr, "head :{:<15} ", "");
+            fmt::print(std::cerr, "child:");
+            for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
+            std::cerr<<std::endl;
+        }
+        fmt::print(std::cerr, ": {}\n", sent.size());
     }
 }
 
