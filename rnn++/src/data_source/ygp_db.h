@@ -4,10 +4,11 @@
 #include <string>
 #include <vector>
 #include <utility>
-#include <src/wordrep/dep_parsed.h>
+
 
 #include "data_source/db.h"
 #include "data_source/db_query.h"
+#include "wordrep/dep_parsed.h"
 
 #include "wordrep/indexes.h"
 
