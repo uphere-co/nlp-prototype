@@ -448,8 +448,10 @@ void copy(rnn::simple_model::Param const &ori, rnn::Param &dest){
     std::copy(ori.u_score.span.cbegin(),ori.u_score.span.cend(),dest.u_score.begin());
 }
 
+
+
 auto test_rnn_greedy_score(rnn::simple_model::Param &param,
-                     rnn::simple_model::VocaInfo &rnn){
+                           rnn::simple_model::VocaInfo &rnn){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     using namespace util::math;
@@ -496,7 +498,7 @@ auto test_rnn_greedy_score(rnn::simple_model::Param &param,
     return score;
 }
 auto test_rnn_dp_score(rnn::simple_model::Param &param,
-                     rnn::simple_model::VocaInfo &rnn){
+                       rnn::simple_model::VocaInfo &rnn){
     using namespace rnn::simple_model;
     using namespace rnn::simple_model::detail;
     util::Timer timer{};
@@ -554,6 +556,9 @@ namespace test{
 using namespace rnn::wordrep;
 using namespace rnn::config;
 
+
+
+
 Word operator"" _w (const char* word, size_t /*length*/)
 {
     return Word{word};
@@ -581,6 +586,7 @@ void test_context_node(){
     rnn::simple_model::VocaInfo rnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
     auto rnn_greedy_score = test_rnn_greedy_score(param_rnn1, rnn);
     auto rnn_dp_score = test_rnn_dp_score(param_rnn1, rnn);
+    fmt::print(std::cerr, "Greedy score: {} vs DP score {}\n", rnn_greedy_score, rnn_dp_score);
 
     VocaInfo crnn{"data.h5", "1b.model.voca", "1b.model", util::DataType::sp};
 
@@ -860,11 +866,11 @@ void test_minibatch_crnn(){
     auto get_dp_grad=[&](auto const &sent_pair){
         return get_dp_gradient(rnn, param, lambda, sent_pair);
     };
-    auto score_diff=[&](){
-        auto score_label = parsed_scoring_dataset(rnn, param, testset);
-        auto score_dp= dp_scoring_dataset(rnn, param, lambda, testset);
-        return score_label-score_dp;
-    };
+//    auto score_diff=[&](){
+//        auto score_label = parsed_scoring_dataset(rnn, param, testset);
+//        auto score_dp= dp_scoring_dataset(rnn, param, lambda, testset);
+//        return score_label-score_dp;
+//    };
 
 
     auto beg=testset.val.cbegin();
@@ -905,7 +911,7 @@ void write_to_disk(Param const &param, std::string param_name){
     h5store.writeRawData(H5name{param_name}, param_raw);
 }
 
-void train_crnn(nlohmann::json const &config){
+void train_crnn(util::json_t const &config){
     Logger logger{"crnn", "logs/basic.txt"};
     logger.info("Run CRNN with following config.");
     logger.info(config.dump(4));

@@ -36,7 +36,7 @@ void print(std::vector<std::pair<TK,TV>> const &wcs){
 namespace sent2vec{
 namespace test{
 
-void word_count(util::json_t const &config, std::string corenlp_outputs){
+void word_count(std::string corenlp_outputs){
     Timer timer{};
     //std::unordered_map<VocaIndex,size_t> wc_serial, wc;
     using wcounts_t = std::unordered_map<std::string,size_t>;
@@ -141,9 +141,9 @@ void negative_sampling(){
     }
     std::map<int, int, std::greater<int>> m_inv;
     for(auto const x:m) m_inv[x.second]=x.first;
-    for(auto p : m_inv) {
-        //std::cout << p.second << " " <<word_dist.voca.getWord(p.second).val <<" generated " << p.first << " times\n";
-    }
+//    for(auto p : m_inv) {
+//        std::cout << p.second << " " <<word_dist.voca.getWord(p.second).val <<" generated " << p.first << " times\n";
+//    }
     std::cerr<<"Voca size: "<<word_dist.prob.size()<<std::endl;
 }
 

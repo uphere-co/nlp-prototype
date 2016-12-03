@@ -10,6 +10,7 @@
 #include "wordrep/word_uid.h"
 #include "wordrep/voca.h"
 #include "wordrep/indexes.h"
+#include "wordrep/sentence.h"
 
 namespace util{
 struct VersionedName; //forward declaration.
@@ -25,22 +26,6 @@ struct RawTexts{
     std::string getline(ChunkIndex i) const {return lines[i.val];}
 
     std::vector<std::string> lines;
-};
-
-struct DepParsedTokens; //forward declaration.
-struct Sentence{
-    Sentence() : tokens{nullptr} {}
-    Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
-            : uid{uid}, beg{beg}, end{end}, tokens{tokens} {}
-    DPTokenIndex front() const {return beg;}
-    DPTokenIndex back() const {return end-1;}
-    CharOffset beg_offset() const;
-    CharOffset end_offset() const;
-    SentUID::val_t chrlen() const;
-    SentUID uid;
-    DPTokenIndex beg;
-    DPTokenIndex end;
-    DepParsedTokens const *tokens;
 };
 
 struct Sentences{

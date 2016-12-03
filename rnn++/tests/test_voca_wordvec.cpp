@@ -21,8 +21,6 @@ namespace test{
 
 void test_collecting_new_voca(){
     VocaInfo rnn{file_name, voca_name, w2vmodel_name, w2vmodel_f_type};
-    auto &voca = rnn.voca;
-    auto &word2idx = rnn.word2idx;
     auto &wordvecs = rnn.voca_vecs;
     WordVectors new_words1{};
     WordVectors new_words2{};
