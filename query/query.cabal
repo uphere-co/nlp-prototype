@@ -57,7 +57,7 @@ Executable query
                         monad-loops,
                         network-simple,
                         network-transport,
-                        network-transport-zeromq,
+                        network-transport-uphere,
                         process,
                         scientific,
                         stm,

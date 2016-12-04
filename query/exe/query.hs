@@ -27,8 +27,8 @@ import qualified Data.Map                            as M
 import           Foreign.C.String
 import           Network.HTTP.Types                        (methodGet)
 import           Network.Transport                         (Transport(..))
-import           Network.Transport.ZMQ                     (apiNewEndPoint, createTransport, createTransportExposeInternals, defaultZMQParameters, Hints(..))
-import           Network.Transport.ZMQ.Internal.Types      (TransportInternals(..))
+import           Network.Transport.UpHere    (createTransport,defaultTCPParameters
+                                             ,DualHostPortPair(..))
 import           System.Environment
 import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
@@ -75,13 +75,12 @@ server port = do
 main :: IO ()
 main = do
   port <- getEnv "PORT"
-  let portnum = read port
-      portnum' = portnum+1
-  [host, config] <- getArgs
-  (internals,transport) <- createTransportExposeInternals defaultZMQParameters (B.pack host)
-  let transport' = transport { newEndPoint = apiNewEndPoint Hints { hintsPort = Just portnum'} internals }
-  node <- newLocalNode transport' initRemoteTable
-  
+  let portnum :: Int = read port
+      port' = show (portnum+1)
+  [hostg,hostl,config] <- getArgs
+  let dhpp = DHPP (hostg,port') (hostl,port')
+  Right transport <- createTransport dhpp defaultTCPParameters
+  node <- newLocalNode transport initRemoteTable
   withCString config $ \configfile -> do
     c_query_init configfile
     runProcess node (server port)

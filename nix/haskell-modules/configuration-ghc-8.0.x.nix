@@ -93,5 +93,30 @@ in self: super: {
            description = "Haskell interface to the HDF5 scientific data storage library";
            license = stdenv.lib.licenses.publicDomain;
          }) {};
+      "network-transport-uphere" = self.callPackage
+        ({ mkDerivation, base, binary, bytestring, containers, data-accessor, distributed-process
+         , network, network-simple, network-transport, network-transport-tests, stm, either
+	 , stdenv
+	 }:
+	 mkDerivation {
+	   pname = "network-transport-uphere";
+	   version = "0.0";
+	   src = fetchgit {
+             url = "git://github.com/uphere-co/network-transport-uphere.git";
+             rev = "5f53fb37799ca00de2e575a6ba68781759c58eb4";
+             sha256 = "1vgrp6x5480p9vgk1ci7qydv76r76742inm5mzvqgxsvnyv5hj77";
+	   };
+	   libraryHaskellDepends = [
+	     base bytestring containers data-accessor network network-transport
+	   ];
+	   executableHaskellDepends = [
+	     base binary distributed-process network-simple network-transport either stm
+	   ];
+	   homepage = "http://haskell-distributed.github.com";
+	   description = "UpHere specific network transport";
+	   license = stdenv.lib.licenses.bsd3;
+	   doCheck = false;
+	 }) {};
+
 
     }
