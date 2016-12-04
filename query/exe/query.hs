@@ -79,10 +79,13 @@ main = do
       port' = show (portnum+1)
   [hostg,hostl,config] <- getArgs
   let dhpp = DHPP (hostg,port') (hostl,port')
-  Right transport <- createTransport dhpp defaultTCPParameters
-  node <- newLocalNode transport initRemoteTable
-  withCString config $ \configfile -> do
-    c_query_init configfile
-    runProcess node (server port)
-    c_query_finalize
+  etransport <- createTransport dhpp defaultTCPParameters
+  case etransport of
+    Left err -> hPutStrLn stderr (show err)
+    Right transport -> do
+      node <- newLocalNode transport initRemoteTable
+      withCString config $ \configfile -> do
+        c_query_init configfile
+        runProcess node (server port)
+        c_query_finalize
 
