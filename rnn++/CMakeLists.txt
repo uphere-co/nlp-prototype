@@ -10,6 +10,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gline-tables-only")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pass-failed")  #Disable warning for failing loop vectorization
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-float-equal")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -ftree-vectorize")
@@ -30,6 +32,15 @@ FILE(GLOB etl_files src/data_source/*cpp)
 FILE(GLOB wordrep_files src/wordrep/*cpp)
 FILE(GLOB similarity_files src/similarity/*cpp)
 FILE(GLOB util_files utils/*cpp)
+
+FILE(GLOB test_files tests/*cpp)
+
+add_executable(test_all app/test_all ${test_files}
+        ${rnn_files} ${rnn_simple_model_files}
+        ${similarity_files}
+        ${etl_files} ${util_files} ${wordrep_files})
+target_link_libraries(test_all stdc++fs hdf5_cpp hdf5_hl_cpp lbfgs tbb fmt pqxx dw)
+
 
 add_executable(train_model0 app/train_model0 tests/test_simple_model
                ${rnn_simple_model_files} ${util_files})

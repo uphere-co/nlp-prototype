@@ -2,6 +2,7 @@
 
 #include "utils/math.h"
 #include "utils/base_types.h"
+#include "utils/algorithm.h"
 
 namespace sent2vec  {
 
@@ -17,7 +18,7 @@ UnigramDist::UnigramDist(util::io::H5file const &h5store,
 }
 val_t UnigramDist::get_prob(wordrep::VocaIndex idx) const {
     auto i=idx.val;
-    if(i<0 || i >= prob.size()) return -1.0;
+    if(i<0 || i >= util::to_signed<int64_t>(prob.size())) return -1.0;
     return prob[idx.val];
 }
 

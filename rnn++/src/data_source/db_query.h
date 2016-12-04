@@ -4,7 +4,6 @@
 #include <string>
 
 namespace data {
-namespace ygp {
 
 struct WordOffset {
     using idx_t = int64_t;
@@ -27,19 +26,18 @@ struct PerSentQueryResult {
     using str_t = std::string;
 
     val_t score;
-    std::string result_sent_country;
-    idx_t result_sent_uid;
-    idx_t result_row_uid;
-    idx_t result_row_idx;
-    idx_t result_column_uid;
-    str_t result_table_name;
-    str_t result_column_name;
-    str_t result_index_col_name;
-    WordOffset result_offset;
+    std::string country;
+    idx_t sent_uid;
+    idx_t row_uid;
+    idx_t row_idx;
+    idx_t column_uid;
+    str_t table_name;
+    str_t column_name;
+    str_t index_col_name;
+    WordOffset offset;
     WordOffset highlight_offset;
     WordOffset clip_offset;
     std::vector<ScoreWithOffset> scores_with_offset;
 };
 
-}//namespace data::ygp
 }//namespace data

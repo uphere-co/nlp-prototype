@@ -312,10 +312,10 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     data::ygp::YGPindexer const &db_indexer{
             h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
             config["dep_parsed_prefix"].get<std::string>()};
-    auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
+    //auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
     auto col_uid = db_indexer.column_uid(chunk_idx);
     auto row_idx = db_indexer.row_idx(chunk_idx);
-    std::map<data::ygp::ColumnUID, std::string> uid2col;
+    std::map<data::ColumnUID, std::string> uid2col;
     uid2col[0] = "title";
     uid2col[1] = "summary";
     uid2col[2] = "maintext";

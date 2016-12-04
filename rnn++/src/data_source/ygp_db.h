@@ -5,6 +5,11 @@
 #include <vector>
 #include <utility>
 
+
+#include "data_source/db.h"
+#include "data_source/db_query.h"
+#include "wordrep/dep_parsed.h"
+
 #include "wordrep/indexes.h"
 
 #include "utils/hdf5.h"
@@ -14,15 +19,6 @@
 
 namespace data {
 namespace ygp {
-
-struct TableUIDDummy{};
-using TableUID = util::IntegerLike<TableUIDDummy>;
-struct ColumUIDDummy{};
-using ColumnUID = util::IntegerLike<ColumUIDDummy>;
-struct RowIndexDummy{};
-using RowIndex    = util::IntegerLike<RowIndexDummy>;
-struct RowUIDDummy{};
-using RowUID    = util::IntegerLike<RowUIDDummy>;
 
 struct YGPindexer{
     YGPindexer(util::io::H5file const &file, std::string prefix);

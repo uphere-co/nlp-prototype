@@ -11,8 +11,8 @@ DataType datatype_from_string(std::string const &option){
     else if(option=="int32_t")  return DataType::i32;
     else if(option=="int64_t")  return DataType::i64;
     else if(option=="uint32_t") return DataType::ui32;
-    else if(option=="uint64_t") return DataType::ui64;
-    else assert(0);
+    assert(option=="uint64_t");
+    return DataType::ui64;
 }
 std::string datatype_to_string(DataType type){
     if(type==DataType::sp)        return "float32";
@@ -21,8 +21,8 @@ std::string datatype_to_string(DataType type){
     else if(type==DataType::i32)  return "int32_t";
     else if(type==DataType::i64)  return "int64_t";
     else if(type==DataType::ui32) return "uint32_t";
-    else if(type==DataType::ui64) return "uint64_t";
-    else assert(0);
+    assert(type==DataType::ui64);
+    return "uint64_t";
 }
 
 }//namespace util

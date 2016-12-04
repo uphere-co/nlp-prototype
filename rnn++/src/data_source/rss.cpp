@@ -34,9 +34,6 @@ void write_column_indexes(util::json_t const &config,
                           std::string dumpfile_hashes,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs){
-    using data::ygp::RowIndex;
-    using data::ygp::RowUID;
-    using data::ygp::ColumnUID;
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
@@ -78,10 +75,8 @@ void write_column_indexes(util::json_t const &config,
 }
 
 
-void annotation_on_result(util::json_t const &config, util::json_t &answers,
+void annotation_on_result(util::json_t const &/*config*/, util::json_t &answers,
                           std::string dumpfile_hashes){
-    using data::ygp::ColumnUID;
-    using data::ygp::RowIndex;
     std::map<ColumnUID,std::string> uid2col;
     uid2col[0] = "title";
     uid2col[1] = "summary";
