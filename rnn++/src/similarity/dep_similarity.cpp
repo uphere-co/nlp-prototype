@@ -183,7 +183,8 @@ public:
                     }
                 } else {
                     auto qhead_pidx = maybe_qhead_pidx.value().val;
-                    if(cutoffs[qhead_pidx]<0.4) continue;
+                    //CAUTION: this early stopping assumes tmp =  cutoffs[j] * dependent_score * governor_score*cutoffs[qhead_pidx];
+                    // if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
