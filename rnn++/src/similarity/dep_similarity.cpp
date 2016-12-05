@@ -173,8 +173,8 @@ public:
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
-                auto qhead_pidx = query_sent.tokens->head_pos(tidx).val;
-                if(qhead_pidx<0) {
+                auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
+                if(!maybe_qhead_pidx) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
@@ -182,6 +182,7 @@ public:
                         scores.set(j, tidx, i, score);
                     }
                 } else {
+                    auto qhead_pidx = maybe_qhead_pidx.value().val;
                     if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);

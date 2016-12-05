@@ -7,13 +7,13 @@
 
 #include "utils/profiling.h"
 #include "utils/string.h"
-
+#include "utils/optional.h"
 
 namespace wordrep {
 
 struct DependencyNode {
     DPTokenIndex idx;
-    DependencyNode *governor;
+    std::optional<DependencyNode*> governor;
     std::vector<DependencyNode *> dependents;
 };
 
@@ -41,17 +41,17 @@ void dependency_graph(){
         std::vector<DependencyNode> nodes(sent.size());
         for (auto idx = sent.beg; idx != sent.end; ++idx) {
             auto &node = nodes[tokens.word_pos(idx).val];
-            auto head_pos = tokens.head_pos(idx).val;
-            if(head_pos<0) continue;
-            auto &head = nodes[head_pos];
             node.idx = idx;
+            auto head_pos = tokens.head_pos(idx);
+            if(!head_pos) continue;
+            auto &head = nodes[head_pos.value().val];
             node.governor = &head;
             head.dependents.push_back(&node);
         }
         for(auto const &node : nodes){
             auto uid = tokens.word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} ", wordUIDs[uid]);
-            if(node.governor) fmt::print(std::cerr, "head :{:<15} ", wordUIDs[tokens.word_uid(node.governor->idx)]);
+            if(node.governor) fmt::print(std::cerr, "head : {:<15} ", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", "");
             fmt::print(std::cerr, "child:");
             for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
