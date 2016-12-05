@@ -2,7 +2,7 @@
 , bytestring, conduit, conduit-extra, connection, containers
 , directory, distributed-process, filepath
 , http-client, http-client-tls, http-types, monad-loops, network-simple
-, network-transport-zeromq, process, query-common
+, network-transport-uphere, process, query-common
 , scientific, stdenv, stm, text, transformers
 , unix, unordered-containers, uuid, vector
 
@@ -18,7 +18,7 @@ mkDerivation {
     aeson attoparsec base base64-bytestring binary bytestring conduit
     conduit-extra connection containers directory distributed-process
     filepath http-client http-client-tls http-types monad-loops network-simple
-    network-transport-zeromq process query-common scientific stm text
+    network-transport-uphere process query-common scientific stm text
     transformers unix unordered-containers uuid vector
   ];
   executableSystemDepends = [
