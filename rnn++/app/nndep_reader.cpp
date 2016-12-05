@@ -35,6 +35,7 @@ struct DependencyGraph {
     }
     void iter_child_nodes(Node const &node) const {
         WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
+        //WordImportance word_cutoff{"../rnn++/tests/data/word_importance"};
         fmt::print(std::cerr, "Node : {}.\n", wordUIDs[sent->tokens->word_uid(node.idx)]);
         for(auto child : node.dependents) {
             fmt::print(std::cerr, "visit {} from {}.\n",
@@ -61,6 +62,7 @@ void dependency_graph(){
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
+    WordImportance importance{"../rnn++/tests/data/word_importance"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
@@ -84,7 +86,7 @@ void dependency_graph(){
         }
         for(auto &node : graph.all_nodes()){
             auto uid = tokens.word_uid(node.idx);
-            fmt::print(std::cerr, "{:<15} ", wordUIDs[uid]);
+            fmt::print(std::cerr, "{:<15} {:<5}", wordUIDs[uid], importance.score(uid));
             if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", " ");
             fmt::print(std::cerr, "child: ");
@@ -94,6 +96,8 @@ void dependency_graph(){
         fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
         graph.iter_child_nodes(graph.root_node());
     }
+
+
 }
 
 }//namespace wordrep::test

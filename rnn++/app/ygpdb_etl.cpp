@@ -116,7 +116,7 @@ void word_importance(util::json_t const &config){
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     POSUIDindex const posUIDs{config["pos_uids_dump"].get<std::string>()};
     ArcLabelUIDindex const arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
-    WordImportance word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()},
+    WordImportance word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()},
                                       hdf5::FileMode::read_exist}};
     auto ask = util::load_json("query.unittest.inf_cutoff.corenlp");
     DepParsedTokens query_tokens{};
@@ -127,7 +127,7 @@ void word_importance(util::json_t const &config){
         for(auto idx=sent.beg; idx!=sent.end; ++idx){
             auto wuid = sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
-            auto cutoff = word_cutoff.cutoff(wuid);
+            auto cutoff = word_importance.score(wuid);
             assert(cutoff == 0.0);
         }
     }
