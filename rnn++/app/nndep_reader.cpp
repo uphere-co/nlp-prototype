@@ -1,3 +1,4 @@
+#include <memory>
 #include <fmt/printf.h>
 
 #include "similarity/dep_similarity.h"
@@ -8,13 +9,28 @@
 #include "utils/profiling.h"
 #include "utils/string.h"
 #include "utils/optional.h"
+#include "utils/span.h"
+#include "utils/algorithm.h"
 
 namespace wordrep {
 
-struct DependencyNode {
-    DPTokenIndex idx;
-    std::optional<DependencyNode*> governor;
-    std::vector<DependencyNode *> dependents;
+struct DependencyGraph {
+    struct Node{
+        DPTokenIndex idx;
+        std::optional<Node*> governor;
+        std::vector<Node *> dependents;
+    };
+
+    DependencyGraph(size_t n_nodes)
+            : n_nodes{n_nodes}, nodes(std::make_unique<Node[]>(n_nodes))
+    {}
+
+
+    util::span_dyn<const Node> all_nodes() const {return {nodes.get(), util::to_type<uint32_t>(n_nodes)};} //span_dyn use uint32...
+    Node& root_node() {return nodes[0];}
+
+    size_t const n_nodes;
+    std::unique_ptr<Node[]> const nodes;
 };
 
 }//namespace wordrep;
@@ -38,22 +54,23 @@ void dependency_graph(){
     auto sents = tokens.IndexSentences();
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
-        std::vector<DependencyNode> nodes(sent.size());
+        DependencyGraph graph(sent.size());
         for (auto idx = sent.beg; idx != sent.end; ++idx) {
-            auto &node = nodes[tokens.word_pos(idx).val];
+            auto &node = graph.nodes[tokens.word_pos(idx).val];
             node.idx = idx;
             auto head_pos = tokens.head_pos(idx);
             if(!head_pos) continue;
-            auto &head = nodes[head_pos.value().val];
+            auto &head = graph.nodes[head_pos.value().val];
             node.governor = &head;
             head.dependents.push_back(&node);
+
         }
-        for(auto const &node : nodes){
+        for(auto &node : graph.all_nodes()){
             auto uid = tokens.word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} ", wordUIDs[uid]);
-            if(node.governor) fmt::print(std::cerr, "head : {:<15} ", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
-            else fmt::print(std::cerr, "head :{:<15} ", "");
-            fmt::print(std::cerr, "child:");
+            if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
+            else fmt::print(std::cerr, "head :{:<15} ", " ");
+            fmt::print(std::cerr, "child: ");
             for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
             std::cerr<<std::endl;
         }
@@ -70,7 +87,7 @@ using namespace engine;
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    //auto dumpfile_hashes = argv[3];
+    auto dumpfile_hashes = argv[3];
     wordrep::test::dependency_graph();
     return 0;
 
@@ -81,8 +98,8 @@ int main(int /*argc*/, char** argv){
 
     util::Timer timer{};
 
-    DepSimilaritySearch engine{config};
-    //RSSQueryEngine engine{config};
+//    DepSimilaritySearch engine{config};
+    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
@@ -90,15 +107,15 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
     timer.here_then_reset("Processed a query.");
-    data::ygp::annotation_on_result(config, answers);
+//    data::ygp::annotation_on_result(config, answers);
     timer.here_then_reset("Query output annotation.");
     fmt::print("{}\n", answers.dump(4));
     fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    //data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
-    data::ygp::annotation_on_result(config, chain_answers);
+    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
+//    data::ygp::annotation_on_result(config, chain_answers);
     timer.here_then_reset("A chain query output annotatoin.");
     fmt::print("{}\n", chain_answers.dump(4));
     timer.here_then_reset("Queries are answered.");

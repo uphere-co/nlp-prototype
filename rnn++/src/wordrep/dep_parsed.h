@@ -69,6 +69,7 @@ struct DepParsedTokens{
     CharOffset word_end(DPTokenIndex idx)  const {return words_end[idx.val];}
     VocaIndex  word(DPTokenIndex idx)      const {return words[idx.val];}
     WordPosition word_pos(DPTokenIndex idx)const {return words_pidx[idx.val];}
+    WordUID    head_uid(DPTokenIndex idx)  const {return heads_uid[idx.val];}
     VocaIndex  head_word(DPTokenIndex idx) const {return head_words[idx.val];}
     std::optional<WordPosition> head_pos(DPTokenIndex idx) const {
         auto pos = heads_pidx[idx.val];
