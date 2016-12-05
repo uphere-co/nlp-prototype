@@ -21,16 +21,33 @@ struct DependencyGraph {
         std::vector<Node *> dependents;
     };
 
-    DependencyGraph(size_t n_nodes)
-            : n_nodes{n_nodes}, nodes(std::make_unique<Node[]>(n_nodes))
+    DependencyGraph(Sentence const & sent)
+            : sent{&sent},
+              nodes(std::make_unique<Node[]>(sent.size())),
+              span{nodes.get(), util::to_type<uint32_t>(sent.size())} //span_dyn use uint32...
     {}
 
 
-    util::span_dyn<const Node> all_nodes() const {return {nodes.get(), util::to_type<uint32_t>(n_nodes)};} //span_dyn use uint32...
-    Node& root_node() {return nodes[0];}
+    util::span_dyn<const Node> all_nodes() const {return span;}
+    Node const& root_node() const {
+        auto it=std::find_if_not(span.cbegin(), span.cend(), [](auto x) {return x.governor?true:false;});
+        return *it;
+    }
+    void iter_child_nodes(Node const &node) const {
+        WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
+        fmt::print(std::cerr, "Node : {}.\n", wordUIDs[sent->tokens->word_uid(node.idx)]);
+        for(auto child : node.dependents) {
+            fmt::print(std::cerr, "visit {} from {}.\n",
+                       wordUIDs[sent->tokens->word_uid(child->idx)],
+                       wordUIDs[sent->tokens->word_uid(node.idx)]);
+            iter_child_nodes(*child);
+        }
 
-    size_t const n_nodes;
+    }
+
+    Sentence const* sent;
     std::unique_ptr<Node[]> const nodes;
+    util::span_dyn<const Node> span;
 };
 
 }//namespace wordrep;
@@ -54,7 +71,7 @@ void dependency_graph(){
     auto sents = tokens.IndexSentences();
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
-        DependencyGraph graph(sent.size());
+        DependencyGraph graph{sent};
         for (auto idx = sent.beg; idx != sent.end; ++idx) {
             auto &node = graph.nodes[tokens.word_pos(idx).val];
             node.idx = idx;
@@ -74,7 +91,8 @@ void dependency_graph(){
             for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
             std::cerr<<std::endl;
         }
-        fmt::print(std::cerr, ": {}\n", sent.size());
+        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
+        graph.iter_child_nodes(graph.root_node());
     }
 }
 
