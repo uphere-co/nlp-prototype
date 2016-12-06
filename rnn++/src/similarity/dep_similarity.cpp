@@ -305,8 +305,8 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   ygp_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
               config["dep_parsed_prefix"].get<std::string>()},
   ygpdb_country{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                config["country_uids_dump"].get<std::string>()},
-  country_tagger{config["country_uids_dump"].get<std::string>()}
+                util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname},
+  country_tagger{util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname}
 {}
 
 //TODO: fix it to be thread-safe
