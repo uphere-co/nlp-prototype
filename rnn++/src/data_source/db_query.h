@@ -51,4 +51,9 @@ struct PerSentQueryResult {
     std::vector<ScoreWithOffset> scores_with_offset;
 };
 
+struct QueryResult{
+    QuerySentInfo query;
+    std::vector<PerSentQueryResult> results;
+};
+
 }//namespace data

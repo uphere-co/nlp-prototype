@@ -56,12 +56,12 @@ private:
 
 class QueryResultCache{
 public:
-    using json_t = util::json_t;
-    using data_t = tbb::concurrent_hash_map<wordrep::SentUID,json_t,TBBHashCompare<wordrep::SentUID>>;
+    using result_t = data::QueryResult;
+    using data_t = tbb::concurrent_hash_map<wordrep::SentUID,result_t,TBBHashCompare<wordrep::SentUID>>;
     QueryResultCache() {}
-    void insert(wordrep::SentUID uid, json_t const&result);
-    json_t get(wordrep::SentUID uid) const;
-    json_t find(wordrep::SentUID uid) const;
+    void insert(wordrep::SentUID uid, result_t const&result);
+    result_t get(wordrep::SentUID uid) const;
+    bool find(wordrep::SentUID uid) const;
 private:
     data_t caches;
 };
@@ -103,21 +103,24 @@ struct DepSimilaritySearch {
     using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
+    using output_t = std::vector<data::QueryResult>;
+
     DepSimilaritySearch(json_t const& config);
 
     std::vector<ScoredSentence> process_query_sent(Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
                                                    std::vector<Sentence> const &data_sents) const;
-    json_t process_query_sents(std::vector<Sentence> const &query_sents,
-                               std::vector<std::string> const &countries) const;
-    json_t process_chain_query(std::vector<Sentence> const &query_chain,
-                               std::vector<std::string> const &countries) const;
+    output_t process_query_sents(std::vector<Sentence> const &query_sents,
+                                 std::vector<std::string> const &countries) const;
+    output_t process_chain_query(std::vector<Sentence> const &query_chain,
+                                 std::vector<std::string> const &countries) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(Sentence const &query_sent,
-                        std::vector<ScoredSentence> const &relevant_sents,
-                        int64_t max_clip_len) const;
+    std::vector<data::PerSentQueryResult> write_output(
+            Sentence const &query_sent,
+            std::vector<ScoredSentence> const &relevant_sents,
+            int64_t max_clip_len) const;
 
     voca_info_t voca;
     wordrep::DepParsedTokens const tokens;
@@ -141,19 +144,22 @@ struct RSSQueryEngine {
     using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
+    using output_t = std::vector<data::QueryResult>;
+
     RSSQueryEngine(json_t const& config);
 
     std::vector<ScoredSentence> process_query_sent(Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
                                                    std::vector<Sentence> const &data_sents) const;
-    json_t process_query_sents(std::vector<Sentence> const &query_sents) const;
-    json_t process_chain_query(std::vector<Sentence> const &query_chain) const;
+    output_t process_query_sents(std::vector<Sentence> const &query_sents) const;
+    output_t process_chain_query(std::vector<Sentence> const &query_chain) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(Sentence const &query_sent,
-                        std::vector<ScoredSentence> const &relevant_sents,
-                        int64_t max_clip_len) const;
+    std::vector<data::PerSentQueryResult> write_output(
+            Sentence const &query_sent,
+            std::vector<ScoredSentence> const &relevant_sents,
+            int64_t max_clip_len) const;
 
     voca_info_t voca;
     wordrep::DepParsedTokens const tokens;
