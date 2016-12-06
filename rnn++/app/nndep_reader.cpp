@@ -16,39 +16,60 @@ namespace wordrep {
 
 struct DependencyGraph {
     struct Node{
+        using val_t = double;
+
+        bool is_leaf() const {return !dependents.size();}
+
         DPTokenIndex idx;
         std::optional<Node*> governor;
-        std::vector<Node *> dependents;
+        std::vector<Node*> dependents;
+        val_t weight{};
     };
 
     DependencyGraph(Sentence const & sent)
             : sent{&sent},
               nodes(std::make_unique<Node[]>(sent.size())),
-              span{nodes.get(), util::to_type<uint32_t>(sent.size())} //span_dyn use uint32...
+              span{nodes.get(), util::to_type<uint32_t>(sent.size())}, //span_dyn use uint32...
+              cspan{span}
     {}
 
 
-    util::span_dyn<const Node> all_nodes() const {return span;}
-    Node const& root_node() const {
-        auto it=std::find_if_not(span.cbegin(), span.cend(), [](auto x) {return x.governor?true:false;});
+    util::span_dyn<const Node> all_nodes() const {return cspan;}
+    Node& root_node() {
+        auto it=std::find_if_not(span.begin(), span.end(), [](auto x) {return x.governor?true:false;});
         return *it;
     }
-    void iter_child_nodes(Node const &node) const {
-        WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
-        //WordImportance word_cutoff{"../rnn++/tests/data/word_importance"};
-        fmt::print(std::cerr, "Node : {}.\n", wordUIDs[sent->tokens->word_uid(node.idx)]);
-        for(auto child : node.dependents) {
-            fmt::print(std::cerr, "visit {} from {}.\n",
-                       wordUIDs[sent->tokens->word_uid(child->idx)],
-                       wordUIDs[sent->tokens->word_uid(node.idx)]);
-            iter_child_nodes(*child);
-        }
-
+    Node const& root_node() const {
+        auto it=std::find_if_not(cspan.begin(), cspan.end(), [](auto x) {return x.governor?true:false;});
+        return *it;
     }
+    template<typename T>
+    void iter_subgraph(Node const &node, T const &op) const {
+        op(node);
+        for(auto child : node.dependents) iter_subgraph(*child, op);
+    }
+    template<typename T>
+    void iter_subgraph(Node const &node, std::vector<Node const *> ascents, T const &op) const {
+        op(node, ascents);
+        ascents.push_back(&node);
+        for(auto child : node.dependents) {
+            iter_subgraph(*child, ascents, op);
+        }
+    }
+    template<typename T>
+    void iter_subgraph(Node &node, std::vector<Node *> ascents, T const &op)  {
+        op(node, ascents);
+        ascents.push_back(&node);
+        for(auto child : node.dependents) {
+            iter_subgraph(*child, ascents, op);
+        }
+    }
+
 
     Sentence const* sent;
     std::unique_ptr<Node[]> const nodes;
-    util::span_dyn<const Node> span;
+    util::span_dyn<Node> span;
+    util::span_dyn<const Node> cspan;
 };
 
 }//namespace wordrep;
@@ -86,7 +107,7 @@ void dependency_graph(){
         }
         for(auto &node : graph.all_nodes()){
             auto uid = tokens.word_uid(node.idx);
-            fmt::print(std::cerr, "{:<15} {:<5}", wordUIDs[uid], importance.score(uid));
+            fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
             if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", " ");
             fmt::print(std::cerr, "child: ");
@@ -94,7 +115,26 @@ void dependency_graph(){
             std::cerr<<std::endl;
         }
         fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
-        graph.iter_child_nodes(graph.root_node());
+
+        graph.iter_subgraph(graph.root_node(), {},
+                            [&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
+                                auto uid = graph.sent->tokens->word_uid(node.idx);
+                                auto score = importance.score(uid);
+//                                fmt::print(std::cerr, "{} : {}. ", wordUIDs[uid], score);
+                                node.weight += score;
+                                for (auto ascent : ascents){
+//                                    fmt::print(std::cerr, "{} ",wordUIDs[graph.sent->tokens->word_uid(ascent->idx)]);
+                                    ascent->weight += score;
+                                }
+//                                std::cerr << std::endl;
+                            });
+        for(auto node : graph.all_nodes()){
+            auto uid = graph.sent->tokens->word_uid(node.idx);
+            fmt::print(std::cerr, "Visit node : {:<15}. score : {:<5} {:<5} {:<5}\n",
+                       wordUIDs[uid], importance.score(uid), node.weight,
+                       node.weight/importance.score(uid));
+        }
+
     }
 
 
