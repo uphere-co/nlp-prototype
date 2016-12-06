@@ -254,6 +254,12 @@ util::json_t to_json(std::vector<PerSentQueryResult> const &results){
     return answer;
 }
 
+void annotate_input_info(util::json_t &answer, data::QuerySentInfo const &info){
+    answer["input_offset"]={info.offset.beg,info.offset.end};
+    answer["input_uid"] = info.sent_uid;
+    answer["cutoffs"] = info.cutoffs;
+    answer["words"] = info.words;
+}
 util::json_t to_json(std::vector<data::QueryResult> const &answers){
     util::json_t output{};
     for(auto &answer : answers){
@@ -262,12 +268,6 @@ util::json_t to_json(std::vector<data::QueryResult> const &answers){
         output.push_back(answer_json);
     }
     return output;
-}
-void annotate_input_info(util::json_t &answer, data::QuerySentInfo const &info){
-    answer["input_offset"]={info.offset.beg,info.offset.end};
-    answer["input_uid"] = info.sent_uid;
-    answer["cutoffs"] = info.cutoffs;
-    answer["words"] = info.words;
 }
 
 data::QuerySentInfo construct_query_info(
