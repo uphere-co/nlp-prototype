@@ -12,7 +12,7 @@ struct WordOffset {
 };
 
 struct ScoreWithOffset {
-    using val_t = double;
+    using val_t = float;
     using idx_t = WordOffset::idx_t;
 
     val_t score;
@@ -20,10 +20,21 @@ struct ScoreWithOffset {
     WordOffset matched_word;
 };
 
-struct PerSentQueryResult {
-    using val_t = double;
+struct QuerySentInfo{
+    using val_t = float;
     using idx_t = WordOffset::idx_t;
     using str_t = std::string;
+
+    std::vector<str_t> words;
+    std::vector<val_t> cutoffs;
+    WordOffset offset;
+    idx_t sent_uid;
+};
+
+struct PerSentQueryResult {
+    using val_t = QuerySentInfo::val_t;
+    using idx_t = QuerySentInfo::idx_t;
+    using str_t = QuerySentInfo::str_t;
 
     val_t score;
     std::string country;

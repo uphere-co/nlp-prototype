@@ -99,22 +99,23 @@ struct ScoredSentence{
 };
 
 struct DepSimilaritySearch {
+    using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     DepSimilaritySearch(json_t const& config);
 
-    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
+    std::vector<ScoredSentence> process_query_sent(Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
-                                                   std::vector<wordrep::Sentence> const &data_sents) const;
-    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents,
+                                                   std::vector<Sentence> const &data_sents) const;
+    json_t process_query_sents(std::vector<Sentence> const &query_sents,
                                std::vector<std::string> const &countries) const;
-    json_t process_chain_query(std::vector<wordrep::Sentence> const &query_chain,
+    json_t process_chain_query(std::vector<Sentence> const &query_chain,
                                std::vector<std::string> const &countries) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(wordrep::Sentence const &query_sent,
+    json_t write_output(Sentence const &query_sent,
                         std::vector<ScoredSentence> const &relevant_sents,
                         int64_t max_clip_len) const;
 
@@ -124,7 +125,7 @@ struct DepSimilaritySearch {
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
-    std::vector<wordrep::Sentence> sents;
+    std::vector<Sentence> sents;
     data::ygp::YGPdb const ygpdb;
     data::ygp::YGPindexer const ygp_indexer;
     data::ygp::DBbyCountry const ygpdb_country;
@@ -136,20 +137,21 @@ struct DepSimilaritySearch {
 };
 
 struct RSSQueryEngine {
+    using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     RSSQueryEngine(json_t const& config);
 
-    std::vector<ScoredSentence> process_query_sent(wordrep::Sentence query_sent,
+    std::vector<ScoredSentence> process_query_sent(Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
-                                                   std::vector<wordrep::Sentence> const &data_sents) const;
-    json_t process_query_sents(std::vector<wordrep::Sentence> const &query_sents) const;
-    json_t process_chain_query(std::vector<wordrep::Sentence> const &query_chain) const;
+                                                   std::vector<Sentence> const &data_sents) const;
+    json_t process_query_sents(std::vector<Sentence> const &query_sents) const;
+    json_t process_chain_query(std::vector<Sentence> const &query_chain) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
-    json_t write_output(wordrep::Sentence const &query_sent,
+    json_t write_output(Sentence const &query_sent,
                         std::vector<ScoredSentence> const &relevant_sents,
                         int64_t max_clip_len) const;
 
@@ -159,7 +161,7 @@ struct RSSQueryEngine {
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
-    std::vector<wordrep::Sentence> sents;
+    std::vector<Sentence> sents;
     data::ygp::YGPindexer db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
