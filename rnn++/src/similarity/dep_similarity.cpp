@@ -254,6 +254,15 @@ util::json_t to_json(std::vector<PerSentQueryResult> const &results){
     return answer;
 }
 
+util::json_t to_json(std::vector<data::QueryResult> const &answers){
+    util::json_t output{};
+    for(auto &answer : answers){
+        auto answer_json = to_json(answer.results);
+        annotate_input_info(answer_json, answer.query);
+        output.push_back(answer_json);
+    }
+    return output;
+}
 void annotate_input_info(util::json_t &answer, data::QuerySentInfo const &info){
     answer["input_offset"]={info.offset.beg,info.offset.end};
     answer["input_uid"] = info.sent_uid;
@@ -357,14 +366,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     for(auto country : ask["Countries"]) std::cerr<<country << ", ";
     std::cerr<<std::endl;
     fmt::print("Will process {} user documents\n", query_sents.size());
-    auto answers = process_query_sents(query_sents, countries);
-    json_t output;
-    for(auto &answer : answers){
-        auto answer_json = to_json(answer.results);
-        annotate_input_info(answer_json, answer.query);
-        output.push_back(answer_json);
-    }
-    return output;
+
+    output_t answers = process_query_sents(query_sents, countries);
+    return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
@@ -389,14 +393,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     std::cerr<<std::endl;
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
 
-    auto answers = process_chain_query(query_sents, countries);
-    json_t output;
-    for(auto &answer : answers){
-        auto answer_json = to_json(answer.results);
-        annotate_input_info(answer_json, answer.query);
-        output.push_back(answer_json);
-    }
-    return output;
+    output_t answers = process_chain_query(query_sents, countries);
+    return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
@@ -774,14 +772,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
         query_sents.push_back(sent);
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
-    auto answers = process_query_sents(query_sents);
-    json_t output;
-    for(auto &answer : answers){
-        auto answer_json = to_json(answer.results);
-        annotate_input_info(answer_json, answer.query);
-        output.push_back(answer_json);
-    }
-    return output;
+    output_t answers = process_query_sents(query_sents);
+    return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
@@ -805,14 +797,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    auto answers = process_chain_query(query_sents);
-    json_t output;
-    for(auto &answer : answers){
-        auto answer_json = to_json(answer.results);
-        annotate_input_info(answer_json, answer.query);
-        output.push_back(answer_json);
-    }
-    return output;
+    output_t answers = process_chain_query(query_sents);
+    return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
