@@ -13,11 +13,11 @@ namespace wordrep{
 struct WordImportance{
     using val_t = double;
     WordImportance(util::io::H5file const& stats);
-    val_t ratio(WordUID uid)  const;
-    val_t cutoff(WordUID uid) const;
+    WordImportance(std::string filename);
+    val_t score(WordUID uid) const;
 
-    std::vector<val_t> ratios;
-    std::vector<val_t> cutoffs;
+private:
+    std::vector<val_t> scores;
 };
 
 }//namespace wordrep

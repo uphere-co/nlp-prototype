@@ -123,7 +123,7 @@ struct DepSimilaritySearch {
     wordrep::WordUIDindex const wordUIDs;
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
-    wordrep::WordImportance const word_cutoff;
+    wordrep::WordImportance const word_importance;
     std::vector<wordrep::Sentence> sents;
     data::ygp::YGPdb const ygpdb;
     data::ygp::YGPindexer const ygp_indexer;
@@ -158,7 +158,7 @@ struct RSSQueryEngine {
     wordrep::WordUIDindex const wordUIDs;
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
-    wordrep::WordImportance const word_cutoff;
+    wordrep::WordImportance const word_importance;
     std::vector<wordrep::Sentence> sents;
     data::ygp::YGPindexer db_indexer;
     mutable WordSimCache dists_cache{voca};

@@ -14,7 +14,7 @@ struct IntegerLike{
     IntegerLike() : val{DEFAULT} {}
     IntegerLike(val_t val) : val{val} {}
     static IntegerLike from_unsigned(std::size_t uval){
-        return IntegerLike{util::to_signed<val_t>(uval)};
+        return IntegerLike{util::to_type<val_t>(uval)};
     }
     val_t val;
 };

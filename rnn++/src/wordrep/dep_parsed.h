@@ -6,6 +6,7 @@
 #include "utils/base_types.h"
 #include "utils/json.h"
 #include "utils/persistent_vector.h"
+#include "utils/optional.h"
 
 #include "wordrep/word_uid.h"
 #include "wordrep/voca.h"
@@ -68,8 +69,13 @@ struct DepParsedTokens{
     CharOffset word_end(DPTokenIndex idx)  const {return words_end[idx.val];}
     VocaIndex  word(DPTokenIndex idx)      const {return words[idx.val];}
     WordPosition word_pos(DPTokenIndex idx)const {return words_pidx[idx.val];}
+    WordUID    head_uid(DPTokenIndex idx)  const {return heads_uid[idx.val];}
     VocaIndex  head_word(DPTokenIndex idx) const {return head_words[idx.val];}
-    WordPosition head_pos(DPTokenIndex idx)const {return heads_pidx[idx.val];}
+    std::optional<WordPosition> head_pos(DPTokenIndex idx) const {
+        auto pos = heads_pidx[idx.val];
+        if(pos.val<0) return {};
+        return pos;
+    }
     size_t n_tokens() const { return chunks_idx.size();}
 
 private:

@@ -173,8 +173,8 @@ public:
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
                 auto head_word = sent.tokens->head_word(i);
-                auto qhead_pidx = query_sent.tokens->head_pos(tidx).val;
-                if(qhead_pidx<0) {
+                auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
+                if(!maybe_qhead_pidx) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
@@ -182,7 +182,9 @@ public:
                         scores.set(j, tidx, i, score);
                     }
                 } else {
-                    if(cutoffs[qhead_pidx]<0.4) continue;
+                    auto qhead_pidx = maybe_qhead_pidx.value().val;
+                    //CAUTION: this early stopping assumes tmp =  cutoffs[j] * dependent_score * governor_score*cutoffs[qhead_pidx];
+                    // if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
@@ -230,7 +232,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   wordUIDs{config["word_uids_dump"].get<std::string>()},
   posUIDs{config["pos_uids_dump"].get<std::string>()},
   arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
-  word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
+  word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   ygpdb{config["column_uids_dump"].get<std::string>()},
   ygp_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
@@ -377,7 +379,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_query_sents(
                 auto wuid = query_sent.tokens->word_uid(idx);
                 auto word = wordUIDs[wuid];
                 words.push_back(word);
-                cutoffs.push_back(word_cutoff.cutoff(wuid));
+                cutoffs.push_back(word_importance.score(wuid));
                 auto vuid = voca.indexmap[wuid];
                 if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
                 vidxs.push_back(vuid);
@@ -435,7 +437,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::process_chain_query(
             auto wuid = query_sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
             words.push_back(word);
-            auto cutoff = word_cutoff.cutoff(wuid);
+            auto cutoff = word_importance.score(wuid);
             cutoffs.push_back(cutoff>1.0?0.0:cutoff);
             auto vuid = voca.indexmap[wuid];
             if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
@@ -710,7 +712,7 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
           wordUIDs{config["word_uids_dump"].get<std::string>()},
           posUIDs{config["pos_uids_dump"].get<std::string>()},
           arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
-          word_cutoff{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
+          word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
           sents{tokens.IndexSentences()},
           db_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
                       config["dep_parsed_prefix"].get<std::string>()}
@@ -803,7 +805,7 @@ RSSQueryEngine::json_t RSSQueryEngine::process_query_sents(
                 auto wuid = query_sent.tokens->word_uid(idx);
                 auto word = wordUIDs[wuid];
                 words.push_back(word);
-                cutoffs.push_back(word_cutoff.cutoff(wuid));
+                cutoffs.push_back(word_importance.score(wuid));
                 auto vuid = voca.indexmap[wuid];
                 if(vuid == VocaIndex{}) vuid = voca.indexmap[WordUID{}];
                 vidxs.push_back(vuid);
@@ -859,7 +861,7 @@ RSSQueryEngine::json_t RSSQueryEngine::process_chain_query(
         timer.here_then_reset("Built Similarity caches.");
         auto n = wuids.size();
         for(decltype(n)i=0; i!=n; ++i){
-            auto tmp = word_cutoff.cutoff(wuids[i]);
+            auto tmp = word_importance.score(wuids[i]);
             val_t importance = tmp>1.0?0.0 : tmp;
             auto max_sim = dists_cache.max_similarity(vidxs[i]);
             fmt::print(std::cerr, "{} : {} : importance vs max_sim\n", importance, max_sim);

@@ -1,0 +1,701 @@
+{
+    "queries": [
+        "Earlier this week , Google made the announcement that it would be launching a new operating system called Google Chrome OS ."
+    ], 
+    "max_clip_len": 200, 
+    "sentences": [
+        {
+            "basicDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 6, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "made"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 1, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "Earlier"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 2, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "this"
+                }, 
+                {
+                    "dep": "nmod:tmod", 
+                    "dependent": 3, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "week"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 4, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": ","
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 5, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 7, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "the"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 8, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "announcement"
+                }, 
+                {
+                    "dep": "mark", 
+                    "dependent": 9, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 10, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "it"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 11, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "would"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 12, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "be"
+                }, 
+                {
+                    "dep": "ccomp", 
+                    "dependent": 13, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "launching"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 14, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "a"
+                }, 
+                {
+                    "dep": "amod", 
+                    "dependent": 15, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "new"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 16, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "operating"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 17, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "system"
+                }, 
+                {
+                    "dep": "acl", 
+                    "dependent": 18, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "called"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 19, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 20, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Chrome"
+                }, 
+                {
+                    "dep": "xcomp", 
+                    "dependent": 21, 
+                    "governorGloss": "called", 
+                    "governor": 18, 
+                    "dependentGloss": "OS"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 22, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "index": 0, 
+            "tokens": [
+                {
+                    "index": 1, 
+                    "word": "Earlier", 
+                    "after": " ", 
+                    "pos": "RBR", 
+                    "characterOffsetEnd": 7, 
+                    "characterOffsetBegin": 0, 
+                    "originalText": "Earlier", 
+                    "before": ""
+                }, 
+                {
+                    "index": 2, 
+                    "word": "this", 
+                    "after": " ", 
+                    "pos": "DT", 
+                    "characterOffsetEnd": 12, 
+                    "characterOffsetBegin": 8, 
+                    "originalText": "this", 
+                    "before": " "
+                }, 
+                {
+                    "index": 3, 
+                    "word": "week", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 17, 
+                    "characterOffsetBegin": 13, 
+                    "originalText": "week", 
+                    "before": " "
+                }, 
+                {
+                    "index": 4, 
+                    "word": ",", 
+                    "after": " ", 
+                    "pos": ",", 
+                    "characterOffsetEnd": 19, 
+                    "characterOffsetBegin": 18, 
+                    "originalText": ",", 
+                    "before": " "
+                }, 
+                {
+                    "index": 5, 
+                    "word": "Google", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 26, 
+                    "characterOffsetBegin": 20, 
+                    "originalText": "Google", 
+                    "before": " "
+                }, 
+                {
+                    "index": 6, 
+                    "word": "made", 
+                    "after": " ", 
+                    "pos": "VBD", 
+                    "characterOffsetEnd": 31, 
+                    "characterOffsetBegin": 27, 
+                    "originalText": "made", 
+                    "before": " "
+                }, 
+                {
+                    "index": 7, 
+                    "word": "the", 
+                    "after": " ", 
+                    "pos": "DT", 
+                    "characterOffsetEnd": 35, 
+                    "characterOffsetBegin": 32, 
+                    "originalText": "the", 
+                    "before": " "
+                }, 
+                {
+                    "index": 8, 
+                    "word": "announcement", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 48, 
+                    "characterOffsetBegin": 36, 
+                    "originalText": "announcement", 
+                    "before": " "
+                }, 
+                {
+                    "index": 9, 
+                    "word": "that", 
+                    "after": " ", 
+                    "pos": "IN", 
+                    "characterOffsetEnd": 53, 
+                    "characterOffsetBegin": 49, 
+                    "originalText": "that", 
+                    "before": " "
+                }, 
+                {
+                    "index": 10, 
+                    "word": "it", 
+                    "after": " ", 
+                    "pos": "PRP", 
+                    "characterOffsetEnd": 56, 
+                    "characterOffsetBegin": 54, 
+                    "originalText": "it", 
+                    "before": " "
+                }, 
+                {
+                    "index": 11, 
+                    "word": "would", 
+                    "after": " ", 
+                    "pos": "MD", 
+                    "characterOffsetEnd": 62, 
+                    "characterOffsetBegin": 57, 
+                    "originalText": "would", 
+                    "before": " "
+                }, 
+                {
+                    "index": 12, 
+                    "word": "be", 
+                    "after": " ", 
+                    "pos": "VB", 
+                    "characterOffsetEnd": 65, 
+                    "characterOffsetBegin": 63, 
+                    "originalText": "be", 
+                    "before": " "
+                }, 
+                {
+                    "index": 13, 
+                    "word": "launching", 
+                    "after": " ", 
+                    "pos": "VBG", 
+                    "characterOffsetEnd": 75, 
+                    "characterOffsetBegin": 66, 
+                    "originalText": "launching", 
+                    "before": " "
+                }, 
+                {
+                    "index": 14, 
+                    "word": "a", 
+                    "after": " ", 
+                    "pos": "DT", 
+                    "characterOffsetEnd": 77, 
+                    "characterOffsetBegin": 76, 
+                    "originalText": "a", 
+                    "before": " "
+                }, 
+                {
+                    "index": 15, 
+                    "word": "new", 
+                    "after": " ", 
+                    "pos": "JJ", 
+                    "characterOffsetEnd": 81, 
+                    "characterOffsetBegin": 78, 
+                    "originalText": "new", 
+                    "before": " "
+                }, 
+                {
+                    "index": 16, 
+                    "word": "operating", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 91, 
+                    "characterOffsetBegin": 82, 
+                    "originalText": "operating", 
+                    "before": " "
+                }, 
+                {
+                    "index": 17, 
+                    "word": "system", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 98, 
+                    "characterOffsetBegin": 92, 
+                    "originalText": "system", 
+                    "before": " "
+                }, 
+                {
+                    "index": 18, 
+                    "word": "called", 
+                    "after": " ", 
+                    "pos": "VBN", 
+                    "characterOffsetEnd": 105, 
+                    "characterOffsetBegin": 99, 
+                    "originalText": "called", 
+                    "before": " "
+                }, 
+                {
+                    "index": 19, 
+                    "word": "Google", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 112, 
+                    "characterOffsetBegin": 106, 
+                    "originalText": "Google", 
+                    "before": " "
+                }, 
+                {
+                    "index": 20, 
+                    "word": "Chrome", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 119, 
+                    "characterOffsetBegin": 113, 
+                    "originalText": "Chrome", 
+                    "before": " "
+                }, 
+                {
+                    "index": 21, 
+                    "word": "OS", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 122, 
+                    "characterOffsetBegin": 120, 
+                    "originalText": "OS", 
+                    "before": " "
+                }, 
+                {
+                    "index": 22, 
+                    "word": ".", 
+                    "after": "", 
+                    "pos": ".", 
+                    "characterOffsetEnd": 124, 
+                    "characterOffsetBegin": 123, 
+                    "originalText": ".", 
+                    "before": " "
+                }
+            ], 
+            "enhancedPlusPlusDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 6, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "made"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 1, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "Earlier"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 2, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "this"
+                }, 
+                {
+                    "dep": "nmod:tmod", 
+                    "dependent": 3, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "week"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 4, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": ","
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 5, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 7, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "the"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 8, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "announcement"
+                }, 
+                {
+                    "dep": "mark", 
+                    "dependent": 9, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 10, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "it"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 11, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "would"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 12, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "be"
+                }, 
+                {
+                    "dep": "ccomp", 
+                    "dependent": 13, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "launching"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 14, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "a"
+                }, 
+                {
+                    "dep": "amod", 
+                    "dependent": 15, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "new"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 16, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "operating"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 17, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "system"
+                }, 
+                {
+                    "dep": "acl", 
+                    "dependent": 18, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "called"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 19, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 20, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Chrome"
+                }, 
+                {
+                    "dep": "xcomp", 
+                    "dependent": 21, 
+                    "governorGloss": "called", 
+                    "governor": 18, 
+                    "dependentGloss": "OS"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 22, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "enhancedDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 6, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "made"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 1, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "Earlier"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 2, 
+                    "governorGloss": "week", 
+                    "governor": 3, 
+                    "dependentGloss": "this"
+                }, 
+                {
+                    "dep": "nmod:tmod", 
+                    "dependent": 3, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "week"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 4, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": ","
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 5, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 7, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "the"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 8, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "announcement"
+                }, 
+                {
+                    "dep": "mark", 
+                    "dependent": 9, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 10, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "it"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 11, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "would"
+                }, 
+                {
+                    "dep": "aux", 
+                    "dependent": 12, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "be"
+                }, 
+                {
+                    "dep": "ccomp", 
+                    "dependent": 13, 
+                    "governorGloss": "announcement", 
+                    "governor": 8, 
+                    "dependentGloss": "launching"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 14, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "a"
+                }, 
+                {
+                    "dep": "amod", 
+                    "dependent": 15, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "new"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 16, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "operating"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 17, 
+                    "governorGloss": "launching", 
+                    "governor": 13, 
+                    "dependentGloss": "system"
+                }, 
+                {
+                    "dep": "acl", 
+                    "dependent": 18, 
+                    "governorGloss": "system", 
+                    "governor": 17, 
+                    "dependentGloss": "called"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 19, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 20, 
+                    "governorGloss": "OS", 
+                    "governor": 21, 
+                    "dependentGloss": "Chrome"
+                }, 
+                {
+                    "dep": "xcomp", 
+                    "dependent": 21, 
+                    "governorGloss": "called", 
+                    "governor": 18, 
+                    "dependentGloss": "OS"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 22, 
+                    "governorGloss": "made", 
+                    "governor": 6, 
+                    "dependentGloss": "."
+                }
+            ]
+        }
+    ]
+}

@@ -32,9 +32,19 @@ auto zip(T1 const &x, T2 const &y, T3 const &z) {
 }
 
 
+template<typename T, typename OP>
+auto map(T const &elms, OP const &op){
+    using TV = typename T::value_type;
+    using TM = typename std::result_of<OP(TV)>::type;
+    std::vector<TM> vals;
+    for(auto const &elm : elms) vals.push_back(op(elm));
+    return vals;
+};
+
 template<typename T>
-T to_signed(size_t uval){
+T to_type(size_t uval){
     assert(uval <std::numeric_limits<T>::max());
+
     return static_cast<T>(uval);
 }
 
