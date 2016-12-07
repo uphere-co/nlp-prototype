@@ -339,26 +339,11 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
 }//namespace data::rss
 }//namespace data
 
-int main(int /*argc*/, char** argv){
+int process_rss_dump(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
-//    data::ygp::test::ygpdb_indexing(config);
-//    data::ygp::test::country_annotator(config);
-//    data::ygp::test::country_code(config);
-//    test::word_importance(config);
-//    test::unicode_conversion();
-//    test::persistent_vector_float();
-//    test::persistent_vector_WordUID();
-//    test::filesystem(config);
-//    return 0;
-
     auto row_files = argv[2];
     auto hashes = argv[3];
-    data::rss::test::rss_indexing(config, hashes);
-    return 0;
 
-//    data::ygp::dump_psql(col_uids);
-//    parse_textfile(dump_files);
-//    return 0;
     data::CoreNLPoutputParser dump_parser{config};
 
     auto json_dumps = util::string::readlines(row_files);
@@ -372,8 +357,49 @@ int main(int /*argc*/, char** argv){
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
     data::rss::write_column_indexes(config, hashes, row_files, idxs);
-//    data::ygp::write_column_indexes(config, dump_files);
-//    data::ygp::write_country_code(config);
+    return 0;
+}
+int process_ygp_dump(int /*argc*/, char** argv){
+    auto config = util::load_json(argv[1]);
+    auto dump_files = argv[2];
+
+    data::CoreNLPoutputParser dump_parser{config};
+
+    auto json_dumps = util::string::readlines(dump_files);
+    data::parallel_load_jsons(json_dumps, dump_parser);
+    auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    auto tokens = dump_parser.get(prefix);
+    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
+                                               DepParsedTokens::major_version, 0};
+    tokens.write_to_disk(output_filename.fullname);
+    data::ygp::write_column_indexes(config, dump_files);
+    auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
+                                                   DepParsedTokens::major_version, 0};
+    data::ygp::write_country_code(config);
+    return 0;
+}
+int main(int argc, char** argv){
+    auto config = util::load_json(argv[1]);
+//    data::ygp::test::ygpdb_indexing(config);
+//    data::ygp::test::country_annotator(config);
+//    data::ygp::test::country_code(config);
+//    test::word_importance(config);
+//    test::unicode_conversion();
+//    test::persistent_vector_float();
+//    test::persistent_vector_WordUID();
+//    test::filesystem(config);
+//    return 0;
+
+//    auto row_files = argv[2];
+//    auto hashes = argv[3];
+//    data::rss::test::rss_indexing(config, hashes);
+//    return 0;
+
+//    process_rss_dump(argc, argv);
+    process_ygp_dump(argc,argv);
+
+//    data::ygp::dump_psql(col_uids);
+//    parse_textfile(dump_files);
     return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
