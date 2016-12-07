@@ -19,6 +19,10 @@ struct DependencyGraph {
         using val_t = double;
 
         bool is_leaf() const {return !dependents.size();}
+        std::optional<DPTokenIndex> head_idx() const {
+            if(governor) return governor.value()->idx;
+            return {};
+        }
 
         DPTokenIndex idx;
         std::optional<Node*> governor;
@@ -71,6 +75,8 @@ struct DependencyGraph {
     util::span_dyn<const Node> cspan;
 };
 
+
+
 }//namespace wordrep;
 
 namespace wordrep{
@@ -116,7 +122,16 @@ void dependency_graph(){
         fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
 
         std::map<DPTokenIndex, double> scores;
-        graph.iter_subgraph(graph.root_node(), {},
+        auto connection_fragility =[&graph, &importance, &scores](DependencyGraph::Node const &node){
+            auto self_weight_sum = scores[node.idx];
+            auto uid = graph.sent->tokens->word_uid(node.idx);
+            auto self_weight     = importance.score(uid);
+            auto head_weight_sum = scores[node.head_idx().value_or(-1)] - self_weight;
+            return self_weight_sum*head_weight_sum / self_weight;
+        };
+
+
+            graph.iter_subgraph(graph.root_node(), {},
                             [&scores,&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
                                 auto uid = graph.sent->tokens->word_uid(node.idx);
                                 auto score = importance.score(uid);
@@ -130,15 +145,16 @@ void dependency_graph(){
                             });
         for(auto node : graph.all_nodes()){
             auto uid = graph.sent->tokens->word_uid(node.idx);
-            fmt::print(std::cerr, "Visit node : {:<15}. score : {:<5} {:<5} {:<5}\n",
-                       wordUIDs[uid], importance.score(uid), scores[node.idx],
-                       scores[node.idx]/importance.score(uid));
+            fmt::print(std::cerr, "Visit node : {:<15}. score : {:<7} {:<7} {:<7} {:<7}   {:<7}\n",
+                       wordUIDs[uid], importance.score(uid),
+                       scores[node.idx],
+                       scores[node.head_idx().value_or(-1)],
+                       scores[node.idx]/importance.score(uid),
+                       connection_fragility(node));
         }
-
     }
-
-
 }
+
 
 }//namespace wordrep::test
 }//namespace wordrep
