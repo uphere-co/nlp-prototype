@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include <set>
+#include <utils/versioned_name.h>
 
 #include "pqxx/pqxx"
 #include "fmt/printf.h"
@@ -125,13 +126,14 @@ void write_country_code(util::json_t const &config) {
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
 
-    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
+                                               DepParsedTokens::major_version, 0}.fullname;
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
 
     ygp::CountryColumn table2country_code{};
 
-    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},hdf5::FileMode::rw_exist};
+    H5file ygp_h5store{H5name{output_filename},hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
@@ -176,7 +178,9 @@ void write_country_code(util::json_t const &config) {
         }
     }
 
-    std::ofstream country_list{config["country_uids_dump"].get<std::string>()};
+    auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
+                                                   DepParsedTokens::major_version, 0}.fullname;
+    std::ofstream country_list{country_output_name};
     for(auto x : rows_by_country) country_list << x.first << std::endl;
     for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
     for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
@@ -197,7 +201,8 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
 
 void write_column_indexes(util::json_t const &config,
                           std::string corenlp_outputs){
-    auto output_filename = config["dep_parsed_store"].get<std::string>();
+    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
+                                               DepParsedTokens::major_version, 0}.fullname;
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
 
     std::vector<ColumnUID> col_uids;
