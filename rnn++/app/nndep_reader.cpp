@@ -24,6 +24,12 @@ struct DependencyGraph {
             return {};
         }
 
+        Node const& root_node() const {
+            auto node = this;
+            while(node->governor) node = node->governor.value();
+            return *node;
+        }
+
         DPTokenIndex idx;
         std::optional<Node*> governor;
         std::vector<Node*> dependents;
@@ -33,19 +39,22 @@ struct DependencyGraph {
             : sent{&sent},
               nodes(std::make_unique<Node[]>(sent.size())),
               span{nodes.get(), util::to_type<uint32_t>(sent.size())}, //span_dyn use uint32...
-              cspan{span}
-    {}
+              cspan{span} {
+        for (auto idx = sent.beg; idx != sent.end; ++idx) {
+            auto &node = nodes[sent.tokens->word_pos(idx).val];
+            node.idx = idx;
+            auto head_pos = sent.tokens->head_pos(idx);
+            if(!head_pos) continue;
+            auto &head = nodes[head_pos.value().val];
+            node.governor = &head;
+            head.dependents.push_back(&node);
+        }
+    }
 
 
+    Node const& front() const {return nodes[0];};
     util::span_dyn<const Node> all_nodes() const {return cspan;}
-    Node& root_node() {
-        auto it=std::find_if_not(span.begin(), span.end(), [](auto x) {return x.governor?true:false;});
-        return *it;
-    }
-    Node const& root_node() const {
-        auto it=std::find_if_not(cspan.begin(), cspan.end(), [](auto x) {return x.governor?true:false;});
-        return *it;
-    }
+
     template<typename T>
     void iter_subgraph(Node const &node, T const &op) const {
         op(node);
@@ -55,19 +64,8 @@ struct DependencyGraph {
     void iter_subgraph(Node const &node, std::vector<Node const *> ascents, T const &op) const {
         op(node, ascents);
         ascents.push_back(&node);
-        for(auto child : node.dependents) {
-            iter_subgraph(*child, ascents, op);
-        }
+        for(auto child : node.dependents) iter_subgraph(*child, ascents, op);
     }
-    template<typename T>
-    void iter_subgraph(Node &node, std::vector<Node *> ascents, T const &op)  {
-        op(node, ascents);
-        ascents.push_back(&node);
-        for(auto child : node.dependents) {
-            iter_subgraph(*child, ascents, op);
-        }
-    }
-
 
     Sentence const* sent;
     std::unique_ptr<Node[]> const nodes;
@@ -100,16 +98,6 @@ void dependency_graph(){
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
         DependencyGraph graph{sent};
-        for (auto idx = sent.beg; idx != sent.end; ++idx) {
-            auto &node = graph.nodes[tokens.word_pos(idx).val];
-            node.idx = idx;
-            auto head_pos = tokens.head_pos(idx);
-            if(!head_pos) continue;
-            auto &head = graph.nodes[head_pos.value().val];
-            node.governor = &head;
-            head.dependents.push_back(&node);
-
-        }
         for(auto &node : graph.all_nodes()){
             auto uid = tokens.word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
@@ -119,7 +107,7 @@ void dependency_graph(){
             for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
             std::cerr<<std::endl;
         }
-        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
+        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.front().root_node().idx)]);
 
         std::map<DPTokenIndex, double> scores;
         auto connection_fragility =[&graph, &importance, &scores](DependencyGraph::Node const &node){
@@ -131,7 +119,7 @@ void dependency_graph(){
         };
 
 
-            graph.iter_subgraph(graph.root_node(), {},
+            graph.iter_subgraph(graph.front().root_node(), {},
                             [&scores,&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
                                 auto uid = graph.sent->tokens->word_uid(node.idx);
                                 auto score = importance.score(uid);
