@@ -23,7 +23,6 @@ struct DependencyGraph {
         DPTokenIndex idx;
         std::optional<Node*> governor;
         std::vector<Node*> dependents;
-        val_t weight{};
     };
 
     DependencyGraph(Sentence const & sent)
@@ -116,23 +115,24 @@ void dependency_graph(){
         }
         fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
 
+        std::map<DPTokenIndex, double> scores;
         graph.iter_subgraph(graph.root_node(), {},
-                            [&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
+                            [&scores,&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
                                 auto uid = graph.sent->tokens->word_uid(node.idx);
                                 auto score = importance.score(uid);
 //                                fmt::print(std::cerr, "{} : {}. ", wordUIDs[uid], score);
-                                node.weight += score;
+                                scores[node.idx] += score;
                                 for (auto ascent : ascents){
 //                                    fmt::print(std::cerr, "{} ",wordUIDs[graph.sent->tokens->word_uid(ascent->idx)]);
-                                    ascent->weight += score;
+                                    scores[ascent->idx] += score;
                                 }
 //                                std::cerr << std::endl;
                             });
         for(auto node : graph.all_nodes()){
             auto uid = graph.sent->tokens->word_uid(node.idx);
             fmt::print(std::cerr, "Visit node : {:<15}. score : {:<5} {:<5} {:<5}\n",
-                       wordUIDs[uid], importance.score(uid), node.weight,
-                       node.weight/importance.score(uid));
+                       wordUIDs[uid], importance.score(uid), scores[node.idx],
+                       scores[node.idx]/importance.score(uid));
         }
 
     }
@@ -150,8 +150,8 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
     auto dumpfile_hashes = argv[3];
-//    wordrep::test::dependency_graph();
-//    return 0;
+    wordrep::test::dependency_graph();
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
