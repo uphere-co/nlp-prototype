@@ -123,21 +123,23 @@ struct DepSimilaritySearch {
             std::vector<ScoredSentence> const &relevant_sents,
             int64_t max_clip_len) const;
 
-    voca_info_t voca;
+    voca_info_t const voca;
     wordrep::DepParsedTokens const tokens;
     wordrep::WordUIDindex const wordUIDs;
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
-    std::vector<Sentence> sents;
-    wordrep::Sentences uid2sent;
+    std::vector<Sentence> const sents;
+    wordrep::Sentences const uid2sent;
     data::ygp::YGPdb const ygpdb;
     data::ygp::YGPindexer const ygp_indexer;
     data::ygp::DBbyCountry const ygpdb_country;
-    data::ygp::CountryCodeAnnotator country_tagger;
+    data::ygp::CountryCodeAnnotator const country_tagger;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
+    std::vector<Sentence> queries_sents{};
+    wordrep::Sentences uid2query_sent{};
     std::mutex query_tokens_update;
 };
 
@@ -163,18 +165,20 @@ struct RSSQueryEngine {
             std::vector<ScoredSentence> const &relevant_sents,
             int64_t max_clip_len) const;
 
-    voca_info_t voca;
+    voca_info_t const voca;
     wordrep::DepParsedTokens const tokens;
     wordrep::WordUIDindex const wordUIDs;
     wordrep::POSUIDindex const posUIDs;
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
-    std::vector<Sentence> sents;
-    wordrep::Sentences uid2sent;
-    data::ygp::YGPindexer db_indexer;
+    std::vector<Sentence> const sents;
+    wordrep::Sentences const uid2sent;
+    data::ygp::YGPindexer const db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};
+    std::vector<Sentence> queries_sents{};
+    wordrep::Sentences uid2query_sent{};
     std::mutex query_tokens_update;
 };
 }//namespace engine

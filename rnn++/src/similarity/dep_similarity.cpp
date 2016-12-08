@@ -326,11 +326,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{ask});
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    auto sents = query_tokens.IndexSentences();
-    Sentences uid2sent{sents};
+    queries_sents = query_tokens.IndexSentences();
+    uid2query_sent.add(queries_sents);
+
     json_t answer{};
     std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    for(auto uid :uids ) if(uid2query_sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     auto found_countries = country_tagger.tag(ask["query_str"]);
@@ -366,14 +367,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     if (!YGPQuery::is_valid(ask)) return json_t{};
     YGPQuery query{ask};
     std::vector<Sentence> query_sents{};
-    //TODO: fix it to be incremental
-    auto qsents = query_tokens.IndexSentences();
     for(auto uid : query.uids){
-        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==qsents.cend()) continue;
-        auto sent = *it;
-        query_sents.push_back(sent);
+        auto sent = uid2query_sent.find(uid);
+        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) continue;
+        query_sents.push_back(sent.value());
     }
     fmt::print("Will process {} user documents\n", query_sents.size());
 
@@ -397,14 +395,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     if (!Query::is_valid(ask)) return json_t{};
     YGPQuery query{ask};
     std::vector<Sentence> query_sents{};
-    //TODO: fix it to be incremental
-    auto qsents = query_tokens.IndexSentences();
     for(auto uid : query.uids){
-        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==qsents.cend()) continue;
-        auto sent = *it;
-        query_sents.push_back(sent);
+        auto sent = uid2query_sent.find(uid);
+        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) continue;
+        query_sents.push_back(sent.value());
     }
     std::cerr<<"Find for a query in DB of : ";
     for(auto const &country : query.countries) std::cerr<<country << ", ";
@@ -749,11 +744,12 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{ask});
     query_tokens.build_voca_index(voca.indexmap);
     auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    auto sents = query_tokens.IndexSentences();
-    Sentences uid2sent{sents};
+    queries_sents = query_tokens.IndexSentences();
+    uid2query_sent.add(queries_sents);
+
     json_t answer{};
     std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    for(auto uid :uids ) if(uid2query_sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     return answer;
@@ -763,14 +759,11 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
-    //TODO: fix it to be incremental
-    auto qsents = query_tokens.IndexSentences();
     for(auto uid : query.uids){
-        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==qsents.cend()) continue;
-        auto sent = *it;
-        query_sents.push_back(sent);
+        auto sent = uid2query_sent.find(uid);
+        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) continue;
+        query_sents.push_back(sent.value());
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
     output_t answers = process_query_sents(query_sents);
@@ -783,14 +776,11 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     if (!Query::is_valid(ask)) return json_t{};
     Query query{ask};
     std::vector<Sentence> query_sents{};
-    //TODO: fix it to be incremental
-    auto qsents = query_tokens.IndexSentences();
     for(auto uid : query.uids){
-        auto it = std::find_if(sents.cbegin(), sents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==sents.cend()) it=std::find_if(qsents.cbegin(), qsents.cend(), [uid](auto sent){return sent.uid==uid;});
-        if(it==qsents.cend()) continue;
-        auto sent = *it;
-        query_sents.push_back(sent);
+        auto sent = uid2query_sent.find(uid);
+        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) continue;
+        query_sents.push_back(sent.value());
     }
     std::vector<val_t> cutoffs;
     if(ask.find("cutoffs")!=ask.cend()){
