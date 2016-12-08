@@ -69,13 +69,14 @@ private:
 
 struct DepSearchScore{
     using val_t = WordSimCache::val_t;
+    using DPTokenIndex = wordrep::DPTokenIndex;
     DepSearchScore(size_t len) : idxs_lhs(len),idxs_rhs(len), scores(len) {}
-    void set(size_t j, wordrep::DPTokenIndex idx_lhs, wordrep::DPTokenIndex idx_rhs, val_t score){
+    void set(size_t j, DPTokenIndex idx_lhs, DPTokenIndex idx_rhs, val_t score){
         scores[j]=score;
         idxs_lhs[j]=idx_lhs;
         idxs_rhs[j]=idx_rhs;
     }
-    std::vector<std::pair<wordrep::DPTokenIndex,val_t>> scores_with_idx() const {
+    std::vector<std::pair<DPTokenIndex,val_t>> scores_with_idx() const {
         return util::zip(idxs_rhs, scores);
     };
     auto serialize() const {
@@ -83,8 +84,8 @@ struct DepSearchScore{
     };
     val_t score_sum() const;
 private:
-    std::vector<wordrep::DPTokenIndex> idxs_lhs;
-    std::vector<wordrep::DPTokenIndex> idxs_rhs;
+    std::vector<DPTokenIndex> idxs_lhs;
+    std::vector<DPTokenIndex> idxs_rhs;
     std::vector<val_t> scores;
 };
 
@@ -111,9 +112,9 @@ struct DepSimilaritySearch {
                                                    std::vector<val_t> const &cutoffs,
                                                    std::vector<Sentence> const &data_sents) const;
     output_t process_query_sents(std::vector<Sentence> const &query_sents,
-                                 std::vector<std::string> const &countries) const;
+                                 std::vector<Sentence> const &candidate_sents) const;
     output_t process_chain_query(std::vector<Sentence> const &query_chain,
-                                 std::vector<std::string> const &countries) const;
+                                 std::vector<Sentence> candidate_sents) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
@@ -129,6 +130,7 @@ struct DepSimilaritySearch {
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> sents;
+    wordrep::Sentences uid2sent;
     data::ygp::YGPdb const ygpdb;
     data::ygp::YGPindexer const ygp_indexer;
     data::ygp::DBbyCountry const ygpdb_country;
@@ -168,6 +170,7 @@ struct RSSQueryEngine {
     wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> sents;
+    wordrep::Sentences uid2sent;
     data::ygp::YGPindexer db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};

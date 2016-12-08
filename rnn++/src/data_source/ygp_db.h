@@ -48,12 +48,18 @@ private:
     std::map<std::string, std::vector<std::string>> codes;
 };
 
+
 struct DBbyCountry{
     DBbyCountry(util::io::H5file const &file, std::string country_list);
-    std::vector<wordrep::SentUID> sents(std::string country) const {
+    std::vector<wordrep::SentUID> sents(std::string const& country) const {
         auto it=sents_by_country.find(country);
         if(it==sents_by_country.cend()) return {};
         return it->second.get();
+    }
+    std::vector<wordrep::SentUID> sents(std::vector<std::string> const& countries) const {
+        std::vector<wordrep::SentUID> uids;
+        for(auto country : countries) append(uids, sents(country));
+        return uids;
     }
     std::string get_country(wordrep::SentUID uid) const{
         for(auto it : sents_by_country){
