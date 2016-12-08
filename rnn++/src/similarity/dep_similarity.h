@@ -155,8 +155,10 @@ struct RSSQueryEngine {
     std::vector<ScoredSentence> process_query_sent(Sentence query_sent,
                                                    std::vector<val_t> const &cutoffs,
                                                    std::vector<Sentence> const &data_sents) const;
-    output_t process_query_sents(std::vector<Sentence> const &query_sents) const;
-    output_t process_chain_query(std::vector<Sentence> const &query_chain) const;
+    output_t process_query_sents(std::vector<Sentence> const &query_sents,
+                                 std::vector<Sentence> candidate_sents) const;
+    output_t process_chain_query(std::vector<Sentence> const &query,
+                                 std::vector<Sentence> candidate_sents) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;

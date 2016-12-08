@@ -642,7 +642,6 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
     auto max_clip_len = 200;
     util::Timer timer{};
 
-    Sentences uid2sent{sents};
     output_t output{};
     std::vector<data::QuerySentInfo> query_info;
     for(auto const &query_sent : query_chain){
@@ -670,7 +669,6 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
             auto sent = scored_sent.sent;
-//            candidate_sents.push_back(sent);
             auto uids = sent.tokens->sentences_in_chunk(sent);
             for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
             //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
@@ -682,7 +680,6 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
     }
     return output;
 }
-
 
 std::vector<ScoredSentence>
 DepSimilaritySearch::process_query_sent(Sentence query_sent,
@@ -771,7 +768,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
         query_sents.push_back(sent.value());
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
-    output_t answers = process_query_sents(query_sents);
+    output_t answers = process_query_sents(query_sents, sents);
     return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
@@ -793,19 +790,19 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    output_t answers = process_chain_query(query_sents);
+    output_t answers = process_chain_query(query_sents, sents);
     return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
 RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
-        std::vector<wordrep::Sentence> const &query_sents) const {
+        std::vector<wordrep::Sentence> const &query_sents,
+        std::vector<Sentence> candidate_sents) const {
     auto max_clip_len = 200;
     tbb::concurrent_vector<data::QueryResult> answers;
     tbb::task_group g;
     util::Timer timer{};
 
-    std::vector<Sentence> candidate_sents=sents;
     for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
         g.run([&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
@@ -838,11 +835,10 @@ RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
 }
 
 RSSQueryEngine::output_t RSSQueryEngine::process_chain_query(
-        std::vector<wordrep::Sentence> const &query_chain) const {
+        std::vector<wordrep::Sentence> const &query_chain,
+        std::vector<Sentence> candidate_sents) const {
     auto max_clip_len = 200;
     util::Timer timer{};
-    Sentences uid2sent{sents};
-    std::vector<Sentence> candidate_sents=sents;
 
     output_t output{};
     for(auto const &query_sent : query_chain){
@@ -881,7 +877,8 @@ RSSQueryEngine::output_t RSSQueryEngine::process_chain_query(
         for(auto scored_sent : relevant_sents){
             if(scored_sent.score < score_cutoff) continue;
             auto sent = scored_sent.sent;
-//            candidate_sents.push_back(sent);
+            //TODO: release following assumption that candidate_sents are only from dataset, not queries_sents.
+            //TODO: fix inefficienty; collecting all uids first.
             auto uids = sent.tokens->sentences_in_chunk(sent);
             for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
             //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
