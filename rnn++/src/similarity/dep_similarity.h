@@ -165,6 +165,7 @@ struct RSSQueryEngine {
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
     json_t ask_query_stats(json_t const &ask) const;
+    json_t ask_sents_content(json_t const &ask) const;
     std::vector<data::PerSentQueryResult> write_output(
             Sentence const &query_sent,
             std::vector<ScoredSentence> const &relevant_sents,

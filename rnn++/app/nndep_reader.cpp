@@ -239,6 +239,10 @@ int main(int /*argc*/, char** argv){
     timer.here_then_reset("Processed a stats query.");
     data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
     fmt::print("{}\n", answer.dump(4));
+    util::json_t tmp;
+    for(int64_t uid : answer["stats"]["start-up"]["start-up"]) tmp["sents"].push_back(uid);
+    auto content = engine.ask_sents_content(tmp);
+    fmt::print("{}\n", content.dump(4));
     timer.here_then_reset("Queries are answered.");
 
     return 0;

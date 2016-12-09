@@ -6,6 +6,7 @@
 #include "data_source/db_query.h"
 #include "data_source/ygp_db.h"
 #include "data_source/db.h"
+#include "data_source/rss.h"
 
 #include "similarity/dep_similarity.h"
 #include "similarity/similarity_measure.h"
@@ -872,7 +873,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         auto quid = pair.first;
         for(auto elm : pair.second){
             auto muid = elm.first;
-            per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
+            for(auto uid : results_by_match[quid][muid]) per_qword[wordUIDs[muid]].push_back(uid.val);
+            //per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
             fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
                        wordUIDs[quid], wordUIDs[muid], elm.second);
         }
@@ -887,6 +889,35 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
     output["stats"]=stats_output;
     return output;
 }
+
+RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t const &ask) const{
+    std::map<data::ColumnUID,std::string> uid2col;
+    uid2col[0] = "title";
+    uid2col[1] = "summary";
+    uid2col[2] = "maintext";
+
+    json_t output{};
+    for(int64_t uid : ask["sents"]) {
+        auto sent = uid2sent[SentUID{uid}];
+        auto chunk_idx = tokens.chunk_idx(sent.beg);
+        auto col_uid = db_indexer.column_uid(chunk_idx);
+        auto row_idx = db_indexer.row_idx(chunk_idx);
+
+        data::rss::HashIndexer hash2idx{"/home/jihuni/word2vec/nyt/nyt.raw"};
+        auto hash = hash2idx.hash(data::rss::HashIndex{row_idx.val});
+        auto column = uid2col.at(col_uid);
+
+        auto offset_beg = sent.beg_offset().val;
+        auto offset_end = sent.end_offset().val;
+
+        auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
+        auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
+        output["sents"].push_back(substr);
+    };
+    return output;
+
+}
+
 RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents,
         std::vector<Sentence> candidate_sents) const {
