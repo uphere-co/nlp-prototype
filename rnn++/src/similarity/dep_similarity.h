@@ -157,8 +157,10 @@ struct RSSQueryEngine {
                                                    std::vector<Sentence> const &data_sents) const;
     output_t process_query_sents(std::vector<Sentence> const &query_sents,
                                  std::vector<Sentence> candidate_sents) const;
-    output_t process_chain_query(std::vector<Sentence> const &query,
-                                 std::vector<Sentence> candidate_sents) const;
+    template<typename OP1>
+    void process_chain_query(std::vector<Sentence> const &query,
+                                 std::vector<Sentence> candidate_sents,
+                                 OP1 const& op_per_sent) const;
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;

@@ -774,6 +774,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
 RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!Query::is_valid(ask)) return json_t{};
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+
     Query query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
@@ -788,9 +790,52 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
-    output_t answers = process_chain_query(query_sents, sents);
+
+    std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> stats;
+    auto collect_result_stats = [&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
+        for(auto const &scored_sent : relevant_sents){
+            for(auto elm : scored_sent.scores.serialize()){
+                auto word_query = query_sent.tokens->word_uid(std::get<0>(elm));
+                auto word_matched = scored_sent.sent.tokens->word_uid(std::get<1>(elm));
+                auto score = std::get<2>(elm);
+                if(score>0.7) stats[word_query][word_matched].push_back(scored_sent.sent.uid);
+            }
+        }
+    };
+    output_t answers{};
+    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+        for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
+            fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
+        }
+        std::cerr<<std::endl;
+
+        data::QueryResult answer;
+        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.query = query_sent_info;
+        answers.push_back(answer);
+    };
+    auto op_per_sent=[&collect_result_stats,collect_query_result](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+        collect_result_stats(query_sent,query_sent_info, relevant_sents);
+        collect_query_result(query_sent,query_sent_info, relevant_sents);
+    };
+
+    process_chain_query(query_sents, sents, op_per_sent);
+
+    util::json_t stats_output;
+    fmt::print(std::cerr, "Result stats\n");
+    for(auto pair : stats){
+        util::json_t per_qword{};
+        for(auto elm : pair.second){
+            for(auto uid : elm.second) per_qword[wordUIDs[elm.first]].push_back(uid.val);
+            fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
+                       wordUIDs[pair.first], wordUIDs[elm.first], elm.second.size());
+        }
+        stats_output[wordUIDs[pair.first]]=per_qword;
+        fmt::print(std::cerr, "------------------\n");
+    }
+    fmt::print(std::cerr, "==================\n");
+    fmt::print("{}", stats_output.dump(4));
     return to_json(answers);
-//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
 RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
@@ -832,56 +877,25 @@ RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
     return output;
 }
 
-RSSQueryEngine::output_t RSSQueryEngine::process_chain_query(
-        std::vector<wordrep::Sentence> const &query_chain,
-        std::vector<Sentence> candidate_sents) const {
-    auto max_clip_len = 200;
+template<typename OP1>
+void RSSQueryEngine::process_chain_query(
+        std::vector<Sentence> const &query_chain,
+        std::vector<Sentence> candidate_sents,
+        OP1 const& op_per_sent) const {
     util::Timer timer{};
 
-    output_t output{};
     for(auto const &query_sent : query_chain){
         if(query_sent.beg==query_sent.end) continue;
         cache_words(query_sent, dists_cache);
         data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
         timer.here_then_reset("Get cutoffs");
-        for(auto pair : util::zip(info.words, info.cutoffs)) {
-            fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
-        }
-        std::cerr<<std::endl;
-        std::cerr<<fmt::format("Chain query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
+
         auto relevant_sents = this->process_query_sent(query_sent, info.cutoffs, candidate_sents);
         candidate_sents.clear();
         assert(candidate_sents.size()==0);
         if(!relevant_sents.size()) continue;
 
-        std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> stats;
-        for(auto const &scored_sent : relevant_sents){
-            for(auto elm : scored_sent.scores.serialize()){
-                auto word_query = query_sent.tokens->word_uid(std::get<0>(elm));
-                auto word_matched = scored_sent.sent.tokens->word_uid(std::get<1>(elm));
-                auto score = std::get<2>(elm);
-                if(score>0.7) stats[word_query][word_matched].push_back(scored_sent.sent.uid);
-            }
-        }
-        util::json_t stats_output;
-        fmt::print(std::cerr, "Result stats\n");
-        for(auto pair : stats){
-            util::json_t per_qword{};
-            for(auto elm : pair.second){
-                for(auto uid : elm.second) per_qword[wordUIDs[elm.first]].push_back(uid.val);
-                fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                           wordUIDs[pair.first], wordUIDs[elm.first], elm.second.size());
-            }
-            stats_output[wordUIDs[pair.first]]=per_qword;
-            fmt::print(std::cerr, "------------------\n");
-        }
-        fmt::print(std::cerr, "==================\n");
-        fmt::print("{}", stats_output.dump(4));
-
-        data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
-        answer.query = info;
-        output.push_back(answer);
+        op_per_sent(query_sent, info, relevant_sents);
         timer.here_then_reset("One pass in a query chain is finished.");
 
         auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
@@ -900,7 +914,6 @@ RSSQueryEngine::output_t RSSQueryEngine::process_chain_query(
         }
         timer.here_then_reset("Prepared next pass in a query chain.");
     }
-    return output;
 }
 
 std::vector<ScoredSentence>
