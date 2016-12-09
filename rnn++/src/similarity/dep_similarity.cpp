@@ -503,7 +503,7 @@ void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
     }
     dists_cache.cache(vidxs);
 }
-////////////////////////////////
+////////////////////////////////////////////////////////////////
 
 
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
@@ -596,30 +596,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     return to_json(answers);
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
-
-/*
-void matched_highlighter(Sentence sent_ref, Sentence sent,
-                         std::vector<DepSimilaritySearch::val_t> const &cutoffs,
-                         WordSimCache &dists_cache){
-    for(auto ridx=sent_ref.beg; ridx!=sent_ref.end; ++ridx){
-        auto ref_vidx = sent_ref.tokens->word(ridx);
-        auto ref_head_vidx = sent_ref.tokens->head_word(ridx);
-//        auto ref_offset_beg = sent_ref.tokens->word_beg(ridx);
-//        auto ref_offset_end = sent_ref.tokens->word_end(ridx);
-
-        auto j = util::diff(ridx, sent_ref.beg);
-        auto j_head = util::diff(sent_ref.tokens->head_pos(ridx), sent_ref.tokens->head_pos(sent_ref.beg));
-        for(auto widx=sent.beg; widx!=sent.end; ++widx){
-            auto word_vidx = sent.tokens->word(widx);
-            auto word_head_vidx = sent.tokens->head_word(widx);
-
-            auto dependent_score = dists_cache.distances(ref_vidx)[word_vidx];
-            auto governor_score = dists_cache.distances(ref_head_vidx)[word_head_vidx];
-            //cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[j_head]);
-        }
-    }
-}
-*/
 
 DepSimilaritySearch::output_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents,
@@ -877,6 +853,30 @@ RSSQueryEngine::output_t RSSQueryEngine::process_chain_query(
         candidate_sents.clear();
         assert(candidate_sents.size()==0);
         if(!relevant_sents.size()) continue;
+
+        std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> stats;
+        for(auto const &scored_sent : relevant_sents){
+            for(auto elm : scored_sent.scores.serialize()){
+                auto word_query = query_sent.tokens->word_uid(std::get<0>(elm));
+                auto word_matched = scored_sent.sent.tokens->word_uid(std::get<1>(elm));
+                auto score = std::get<2>(elm);
+                if(score>0.7) stats[word_query][word_matched].push_back(scored_sent.sent.uid);
+            }
+        }
+        util::json_t stats_output;
+        fmt::print(std::cerr, "Result stats\n");
+        for(auto pair : stats){
+            util::json_t per_qword{};
+            for(auto elm : pair.second){
+                for(auto uid : elm.second) per_qword[wordUIDs[elm.first]].push_back(uid.val);
+                fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
+                           wordUIDs[pair.first], wordUIDs[elm.first], elm.second.size());
+            }
+            stats_output[wordUIDs[pair.first]]=per_qword;
+            fmt::print(std::cerr, "------------------\n");
+        }
+        fmt::print(std::cerr, "==================\n");
+        fmt::print("{}", stats_output.dump(4));
 
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, max_clip_len);
