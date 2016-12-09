@@ -230,12 +230,15 @@ int main(int /*argc*/, char** argv){
     fmt::print("{}\n", answers.dump(4));
     fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
-    auto chain_answers = engine.ask_chain_query(uids);
-    timer.here_then_reset("Processed a chain query.");
-    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
+//    auto chain_answers = engine.ask_chain_query(uids);
+//    timer.here_then_reset("Processed a chain query.");
+//    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
 //    data::ygp::annotation_on_result(config, chain_answers);
-    timer.here_then_reset("A chain query output annotatoin.");
-    fmt::print("{}\n", chain_answers.dump(4));
+//    fmt::print("{}\n", chain_answers.dump(4));
+    auto answer = engine.ask_query_stats(uids);
+    timer.here_then_reset("Processed a stats query.");
+    data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
+    fmt::print("{}\n", answer.dump(4));
     timer.here_then_reset("Queries are answered.");
 
     return 0;

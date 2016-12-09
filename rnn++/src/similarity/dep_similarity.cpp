@@ -791,14 +791,58 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     }
     fmt::print("Will process a query chain of length {}.\n", query_sents.size());
 
-    std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> stats;
-    auto collect_result_stats = [&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
+    output_t answers{};
+    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+        for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
+            fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
+        }
+        std::cerr<<std::endl;
+
+        data::QueryResult answer;
+        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.query = query_sent_info;
+        answers.push_back(answer);
+    };
+
+    process_chain_query(query_sents, sents, collect_query_result);
+
+    return to_json(answers);
+}
+
+
+RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const {
+    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
+    if (!Query::is_valid(ask)) return json_t{};
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+
+    Query query{ask};
+    std::vector<Sentence> query_sents{};
+    for(auto uid : query.uids){
+        auto sent = uid2query_sent.find(uid);
+        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) continue;
+        query_sents.push_back(sent.value());
+    }
+    std::vector<val_t> cutoffs;
+    if(ask.find("cutoffs")!=ask.cend()){
+        for(auto x : ask["cutoffs"]) std::cerr<<x << std::endl;
+        for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
+    }
+    fmt::print("Will process a query chain of length {}.\n", query_sents.size());
+
+    std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> results_by_match;
+    std::map<WordUID,std::map<WordUID,std::size_t>> stats;
+    auto collect_result_stats = [&results_by_match,&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
         for(auto const &scored_sent : relevant_sents){
             for(auto elm : scored_sent.scores.serialize()){
-                auto word_query = query_sent.tokens->word_uid(std::get<0>(elm));
-                auto word_matched = scored_sent.sent.tokens->word_uid(std::get<1>(elm));
+                auto qidx = std::get<0>(elm);
+                auto midx = std::get<1>(elm);
+                auto quid = query_sent.tokens->word_uid(qidx);
+                auto muid = scored_sent.sent.tokens->word_uid(midx);
                 auto score = std::get<2>(elm);
-                if(score>0.7) stats[word_query][word_matched].push_back(scored_sent.sent.uid);
+                if(score<0.6) continue;
+                ++stats[quid][muid];
+                results_by_match[quid][muid].push_back(scored_sent.sent.uid);
             }
         }
     };
@@ -825,19 +869,24 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     fmt::print(std::cerr, "Result stats\n");
     for(auto pair : stats){
         util::json_t per_qword{};
+        auto quid = pair.first;
         for(auto elm : pair.second){
-            for(auto uid : elm.second) per_qword[wordUIDs[elm.first]].push_back(uid.val);
+            auto muid = elm.first;
+            per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
             fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                       wordUIDs[pair.first], wordUIDs[elm.first], elm.second.size());
+                       wordUIDs[quid], wordUIDs[muid], elm.second);
         }
-        stats_output[wordUIDs[pair.first]]=per_qword;
+        stats_output[wordUIDs[quid]]=per_qword;
         fmt::print(std::cerr, "------------------\n");
     }
     fmt::print(std::cerr, "==================\n");
-    fmt::print("{}", stats_output.dump(4));
-    return to_json(answers);
-}
 
+    util::json_t output{};
+    util::json_t results = to_json(answers);
+    for(auto& result : results) output["results"].push_back(result);
+    output["stats"]=stats_output;
+    return output;
+}
 RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
         std::vector<wordrep::Sentence> const &query_sents,
         std::vector<Sentence> candidate_sents) const {
