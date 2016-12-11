@@ -3,6 +3,7 @@
 
 #include "data_source/corenlp.h"
 
+#include "utils/optional.h"
 #include "utils/base_types.h"
 #include "utils/json.h"
 #include "utils/persistent_vector.h"
@@ -30,8 +31,17 @@ struct RawTexts{
 };
 
 struct Sentences{
+    Sentences() {}
     Sentences(std::vector<Sentence> const &sents) {
+        add(sents);
+    }
+    void add(std::vector<Sentence> const &sents){
         for(auto &sent : sents) uid2sent[sent.uid]=sent;
+    }
+    std::optional<Sentence> find(SentUID uid) const {
+        auto it=uid2sent.find(uid);
+        if (it!=uid2sent.end()) return it->second;
+        return {};
     }
     Sentence operator[](SentUID uid) const {
         auto it=uid2sent.find(uid);
