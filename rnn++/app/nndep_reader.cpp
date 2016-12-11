@@ -19,57 +19,116 @@ struct DependencyGraph {
         using val_t = double;
 
         bool is_leaf() const {return !dependents.size();}
+        std::optional<DPTokenIndex> head_idx() const {
+            if(governor) return governor.value()->idx;
+            return {};
+        }
+
+        Node const& root_node() const {
+            auto node = this;
+            while(node->governor) node = node->governor.value();
+            return *node;
+        }
+        template<typename T>
+        void iter_to_top(T const &op) const{
+            auto node=this;
+            for(; node->governor; node=node->governor.value()) op(*node);
+            op(*node);
+        }
 
         DPTokenIndex idx;
         std::optional<Node*> governor;
         std::vector<Node*> dependents;
-        val_t weight{};
+        DependencyGraph* graph;
     };
 
     DependencyGraph(Sentence const & sent)
             : sent{&sent},
               nodes(std::make_unique<Node[]>(sent.size())),
               span{nodes.get(), util::to_type<uint32_t>(sent.size())}, //span_dyn use uint32...
-              cspan{span}
-    {}
+              cspan{span} {
+        for (auto idx = sent.beg; idx != sent.end; ++idx) {
+            auto &node = nodes[sent.tokens->word_pos(idx).val];
+            node.idx = idx;
+            node.graph = this;
+            auto head_pos = sent.tokens->head_pos(idx);
+            if(!head_pos) continue;
+            auto &head = nodes[head_pos.value().val];
+            node.governor = &head;
+            head.dependents.push_back(&node);
+        }
+        for(auto &node : span) idx2node[node.idx]=&node;
+    }
 
-
+    void disconnect_head(DPTokenIndex idx){
+        auto node = idx2node.at(idx);
+        auto& head = node->governor;
+        if(!head) return;
+        auto& sisters = head.value()->dependents;
+        auto self = std::find_if(sisters.begin(), sisters.end(),[idx](auto &x){
+           return x->idx == idx;
+        });
+        std::swap(*self, sisters.back());
+        sisters.pop_back();
+        node->governor = {};
+    }
+    Node const& node(DPTokenIndex idx) const{return *idx2node.at(idx);}
+    Node const& front() const {return nodes[0];};
     util::span_dyn<const Node> all_nodes() const {return cspan;}
-    Node& root_node() {
-        auto it=std::find_if_not(span.begin(), span.end(), [](auto x) {return x.governor?true:false;});
-        return *it;
-    }
-    Node const& root_node() const {
-        auto it=std::find_if_not(cspan.begin(), cspan.end(), [](auto x) {return x.governor?true:false;});
-        return *it;
-    }
+
     template<typename T>
     void iter_subgraph(Node const &node, T const &op) const {
         op(node);
         for(auto child : node.dependents) iter_subgraph(*child, op);
     }
-    template<typename T>
-    void iter_subgraph(Node const &node, std::vector<Node const *> ascents, T const &op) const {
-        op(node, ascents);
-        ascents.push_back(&node);
-        for(auto child : node.dependents) {
-            iter_subgraph(*child, ascents, op);
-        }
-    }
-    template<typename T>
-    void iter_subgraph(Node &node, std::vector<Node *> ascents, T const &op)  {
-        op(node, ascents);
-        ascents.push_back(&node);
-        for(auto child : node.dependents) {
-            iter_subgraph(*child, ascents, op);
-        }
-    }
 
-
+    Sentence const& sentence() const {return *sent;}
+private:
     Sentence const* sent;
     std::unique_ptr<Node[]> const nodes;
+    std::map<DPTokenIndex,Node *> idx2node;
     util::span_dyn<Node> span;
     util::span_dyn<const Node> cspan;
+};
+
+
+class ConnectionFragility{
+public:
+    using node_t = DependencyGraph::Node;
+    ConnectionFragility(DependencyGraph const &graph,
+                        wordrep::WordImportance const &importance)
+    : graph{graph}, importance(importance) {
+    }
+
+    auto set_score(){
+        for(auto& pair : scores) pair.second=0;
+        for(auto node : graph.all_nodes()) {
+            auto uid = graph.sentence().tokens->word_uid(node.idx);
+            auto score = importance.score(uid);
+            node.iter_to_top([this,score](auto const &node){ scores[node.idx] += score;});
+        }
+    }
+    auto score(node_t const &node) const {
+        auto self_weight_sum = scores.at(node.idx);
+        auto uid = node.graph->sentence().tokens->word_uid(node.idx);
+        auto self_weight     = importance.score(uid);
+        auto head_idx = node.head_idx();
+        auto head_weight_sum = head_idx? scores.at(head_idx.value()) : 0;
+        head_weight_sum -= self_weight;
+        return self_weight_sum*head_weight_sum / self_weight;
+    }
+    auto score(DPTokenIndex idx ) const {return score(graph.node(idx));}
+    DPTokenIndex max_score_node_idx() const {
+        auto pair = std::max_element(scores.cbegin(), scores.cend(), [this](auto x, auto y){
+            return score(x.first) < score(y.first);
+        });
+        return pair->first;
+    }
+
+private:
+    std::map<DPTokenIndex, double> scores;
+    DependencyGraph const &graph;
+    wordrep::WordImportance const &importance;
 };
 
 }//namespace wordrep;
@@ -95,16 +154,6 @@ void dependency_graph(){
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
         DependencyGraph graph{sent};
-        for (auto idx = sent.beg; idx != sent.end; ++idx) {
-            auto &node = graph.nodes[tokens.word_pos(idx).val];
-            node.idx = idx;
-            auto head_pos = tokens.head_pos(idx);
-            if(!head_pos) continue;
-            auto &head = graph.nodes[head_pos.value().val];
-            node.governor = &head;
-            head.dependents.push_back(&node);
-
-        }
         for(auto &node : graph.all_nodes()){
             auto uid = tokens.word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
@@ -114,31 +163,38 @@ void dependency_graph(){
             for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
             std::cerr<<std::endl;
         }
-        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.root_node().idx)]);
+        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.front().root_node().idx)]);
 
-        graph.iter_subgraph(graph.root_node(), {},
-                            [&wordUIDs,&importance,&graph](auto &node, auto &ascents) {
-                                auto uid = graph.sent->tokens->word_uid(node.idx);
-                                auto score = importance.score(uid);
-//                                fmt::print(std::cerr, "{} : {}. ", wordUIDs[uid], score);
-                                node.weight += score;
-                                for (auto ascent : ascents){
-//                                    fmt::print(std::cerr, "{} ",wordUIDs[graph.sent->tokens->word_uid(ascent->idx)]);
-                                    ascent->weight += score;
-                                }
-//                                std::cerr << std::endl;
-                            });
+        ConnectionFragility subgrapher{graph, importance};
+        subgrapher.set_score();
         for(auto node : graph.all_nodes()){
-            auto uid = graph.sent->tokens->word_uid(node.idx);
-            fmt::print(std::cerr, "Visit node : {:<15}. score : {:<5} {:<5} {:<5}\n",
-                       wordUIDs[uid], importance.score(uid), node.weight,
-                       node.weight/importance.score(uid));
+            auto uid = graph.sentence().tokens->word_uid(node.idx);
+            fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
+                       wordUIDs[uid], importance.score(uid), subgrapher.score(node));
         }
-
+        fmt::print(std::cerr, "\n\n");
+        std::vector<DPTokenIndex> sub_heads;
+        sub_heads.push_back(graph.front().root_node().idx);
+        for(int i=0; i<5; ++i){
+            auto sub_head = graph.node(subgrapher.max_score_node_idx());
+            sub_heads.push_back(sub_head.idx);
+            graph.disconnect_head(sub_head.idx);
+            subgrapher.set_score(); //TODO: remove duplicated computation.
+        }
+        for(auto sub_head_idx : sub_heads){
+            auto sub_head = graph.node(sub_head_idx);
+            fmt::print(std::cerr, "Head of subgraph : {}\n",
+                       wordUIDs[sub_head.graph->sentence().tokens->word_uid(sub_head.idx)]);
+            graph.iter_subgraph(sub_head, [&wordUIDs,&importance,&subgrapher](auto &node){
+                auto uid = node.graph->sentence().tokens->word_uid(node.idx);
+                fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
+                           wordUIDs[uid], importance.score(uid), subgrapher.score(node));
+            });
+            fmt::print(std::cerr, "-----------------\n");
+        }
     }
-
-
 }
+
 
 }//namespace wordrep::test
 }//namespace wordrep
@@ -150,8 +206,8 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
     auto dumpfile_hashes = argv[3];
-//    wordrep::test::dependency_graph();
-//    return 0;
+    wordrep::test::dependency_graph();
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
