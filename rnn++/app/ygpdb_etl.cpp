@@ -336,6 +336,17 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     std::cerr << std::endl;
 }
 
+void IndexUIDs(util::json_t const& config){
+    Columns rssdb{config["column_uids_dump"].get<std::string>()};
+    auto tmp = rssdb.col_uid("title");
+    fmt::print(std::cerr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {}\n", tmp.val);
+    for(int i=0; i<3; ++i)
+        fmt::print(std::cerr, "!!!!!!!!{} {}\n", rssdb.col_uid(rssdb.column(i)).val, rssdb.column(i));
+    assert(rssdb.col_uid("title") == data::ColumnUID{0});
+    assert(rssdb.col_uid("summary") == data::ColumnUID{1});
+    assert(rssdb.col_uid("maintext") == data::ColumnUID{2});
+}
+
 }//namespace data::rss::test
 }//namespace data::rss
 }//namespace data
@@ -540,6 +551,7 @@ int main(int argc, char** argv){
 //    auto row_files = argv[2];
 //    auto hashes = argv[3];
 //    data::rss::test::rss_indexing(config, hashes);
+    data::rss::test::IndexUIDs(config);
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
     return 0;

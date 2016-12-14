@@ -735,6 +735,7 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
           word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
           sents{tokens.IndexSentences()},
           uid2sent{sents},
+          rssdb{config["column_uids_dump"].get<std::string>()},
           db_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
                       config["dep_parsed_prefix"].get<std::string>()}
 {}
@@ -891,11 +892,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
 }
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t const &ask) const{
-    std::map<data::ColumnUID,std::string> uid2col;
-    uid2col[0] = "title";
-    uid2col[1] = "summary";
-    uid2col[2] = "maintext";
-
     json_t output{};
     for(int64_t uid : ask["sents"]) {
         auto sent = uid2sent[SentUID{uid}];
@@ -905,7 +901,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
 
         data::rss::HashIndexer hash2idx{"/home/jihuni/word2vec/nyt/nyt.raw"};
         auto hash = hash2idx.hash(data::rss::HashIndex{row_idx.val});
-        auto column = uid2col.at(col_uid);
+        auto column = rssdb.column(col_uid);
 
         auto offset_beg = sent.beg_offset().val;
         auto offset_end = sent.end_offset().val;

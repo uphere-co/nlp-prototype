@@ -5,6 +5,7 @@
 #include "utils/json.h"
 
 #include "data_source/ygp_db.h"
+#include "data_source/rss.h"
 
 #include "wordrep/dep_parsed.h"
 #include "wordrep/voca_info.h"
@@ -179,6 +180,7 @@ struct RSSQueryEngine {
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> const sents;
     wordrep::Sentences const uid2sent;
+    data::rss::Columns const rssdb;
     data::ygp::YGPindexer const db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
