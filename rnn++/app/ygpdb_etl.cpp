@@ -395,7 +395,42 @@ bool isSentEnd(std::string const &sentence){
     std::string tag = "";
     return tag == sentence;
 }
-void parse_batch_output(){
+struct DepChunk{
+    using lines_t = std::vector<std::string>::const_iterator;
+
+    static std::optional<DepChunk> get(lines_t beg, lines_t end){
+        DepChunk chunk{};
+        auto it=beg;
+        for(;!isSentBeg(*it);++it) if(it==end) return {};
+        assert(isSentBeg(*it));
+        chunk.beg=it;
+        for(;!isSentEnd(*it);++it) if(it==end) return {};
+        assert(isSentEnd(*it));
+        chunk.end=it;
+        return chunk;
+    }
+    lines_t beg;
+    lines_t end;
+};
+
+struct DepChunkParser{
+    DepChunkParser(std::string filename)
+    : lines{util::string::readlines(filename)}
+    {}
+    template<typename OP>
+    void iter(OP const &op) const {
+        auto beg = lines.cbegin();
+        auto end = lines.cend();
+        while(auto maybe_chunk = DepChunk::get(beg, end)){
+            auto chunk = maybe_chunk.value();
+            op(chunk);
+            beg = chunk.end;
+        }
+    }
+
+    std::vector<std::string> const lines;
+};
+void parse_batch_output_line(){
     {
         assert(isSentBeg("Sentence #1 (9 tokens):"));
         assert(!isSentBeg(""));
@@ -453,6 +488,15 @@ void parse_batch_output(){
     auto it_label_end = std::find(aa.cbegin(), aa.cend(), '(');
     fmt::print(std::cerr, "{} \n",gsl::to_string(aa.subspan(0, it_label_end-aa.cbegin())));
 }
+
+void parse_batch_output(){
+    DepChunkParser parse{"../rnn++/tests/data/batch.corenlp"};
+    parse.iter([](auto const &chunk){
+        for(auto it=chunk.beg; it!=chunk.end; ++it) fmt::print("{}\n", *it);
+    });
+
+}
+
 }//namespace data::corenlp::test
 }//namespace data::corenlp
 }//namespace data
@@ -511,6 +555,7 @@ int main(int argc, char** argv){
 //    auto row_files = argv[2];
 //    auto hashes = argv[3];
 //    data::rss::test::rss_indexing(config, hashes);
+    data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
     return 0;
 

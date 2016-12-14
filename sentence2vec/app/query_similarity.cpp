@@ -75,6 +75,7 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("stats_query")!=input_json.end()){
             std::cerr << "Ask stats query"<<std::endl;
             auto answer = engine.ask_query_stats(input_json);
+            std::cerr << "Got stats query"<<std::endl;
             data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
