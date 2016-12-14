@@ -54,5 +54,5 @@ struct Columns{
     std::vector<std::string> full_names;
 };
 
-}//namespace rss::data
+}//namespace data::rss
 }//namespace data

@@ -507,6 +507,36 @@ void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
 ////////////////////////////////////////////////////////////////
 
 
+struct ProcessQuerySent{
+    using val_t = WordSimCache::val_t;
+    ProcessQuerySent(WordSimCache &dists_cache)
+            : dists_cache{dists_cache}
+    {}
+
+    std::vector<ScoredSentence> operator()(Sentence query_sent,
+                                           std::vector<val_t> const &cutoffs,
+                                           std::vector<Sentence> const &data_sents) {
+        DepParsedQuery query{cutoffs, query_sent, dists_cache};
+
+        tbb::concurrent_vector<ScoredSentence> relevant_sents{};
+        auto n = data_sents.size();
+        tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+            auto sent = data_sents[i];
+            auto scores = query.get_scores(sent);
+            ScoredSentence scored_sent{sent, scores};
+            if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
+                relevant_sents.push_back(scored_sent);
+            }
+        });
+        return deduplicate_results(relevant_sents);
+    }
+    WordSimCache& dists_cache;
+};
+
+
+//////////////////////////////////////
+
+
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 : voca{config["wordvec_store"], config["voca_name"],
        config["w2vmodel_name"], config["w2v_float_t"]},
@@ -603,12 +633,13 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_query_sents(
         std::vector<wordrep::Sentence> const &candidate_sents) const {
     auto max_clip_len = 200;
     util::Timer timer{};
+    ProcessQuerySent processor{dists_cache};
 
     tbb::concurrent_vector<data::QueryResult> answers;
     tbb::task_group g;
     for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        g.run([&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
+        g.run([&processor,&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -620,7 +651,8 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_query_sents(
             cache_words(query_sent, dists_cache);
             timer.here_then_reset("Built Similarity caches.");
             std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-            auto relevant_sents = this->process_query_sent(query_sent, info.cutoffs, candidate_sents);
+
+            auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
 
             data::QueryResult answer;
             answer.results = write_output(query_sent, relevant_sents, max_clip_len);
@@ -649,7 +681,9 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
         cache_words(query_sent, dists_cache);
 
         std::cerr<<fmt::format("Chain query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-        auto relevant_sents = process_query_sent(query_sent, util::deserialize<val_t>(info.cutoffs), candidate_sents);
+
+        ProcessQuerySent processor{dists_cache};
+        auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
 
         auto n0 = candidate_sents.size();
         candidate_sents.clear();
@@ -680,24 +714,7 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
     return output;
 }
 
-std::vector<ScoredSentence>
-DepSimilaritySearch::process_query_sent(Sentence query_sent,
-                                        std::vector<val_t> const &cutoffs,
-                                        std::vector<Sentence> const &data_sents) const {
-    DepParsedQuery query{cutoffs, query_sent, dists_cache};
 
-    tbb::concurrent_vector<ScoredSentence> relevant_sents{};
-    auto n = data_sents.size();
-    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
-        auto sent = data_sents[i];
-        auto scores = query.get_scores(sent);
-        ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
-            relevant_sents.push_back(scored_sent);
-        }
-    });
-    return deduplicate_results(relevant_sents);
-}
 
 std::vector<PerSentQueryResult> DepSimilaritySearch::write_output(
         Sentence const &query_sent,
@@ -922,9 +939,10 @@ RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
     tbb::task_group g;
     util::Timer timer{};
 
+    ProcessQuerySent processor{dists_cache};
     for(auto const &query_sent : query_sents){
         if(query_sent.beg==query_sent.end) continue;
-        g.run([&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
+        g.run([&processor, &timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
             if(result_cache.find(query_sent.uid)){
                 auto answer = result_cache.get(query_sent.uid);
                 answers.push_back(answer);
@@ -936,8 +954,7 @@ RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
             cache_words(query_sent, dists_cache);
             timer.here_then_reset("Built Similarity caches.");
             std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-            auto relevant_sents = this->process_query_sent(query_sent, info.cutoffs, candidate_sents);
-
+            auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
             data::QueryResult answer;
             answer.results = write_output(query_sent, relevant_sents, max_clip_len);
             answer.query = info;
@@ -960,13 +977,16 @@ void RSSQueryEngine::process_chain_query(
         OP1 const& op_per_sent) const {
     util::Timer timer{};
 
+    ProcessQuerySent processor{dists_cache};
+
     for(auto const &query_sent : query_chain){
         if(query_sent.beg==query_sent.end) continue;
         cache_words(query_sent, dists_cache);
         data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
         timer.here_then_reset("Get cutoffs");
 
-        auto relevant_sents = this->process_query_sent(query_sent, info.cutoffs, candidate_sents);
+        auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
+
         candidate_sents.clear();
         assert(candidate_sents.size()==0);
         if(!relevant_sents.size()) continue;
@@ -990,24 +1010,6 @@ void RSSQueryEngine::process_chain_query(
         }
         timer.here_then_reset("Prepared next pass in a query chain.");
     }
-}
-
-std::vector<ScoredSentence>
-RSSQueryEngine::process_query_sent(
-        Sentence query_sent, std::vector<val_t> const &cutoffs, std::vector<Sentence> const &data_sents) const {
-    DepParsedQuery query{cutoffs, query_sent, dists_cache};
-
-    tbb::concurrent_vector<ScoredSentence> relevant_sents{};
-    auto n = data_sents.size();
-    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
-        auto sent = data_sents[i];
-        auto scores = query.get_scores(sent);
-        ScoredSentence scored_sent{sent, scores};
-        if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
-            relevant_sents.push_back(scored_sent);
-        }
-    });
-    return deduplicate_results(relevant_sents);
 }
 
 
