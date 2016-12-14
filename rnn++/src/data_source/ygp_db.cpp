@@ -5,6 +5,7 @@
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+#include "utils/versioned_name.h"
 
 using namespace util::io;
 
@@ -91,6 +92,16 @@ std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
     W.commit();
     return body[0][0].c_str();
 }
+
+
+DBInfo::DBInfo(util::json_t const& config)
+  : db{config["column_uids_dump"].get<std::string>()},
+    indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+            config["dep_parsed_prefix"].get<std::string>()},
+    per_country{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname},
+    country_tagger{util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname}
+{}
 
 RowDumpFilePath::RowDumpFilePath(std::string path) {
     using util::string::split;

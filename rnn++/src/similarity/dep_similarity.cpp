@@ -547,12 +547,7 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   uid2sent{sents},
-  ygpdb{config["column_uids_dump"].get<std::string>()},
-  ygp_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-              config["dep_parsed_prefix"].get<std::string>()},
-  ygpdb_country{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname},
-  country_tagger{util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname}
+  dbinfo{config}
 {}
 
 //TODO: fix it to be thread-safe
@@ -570,7 +565,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     for(auto uid :uids ) if(uid2query_sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
-    auto found_countries = country_tagger.tag(ask["query_str"]);
+    auto found_countries = dbinfo.country_tagger.tag(ask["query_str"]);
     answer["Countries"]=found_countries;
     return answer;
 }
@@ -592,7 +587,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     std::cerr<<std::endl;
     if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
 
-    auto uids = ygpdb_country.sents(query.countries);
+    auto uids = dbinfo.per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(query.countries.size()==0) candidate_sents=sents;
@@ -618,7 +613,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     std::cerr<<std::endl;
     if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
 
-    auto uids = ygpdb_country.sents(query.countries);
+    auto uids = dbinfo.per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(query.countries.size()==0) candidate_sents=sents;
@@ -714,25 +709,22 @@ DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
     return output;
 }
 
-
-
 std::vector<PerSentQueryResult> DepSimilaritySearch::write_output(
         Sentence const &query_sent,
         std::vector<ScoredSentence> const &relevant_sents,
         int64_t max_clip_len) const{
     auto n_found = relevant_sents.size();
     std::cerr<<n_found << " results are found"<<std::endl;
-    json_t answer{};
 
     util::Timer timer;
 //    auto top_N_results = plain_rank_cut(relevant_sents, 5);
-    auto top_N_results  = per_table_rank_cut(relevant_sents, 5, ygp_indexer, ygpdb);
+    auto top_N_results  = per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
     timer.here_then_reset("Get top N results.");
 
     std::vector<PerSentQueryResult> results;
     for(auto const &scored_sent : top_N_results){
         auto result = build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
-                                             ygpdb, ygp_indexer, ygpdb_country);
+                                                 dbinfo.db, dbinfo.indexer, dbinfo.per_country);
         results.push_back(result);
     }
 
