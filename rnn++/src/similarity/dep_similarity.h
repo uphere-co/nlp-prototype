@@ -109,8 +109,6 @@ struct DepSimilaritySearch {
 
     DepSimilaritySearch(json_t const& config);
 
-    output_t process_query_sents(std::vector<Sentence> const &query_sents,
-                                 std::vector<Sentence> const &candidate_sents) const;
     output_t process_chain_query(std::vector<Sentence> const &query_chain,
                                  std::vector<Sentence> candidate_sents) const;
     json_t register_documents(json_t const &ask) ;
@@ -147,8 +145,6 @@ struct RSSQueryEngine {
 
     RSSQueryEngine(json_t const& config);
 
-    output_t process_query_sents(std::vector<Sentence> const &query_sents,
-                                 std::vector<Sentence> candidate_sents) const;
     template<typename OP1>
     void process_chain_query(std::vector<Sentence> const &query,
                                  std::vector<Sentence> candidate_sents,

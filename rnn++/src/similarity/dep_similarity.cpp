@@ -534,6 +534,47 @@ struct ProcessQuerySent{
 };
 
 
+struct ProcessQuerySents{
+    using output_t = std::vector<data::QueryResult>;
+
+    ProcessQuerySents(wordrep::WordUIDindex const& wordUIDs,
+                      wordrep::WordImportance const& word_importance,
+                      WordSimCache& dists_cache)
+            : wordUIDs{wordUIDs}, word_importance{word_importance},
+              dists_cache{dists_cache},
+              processor{dists_cache}
+    {}
+
+    template<typename OP>
+    void operator()(std::vector<wordrep::Sentence> const &query_sents,
+                    std::vector<wordrep::Sentence> const &candidate_sents,
+                    OP const &op) {
+        util::Timer timer{};
+        tbb::task_group g;
+        for(auto const &query_sent : query_sents){
+            if(query_sent.beg==query_sent.end) continue;
+            g.run([&timer,query_sent,&op,&candidate_sents, this](){
+                data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
+                timer.here_then_reset("Get cutoffs");
+                cache_words(query_sent, dists_cache);
+                timer.here_then_reset("Built Similarity caches.");
+                std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
+                auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
+                op(query_sent, info, relevant_sents);
+                timer.here("Query answered.");
+            });
+        }
+        timer.here_then_reset("All Queries are answered.");
+        g.wait();
+    }
+
+    wordrep::WordUIDindex const& wordUIDs;
+    wordrep::WordImportance const& word_importance;
+    WordSimCache& dists_cache;
+    ProcessQuerySent processor;
+};
+
+
 //////////////////////////////////////
 
 
@@ -573,6 +614,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) const {
     if (!YGPQuery::is_valid(ask)) return json_t{};
     YGPQuery query{ask};
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = uid2query_sent.find(uid);
@@ -592,9 +634,21 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(query.countries.size()==0) candidate_sents=sents;
 
-    output_t answers = process_query_sents(query_sents, candidate_sents);
+    ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
+    tbb::concurrent_vector<data::QueryResult> answer_collector;
+    auto per_sent=[&answer_collector,max_clip_len,this](auto const &query_sent,
+                                               auto const& query_sent_info,
+                                               auto const &relevant_sents){
+        data::QueryResult answer;
+        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.query = query_sent_info;
+        answer_collector.push_back(answer);
+    };
+    query_processor(query_sents, candidate_sents, per_sent);
+    //output_t answers = process_query_sents(query_sents, candidate_sents);
+    output_t answers{};
+    for(auto &answer : answer_collector) answers.push_back(answer);
     return to_json(answers);
-//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
@@ -623,46 +677,6 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
 //    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
-DepSimilaritySearch::output_t DepSimilaritySearch::process_query_sents(
-        std::vector<wordrep::Sentence> const &query_sents,
-        std::vector<wordrep::Sentence> const &candidate_sents) const {
-    auto max_clip_len = 200;
-    util::Timer timer{};
-    ProcessQuerySent processor{dists_cache};
-
-    tbb::concurrent_vector<data::QueryResult> answers;
-    tbb::task_group g;
-    for(auto const &query_sent : query_sents){
-        if(query_sent.beg==query_sent.end) continue;
-        g.run([&processor,&timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
-            if(result_cache.find(query_sent.uid)){
-                auto answer = result_cache.get(query_sent.uid);
-                answers.push_back(answer);
-                timer.here("Query answered using cache.");
-                return;
-            }
-            data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
-            timer.here_then_reset("Get cutoffs");
-            cache_words(query_sent, dists_cache);
-            timer.here_then_reset("Built Similarity caches.");
-            std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-
-            auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
-
-            data::QueryResult answer;
-            answer.results = write_output(query_sent, relevant_sents, max_clip_len);
-            answer.query = info;
-            answers.push_back(answer);
-            timer.here("Query answered.");
-            result_cache.insert(query_sent.uid, answer);
-        });
-    }
-    timer.here_then_reset("All Queries are answered.");
-    g.wait();
-    output_t output{};
-    for(auto &answer : answers) output.push_back(answer);
-    return output;
-}
 DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
         std::vector<wordrep::Sentence> const &query_chain,
         std::vector<wordrep::Sentence> candidate_sents) const {
@@ -768,6 +782,8 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
+
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
     Query query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
@@ -777,9 +793,21 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
         query_sents.push_back(sent.value());
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
-    output_t answers = process_query_sents(query_sents, sents);
+
+    ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
+    tbb::concurrent_vector<data::QueryResult> answer_collector;
+    auto per_sent=[&answer_collector,max_clip_len,this](auto const &query_sent,
+                                                        auto const& query_sent_info,
+                                                        auto const &relevant_sents){
+        data::QueryResult answer;
+        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.query = query_sent_info;
+        answer_collector.push_back(answer);
+    };
+    query_processor(query_sents, sents, per_sent);
+    output_t answers{};
+    for(auto &answer : answer_collector) answers.push_back(answer);
     return to_json(answers);
-//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 }
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const {
@@ -921,45 +949,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
     };
     return output;
 
-}
-
-RSSQueryEngine::output_t RSSQueryEngine::process_query_sents(
-        std::vector<wordrep::Sentence> const &query_sents,
-        std::vector<Sentence> candidate_sents) const {
-    auto max_clip_len = 200;
-    tbb::concurrent_vector<data::QueryResult> answers;
-    tbb::task_group g;
-    util::Timer timer{};
-
-    ProcessQuerySent processor{dists_cache};
-    for(auto const &query_sent : query_sents){
-        if(query_sent.beg==query_sent.end) continue;
-        g.run([&processor, &timer,&answers,max_clip_len, query_sent,&candidate_sents, this](){
-            if(result_cache.find(query_sent.uid)){
-                auto answer = result_cache.get(query_sent.uid);
-                answers.push_back(answer);
-                timer.here("Query answered using cache.");
-                return;
-            }
-            data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
-            timer.here_then_reset("Get cutoffs");
-            cache_words(query_sent, dists_cache);
-            timer.here_then_reset("Built Similarity caches.");
-            std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-            auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
-            data::QueryResult answer;
-            answer.results = write_output(query_sent, relevant_sents, max_clip_len);
-            answer.query = info;
-            answers.push_back(answer);
-            timer.here("Query answered.");
-            result_cache.insert(query_sent.uid, answer);
-        });
-    }
-    timer.here_then_reset("All Queries are answered.");
-    g.wait();
-    output_t output{};
-    for(auto &answer : answers) output.push_back(answer);
-    return output;
 }
 
 template<typename OP1>
