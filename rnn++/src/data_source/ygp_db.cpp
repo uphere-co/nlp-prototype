@@ -12,28 +12,6 @@ using namespace util::io;
 namespace data {
 namespace ygp {
 
-YGPindexer::YGPindexer(util::io::H5file const &file, std::string prefix)
-        : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))},
-          chunk2row_uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
-          chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
-{
-    auto n = chunk2idx.size();
-    assert(chunk2row_uid.size()==n);
-    assert(chunk2col_uid.size()==n);
-    //for(decltype(n)i=0; i!=n; ++i) {
-    for(auto it=chunk2idx.cbegin(); it!=chunk2idx.cend(); ){
-        auto i = std::distance(chunk2idx.cbegin(), it);
-        auto row_idx=*it;
-        auto row_uid=chunk2row_uid[i];
-        auto col_uid=chunk2col_uid[i];
-        map_to_uid[{col_uid,row_idx}]=row_uid;
-        it = std::find_if_not(it, chunk2idx.cend(), [it](auto x){return x==*it;});
-    }
-
-    for(decltype(n)i=0; i!=n; ++i)
-        row_uid2chunk[chunk2row_uid[i]]=wordrep::ChunkIndex::from_unsigned(i);
-}
-
 CountryCodeAnnotator::CountryCodeAnnotator(std::string country_list){
     auto countries = util::string::readlines(country_list);
     for(auto const& country : countries) codes[country].push_back(country);

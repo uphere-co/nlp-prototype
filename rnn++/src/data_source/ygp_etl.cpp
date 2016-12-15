@@ -137,7 +137,7 @@ void write_country_code(util::json_t const &config) {
     std::string ygp_prefix = config["dep_parsed_prefix"];
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
-    YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
+    DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
     Chunks ygp_chunks{ygp_h5store, ygp_prefix};
     std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
     std::map<std::string, util::TypedPersistentVector<SentUID>> sents_by_country;

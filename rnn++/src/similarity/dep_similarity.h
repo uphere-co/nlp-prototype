@@ -168,7 +168,7 @@ struct RSSQueryEngine {
     std::vector<Sentence> const sents;
     wordrep::Sentences const uid2sent;
     data::rss::Columns const rssdb;
-    data::ygp::YGPindexer const db_indexer;
+    data::DBIndexer const db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     wordrep::DepParsedTokens query_tokens{};

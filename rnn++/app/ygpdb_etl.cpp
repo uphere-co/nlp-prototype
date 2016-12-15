@@ -253,7 +253,7 @@ void country_code(util::json_t const &config) {
     H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},
                        hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
-    YGPindexer ygp_indexer{ygp_h5store, ygp_prefix};
+    DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
     DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
     DepParsedTokens tokens{ygp_h5store, ygp_prefix};
 
@@ -310,7 +310,7 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     auto sent = sents[513911];
     auto chunk_idx = tokens.chunk_idx(sent.beg);
 
-    data::ygp::YGPindexer const &db_indexer{
+    data::DBIndexer const db_indexer{
             h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
             config["dep_parsed_prefix"].get<std::string>()};
     //auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid

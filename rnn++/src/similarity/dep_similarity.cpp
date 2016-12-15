@@ -27,6 +27,7 @@ namespace ygp = data::ygp;
 
 using data::PerSentQueryResult;
 using data::ScoreWithOffset;
+using data::DBIndexer;
 
 namespace {
 
@@ -80,7 +81,7 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
 
 PerSentQueryResult build_query_result_POD(
         Sentence const &query_sent, ScoredSentence const &matched_sentence,
-        ygp::YGPindexer const &db_indexer, int64_t max_clip_len){
+        DBIndexer const &db_indexer, int64_t max_clip_len){
     auto const &scores = matched_sentence.scores;
     auto sent = matched_sentence.sent;
     auto scores_with_idxs = scores.serialize();
@@ -122,7 +123,7 @@ PerSentQueryResult build_ygp_query_result_POD(Sentence const &query_sent,
                                 ScoredSentence const &matched_sentence,
                                 int64_t max_clip_len,
                                 ygp::YGPdb const &ygpdb,
-                                ygp::YGPindexer const &ygp_indexer,
+                                DBIndexer const &ygp_indexer,
                                 ygp::DBbyCountry const &ygpdb_country){
     auto result = build_query_result_POD(query_sent, matched_sentence, ygp_indexer, max_clip_len);
 
@@ -200,7 +201,7 @@ std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_
 
 std::vector<ScoredSentence> per_table_rank_cut(
         std::vector<ScoredSentence> const &relevant_sents, size_t n_max_per_table,
-        ygp::YGPindexer const &ygp_indexer, ygp::YGPdb const &ygpdb){
+        DBIndexer const &ygp_indexer, ygp::YGPdb const &ygpdb){
     std::map<std::string, std::vector<ScoredSentence>> outputs_per_column;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
@@ -635,20 +636,17 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     if(query.countries.size()==0) candidate_sents=sents;
 
     ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
-    tbb::concurrent_vector<data::QueryResult> answer_collector;
-    auto per_sent=[&answer_collector,max_clip_len,this](auto const &query_sent,
+    util::ConcurrentVector<data::QueryResult> answers;
+    auto per_sent=[&answers,max_clip_len,this](auto const &query_sent,
                                                auto const& query_sent_info,
                                                auto const &relevant_sents){
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, max_clip_len);
         answer.query = query_sent_info;
-        answer_collector.push_back(answer);
+        answers.push_back(answer);
     };
     query_processor(query_sents, candidate_sents, per_sent);
-    //output_t answers = process_query_sents(query_sents, candidate_sents);
-    output_t answers{};
-    for(auto &answer : answer_collector) answers.push_back(answer);
-    return to_json(answers);
+    return to_json(answers.to_vector());
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
@@ -795,19 +793,17 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     fmt::print("Will process {} sentences\n", query_sents.size());
 
     ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
-    tbb::concurrent_vector<data::QueryResult> answer_collector;
-    auto per_sent=[&answer_collector,max_clip_len,this](auto const &query_sent,
+    util::ConcurrentVector<data::QueryResult> answers;
+    auto per_sent=[&answers,max_clip_len,this](auto const &query_sent,
                                                         auto const& query_sent_info,
                                                         auto const &relevant_sents){
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, max_clip_len);
         answer.query = query_sent_info;
-        answer_collector.push_back(answer);
+        answers.push_back(answer);
     };
     query_processor(query_sents, sents, per_sent);
-    output_t answers{};
-    for(auto &answer : answer_collector) answers.push_back(answer);
-    return to_json(answers);
+    return to_json(answers.to_vector());
 }
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const {
