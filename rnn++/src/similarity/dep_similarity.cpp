@@ -655,15 +655,11 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
 
 ///////////////////////////////////////////////////////////////
 RSSQueryEngine::RSSQueryEngine(json_t const &config)
-        : voca{config["wordvec_store"], config["voca_name"],
-               config["w2vmodel_name"], config["w2v_float_t"]},
-          token2uid{config},
-          tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
-          word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
-          sents{tokens.IndexSentences()},
-          uid2sent{sents},
-          dbinfo{config},
-          queries{config}
+: word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
+  db{config},
+  dbinfo{config},
+  queries{{config["wordvec_store"], config["voca_name"],
+           config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
 {}
 
 RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
@@ -685,15 +681,15 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) sent = db.uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
 
-    auto candidate_sents = sents;
+    auto candidate_sents = db.sents;
 
-    ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
+    ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
@@ -719,7 +715,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) sent = db.uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
@@ -742,8 +738,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         answers.push_back(answer);
     };
 
-    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
-    processor(query_sents, sents, per_sent);
+    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
+    processor(query_sents, db.sents, per_sent);
 
     return to_json(answers);
 }
@@ -758,7 +754,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) sent = db.uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
@@ -802,8 +798,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         collect_query_result(query_sent,query_sent_info, relevant_sents);
     };
 
-    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
-    processor(query_sents, sents, op_per_sent);
+    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
+    processor(query_sents, db.sents, op_per_sent);
 
     util::json_t stats_output;
     fmt::print(std::cerr, "Result stats\n");
@@ -812,12 +808,12 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         auto quid = pair.first;
         for(auto elm : pair.second){
             auto muid = elm.first;
-            for(auto uid : results_by_match[quid][muid]) per_qword[token2uid.word[muid]].push_back(uid.val);
+            for(auto uid : results_by_match[quid][muid]) per_qword[db.token2uid.word[muid]].push_back(uid.val);
             //per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
             fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                       token2uid.word[quid], token2uid.word[muid], elm.second);
+                       db.token2uid.word[quid], db.token2uid.word[muid], elm.second);
         }
-        stats_output[token2uid.word[quid]]=per_qword;
+        stats_output[db.token2uid.word[quid]]=per_qword;
         fmt::print(std::cerr, "------------------\n");
     }
     fmt::print(std::cerr, "==================\n");
@@ -832,8 +828,9 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
 RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t const &ask) const{
     json_t output{};
     for(int64_t uid : ask["sents"]) {
-        auto sent = uid2sent[SentUID{uid}];
-        auto chunk_idx = tokens.chunk_idx(sent.beg);
+        //TODO: do not assume uid is from db. It may come from queries.
+        auto sent = db.uid2sent[SentUID{uid}];
+        auto chunk_idx = db.tokens.chunk_idx(sent.beg);
         auto col_uid = dbinfo.indexer.column_uid(chunk_idx);
         auto row_idx = dbinfo.indexer.row_idx(chunk_idx);
 

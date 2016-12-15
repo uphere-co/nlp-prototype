@@ -130,15 +130,11 @@ struct RSSQueryEngine {
     json_t ask_query_stats(json_t const &ask) const;
     json_t ask_sents_content(json_t const &ask) const;
 
-    voca_info_t const voca;
-    UIDmaps token2uid;
-    wordrep::DepParsedTokens const tokens;
     wordrep::WordImportance const word_importance;
-    std::vector<Sentence> const sents;
-    wordrep::Sentences const uid2sent;
+    Dataset const db;
     data::rss::DBInfo dbinfo;
-    mutable WordSimCache dists_cache{voca};
-    mutable QueryResultCache result_cache{};
     Dataset queries;
+    mutable WordSimCache dists_cache{db.voca};
+    mutable QueryResultCache result_cache{};
 };
 }//namespace engine
