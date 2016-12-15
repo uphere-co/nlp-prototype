@@ -506,7 +506,25 @@ void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
     dists_cache.cache(vidxs);
 }
 ////////////////////////////////////////////////////////////////
+Dataset::Dataset(json_t const &config)
+        : voca{config["wordvec_store"], config["voca_name"],
+               config["w2vmodel_name"], config["w2v_float_t"]},
+          wordUIDs{config["word_uids_dump"].get<std::string>()},
+          posUIDs{config["pos_uids_dump"].get<std::string>()},
+          arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()}
+{}
 
+std::vector<SentUID> Dataset::append_chunk(data::CoreNLPjson const &ask) {
+    std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    tokens.build_voca_index(voca.indexmap);
+    auto uids = tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
+    sents = tokens.IndexSentences();
+    uid2sent.add(sents);
+
+    return uids;
+}
+//---------------------------------------------
 
 struct ProcessQuerySent{
     using val_t = WordSimCache::val_t;
@@ -628,7 +646,6 @@ struct ProcessChainQuery{
     ProcessQuerySent processor;
 };
 
-
 //////////////////////////////////////
 
 
@@ -642,22 +659,18 @@ DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
   word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   uid2sent{sents},
-  dbinfo{config}
+  dbinfo{config},
+  queries{config}
 {}
 
 //TODO: fix it to be thread-safe
 DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
-    std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
-    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{ask});
-    query_tokens.build_voca_index(voca.indexmap);
-    auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    queries_sents = query_tokens.IndexSentences();
-    uid2query_sent.add(queries_sents);
+    auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
     json_t answer{};
     std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(uid2query_sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     auto found_countries = dbinfo.country_tagger.tag(ask["query_str"]);
@@ -671,7 +684,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = uid2query_sent.find(uid);
+        auto sent = queries.uid2sent.find(uid);
         if(!sent) sent = uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
@@ -710,7 +723,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     YGPQuery query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = uid2query_sent.find(uid);
+        auto sent = queries.uid2sent.find(uid);
         if(!sent) sent = uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
@@ -779,21 +792,17 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
           uid2sent{sents},
           rssdb{config["column_uids_dump"].get<std::string>()},
           db_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                      config["dep_parsed_prefix"].get<std::string>()}
+                      config["dep_parsed_prefix"].get<std::string>()},
+          queries{config}
 {}
 
 RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
-    std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
-    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{ask});
-    query_tokens.build_voca_index(voca.indexmap);
-    auto uids = query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
-    queries_sents = query_tokens.IndexSentences();
-    uid2query_sent.add(queries_sents);
+    auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
     json_t answer{};
     std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(uid2query_sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
+    for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
     return answer;
@@ -805,7 +814,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     Query query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = uid2query_sent.find(uid);
+        auto sent = queries.uid2sent.find(uid);
         if(!sent) sent = uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
@@ -834,7 +843,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     Query query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = uid2query_sent.find(uid);
+        auto sent = queries.uid2sent.find(uid);
         if(!sent) sent = uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
@@ -868,7 +877,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
     Query query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = uid2query_sent.find(uid);
+        auto sent = queries.uid2sent.find(uid);
         if(!sent) sent = uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());

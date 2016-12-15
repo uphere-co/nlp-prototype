@@ -100,6 +100,26 @@ struct ScoredSentence{
     val_t score;
 };
 
+struct Dataset{
+    using Sentence = wordrep::Sentence;
+    using json_t = util::json_t;
+
+    Dataset(json_t const &config);
+
+    std::vector<wordrep::SentUID> append_chunk(data::CoreNLPjson const &ask);
+
+    //TODO: clean up dependency on wordrep.
+    wordrep::VocaInfo const voca;
+    wordrep::WordUIDindex const wordUIDs;
+    wordrep::POSUIDindex const posUIDs;
+    wordrep::ArcLabelUIDindex const arclabelUIDs;
+
+    wordrep::DepParsedTokens tokens{};
+    std::vector<Sentence> sents{};
+    wordrep::Sentences uid2sent{};
+    std::mutex query_tokens_update{};
+};
+
 struct DepSimilaritySearch {
     using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
@@ -128,10 +148,7 @@ struct DepSimilaritySearch {
     data::ygp::DBInfo const dbinfo;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
-    wordrep::DepParsedTokens query_tokens{};
-    std::vector<Sentence> queries_sents{};
-    wordrep::Sentences uid2query_sent{};
-    std::mutex query_tokens_update;
+    Dataset queries;
 };
 
 struct RSSQueryEngine {
@@ -165,9 +182,6 @@ struct RSSQueryEngine {
     data::DBIndexer const db_indexer;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
-    wordrep::DepParsedTokens query_tokens{};
-    std::vector<Sentence> queries_sents{};
-    wordrep::Sentences uid2query_sent{};
-    std::mutex query_tokens_update;
+    Dataset queries;
 };
 }//namespace engine
