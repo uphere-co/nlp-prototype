@@ -394,10 +394,16 @@ UIDmaps::UIDmaps(util::json_t config)
           arclabel{config["arclabel_uids_dump"].get<std::string>()}
 {}
 
+Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid)
+        : voca{std::move(voca)}, token2uid{std::move(token2uid)}
+{}
 Dataset::Dataset(json_t const &config)
         : voca{config["wordvec_store"], config["voca_name"],
                config["w2vmodel_name"], config["w2v_float_t"]},
-          token2uid{config}
+          token2uid{config},
+          tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
+          sents{tokens.IndexSentences()},
+          uid2sent{sents}
 {}
 
 std::vector<SentUID> Dataset::append_chunk(data::CoreNLPjson const &ask) {
@@ -536,15 +542,11 @@ struct ProcessChainQuery{
 
 
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
-: voca{config["wordvec_store"], config["voca_name"],
-       config["w2vmodel_name"], config["w2v_float_t"]},
-  token2uid{config},
-  tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
-  word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
-  sents{tokens.IndexSentences()},
-  uid2sent{sents},
+: word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
+  db{config},
   dbinfo{config},
-  queries{config}
+  queries{{config["wordvec_store"], config["voca_name"],
+           config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
 {}
 
 //TODO: fix it to be thread-safe
@@ -570,7 +572,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) sent = db.uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
@@ -583,10 +585,10 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 
     auto uids = dbinfo.per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=sents;
+    for(auto uid : uids) candidate_sents.push_back(db.uid2sent[uid]);
+    if(query.countries.size()==0) candidate_sents=db.sents;
 
-    ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
+    ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
@@ -612,7 +614,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = uid2sent.find(uid);
+        if(!sent) sent = db.uid2sent.find(uid);
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
@@ -622,8 +624,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
     auto uids = dbinfo.per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=sents;
+    for(auto uid : uids) candidate_sents.push_back(db.uid2sent[uid]);
+    if(query.countries.size()==0) candidate_sents=db.sents;
 
     output_t answers{};
     auto op_cut =[this](auto const& relevant_sents){
@@ -645,7 +647,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         answers.push_back(answer);
     };
 
-    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
+    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
     processor(query_sents, candidate_sents, per_sent);
 
     return to_json(answers);

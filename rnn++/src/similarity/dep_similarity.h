@@ -79,6 +79,7 @@ struct Dataset{
     using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
 
+    Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
     Dataset(json_t const &config);
 
     std::vector<wordrep::SentUID> append_chunk(data::CoreNLPjson const &ask);
@@ -106,16 +107,12 @@ struct DepSimilaritySearch {
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
 
-    voca_info_t const voca;
-    UIDmaps token2uid;
-    wordrep::DepParsedTokens const tokens;
     wordrep::WordImportance const word_importance;
-    std::vector<Sentence> const sents;
-    wordrep::Sentences const uid2sent;
+    Dataset const db;
     data::ygp::DBInfo const dbinfo;
-    mutable WordSimCache dists_cache{voca};
-    mutable QueryResultCache result_cache{};
     Dataset queries;
+    mutable WordSimCache dists_cache{db.voca};
+    mutable QueryResultCache result_cache{};
 };
 
 struct RSSQueryEngine {
