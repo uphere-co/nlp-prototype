@@ -536,8 +536,6 @@ struct ProcessQuerySent{
 
 
 struct ProcessQuerySents{
-    using output_t = std::vector<data::QueryResult>;
-
     ProcessQuerySents(wordrep::WordUIDindex const& wordUIDs,
                       wordrep::WordImportance const& word_importance,
                       WordSimCache& dists_cache)
@@ -549,19 +547,19 @@ struct ProcessQuerySents{
     template<typename OP>
     void operator()(std::vector<wordrep::Sentence> const &query_sents,
                     std::vector<wordrep::Sentence> const &candidate_sents,
-                    OP const &op) {
+                    OP const &op_per_sent) {
         util::Timer timer{};
         tbb::task_group g;
         for(auto const &query_sent : query_sents){
             if(query_sent.beg==query_sent.end) continue;
-            g.run([&timer,query_sent,&op,&candidate_sents, this](){
+            g.run([&timer,query_sent,&op_per_sent,&candidate_sents, this](){
                 data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
                 timer.here_then_reset("Get cutoffs");
                 cache_words(query_sent, dists_cache);
                 timer.here_then_reset("Built Similarity caches.");
                 std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
                 auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
-                op(query_sent, info, relevant_sents);
+                op_per_sent(query_sent, info, relevant_sents);
                 timer.here("Query answered.");
             });
         }
@@ -571,6 +569,61 @@ struct ProcessQuerySents{
 
     wordrep::WordUIDindex const& wordUIDs;
     wordrep::WordImportance const& word_importance;
+    WordSimCache& dists_cache;
+    ProcessQuerySent processor;
+};
+
+struct ProcessChainQuery{
+    ProcessChainQuery(wordrep::WordUIDindex const& wordUIDs,
+                      wordrep::WordImportance const& word_importance,
+                      wordrep::Sentences const &uid2sent,
+                      WordSimCache& dists_cache)
+            : wordUIDs{wordUIDs}, word_importance{word_importance}, uid2sent{uid2sent},
+              dists_cache{dists_cache},
+              processor{dists_cache}
+    {}
+
+    template<typename OP>
+    void operator()(std::vector<wordrep::Sentence> const &query_chain,
+                    std::vector<wordrep::Sentence> candidate_sents,
+                    OP const &op_per_sent) {
+        util::Timer timer{};
+        for(auto const &query_sent : query_chain){
+            if(query_sent.beg==query_sent.end) continue;
+            cache_words(query_sent, dists_cache);
+            data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
+            timer.here_then_reset("Get cutoffs");
+
+            auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
+
+            candidate_sents.clear();
+            assert(candidate_sents.size()==0);
+            if(!relevant_sents.size()) continue;
+
+            op_per_sent(query_sent, info, relevant_sents);
+            timer.here_then_reset("One pass in a query chain is finished.");
+
+            auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
+                                                   [](auto x, auto y){return x.score<y.score;});
+            auto score_cutoff = best_candidate->score * 0.5;
+            for(auto scored_sent : relevant_sents){
+                if(scored_sent.score < score_cutoff) continue;
+                auto sent = scored_sent.sent;
+                //TODO: release following assumption that candidate_sents are only from dataset, not queries_sents.
+                //TODO: fix inefficienty; collecting all uids first.
+                auto uids = sent.tokens->sentences_in_chunk(sent);
+                for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
+                //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
+                assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
+                assert(uid2sent[sent.uid].uid == sent.uid);
+            }
+            timer.here_then_reset("Prepared next pass in a query chain.");
+        }
+    }
+
+    wordrep::WordUIDindex const& wordUIDs;
+    wordrep::WordImportance const& word_importance;
+    wordrep::Sentences const& uid2sent;
     WordSimCache& dists_cache;
     ProcessQuerySent processor;
 };
@@ -652,6 +705,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!Query::is_valid(ask)) return json_t{};
+    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+
     YGPQuery query{ask};
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
@@ -664,61 +719,27 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     for(auto const &country : query.countries) std::cerr<<country << ", ";
     std::cerr<<std::endl;
     if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
-
     auto uids = dbinfo.per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(query.countries.size()==0) candidate_sents=sents;
 
-    output_t answers = process_chain_query(query_sents, candidate_sents);
-    return to_json(answers);
-//    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-}
-
-DepSimilaritySearch::output_t DepSimilaritySearch::process_chain_query(
-        std::vector<wordrep::Sentence> const &query_chain,
-        std::vector<wordrep::Sentence> candidate_sents) const {
-    auto max_clip_len = 200;
-    util::Timer timer{};
-
-    output_t output{};
-    for(auto const &query_sent : query_chain){
-        if(query_sent.beg==query_sent.end) continue;
-        data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
-        cache_words(query_sent, dists_cache);
-
-        std::cerr<<fmt::format("Chain query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-
-        ProcessQuerySent processor{dists_cache};
-        auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
-
-        auto n0 = candidate_sents.size();
-        candidate_sents.clear();
-        assert(candidate_sents.size()==0);
-        if(!relevant_sents.size()) continue;
+    output_t answers{};
+    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+        for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
+            fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
+        }
+        std::cerr<<std::endl;
 
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, max_clip_len);
-        answer.query = info;
-        output.push_back(answer);
-        timer.here_then_reset("One pass in a query chain is finished.");
+        answer.query = query_sent_info;
+        answers.push_back(answer);
+    };
+    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    processor(query_sents, candidate_sents, collect_query_result);
 
-        auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
-                                               [](auto x, auto y){return x.score<y.score;});
-        auto score_cutoff = best_candidate->score * 0.5;
-        for(auto scored_sent : relevant_sents){
-            if(scored_sent.score < score_cutoff) continue;
-            auto sent = scored_sent.sent;
-            auto uids = sent.tokens->sentences_in_chunk(sent);
-            for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
-            //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
-            assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
-            assert(uid2sent[sent.uid].uid == sent.uid);
-        }
-        std::cerr<<fmt::format("score cutoff {} : {} of {} passed.", score_cutoff, candidate_sents.size(), n0)<<std::endl;
-        timer.here_then_reset("Prepared next pass in a query chain.");
-    }
-    return output;
+    return to_json(answers);
 }
 
 std::vector<PerSentQueryResult> DepSimilaritySearch::write_output(
@@ -780,7 +801,6 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     if (!Query::is_valid(ask)) return json_t{};
-
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
     Query query{ask};
     std::vector<Sentence> query_sents{};
@@ -819,12 +839,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
-    std::vector<val_t> cutoffs;
-    if(ask.find("cutoffs")!=ask.cend()){
-        for(auto x : ask["cutoffs"]) std::cerr<<x << std::endl;
-        for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
-    }
-    fmt::print("Will process a query chain of length {}.\n", query_sents.size());
 
     output_t answers{};
     auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
@@ -839,7 +853,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         answers.push_back(answer);
     };
 
-    process_chain_query(query_sents, sents, collect_query_result);
+    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    processor(query_sents, sents, collect_query_result);
 
     return to_json(answers);
 }
@@ -858,12 +873,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         if(!sent) continue;
         query_sents.push_back(sent.value());
     }
-    std::vector<val_t> cutoffs;
-    if(ask.find("cutoffs")!=ask.cend()){
-        for(auto x : ask["cutoffs"]) std::cerr<<x << std::endl;
-        for(auto x : ask["cutoffs"]) cutoffs.push_back(x);
-    }
-    fmt::print("Will process a query chain of length {}.\n", query_sents.size());
 
     std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> results_by_match;
     std::map<WordUID,std::map<WordUID,std::size_t>> stats;
@@ -898,7 +907,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         collect_query_result(query_sent,query_sent_info, relevant_sents);
     };
 
-    process_chain_query(query_sents, sents, op_per_sent);
+    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    processor(query_sents, sents, op_per_sent);
 
     util::json_t stats_output;
     fmt::print(std::cerr, "Result stats\n");
@@ -946,49 +956,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
     return output;
 
 }
-
-template<typename OP1>
-void RSSQueryEngine::process_chain_query(
-        std::vector<Sentence> const &query_chain,
-        std::vector<Sentence> candidate_sents,
-        OP1 const& op_per_sent) const {
-    util::Timer timer{};
-
-    ProcessQuerySent processor{dists_cache};
-
-    for(auto const &query_sent : query_chain){
-        if(query_sent.beg==query_sent.end) continue;
-        cache_words(query_sent, dists_cache);
-        data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
-        timer.here_then_reset("Get cutoffs");
-
-        auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
-
-        candidate_sents.clear();
-        assert(candidate_sents.size()==0);
-        if(!relevant_sents.size()) continue;
-
-        op_per_sent(query_sent, info, relevant_sents);
-        timer.here_then_reset("One pass in a query chain is finished.");
-
-        auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
-                                               [](auto x, auto y){return x.score<y.score;});
-        auto score_cutoff = best_candidate->score * 0.5;
-        for(auto scored_sent : relevant_sents){
-            if(scored_sent.score < score_cutoff) continue;
-            auto sent = scored_sent.sent;
-            //TODO: release following assumption that candidate_sents are only from dataset, not queries_sents.
-            //TODO: fix inefficienty; collecting all uids first.
-            auto uids = sent.tokens->sentences_in_chunk(sent);
-            for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
-            //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
-            assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
-            assert(uid2sent[sent.uid].uid == sent.uid);
-        }
-        timer.here_then_reset("Prepared next pass in a query chain.");
-    }
-}
-
 
 std::vector<data::PerSentQueryResult> RSSQueryEngine::write_output(
         Sentence const &query_sent,
