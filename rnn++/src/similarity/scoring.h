@@ -1,7 +1,15 @@
 #pragma once
 
+#include <vector>
+
 #include "wordrep/dep_parsed.h"
 #include "wordrep/voca_info.h"
+
+#include "data_source/db_query.h"
+
+namespace data{
+struct DBIndexer;
+}//namespace data
 
 namespace engine{
 
@@ -37,4 +45,11 @@ struct ScoredSentence{
     val_t score;
 };
 
-}
+
+std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
+                                           size_t n_max_result);
+data::PerSentQueryResult build_query_result_POD(
+        wordrep::Sentence const &query_sent, ScoredSentence const &matched_sentence,
+        data::DBIndexer const &db_indexer, int64_t max_clip_len);
+
+}//namespace engine

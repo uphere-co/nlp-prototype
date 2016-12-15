@@ -3,7 +3,6 @@
 
 #include <fmt/printf.h>
 
-#include "data_source/db_query.h"
 #include "data_source/ygp_db.h"
 #include "data_source/db.h"
 #include "data_source/rss.h"
@@ -26,118 +25,11 @@ using namespace util::io;
 namespace ygp = data::ygp;
 
 using data::PerSentQueryResult;
-using data::ScoreWithOffset;
 using data::DBIndexer;
 
 namespace {
 
 using engine::ScoredSentence;
-
-auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, auto const &tokens,
-                          auto max_clip_len)->std::pair<CharOffset,CharOffset> {
-    auto scores = score.scores_with_idx();
-    if(!scores.size()) return {{},{}};
-    std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
-    auto pair = scores.front();
-    auto i_word_beg = pair.first;
-    auto i_word_end = pair.first;
-    CharOffset clip_beg = tokens.word_beg(i_word_beg);
-    CharOffset clip_end = tokens.word_end(i_word_end);
-    auto len_sent = sent.chrlen();
-    max_clip_len = max_clip_len>len_sent? len_sent:max_clip_len;
-    auto max_len = typename decltype(clip_beg)::val_t{max_clip_len};
-
-    for(auto pair : scores){
-        auto idx = pair.first;
-        //auto score = pair.second;
-        auto beg = tokens.word_beg(idx);
-        auto end = tokens.word_end(idx);
-        if(beg<clip_beg && clip_end < beg+max_len ) {
-            clip_beg = beg;
-            i_word_beg = idx;
-        } else if(end>clip_end && end < clip_beg+max_len ) {
-            clip_end = end;
-            i_word_end = idx;
-        }
-//        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
-    }
-    auto len = clip_end.val-clip_beg.val;
-    while(max_len-len>0) {
-        if(i_word_beg>sent.front()) {
-            --i_word_beg;
-            clip_beg = tokens.word_beg(i_word_beg);
-        }
-        if(i_word_end<sent.back()){
-            ++i_word_end;
-            clip_end = tokens.word_end(i_word_end);
-        }
-        len = clip_end.val-clip_beg.val;
-        if(i_word_beg==sent.front() && i_word_end==sent.back()) break;
-    }
-
-//    fmt::print("{} {}\n", clip_beg.val, clip_end.val);
-    return {clip_beg, clip_end};
-};
-
-PerSentQueryResult build_query_result_POD(
-        Sentence const &query_sent, ScoredSentence const &matched_sentence,
-        DBIndexer const &db_indexer, int64_t max_clip_len){
-    auto const &scores = matched_sentence.scores;
-    auto sent = matched_sentence.sent;
-    auto scores_with_idxs = scores.serialize();
-    std::sort(scores_with_idxs.begin(), scores_with_idxs.end(),
-              [](auto const &x, auto const &y){return std::get<2>(x)>std::get<2>(y);});
-
-    auto const &tokens = *(sent.tokens);
-    auto const &query_tokens = *(query_sent.tokens);
-
-    auto chunk_idx = tokens.chunk_idx(sent.beg);
-    auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
-    auto col_uid = db_indexer.column_uid(chunk_idx);
-    auto row_idx = db_indexer.row_idx(chunk_idx);
-
-    PerSentQueryResult result;
-    for(auto elm : scores_with_idxs){
-        auto lhs_idx = std::get<0>(elm);
-        auto rhs_idx = std::get<1>(elm);
-        auto score   = std::get<2>(elm);
-        if(score==0.0) continue;
-        ScoreWithOffset tmp;
-        tmp.score = score;
-        tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_word.end = query_tokens.word_end(lhs_idx).val;
-        tmp.matched_word.beg = tokens.word_beg(rhs_idx).val;
-        tmp.matched_word.end = tokens.word_end(rhs_idx).val;
-        result.scores_with_offset.push_back(tmp);
-    }
-    result.score = scores.score_sum();
-    data::set_db_info(result, col_uid, row_uid, row_idx, sent);
-    result.highlight_offset = {0,0};
-    auto clip_offset = get_clip_offset(sent, scores, tokens, max_clip_len);
-    result.clip_offset = {clip_offset.first.val, clip_offset.second.val};
-
-    return result;
-}
-
-PerSentQueryResult build_ygp_query_result_POD(Sentence const &query_sent,
-                                ScoredSentence const &matched_sentence,
-                                int64_t max_clip_len,
-                                ygp::YGPdb const &ygpdb,
-                                DBIndexer const &ygp_indexer,
-                                ygp::DBbyCountry const &ygpdb_country){
-    auto result = build_query_result_POD(query_sent, matched_sentence, ygp_indexer, max_clip_len);
-
-    auto sent = matched_sentence.sent;
-    auto chunk_idx = sent.tokens->chunk_idx(sent.beg);
-    auto col_uid = ygp_indexer.column_uid(chunk_idx);
-    result.table_name = ygpdb.table(col_uid);
-    result.column_name= ygpdb.column(col_uid);
-    result.index_col_name = ygpdb.index_col(col_uid);
-
-    result.country = ygpdb_country.get_country(sent.uid);
-
-    return result;
-}
 
 
 struct Query{
@@ -180,40 +72,6 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
         dedup_sents.push_back(scored_sent);
     }
     return dedup_sents;
-}
-
-std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
-                                           size_t n_max_result){
-    auto n_found = relevant_sents.size();
-    if(!n_found) return relevant_sents;
-    auto n_cut = std::min(n_max_result, n_found);
-    auto beg = relevant_sents.begin();
-    auto rank_cut = beg+n_cut;
-    std::partial_sort(beg,rank_cut,relevant_sents.end(),
-                      [](auto const &x, auto const &y){return x.score > y.score;});
-    auto score_cutoff = 0.5*relevant_sents.front().score;
-    rank_cut = std::find_if_not(beg, rank_cut,
-                                [score_cutoff](auto const &x){return x.score>score_cutoff;});
-    std::vector<ScoredSentence> top_n_results;
-    std::copy(beg, rank_cut, std::back_inserter(top_n_results));
-    return top_n_results;
-}
-
-std::vector<ScoredSentence> per_table_rank_cut(
-        std::vector<ScoredSentence> const &relevant_sents, size_t n_max_per_table,
-        DBIndexer const &ygp_indexer, ygp::YGPdb const &ygpdb){
-    std::map<std::string, std::vector<ScoredSentence>> outputs_per_column;
-    for(auto const &scored_sent : relevant_sents){
-        auto const &sent = scored_sent.sent;
-        auto col_uid=ygp_indexer.column_uid(sent.tokens->chunk_idx(sent.beg));
-        auto table_name = ygpdb.table(col_uid);
-        outputs_per_column[table_name].push_back(scored_sent);
-    }
-    std::vector<ScoredSentence> top_N_results;
-    for(auto const &pair : outputs_per_column){
-        util::append(top_N_results, plain_rank_cut(pair.second, n_max_per_table));
-    }
-    return plain_rank_cut(top_N_results, n_max_per_table*2);
 }
 
 }//nameless namespace
@@ -730,12 +588,9 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 
     ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto op_cut =[this](auto const& relevant_sents){
-        return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
-    };
+    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
-                                          dbinfo.db, dbinfo.indexer, dbinfo.per_country);
+        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
     auto per_sent=[this,&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent,auto const& query_sent_info,auto const &relevant_sents){
@@ -775,8 +630,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
     };
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
-                                          dbinfo.db, dbinfo.indexer, dbinfo.per_country);
+        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
     auto per_sent = [&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
