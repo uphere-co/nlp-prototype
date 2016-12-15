@@ -29,7 +29,8 @@ extern "C" {
 
 using json = nlohmann::json;
 json config; 
-engine::DepSimilaritySearch* engine0;
+using engine_t = engine::YGPQueryEngine;
+engine_t* engine0;
 
 util::Timer timer{};
 
@@ -59,7 +60,7 @@ const char* json_serialize( json_t_p p )
 void query_init( char* configfile )
 {
     config = util::load_json(configfile);
-    engine0 = new engine::DepSimilaritySearch(config);
+    engine0 = new engine_t(config);
     std::cout << config.dump(4) << std::endl;
     timer.here_then_reset("Search engine loaded."); 
 }

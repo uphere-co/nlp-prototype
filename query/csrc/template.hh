@@ -15,3 +15,4 @@ public:
 #define unique_ptr_wrapper_type(T)                              \
   typedef unique_ptr_wrapper<T> unique_ptr_wrapper_ ## T ;      \
   typedef unique_ptr_wrapper_ ## T * T ## _p;
+
