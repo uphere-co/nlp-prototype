@@ -644,6 +644,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
+
     ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
     processor(query_sents, candidate_sents, per_sent);
 
@@ -659,9 +660,7 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
           word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
           sents{tokens.IndexSentences()},
           uid2sent{sents},
-          rssdb{config["column_uids_dump"].get<std::string>()},
-          db_indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                      config["dep_parsed_prefix"].get<std::string>()},
+          dbinfo{config},
           queries{config}
 {}
 
@@ -694,9 +693,9 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
 
     ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
     auto per_sent=[&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
@@ -724,12 +723,11 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     }
 
     output_t answers{};
-    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
-
-    auto collect_query_result = [&answers,max_clip_len,op_cut,op_results](
+    auto per_sent = [&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
             fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
@@ -743,7 +741,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     };
 
     ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
-    processor(query_sents, sents, collect_query_result);
+    processor(query_sents, sents, per_sent);
 
     return to_json(answers);
 }
@@ -780,9 +778,9 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         }
     };
     output_t answers{};
-    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
     auto collect_query_result = [&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
@@ -834,12 +832,12 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
     for(int64_t uid : ask["sents"]) {
         auto sent = uid2sent[SentUID{uid}];
         auto chunk_idx = tokens.chunk_idx(sent.beg);
-        auto col_uid = db_indexer.column_uid(chunk_idx);
-        auto row_idx = db_indexer.row_idx(chunk_idx);
+        auto col_uid = dbinfo.indexer.column_uid(chunk_idx);
+        auto row_idx = dbinfo.indexer.row_idx(chunk_idx);
 
         data::rss::HashIndexer hash2idx{"/home/jihuni/word2vec/nyt/nyt.raw"};
         auto hash = hash2idx.hash(data::rss::HashIndex{row_idx.val});
-        auto column = rssdb.column(col_uid);
+        auto column = dbinfo.db.column(col_uid);
 
         auto offset_beg = sent.beg_offset().val;
         auto offset_end = sent.end_offset().val;

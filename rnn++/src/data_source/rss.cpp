@@ -4,16 +4,17 @@
 
 #include "utils/string.h"
 #include "utils/versioned_name.h"
+#include "utils/hdf5.h"
 
 #include "wordrep/dep_parsed.h"
 
 #include "data_source/ygp_db.h" //TODO: some indexes should be separated out from YGP ETL.
 #include "data_source/ygp_etl.h" //TODO: some ETL function should be separated out from YGP ETL.
 
+using util::io::h5read;
+
 namespace data{
 namespace rss{
-
-
 
 RSSRowFilePath::RSSRowFilePath(std::string full_path)
         : table{"nyt"}    {
@@ -116,6 +117,12 @@ ColumnUID Columns::col_uid(std::string name) const{
     auto it= std::find(beg, columns.cend(), name);
     return it - beg;
 }
+
+DBInfo::DBInfo(util::json_t config)
+    :db{config["column_uids_dump"].get<std::string>()},
+     indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+             config["dep_parsed_prefix"].get<std::string>()}
+{}
 
 }//namespace rss::data
 }//namespace data

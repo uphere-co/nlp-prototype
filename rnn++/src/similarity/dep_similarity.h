@@ -139,8 +139,7 @@ struct RSSQueryEngine {
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> const sents;
     wordrep::Sentences const uid2sent;
-    data::rss::Columns const rssdb;
-    data::DBIndexer const db_indexer;
+    data::rss::DBInfo dbinfo;
     mutable WordSimCache dists_cache{voca};
     mutable QueryResultCache result_cache{};
     Dataset queries;
