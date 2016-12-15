@@ -24,19 +24,22 @@ newtype ArcLabel = ArcLabel Text
              deriving (Eq, Show, ToJSON, FromJSON)
 newtype Dep = Dep Text
              deriving (Eq, Show, ToJSON, FromJSON)
-newtype DepPos = DepPos { unDepPos :: Int }
-             deriving (Eq, Show, ToJSON, FromJSON)
+newtype DepPos = DepPos Int
+             deriving (Ord, Eq, Show, ToJSON, FromJSON)
 newtype Gov = Gov Text
              deriving (Eq, Show, ToJSON, FromJSON)
 newtype GovPos = GovPos Int
-             deriving (Eq, Show, ToJSON, FromJSON)
+             deriving (Ord, Eq, Show, ToJSON, FromJSON)
 
 data DepToken = DepToken  { arclabel :: ArcLabel
                             , dep      :: Dep
                             , dep_pos  :: DepPos
                             , gov      :: Gov
-			    , gov_pos  :: GovPos }
-            deriving (Eq, Show)
+                            , gov_pos  :: GovPos }
+                           deriving (Eq, Show)
+
+unDepPos (DepPos x) = x
+unGovPos (GovPos x) = x
 
 {-
 data DepToken2 = DepToken2  { dep2 :: ArcLabel
@@ -119,6 +122,8 @@ tryDump :: Either String DepChunk -> BL.ByteString
 tryDump (Right json) = encode json
 tryDump (Left _ )    = "null"
 
+tryDepChunk :: Either String DepChunk -> DepChunk
+tryDepChunk (Right chunk) = chunk
 
 assert :: Bool -> String
 assert True = "Test passed"
@@ -150,8 +155,7 @@ buildGraph es = foldl' update M.empty es
                        in M.alter f g acc
                  
 buildWordTable :: [WordToken] -> M.Map Vertex Dep
-buildWordTable ws = M.fromList (map (\w -> ( unDepPos (word_pos w),(word w) )) ws) 
-
+buildWordTable ws = M.fromList (map (\w -> (unDepPos (word_pos w),(word w))) ws) 
 
 
 -- data Maybe a = Nothing    (analogous to null, std::optional)
@@ -240,6 +244,46 @@ DepParse <$> o.= "name"
 --map :: (a -> b) -> Map k [Vertex] -> Map k [Dep] 
 
 
+---------------------------
+-- Jihun's trial:
+isLeaf pos gov2deps = let r = M.lookup (GovPos pos) gov2deps
+                      in case r of
+                          Nothing -> True
+                          Just _  -> False
+                          
+buildDependentsMap es = foldl' update M.empty es
+  where 
+    update acc (g,d) = let f Nothing = Just [d]
+                           f (Just ds) = Just (d:ds)
+                       in M.alter f g acc
+
+governorIndex idx dep2gov = let r = M.lookup (DepPos idx) dep2gov
+                            in case r of
+                               Nothing         -> Nothing
+                               Just (GovPos i) -> Just i
+
+toRoot idx heads dep2gov = let r = governorIndex idx dep2gov
+                           in case r of
+                               Nothing -> (idx:heads)
+                               Just i -> toRoot i (idx:heads) dep2gov
+
+{-
+jsonstr <- BL.readFile "data/sent.json"
+ej = eitherDecode jsonstr :: Either String DepChunk
+chunk = tryDepChunk ej
+ds =  deps $ head$ sents chunk
+
+sents_deps = fmap deps $ sents chunk
+sent_deps = head sents_deps
+all_nodess = fmap (fmap $ unDepPos.dep_pos ) sents_deps
+all_nodes = head all_nodess
+
+dep2gov = M.fromList $ fmap (\x -> (dep_pos x, gov_pos x)) sent_deps
+gov2deps = buildDependentsMap $ fmap (\x -> (gov_pos x, dep_pos x)) sent_deps
+
+all_leaf = filter (\x -> isLeaf x gov2deps) all_nodes
+all_paths = map (\x -> toRoot x [] dep2gov) all_leaf
+-}
 
 main :: IO ()
 main = do
@@ -261,12 +305,15 @@ main = do
     Right jd -> do
       let s = head (sents jd)
           ds = deps s
-	  ws = words s
+          ws = words s
           g = buildGraph (mkEdges ds)
       print g
       let wmap = buildWordTable ws
       print wmap
       print (replaceIndex2Word wmap 3)
       print (replaceIndex2WordInGraph wmap g)
-      let css = allDepChain g 
+      let css = allDepChain g
+      print css
       print (fmap (fmap (replaceIndex2Word wmap)) css)
+      
+   
