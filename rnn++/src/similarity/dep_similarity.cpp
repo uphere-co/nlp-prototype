@@ -413,6 +413,29 @@ private:
 
 
 ////////////////////////////////
+
+template<typename OPC, typename OPR>
+std::vector<data::PerSentQueryResult> write_output(
+        Sentence const &query_sent,
+        std::vector<ScoredSentence> const &relevant_sents,
+        OPC op_cut, OPR op_results) {
+    auto n_found = relevant_sents.size();
+    std::cerr<<n_found << " results are found"<<std::endl;
+
+    util::Timer timer;
+    auto top_N_results = op_cut(relevant_sents);
+    timer.here_then_reset("Get top N results.");
+
+    std::vector<data::PerSentQueryResult> results;
+    for(auto const &scored_sent : top_N_results){
+        auto result = op_results(query_sent, scored_sent);
+        results.push_back(result);
+    }
+
+    timer.here_then_reset("Generate JSON output.");
+    return results;
+}
+
 //TODO : separated out helper functions
 
 util::json_t to_json(std::vector<PerSentQueryResult> const &results){
@@ -673,6 +696,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
+
     auto found_countries = dbinfo.country_tagger.tag(ask["query_str"]);
     answer["Countries"]=found_countries;
     return answer;
@@ -703,11 +727,17 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 
     ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto per_sent=[&answers,max_clip_len,this](auto const &query_sent,
-                                               auto const& query_sent_info,
-                                               auto const &relevant_sents){
+    auto op_cut =[this](auto const& relevant_sents){
+        return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
+    };
+    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
+        return build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
+                                          dbinfo.db, dbinfo.indexer, dbinfo.per_country);
+    };
+    auto per_sent=[this,&answers,max_clip_len,op_cut,op_results](
+            auto const &query_sent,auto const& query_sent_info,auto const &relevant_sents){
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
@@ -738,46 +768,30 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
     if(query.countries.size()==0) candidate_sents=sents;
 
     output_t answers{};
-    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+    auto op_cut =[this](auto const& relevant_sents){
+        return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
+    };
+    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
+        return build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
+                                          dbinfo.db, dbinfo.indexer, dbinfo.per_country);
+    };
+    auto per_sent = [&answers,max_clip_len,op_cut,op_results](
+            auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
             fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
         }
         std::cerr<<std::endl;
 
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
     ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
-    processor(query_sents, candidate_sents, collect_query_result);
+    processor(query_sents, candidate_sents, per_sent);
 
     return to_json(answers);
 }
-
-std::vector<PerSentQueryResult> DepSimilaritySearch::write_output(
-        Sentence const &query_sent,
-        std::vector<ScoredSentence> const &relevant_sents,
-        int64_t max_clip_len) const{
-    auto n_found = relevant_sents.size();
-    std::cerr<<n_found << " results are found"<<std::endl;
-
-    util::Timer timer;
-//    auto top_N_results = plain_rank_cut(relevant_sents, 5);
-    auto top_N_results  = per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
-    timer.here_then_reset("Get top N results.");
-
-    std::vector<PerSentQueryResult> results;
-    for(auto const &scored_sent : top_N_results){
-        auto result = build_ygp_query_result_POD(query_sent, scored_sent, max_clip_len,
-                                                 dbinfo.db, dbinfo.indexer, dbinfo.per_country);
-        results.push_back(result);
-    }
-
-    timer.here_then_reset("Generate JSON output.");
-    return results;
-}
-
 
 ///////////////////////////////////////////////////////////////
 RSSQueryEngine::RSSQueryEngine(json_t const &config)
@@ -821,17 +835,22 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     }
     fmt::print("Will process {} sentences\n", query_sents.size());
 
+    auto candidate_sents = sents;
+
     ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto per_sent=[&answers,max_clip_len,this](auto const &query_sent,
-                                                        auto const& query_sent_info,
-                                                        auto const &relevant_sents){
+    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
+        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+    };
+    auto per_sent=[&answers,max_clip_len,op_cut,op_results](
+            auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
-    query_processor(query_sents, sents, per_sent);
+    query_processor(query_sents, candidate_sents, per_sent);
     return to_json(answers.to_vector());
 }
 
@@ -850,14 +869,20 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     }
 
     output_t answers{};
-    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
+        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+    };
+
+    auto collect_query_result = [&answers,max_clip_len,op_cut,op_results](
+            auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
             fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
         }
         std::cerr<<std::endl;
 
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
@@ -900,18 +925,24 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         }
     };
     output_t answers{};
-    auto collect_query_result = [this,&answers,max_clip_len](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+    auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
+    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
+        return build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
+    };
+    auto collect_query_result = [&answers,max_clip_len,op_cut,op_results](
+            auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
             fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
         }
         std::cerr<<std::endl;
 
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, max_clip_len);
+        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
-    auto op_per_sent=[&collect_result_stats,collect_query_result](auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
+    auto op_per_sent=[collect_result_stats,collect_query_result](
+            auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         collect_result_stats(query_sent,query_sent_info, relevant_sents);
         collect_query_result(query_sent,query_sent_info, relevant_sents);
     };
@@ -966,26 +997,6 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
 
 }
 
-std::vector<data::PerSentQueryResult> RSSQueryEngine::write_output(
-        Sentence const &query_sent,
-        std::vector<ScoredSentence> const &relevant_sents,
-        int64_t max_clip_len) const{
-    auto n_found = relevant_sents.size();
-    std::cerr<<n_found << " results are found"<<std::endl;
-
-    util::Timer timer;
-    auto top_N_results = plain_rank_cut(relevant_sents, 15);
-    timer.here_then_reset("Get top N results.");
-
-    std::vector<data::PerSentQueryResult> results;
-    for(auto const &scored_sent : top_N_results){
-        auto result = build_query_result_POD(query_sent, scored_sent, db_indexer, max_clip_len);
-        results.push_back(result);
-    }
-
-    timer.here_then_reset("Generate JSON output.");
-    return results;
-}
 
 }//namespace engine
 
