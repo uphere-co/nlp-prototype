@@ -503,8 +503,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
 
-    auto found_countries = dbinfo.country_tagger.tag(ask["query_str"]);
-    answer["Countries"]=found_countries;
+    dbinfo.tag_on_register_documents(ask, answer);
     return answer;
 }
 
@@ -583,6 +582,8 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
     for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
     answer["sent_uids"]=uid_vals;
     std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
+
+    dbinfo.tag_on_register_documents(ask, answer);
     return answer;
 }
 

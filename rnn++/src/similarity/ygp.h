@@ -39,6 +39,10 @@ struct DBInfo{
         return per_table_rank_cut(relevant_sents, 5, indexer, db);
     }
 
+    void tag_on_register_documents(util::json_t const& ask, util::json_t& answer) const{
+        auto found_countries = country_tagger.tag(ask["query_str"]);
+        answer["Countries"]=found_countries;
+    }
     std::vector<wordrep::Sentence> get_query_sents(
             query_t const& query,
             wordrep::Sentences const &query_sent_uids,

@@ -33,6 +33,7 @@ struct DBInfo{
         return engine::plain_rank_cut(relevant_sents, 15);
     }
 
+    void tag_on_register_documents(util::json_t const& /*ask*/, util::json_t& /*answer*/) const {}
     std::vector<wordrep::Sentence> get_query_sents(
             query_t const& query,
             wordrep::Sentences const &query_sent_uids,
