@@ -65,38 +65,17 @@ private:
     data_t caches;
 };
 
-
-struct DepSimilaritySearch {
+template<typename T>
+class QueryEngine {
+public:
+    using dbinfo_t = T;
     using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
-    using dbinfo_t = data::ygp::DBInfo;
 
-    DepSimilaritySearch(json_t const& config);
-
-    json_t register_documents(json_t const &ask) ;
-    json_t ask_query(json_t const &ask) const;
-    json_t ask_chain_query(json_t const &ask) const;
-
-    wordrep::WordImportance const word_importance;
-    Dataset const db;
-    dbinfo_t const dbinfo;
-    Dataset queries;
-    mutable WordSimCache dists_cache{db.voca};
-    mutable QueryResultCache result_cache{};
-};
-
-struct RSSQueryEngine {
-    using Sentence = wordrep::Sentence;
-    using json_t = util::json_t;
-    using voca_info_t = wordrep::VocaInfo;
-    using val_t = voca_info_t::voca_vecs_t::val_t;
-    using output_t = std::vector<data::QueryResult>;
-    using dbinfo_t = data::rss::DBInfo;
-
-    RSSQueryEngine(json_t const& config);
+    QueryEngine(json_t const& config);
 
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
@@ -104,6 +83,7 @@ struct RSSQueryEngine {
     json_t ask_query_stats(json_t const &ask) const;
     json_t ask_sents_content(json_t const &ask) const;
 
+private:
     wordrep::WordImportance const word_importance;
     Dataset const db;
     dbinfo_t dbinfo;
@@ -111,4 +91,8 @@ struct RSSQueryEngine {
     mutable WordSimCache dists_cache{db.voca};
     mutable QueryResultCache result_cache{};
 };
+
+using RSSQueryEngine = engine::QueryEngine<data::rss::DBInfo>;
+using YGPQueryEngine = engine::QueryEngine<data::ygp::DBInfo>;
+
 }//namespace engine

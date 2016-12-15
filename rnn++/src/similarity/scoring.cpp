@@ -121,3 +121,4 @@ PerSentQueryResult build_query_result_POD(
 }
 
 }//namespace engine
+

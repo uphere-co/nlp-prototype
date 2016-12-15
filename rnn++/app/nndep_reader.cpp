@@ -216,7 +216,7 @@ int main(int /*argc*/, char** argv){
 
     util::Timer timer{};
 
-    DepSimilaritySearch engine{config};
+    engine::YGPQueryEngine engine{config};
 //    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);

@@ -24,6 +24,7 @@ using namespace wordrep;
 using namespace util::io;
 namespace ygp = data::ygp;
 
+using util::json_t;
 using data::PerSentQueryResult;
 using data::DBIndexer;
 
@@ -481,91 +482,9 @@ struct ProcessChainQuery{
     ProcessQuerySent processor;
 };
 
-//////////////////////////////////////
-
-
-DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
-: word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
-  db{config},
-  dbinfo{config},
-  queries{{config["wordvec_store"], config["voca_name"],
-           config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
-{}
-
-//TODO: fix it to be thread-safe
-DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const &ask) {
-    if (ask.find("sentences") == ask.end()) return json_t{};
-    auto uids = queries.append_chunk(data::CoreNLPjson{ask});
-
-    json_t answer{};
-    std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
-    answer["sent_uids"]=uid_vals;
-    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
-
-    dbinfo.tag_on_register_documents(ask, answer);
-    return answer;
-}
-
-DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) const {
-    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-
-    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
-    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
-
-    ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
-    util::ConcurrentVector<data::QueryResult> answers;
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
-    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
-    };
-    auto per_sent=[this,&answers,max_clip_len,op_cut,op_results](
-            auto const &query_sent,auto const& query_sent_info,auto const &relevant_sents){
-        data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
-        answer.query = query_sent_info;
-        answers.push_back(answer);
-    };
-    query_processor(query_sents, candidate_sents, per_sent);
-    return to_json(answers.to_vector());
-}
-
-DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
-    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-
-    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
-    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
-
-    output_t answers{};
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
-    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
-    };
-    auto per_sent = [&answers,max_clip_len,op_cut,op_results](
-            auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
-        for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
-            fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
-        }
-        std::cerr<<std::endl;
-
-        data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
-        answer.query = query_sent_info;
-        answers.push_back(answer);
-    };
-
-    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
-    processor(query_sents, candidate_sents, per_sent);
-
-    return to_json(answers);
-}
-
 ///////////////////////////////////////////////////////////////
-RSSQueryEngine::RSSQueryEngine(json_t const &config)
+template<typename T>
+QueryEngine<T>::QueryEngine(json_t const &config)
 : word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   db{config},
   dbinfo{config},
@@ -573,7 +492,8 @@ RSSQueryEngine::RSSQueryEngine(json_t const &config)
            config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
 {}
 
-RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
+template<typename T>
+json_t QueryEngine<T>::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
@@ -587,9 +507,10 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
     return answer;
 }
 
-RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
+template<typename T>
+json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    dbinfo_t::query_t query{ask};
+    typename dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
@@ -612,9 +533,10 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
     return to_json(answers.to_vector());
 }
 
-RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const {
+template<typename T>
+json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    dbinfo_t::query_t query{ask};
+    typename  dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
@@ -644,11 +566,11 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     return to_json(answers);
 }
 
-
-RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const {
+template<typename T>
+json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    dbinfo_t::query_t query{ask};
+    typename dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
@@ -720,7 +642,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
     return output;
 }
 
-RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t const &ask) const{
+template<typename T>
+json_t QueryEngine<T>::ask_sents_content(json_t const &ask) const{
     json_t output{};
     for(int64_t uid : ask["sents"]) {
         //TODO: do not assume uid is from db. It may come from queries.
@@ -745,5 +668,8 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_sents_content(RSSQueryEngine::json_t 
 }
 
 
-}//namespace engine
+//Explicit instantiation of query engines.
+template class engine::QueryEngine<data::rss::DBInfo>;
+template class engine::QueryEngine<data::ygp::DBInfo>;
 
+}//namespace engine
