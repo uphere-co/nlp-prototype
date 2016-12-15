@@ -28,34 +28,7 @@ using data::PerSentQueryResult;
 using data::DBIndexer;
 
 namespace {
-
 using engine::ScoredSentence;
-
-
-struct Query{
-    using json_t = util::json_t;
-    Query(json_t const &ask){
-        for(SentUID::val_t uid : ask["sent_uids"] ) uids.push_back(SentUID{uid});
-    }
-    static bool is_valid(json_t const &query){
-        return query.find("sent_uids")!=query.end() && query.find("max_clip_len")!=query.end();
-    }
-    std::vector<SentUID> uids;
-};
-struct YGPQuery{
-    using json_t = util::json_t;
-    YGPQuery(json_t const &ask){
-        for(SentUID::val_t uid : ask["sent_uids"] ) uids.push_back(SentUID{uid});
-        for(auto country : ask["Countries"]) countries.push_back(country);
-    }
-    static bool is_valid(json_t const &query){
-        return query.find("sent_uids")!=query.end() && query.find("max_clip_len")!=query.end()
-               && query.find("Countries")!=query.end();
-    }
-    std::vector<SentUID> uids;
-    std::vector<std::string> countries;
-};
-
 
 std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
     using hash_t = size_t;
@@ -536,27 +509,12 @@ DepSimilaritySearch::json_t DepSimilaritySearch::register_documents(json_t const
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) const {
-    if (!YGPQuery::is_valid(ask)) return json_t{};
-    YGPQuery query{ask};
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-    std::vector<Sentence> query_sents{};
-    for(auto uid : query.uids){
-        auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = db.uid2sent.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
-    }
-    fmt::print("Will process {} user documents\n", query_sents.size());
 
-    std::cerr<<"Find for a query in DB of : ";
-    for(auto const &country : query.countries) std::cerr<<country << ", ";
-    std::cerr<<std::endl;
-    if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
-
-    auto uids = dbinfo.per_country.sents(query.countries);
-    std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(db.uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=db.sents;
+    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
@@ -576,31 +534,15 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
 }
 
 DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &ask) const {
-    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
-    if (!Query::is_valid(ask)) return json_t{};
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
-    YGPQuery query{ask};
-    std::vector<Sentence> query_sents{};
-    for(auto uid : query.uids){
-        auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = db.uid2sent.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
-    }
-    std::cerr<<"Find for a query in DB of : ";
-    for(auto const &country : query.countries) std::cerr<<country << ", ";
-    std::cerr<<std::endl;
-    if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
-    auto uids = dbinfo.per_country.sents(query.countries);
-    std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(db.uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=db.sents;
+    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     output_t answers{};
-    auto op_cut =[this](auto const& relevant_sents){
-        return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
-    };
+    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -645,19 +587,12 @@ RSSQueryEngine::json_t RSSQueryEngine::register_documents(json_t const &ask) {
 }
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
-    if (!Query::is_valid(ask)) return json_t{};
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
-    Query query{ask};
-    std::vector<Sentence> query_sents{};
-    for(auto uid : query.uids){
-        auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = db.uid2sent.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
-    }
-    fmt::print("Will process {} sentences\n", query_sents.size());
 
-    auto candidate_sents = db.sents;
+    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
@@ -677,18 +612,12 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
 }
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const {
-    std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
-    if (!Query::is_valid(ask)) return json_t{};
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
-    Query query{ask};
-    std::vector<Sentence> query_sents{};
-    for(auto uid : query.uids){
-        auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = db.uid2sent.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
-    }
+    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     output_t answers{};
     auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
@@ -709,7 +638,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
     };
 
     ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
-    processor(query_sents, db.sents, per_sent);
+    processor(query_sents, candidate_sents, per_sent);
 
     return to_json(answers);
 }
@@ -717,17 +646,12 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
 
 RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
-    if (!Query::is_valid(ask)) return json_t{};
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
 
-    Query query{ask};
-    std::vector<Sentence> query_sents{};
-    for(auto uid : query.uids){
-        auto sent = queries.uid2sent.find(uid);
-        if(!sent) sent = db.uid2sent.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
-    }
+    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> results_by_match;
     std::map<WordUID,std::map<WordUID,std::size_t>> stats;
@@ -769,7 +693,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
     };
 
     ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
-    processor(query_sents, db.sents, op_per_sent);
+    processor(query_sents, candidate_sents, op_per_sent);
 
     util::json_t stats_output;
     fmt::print(std::cerr, "Result stats\n");

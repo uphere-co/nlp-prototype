@@ -6,6 +6,10 @@
 
 #include "utils/json.h"
 
+namespace engine{
+struct Dataset;
+}
+
 namespace data{
 namespace ygp{
 
@@ -13,14 +17,35 @@ std::vector<engine::ScoredSentence> per_table_rank_cut(
         std::vector<engine::ScoredSentence> const &relevant_sents, size_t n_max_per_table,
         DBIndexer const &ygp_indexer, YGPdb const &ygpdb);
 
+struct Query{
+    using json_t = util::json_t;
+    Query(json_t const &ask){
+        for(wordrep::SentUID::val_t uid : ask["sent_uids"] ) uids.push_back(wordrep::SentUID{uid});
+        for(auto country : ask["Countries"]) countries.push_back(country);
+    }
+    static bool is_valid(json_t const &query){
+        return query.find("sent_uids")!=query.end() && query.find("max_clip_len")!=query.end()
+               && query.find("Countries")!=query.end();
+    }
+    std::vector<wordrep::SentUID> uids;
+    std::vector<std::string> countries;
+};
+
 struct DBInfo{
+    using query_t = Query;
     DBInfo(util::json_t const& config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents) const {
         return per_table_rank_cut(relevant_sents, 5, indexer, db);
     }
 
-    //std::vector<wordrep::Sentence> get_candidate_sents(engine::Dataset)
+    std::vector<wordrep::Sentence> get_query_sents(
+            query_t const& query,
+            wordrep::Sentences const &query_sent_uids,
+            wordrep::Sentences const &db_sent_uids) const;
+    std::vector<wordrep::Sentence> get_candidate_sents(
+            query_t const& query,
+            engine::Dataset const& db) const;
 
     PerSentQueryResult build_result(wordrep::Sentence const &query_sent,
                                     engine::ScoredSentence const &matched_sentence,

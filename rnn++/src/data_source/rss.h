@@ -11,6 +11,10 @@
 #include "utils/base_types.h"
 #include "utils/json.h"
 
+namespace engine{
+struct Dataset;
+}
+
 namespace data{
 namespace rss{
 
@@ -57,21 +61,5 @@ struct Columns{
     std::vector<std::string> full_names;
 };
 
-struct DBInfo{
-    DBInfo(util::json_t config);
-
-    auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents) const {
-        return engine::plain_rank_cut(relevant_sents, 15);
-    }
-    PerSentQueryResult build_result(wordrep::Sentence const &query_sent,
-                                    engine::ScoredSentence const &matched_sentence,
-                                    int64_t max_clip_len) const {
-        return build_query_result_POD(query_sent, matched_sentence, indexer, max_clip_len);
-
-    }
-
-    Columns const db;
-    DBIndexer const indexer;
-};
 }//namespace data::rss
 }//namespace data

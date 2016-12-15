@@ -3,8 +3,7 @@
 #include "similarity/dataset.h"
 #include "similarity/scoring.h"
 #include "similarity/ygp.h"
-
-#include "data_source/rss.h"
+#include "similarity/rss.h"
 
 #include "wordrep/dep_parsed.h"
 #include "wordrep/voca_info.h"
@@ -73,6 +72,7 @@ struct DepSimilaritySearch {
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
+    using dbinfo_t = data::ygp::DBInfo;
 
     DepSimilaritySearch(json_t const& config);
 
@@ -82,7 +82,7 @@ struct DepSimilaritySearch {
 
     wordrep::WordImportance const word_importance;
     Dataset const db;
-    data::ygp::DBInfo const dbinfo;
+    dbinfo_t const dbinfo;
     Dataset queries;
     mutable WordSimCache dists_cache{db.voca};
     mutable QueryResultCache result_cache{};
@@ -94,6 +94,7 @@ struct RSSQueryEngine {
     using voca_info_t = wordrep::VocaInfo;
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
+    using dbinfo_t = data::rss::DBInfo;
 
     RSSQueryEngine(json_t const& config);
 
@@ -105,7 +106,7 @@ struct RSSQueryEngine {
 
     wordrep::WordImportance const word_importance;
     Dataset const db;
-    data::rss::DBInfo dbinfo;
+    dbinfo_t dbinfo;
     Dataset queries;
     mutable WordSimCache dists_cache{db.voca};
     mutable QueryResultCache result_cache{};
