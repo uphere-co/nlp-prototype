@@ -529,17 +529,22 @@ void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
     dists_cache.cache(vidxs);
 }
 ////////////////////////////////////////////////////////////////
+
+UIDmaps::UIDmaps(util::json_t config)
+        : word{config["word_uids_dump"].get<std::string>()},
+          pos{config["pos_uids_dump"].get<std::string>()},
+          arclabel{config["arclabel_uids_dump"].get<std::string>()}
+{}
+
 Dataset::Dataset(json_t const &config)
         : voca{config["wordvec_store"], config["voca_name"],
                config["w2vmodel_name"], config["w2v_float_t"]},
-          wordUIDs{config["word_uids_dump"].get<std::string>()},
-          posUIDs{config["pos_uids_dump"].get<std::string>()},
-          arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()}
+          token2uid{config}
 {}
 
 std::vector<SentUID> Dataset::append_chunk(data::CoreNLPjson const &ask) {
     std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    tokens.append_corenlp_output(token2uid.word, token2uid.pos, token2uid.arclabel, ask);
     tokens.build_voca_index(voca.indexmap);
     auto uids = tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     sents = tokens.IndexSentences();
@@ -675,10 +680,8 @@ struct ProcessChainQuery{
 DepSimilaritySearch::DepSimilaritySearch(json_t const &config)
 : voca{config["wordvec_store"], config["voca_name"],
        config["w2vmodel_name"], config["w2v_float_t"]},
+  token2uid{config},
   tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
-  wordUIDs{config["word_uids_dump"].get<std::string>()},
-  posUIDs{config["pos_uids_dump"].get<std::string>()},
-  arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
   word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
   sents{tokens.IndexSentences()},
   uid2sent{sents},
@@ -725,7 +728,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_query(json_t const &ask) co
     for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
     if(query.countries.size()==0) candidate_sents=sents;
 
-    ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
+    ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[this](auto const& relevant_sents){
         return per_table_rank_cut(relevant_sents, 5, dbinfo.indexer, dbinfo.db);
@@ -787,7 +790,7 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
         answer.query = query_sent_info;
         answers.push_back(answer);
     };
-    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
     processor(query_sents, candidate_sents, per_sent);
 
     return to_json(answers);
@@ -797,10 +800,8 @@ DepSimilaritySearch::json_t DepSimilaritySearch::ask_chain_query(json_t const &a
 RSSQueryEngine::RSSQueryEngine(json_t const &config)
         : voca{config["wordvec_store"], config["voca_name"],
                config["w2vmodel_name"], config["w2v_float_t"]},
+          token2uid{config},
           tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
-          wordUIDs{config["word_uids_dump"].get<std::string>()},
-          posUIDs{config["pos_uids_dump"].get<std::string>()},
-          arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()},
           word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
           sents{tokens.IndexSentences()},
           uid2sent{sents},
@@ -837,7 +838,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query(json_t const &ask) const {
 
     auto candidate_sents = sents;
 
-    ProcessQuerySents query_processor{wordUIDs, word_importance, dists_cache};
+    ProcessQuerySents query_processor{token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[](auto const& relevant_sents){return plain_rank_cut(relevant_sents, 15);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
@@ -887,7 +888,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_chain_query(json_t const &ask) const 
         answers.push_back(answer);
     };
 
-    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
     processor(query_sents, sents, collect_query_result);
 
     return to_json(answers);
@@ -947,7 +948,7 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         collect_query_result(query_sent,query_sent_info, relevant_sents);
     };
 
-    ProcessChainQuery processor{wordUIDs, word_importance, uid2sent, dists_cache};
+    ProcessChainQuery processor{token2uid.word, word_importance, uid2sent, dists_cache};
     processor(query_sents, sents, op_per_sent);
 
     util::json_t stats_output;
@@ -957,12 +958,12 @@ RSSQueryEngine::json_t RSSQueryEngine::ask_query_stats(json_t const &ask) const 
         auto quid = pair.first;
         for(auto elm : pair.second){
             auto muid = elm.first;
-            for(auto uid : results_by_match[quid][muid]) per_qword[wordUIDs[muid]].push_back(uid.val);
+            for(auto uid : results_by_match[quid][muid]) per_qword[token2uid.word[muid]].push_back(uid.val);
             //per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
             fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                       wordUIDs[quid], wordUIDs[muid], elm.second);
+                       token2uid.word[quid], token2uid.word[muid], elm.second);
         }
-        stats_output[wordUIDs[quid]]=per_qword;
+        stats_output[token2uid.word[quid]]=per_qword;
         fmt::print(std::cerr, "------------------\n");
     }
     fmt::print(std::cerr, "==================\n");

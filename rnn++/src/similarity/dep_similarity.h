@@ -100,6 +100,13 @@ struct ScoredSentence{
     val_t score;
 };
 
+struct UIDmaps{
+    UIDmaps(util::json_t config);
+
+    wordrep::WordUIDindex word;
+    wordrep::POSUIDindex pos;
+    wordrep::ArcLabelUIDindex arclabel;
+};
 struct Dataset{
     using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
@@ -110,9 +117,7 @@ struct Dataset{
 
     //TODO: clean up dependency on wordrep.
     wordrep::VocaInfo const voca;
-    wordrep::WordUIDindex const wordUIDs;
-    wordrep::POSUIDindex const posUIDs;
-    wordrep::ArcLabelUIDindex const arclabelUIDs;
+    UIDmaps token2uid;
 
     wordrep::DepParsedTokens tokens{};
     std::vector<Sentence> sents{};
@@ -134,10 +139,8 @@ struct DepSimilaritySearch {
     json_t ask_chain_query(json_t const &ask) const;
 
     voca_info_t const voca;
+    UIDmaps token2uid;
     wordrep::DepParsedTokens const tokens;
-    wordrep::WordUIDindex const wordUIDs;
-    wordrep::POSUIDindex const posUIDs;
-    wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> const sents;
     wordrep::Sentences const uid2sent;
@@ -163,10 +166,8 @@ struct RSSQueryEngine {
     json_t ask_sents_content(json_t const &ask) const;
 
     voca_info_t const voca;
+    UIDmaps token2uid;
     wordrep::DepParsedTokens const tokens;
-    wordrep::WordUIDindex const wordUIDs;
-    wordrep::POSUIDindex const posUIDs;
-    wordrep::ArcLabelUIDindex const arclabelUIDs;
     wordrep::WordImportance const word_importance;
     std::vector<Sentence> const sents;
     wordrep::Sentences const uid2sent;
