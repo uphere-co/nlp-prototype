@@ -46,7 +46,7 @@ data DepToken2 = DepToken2  { dep2 :: ArcLabel
                             , dependentGloss      :: Dep
                             , dependent  :: DepPos
                             , governorGloss      :: Gov
-			    , governor  :: GovPos }
+                            , governor  :: GovPos }
 --            deriving (Eq, Show, FromJSON, ToJSON)
             deriving (Eq, Show, Generic)
 instance FromJSON DepToken2
@@ -139,6 +139,32 @@ type Edge = (Vertex,Vertex)
 --                 parent  child
 type Graph = M.Map Vertex [Vertex]
 
+-- Leaf (Just n)
+-- Leaf Nothing 
+
+data Tree = Leaf Vertex
+          | Node Vertex [Tree]
+          deriving Show
+
+data TreeT = LeafT (Maybe Vertex)
+           | NodeT Vertex [TreeT]
+           deriving Show
+
+
+{- 
+data TreeWithP = LeafP (Maybe Vertex,Vertex)
+               | NodeP (Maybe Vertex,Vertex) [TreeWithP]
+
+data Tree a = Leaf a
+            | Node a [Tree a]
+
+type SimpleTree = Tree Vertex
+type TreeWithP = Tree (Maybe Vertex,Vertex)
+
+buildWithP :: SimpleTree -> TreeWithP
+-}            
+
+
 mkEdge :: DepToken -> Edge
 mkEdge (DepToken _ _ (DepPos d1) _ (GovPos g1)) = (g1,d1)
 
@@ -157,6 +183,24 @@ buildGraph es = foldl' update M.empty es
 buildWordTable :: [WordToken] -> M.Map Vertex Dep
 buildWordTable ws = M.fromList (map (\w -> (unDepPos (word_pos w),(word w))) ws) 
 
+buildTree :: Graph -> Tree
+buildTree g = go 0   
+  where go n = case mds of
+                 Nothing -> Leaf n
+                 Just ds -> Node n (map go ds)
+          where mds = M.lookup n g
+
+elim :: Vertex -> Tree -> TreeT
+elim n (Leaf m)    | n == m    = LeafT Nothing
+                   | otherwise = LeafT (Just m)
+elim n (Node m ds) | n == m    = LeafT Nothing
+                   | otherwise = NodeT m (map (elim n) ds)
+                
+
+
+-- prune :: TreeT -> Tree
+
+-- put parent info to each node using general tree type.
 
 -- data Maybe a = Nothing    (analogous to null, std::optional)
 --              | Just a 
@@ -188,9 +232,9 @@ allDepChain g = depChain g 0
 depChain :: Graph -> Vertex -> [[Vertex]]
 depChain g v = let mds = M.lookup v g
                in case mds of
-	            Nothing -> [[v]]
-	            Just ds -> let css = concat (map (\x-> depChain g x) ds)
-		               in map (\cs -> v:cs) css
+                    Nothing -> [[v]]
+                    Just ds -> let css = concat (map (\x-> depChain g x) ds)
+                               in map (\cs -> v:cs) css
 
 -- -> list monad: concatMap = concat . map  is (>>=) of list monad.  
 
@@ -271,7 +315,7 @@ toRoot idx heads dep2gov = let r = governorIndex idx dep2gov
 jsonstr <- BL.readFile "data/sent.json"
 ej = eitherDecode jsonstr :: Either String DepChunk
 chunk = tryDepChunk ej
-ds =  deps $ head$ sents chunk
+ds =  deps $ head $ sents chunk
 
 sents_deps = fmap deps $ sents chunk
 sent_deps = head sents_deps
@@ -283,7 +327,14 @@ gov2deps = buildDependentsMap $ fmap (\x -> (gov_pos x, dep_pos x)) sent_deps
 
 all_leaf = filter (\x -> isLeaf x gov2deps) all_nodes
 all_paths = map (\x -> toRoot x [] dep2gov) all_leaf
+
+-- list => map, "fold", concat, concatMap, take, break, scanl` 
 -}
+
+-- type FilePath = String 
+-- Prelude.readFile :: FilePath -> IO String
+-- BL.readFile :: FilePath -> IO BL.ByteString
+-- T.IO.readFile :: FilePath -> IO Text
 
 main :: IO ()
 main = do
@@ -315,5 +366,38 @@ main = do
       let css = allDepChain g
       print css
       print (fmap (fmap (replaceIndex2Word wmap)) css)
-      
-   
+
+      wuidstr <- readFile "../../rnn++/tests/data/words.uid"
+      wimpstr <- readFile "../../rnn++/tests/data/word_importance"
+
+      let wuids = lines wuidstr
+          wimps0 = lines wimpstr 
+      print $ zip wuids wimps0
+
+      -- lines :: String -> [String]
+      -- zip :: [a] -> [b] -> [(a,b)]
+
+      print $ zip3 [1..] wuids wimps0 
+
+      print $ zipWith (++) wuids wimps0    -- zipWith :: (a -> b-> c) -> [a] -> [b] -> [c]
+                                                              -- map :: (a -> b) -> [a] -> [b]
+      -- zipWith f xs ys = map (uncurry f) (zip xs ys)
+      -- uncurry f (x,y) = f x y
+      -- flip f x y = f y x
+
+      -- class Show a  where show :: a -> String
+      -- class Read a  where read :: String -> a
+      print (read "1.2" :: Double)
+
+      let wimps :: [Double]
+          wimps = map read wimps0
+      print (zip wuids wimps)
+
+      -- [(gov,ds)]
+      -- [edge]
+
+      -- (gov, [(gov,(gov, null) ) ... ]
+      let tr = buildTree g
+      print tr
+      print (elim 15 tr)
+      -- print (prune (elim 15 tr))
