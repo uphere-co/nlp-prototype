@@ -20,6 +20,7 @@ struct DBInfo{
         return per_table_rank_cut(relevant_sents, 5, indexer, db);
     }
 
+    //std::vector<wordrep::Sentence> get_candidate_sents(engine::Dataset)
 
     PerSentQueryResult build_result(wordrep::Sentence const &query_sent,
                                     engine::ScoredSentence const &matched_sentence,

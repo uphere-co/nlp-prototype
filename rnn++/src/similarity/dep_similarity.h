@@ -1,7 +1,6 @@
 #pragma once
 
-#include <mutex>
-
+#include "similarity/dataset.h"
 #include "similarity/scoring.h"
 #include "similarity/ygp.h"
 
@@ -67,32 +66,6 @@ private:
     data_t caches;
 };
 
-
-struct UIDmaps{
-    UIDmaps(util::json_t config);
-
-    wordrep::WordUIDindex word;
-    wordrep::POSUIDindex pos;
-    wordrep::ArcLabelUIDindex arclabel;
-};
-struct Dataset{
-    using Sentence = wordrep::Sentence;
-    using json_t = util::json_t;
-
-    Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
-    Dataset(json_t const &config);
-
-    std::vector<wordrep::SentUID> append_chunk(data::CoreNLPjson const &ask);
-
-    //TODO: clean up dependency on wordrep.
-    wordrep::VocaInfo const voca;
-    UIDmaps token2uid;
-
-    wordrep::DepParsedTokens tokens{};
-    std::vector<Sentence> sents{};
-    wordrep::Sentences uid2sent{};
-    std::mutex query_tokens_update{};
-};
 
 struct DepSimilaritySearch {
     using Sentence = wordrep::Sentence;
