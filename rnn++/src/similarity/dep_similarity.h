@@ -2,9 +2,9 @@
 
 #include <mutex>
 
-#include "utils/json.h"
+#include "similarity/scoring.h"
+#include "similarity/ygp.h"
 
-#include "data_source/ygp_db.h"
 #include "data_source/rss.h"
 
 #include "wordrep/dep_parsed.h"
@@ -12,6 +12,7 @@
 #include "wordrep/word_prob.h"
 
 #include "utils/parallel.h"
+#include "utils/json.h"
 
 namespace engine {
 
@@ -39,8 +40,7 @@ struct TBBHashCompare {
 class WordSimCache{
 public:
     using voca_info_t  = wordrep::VocaInfo;
-    using word_block_t = voca_info_t::voca_vecs_t;
-    using val_t        = word_block_t::val_t;
+    using val_t        = voca_info_t::val_t;
     using dist_cache_t = Distances<val_t>;
     using data_t = tbb::concurrent_hash_map<wordrep::VocaIndex, dist_cache_t,TBBHashCompare<wordrep::VocaIndex>>;
 
@@ -67,38 +67,6 @@ private:
     data_t caches;
 };
 
-
-struct DepSearchScore{
-    using val_t = WordSimCache::val_t;
-    using DPTokenIndex = wordrep::DPTokenIndex;
-    DepSearchScore(size_t len) : idxs_lhs(len),idxs_rhs(len), scores(len) {}
-    void set(size_t j, DPTokenIndex idx_lhs, DPTokenIndex idx_rhs, val_t score){
-        scores[j]=score;
-        idxs_lhs[j]=idx_lhs;
-        idxs_rhs[j]=idx_rhs;
-    }
-    std::vector<std::pair<DPTokenIndex,val_t>> scores_with_idx() const {
-        return util::zip(idxs_rhs, scores);
-    };
-    auto serialize() const {
-        return util::zip(idxs_lhs, idxs_rhs, scores);
-    };
-    val_t score_sum() const;
-private:
-    std::vector<DPTokenIndex> idxs_lhs;
-    std::vector<DPTokenIndex> idxs_rhs;
-    std::vector<val_t> scores;
-};
-
-struct ScoredSentence{
-    using val_t = WordSimCache::val_t;
-    ScoredSentence(wordrep::Sentence sent, DepSearchScore const &scores)
-    :sent{sent}, scores{scores}, score{scores.score_sum()} {
-    }
-    wordrep::Sentence sent;
-    DepSearchScore scores;
-    val_t score;
-};
 
 struct UIDmaps{
     UIDmaps(util::json_t config);

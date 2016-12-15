@@ -70,16 +70,6 @@ struct YGPdb{
     std::vector<std::string> full_names;
 };
 
-struct DBInfo{
-    DBInfo(util::json_t const& config);
-
-    YGPdb const db;
-    DBIndexer const indexer;
-    DBbyCountry const per_country;
-    CountryCodeAnnotator const country_tagger;
-};
-
-
 struct RowDumpFilePath{
     RowDumpFilePath(std::string path);
     std::string full_column_name() const;
