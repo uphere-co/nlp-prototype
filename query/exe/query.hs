@@ -44,14 +44,13 @@ foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
 withHeartBeat them action = do
-  forever $ do                                               -- forever looping
-    pid <- action                                            -- main process launch
-    whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
-      liftIO $ hPutStrLn stderr ("heartbeat: " ++ show n)
-      send them (HB n)
+  pid <- action                                            -- main process launch
+  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
+    liftIO $ hPutStrLn stderr ("heartbeat: " ++ show n)
+    send them (HB n)
       
-    liftIO $ hPutStrLn stderr "heartbeat failed: reload"     -- when fail, it prints messages  
-    kill pid "connection closed"                             -- and start over the whole process.
+  liftIO $ hPutStrLn stderr "heartbeat failed: reload"     -- when fail, it prints messages  
+  kill pid "connection closed"                             -- and start over the whole process.
 
   
 server :: String -> Process ()
@@ -61,17 +60,24 @@ server port = do
   
   void . liftIO $ forkIO (broadcastProcessId pid port)
   liftIO $ putStrLn "server started"
-  them <- expect
-  withHeartBeat them $ spawnLocal $ do
-    (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
-    send them sc
-    liftIO $ hPutStrLn stderr "connected"  
-    ref <- liftIO $ newTVarIO HM.empty
-    forever $ do
-      (q,sc') <- receiveChan rc
-      liftIO $ hPutStrLn stderr (show q)
-      spawnLocal (queryWorker ref sc' q)
+  let go = do
+        mthem <- expectTimeout 10000000
+        case mthem of
+          Nothing -> liftIO $ hPutStrLn stderr "cannot get client pid"
+          Just them -> do
+            liftIO $ hPutStrLn stderr ("got client pid : " ++ show them)
+            withHeartBeat them $ spawnLocal $ do
+              (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+              send them sc
+              liftIO $ hPutStrLn stderr "connected"  
+              ref <- liftIO $ newTVarIO HM.empty
+              forever $ do
+                (q,sc') <- receiveChan rc
+                liftIO $ hPutStrLn stderr (show q)
+                spawnLocal (queryWorker ref sc' q)
+  forever $ go
 
+  
 main :: IO ()
 main = do
   port <- getEnv "PORT"
