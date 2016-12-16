@@ -8,7 +8,7 @@ import           Data.Aeson
 import qualified Data.Aeson.Types
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map                   as M   (Map, delete, alter, empty, fromList, toList, lookup, map)
-import           Data.Maybe                        (fromJust, maybeToList)
+import           Data.Maybe                        (fromJust, maybeToList,catMaybes,listToMaybe)
 import           Data.List                         (foldl')
 import           Data.Monoid                       ((<>))
 import           Data.Text                         (Text)
@@ -332,7 +332,7 @@ buildDepTree gov2deps = go (GovPos 0)
 
 elimNode :: GovPos -> DepTree -> DepTree
 elimNode n Empty                    = Empty
-elimNode n (DLeaf m) | n ==m        = Empty -- Should not occur.
+elimNode n (DLeaf m) | n ==m        = Empty
                      | otherwise    = DLeaf m
 elimNode n (DNode m ds) | n ==m     = Empty 
                         | otherwise = DNode m (map (elimNode n) $ filter (isNotRootMatch n) ds)
@@ -343,20 +343,113 @@ cloneTree (DLeaf g)    = DLeaf g
 cloneTree (DNode g ds) = DNode g (map cloneTree ds)
 
 nonEmpty :: DepTree -> DepTree -> DepTree
-nonEmpty Empty Empty = Empty
 nonEmpty Empty n     = n
-nonEmpty n     Empty = n
+nonEmpty n     _     = n
 
 subTree :: GovPos -> DepTree -> DepTree
 subTree n Empty = Empty
-subTree n (DLeaf g) | n==g = DLeaf g
-subTree n (DLeaf g) | n/=g = Empty
-subTree n (DNode g ds) | n==g = DNode g ds
-subTree n (DNode g ds) | n/=g = foldl' nonEmpty Empty (map (subTree n) ds)
+subTree n (DLeaf g)
+  | n==g      = DLeaf g
+  | otherwise = Empty
+subTree n (DNode g ds)
+  | n==g      = DNode g ds
+  | otherwise = foldr nonEmpty Empty (map (subTree n) ds)
+
+
+{-
+foldl' (+) 0 [1,Just 2,3,4] = ! (((!+2)+3)+4)
+
+foldr (+) 0 [1,2,3,4] = Just 2+_ (3+4))
+
+foldl' f 0 [1,2,3,4] = ((Just  f 2) f 3) f 4
+
+foldr f z [] = z 
+foldr f z (x:xs) = f x (foldr f z xs)   
+
+foldr nonEmpty Empty (Empty:xs) = nonEmpty Empty (foldr nonEmpty Empty xs)
+                              = foldr nonEmpty Empty xs
+
+xs = y : ys
+foldr nonEmpty Empty (y:ys) = nonEmpty y (foldr nonEmpty Empty xs) = y
+
+-- HEAD position
+
+f x y ... 
+
+foldl f z [] = z
+foldl f z (x:xs) = foldl f (f z x) xs  -- tail recursion 
+
+foldl' f z [] = z
+foldl' f z (x:xs) = let acc = f z x
+                    in acc `seq` foldl' f acc xs  -- tail recursion 
+
+
+foldl' nonEmpty Empty [] = Empty
+foldl' nonEmpty n (n':xs) = foldl' nonEmpty (nonEmpty n n') xs  -- tail recursion 
+foldl' nonEmpty n (m:xs') = foldl' nonEmpty (nonEmpty n m ) xs  -- tail recursion 
+
+
+-- tail recursion = (HEAD = original)
+
+
+-- let  x :: Num a => a 
+        x = g (f y) (h z)
+--     x' = h (f y) 
+-- 
+
+
+(+) !x !y = value 
+f x y = value
+
+-- recursion scheme
+-}
+
+-- foldr ((:) . f) 
+
+
+findSub :: GovPos -> DepTree -> Maybe DepTree
+findSub n Empty = Nothing
+findSub n (DLeaf g)
+  | n==g      = Just (DLeaf g)
+  | otherwise = Nothing
+findSub n (DNode g ds)
+  | n==g      = Just (DNode g ds)
+  | otherwise = let xs = catMaybes (map (findSub n) ds)
+                in listToMaybe xs
+{-
+catMaybes (Nothing:xs) = catMaybes xs
+catMaybes (Just a:xs) =  a : catMaybes xs
+
+
+listToMaybe (catMaybes xs) = listToMaybe ( a : _catMaybes xs )
+                           = Just a 
+
+f ( x@(a:as) ) =  case x of
+                    (a:_) -> Just a
+g (!a,!as)
+
+if b then s1 else s2
+ifThenElse (b,s1,s2)
+
+
+listToMaybe xs = case xs of
+                   []    -> Nothing
+                   (x:_) -> Just x 
+data [] a = []
+          | a : [] a
 
 
 
+map (findSub n) ds :: [Maybe DepTree]
 
+catMaybes [ Nothing, ... , Just a , Nothing, Just [b], ... ] = [a,b]
+catMaybes [ Nothing, ... ] = [] 
+-}
+  
+
+
+-- Just for cross-checking for subTree. 
+remove x ds = filter (\d -> x/=d) ds
 deregister acc (g,d) = let f Nothing   = Nothing
                            f (Just ds) = Just (remove d ds)
                            in M.alter f g acc
@@ -365,31 +458,12 @@ deleteGovKey Nothing  d g2ds = g2ds
 deleteGovKey (Just g) d g2ds = deregister g2ds (g,d)
 deleteDepKey d          d2g  = M.delete d d2g
 
-remove x ds = filter (\d -> x/=d) ds
--- Fix : this assumes M.Map is original, un-modified ones.
-removeNode :: GovPos -> M.Map GovPos [DepPos] -> DepTree
-removeNode x gov2deps = go (GovPos 0)
-  where 
-    go n | n==x      = DLeaf (GovPos 0) -- Fix this. n == top gov2deps
-    go n | otherwise = case mds of
-                          Nothing -> DLeaf n
-                          Just ds -> DNode n (map go $ remove x $map toGov ds)
-                       where mds = M.lookup n gov2deps
 
-                   
-
---iterateTree tree = 
-
---subTree
---removeNode :: DepTree -> DepTree
---removeNode n tree = 
---cloneTree
---iterateTree
 {-
 jsonstr <- BL.readFile "data/sent.json"
-ej = eitherDecode jsonstr :: Either String DepChunk
-chunk = tryDepChunk ej
-ds =  deps $ head $ sents chunk
+let ej = eitherDecode jsonstr :: Either String DepChunk
+let chunk = tryDepChunk ej
+let ds =  deps $ head $ sents chunk
 
 sents_deps = fmap deps $ sents chunk
 sent_deps = head sents_deps
@@ -427,6 +501,8 @@ print.assert $ subtree1 == subtree2
 
 main :: IO ()
 main = do
+  -- BL.readFile :: FilePath -> IO BL.ByteString (O)
+  -- BL.readFile :: FilePath -> BL.ByteString    (X)
   jsonstr <- BL.readFile "data/dep_token.json"
   print (eitherDecode jsonstr :: Either String DepToken)
   
