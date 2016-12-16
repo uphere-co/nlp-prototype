@@ -423,6 +423,25 @@ struct DepChunk{
     lines_t beg;
     lines_t end;
 };
+
+struct DepChunkParser{
+    DepChunkParser(std::string filename)
+    : lines{util::string::readlines(filename)}
+    {}
+    template<typename OP>
+    void iter(OP const &op) const {
+        auto beg = lines.cbegin();
+        auto end = lines.cend();
+        while(auto maybe_chunk = DepChunk::get(beg, end)){
+            auto chunk = maybe_chunk.value();
+            op(chunk);
+            beg = chunk.end;
+        }
+    }
+
+    std::vector<std::string> const lines;
+};
+
 void parse_batch_output_line(){
     {
         assert(isSentBeg("Sentence #1 (9 tokens):"));
@@ -483,14 +502,11 @@ void parse_batch_output_line(){
 }
 
 void parse_batch_output(){
-    auto lines = util::string::readlines("../rnn++/tests/data/batch.corenlp");
-    auto beg = lines.cbegin();
-    auto end = lines.cend();
-    while(auto maybe_chunk = DepChunk::get(beg, end)){
-        auto chunk = maybe_chunk.value();
+    DepChunkParser parse{"../rnn++/tests/data/batch.corenlp"};
+    parse.iter([](auto const &chunk){
         for(auto it=chunk.beg; it!=chunk.end; ++it) fmt::print("{}\n", *it);
-        beg = chunk.end;
-    }
+    });
+
 }
 
 }//namespace data::corenlp::test
