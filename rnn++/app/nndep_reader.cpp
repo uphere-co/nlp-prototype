@@ -242,12 +242,14 @@ int main(int /*argc*/, char** argv){
     fmt::print("{}\n", stat_answer.dump(4));
     util::json_t tmp;
     std::vector<int64_t> sents;
-    for(auto& per_key : stat_answer["stats"])
-        for(auto& matches : per_key)
-            for(auto uid : matches)
-                sents.push_back(uid);
+    for(auto& per_sent: stat_answer["stats"])
+        for(auto& per_key : per_sent)
+            for(auto& matches : per_key)
+                for(auto uid : matches)
+                    sents.push_back(uid);
     tmp["sents"]=sents;
     fmt::print("{}\n", tmp.dump(4));
+    return 0;
 
     auto custom_query = uids;
     custom_query["sents"]=sents;

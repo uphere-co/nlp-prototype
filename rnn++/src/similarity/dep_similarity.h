@@ -86,7 +86,7 @@ public:
 private:
     wordrep::WordImportance const word_importance;
     Dataset const db;
-    dbinfo_t dbinfo;
+    dbinfo_t const dbinfo;
     Dataset queries;
     mutable WordSimCache dists_cache{db.voca};
     mutable QueryResultCache result_cache{};
