@@ -20,6 +20,7 @@
 #include "utils/type_param.h"
 #include "utils/persistent_vector.h"
 #include "utils/versioned_name.h"
+#include "utils/optional.h"
 
 using namespace util::io;
 using namespace wordrep;
@@ -339,6 +340,167 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
 }//namespace data::rss
 }//namespace data
 
+namespace data {
+namespace corenlp {
+namespace test {
+
+struct Word{
+    Word(){};
+    Word(std::string substr) {
+        auto dep_word_end = substr.find_last_of("-");
+        word = substr.substr(0, dep_word_end);
+        idx = std::stoi(substr.substr(dep_word_end+1))-1;
+    }
+    std::string word;
+    int64_t idx;
+};
+
+struct Offset{
+    int64_t beg;
+    int64_t end;
+};
+struct WordToken{
+    WordToken(std::string line, int64_t idx){
+        auto elms = util::string::split(line.substr(1, line.size()-2), " ");
+        auto get = [](auto elm){return elm.substr(elm.find("=")+1);};
+        self.word = get(elms[0]);
+        self.idx  = idx;
+        offset.beg =  std::stoi(get(elms[1]));
+        offset.end =  std::stoi(get(elms[2]));
+        pos = get(elms[3]);
+    }
+    std::string pos;
+    Word self;
+    Offset offset;
+};
+struct DepToken{
+    DepToken(std::string line){
+        auto label_end = line.find("(");
+        auto dep_end = line.find(", ");
+        auto gov_end = line.find(")");
+        arclabel  = line.substr(0, label_end);
+        dependent = Word{line.substr(1+label_end, dep_end - (1+label_end))};
+        governor  = Word{line.substr(2+dep_end, gov_end- (2+dep_end))};
+    }
+    std::string arclabel;
+    Word dependent;
+    Word governor;
+};
+
+bool isSentBeg(std::string const &sentence){
+    std::string tag = "Sentence #";
+    return tag == sentence.substr(0,tag.size());
+}
+bool isSentEnd(std::string const &sentence){
+    std::string tag = "";
+    return tag == sentence;
+}
+struct DepChunk{
+    using lines_t = std::vector<std::string>::const_iterator;
+
+    static std::optional<DepChunk> get(lines_t beg, lines_t end){
+        DepChunk chunk{};
+        auto it=beg;
+        for(;!isSentBeg(*it);++it) if(it==end) return {};
+        assert(isSentBeg(*it));
+        chunk.beg=it;
+        for(;!isSentEnd(*it);++it) if(it==end) return {};
+        assert(isSentEnd(*it));
+        chunk.end=it;
+        return chunk;
+    }
+    lines_t beg;
+    lines_t end;
+};
+
+struct DepChunkParser{
+    DepChunkParser(std::string filename)
+    : lines{util::string::readlines(filename)}
+    {}
+    template<typename OP>
+    void iter(OP const &op) const {
+        auto beg = lines.cbegin();
+        auto end = lines.cend();
+        while(auto maybe_chunk = DepChunk::get(beg, end)){
+            auto chunk = maybe_chunk.value();
+            op(chunk);
+            beg = chunk.end;
+        }
+    }
+
+    std::vector<std::string> const lines;
+};
+void parse_batch_output_line(){
+    {
+        assert(isSentBeg("Sentence #1 (9 tokens):"));
+        assert(!isSentBeg(""));
+        assert(!isSentEnd("Sentence #1 (9 tokens):"));
+        assert(isSentEnd(""));
+    }
+    {
+        std::string line = "[Text=Dave CharacterOffsetBegin=0 CharacterOffsetEnd=4 PartOfSpeech=NNP]";
+        WordToken test{line,0};
+        assert(test.pos=="NNP");
+        assert(test.self.word=="Dave");
+        assert(test.self.idx==0);
+        assert(test.offset.beg==0);
+        assert(test.offset.end==4);
+    }
+    {
+        std::string line = "[Text== CharacterOffsetBegin=0 CharacterOffsetEnd=4 PartOfSpeech=NNP]";
+        WordToken test{line,0};
+        assert(test.pos=="NNP");
+        assert(test.self.word=="=");
+        assert(test.self.idx==0);
+        assert(test.offset.beg==0);
+        assert(test.offset.end==4);
+    }
+    {
+        std::string line = "appos(Aneckstein-2, Research-5)";
+        DepToken test{line};
+        assert(test.arclabel == "appos");
+        assert(test.dependent.word == "Aneckstein");
+        assert(test.dependent.idx  == 1);
+        assert(test.governor.word == "Research");
+        assert(test.governor.idx  == 4);
+    }
+    {
+        std::string line = u8"dobj(A-B-2, ROOT-0)";
+        DepToken test{line};
+        assert(test.arclabel == "dobj");
+        assert(test.dependent.word == "A-B");
+        assert(test.dependent.idx  == 1);
+        assert(test.governor.word == "ROOT");
+        assert(test.governor.idx  == -1);
+    }
+    {
+        std::string line = u8"punct(가나다-2, ,-6)";
+        DepToken test{line};
+        assert(test.arclabel == "punct");
+        assert(test.dependent.word == "가나다");
+        assert(test.dependent.idx  == 1);
+        assert(test.governor.word == ",");
+        assert(test.governor.idx  == 5);
+    }
+
+    std::string line = "appos(Aneckstein-2, Research-5)";
+    gsl::cstring_span<> aa = gsl::ensure_z(line.data());
+    auto it_label_end = std::find(aa.cbegin(), aa.cend(), '(');
+    fmt::print(std::cerr, "{} \n",gsl::to_string(aa.subspan(0, it_label_end-aa.cbegin())));
+}
+
+void parse_batch_output(){
+    DepChunkParser parse{"../rnn++/tests/data/batch.corenlp"};
+    parse.iter([](auto const &chunk){
+        for(auto it=chunk.beg; it!=chunk.end; ++it) fmt::print("{}\n", *it);
+    });
+
+}
+
+}//namespace data::corenlp::test
+}//namespace data::corenlp
+}//namespace data
+
 int process_rss_dump(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     auto row_files = argv[2];
@@ -393,7 +555,9 @@ int main(int argc, char** argv){
 //    auto row_files = argv[2];
 //    auto hashes = argv[3];
 //    data::rss::test::rss_indexing(config, hashes);
-//    return 0;
+    data::corenlp::test::parse_batch_output_line();
+    data::corenlp::test::parse_batch_output();
+    return 0;
 
 //    process_rss_dump(argc, argv);
     process_ygp_dump(argc,argv);

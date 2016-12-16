@@ -1,0 +1,83 @@
+
+
+Sentence #1 (9 tokens):
+Dave Aneckstein, Simmons Research, an Experian Company
+[Text=Dave CharacterOffsetBegin=0 CharacterOffsetEnd=4 PartOfSpeech=NNP]
+[Text=Aneckstein CharacterOffsetBegin=5 CharacterOffsetEnd=15 PartOfSpeech=NNP]
+[Text=, CharacterOffsetBegin=15 CharacterOffsetEnd=16 PartOfSpeech=,]
+[Text=Simmons CharacterOffsetBegin=17 CharacterOffsetEnd=24 PartOfSpeech=NNP]
+[Text=Research CharacterOffsetBegin=25 CharacterOffsetEnd=33 PartOfSpeech=NNP]
+[Text=, CharacterOffsetBegin=33 CharacterOffsetEnd=34 PartOfSpeech=,]
+[Text=an CharacterOffsetBegin=35 CharacterOffsetEnd=37 PartOfSpeech=DT]
+[Text=Experian CharacterOffsetBegin=38 CharacterOffsetEnd=46 PartOfSpeech=NNP]
+[Text=Company CharacterOffsetBegin=47 CharacterOffsetEnd=54 PartOfSpeech=NNP]
+root(ROOT-0, Aneckstein-2)
+compound(Aneckstein-2, Dave-1)
+punct(Aneckstein-2, ,-3)
+compound(Research-5, Simmons-4)
+appos(Aneckstein-2, Research-5)
+punct(Aneckstein-2, ,-6)
+det(Company-9, an-7)
+compound(Company-9, Experian-8)
+appos(Aneckstein-2, Company-9)
+
+Sentence #1 (9 tokens):
+They have not been charged or formally arrested.
+[Text=They CharacterOffsetBegin=0 CharacterOffsetEnd=4 PartOfSpeech=PRP]
+[Text=have CharacterOffsetBegin=5 CharacterOffsetEnd=9 PartOfSpeech=VBP]
+[Text=not CharacterOffsetBegin=10 CharacterOffsetEnd=13 PartOfSpeech=RB]
+[Text=been CharacterOffsetBegin=14 CharacterOffsetEnd=18 PartOfSpeech=VBN]
+[Text=charged CharacterOffsetBegin=19 CharacterOffsetEnd=26 PartOfSpeech=VBN]
+[Text=or CharacterOffsetBegin=27 CharacterOffsetEnd=29 PartOfSpeech=CC]
+[Text=formally CharacterOffsetBegin=30 CharacterOffsetEnd=38 PartOfSpeech=RB]
+[Text=arrested CharacterOffsetBegin=39 CharacterOffsetEnd=47 PartOfSpeech=VBN]
+[Text=. CharacterOffsetBegin=47 CharacterOffsetEnd=48 PartOfSpeech=.]
+root(ROOT-0, charged-5)
+nsubjpass(charged-5, They-1)
+aux(charged-5, have-2)
+neg(charged-5, not-3)
+auxpass(charged-5, been-4)
+cc(charged-5, or-6)
+advmod(arrested-8, formally-7)
+conj:or(charged-5, arrested-8)
+punct(charged-5, .-9)
+
+Sentence #1 (18 tokens):
+“Iran isn’t making an atomic bomb, not at all,” Chavez said Monday.
+[Text=`` CharacterOffsetBegin=0 CharacterOffsetEnd=1 PartOfSpeech=``]
+[Text=Iran CharacterOffsetBegin=1 CharacterOffsetEnd=5 PartOfSpeech=NNP]
+[Text=is CharacterOffsetBegin=6 CharacterOffsetEnd=8 PartOfSpeech=VBZ]
+[Text=n't CharacterOffsetBegin=8 CharacterOffsetEnd=11 PartOfSpeech=RB]
+[Text=making CharacterOffsetBegin=12 CharacterOffsetEnd=18 PartOfSpeech=VBG]
+[Text=an CharacterOffsetBegin=19 CharacterOffsetEnd=21 PartOfSpeech=DT]
+[Text=atomic CharacterOffsetBegin=22 CharacterOffsetEnd=28 PartOfSpeech=JJ]
+[Text=bomb CharacterOffsetBegin=29 CharacterOffsetEnd=33 PartOfSpeech=NN]
+[Text=, CharacterOffsetBegin=33 CharacterOffsetEnd=34 PartOfSpeech=,]
+[Text=not CharacterOffsetBegin=35 CharacterOffsetEnd=38 PartOfSpeech=RB]
+[Text=at CharacterOffsetBegin=39 CharacterOffsetEnd=41 PartOfSpeech=IN]
+[Text=all CharacterOffsetBegin=42 CharacterOffsetEnd=45 PartOfSpeech=DT]
+[Text=, CharacterOffsetBegin=45 CharacterOffsetEnd=46 PartOfSpeech=,]
+[Text='' CharacterOffsetBegin=46 CharacterOffsetEnd=47 PartOfSpeech='']
+[Text=Chavez CharacterOffsetBegin=48 CharacterOffsetEnd=54 PartOfSpeech=NNP]
+[Text=said CharacterOffsetBegin=55 CharacterOffsetEnd=59 PartOfSpeech=VBD]
+[Text=Monday CharacterOffsetBegin=60 CharacterOffsetEnd=66 PartOfSpeech=NNP]
+[Text=. CharacterOffsetBegin=66 CharacterOffsetEnd=67 PartOfSpeech=.]
+root(ROOT-0, said-16)
+punct(said-16, ``-1)
+nsubj(making-5, Iran-2)
+aux(making-5, is-3)
+neg(making-5, n't-4)
+ccomp(said-16, making-5)
+det(bomb-8, an-6)
+amod(bomb-8, atomic-7)
+dobj(making-5, bomb-8)
+punct(making-5, ,-9)
+neg(all-12, not-10)
+case(all-12, at-11)
+nmod:at(making-5, all-12)
+punct(said-16, ,-13)
+punct(said-16, ''-14)
+nsubj(said-16, Chavez-15)
+nmod:tmod(said-16, Monday-17)
+punct(said-16, .-18)
+
