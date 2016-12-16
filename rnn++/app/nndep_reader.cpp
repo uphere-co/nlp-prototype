@@ -200,7 +200,8 @@ void dependency_graph(){
 }//namespace wordrep
 
 using namespace wordrep;
-using namespace engine;
+using engine::YGPQueryEngine;
+using engine::RSSQueryEngine;
 
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
@@ -216,7 +217,7 @@ int main(int /*argc*/, char** argv){
 
     util::Timer timer{};
 
-    engine::YGPQueryEngine engine{config};
+    YGPQueryEngine engine{config};
 //    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
@@ -235,14 +236,18 @@ int main(int /*argc*/, char** argv){
 //    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
     data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
-//    auto answer = engine.ask_query_stats(uids);
-//    timer.here_then_reset("Processed a stats query.");
-//    data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
-//    fmt::print("{}\n", answer.dump(4));
-//    util::json_t tmp;
-//    for(int64_t uid : answer["stats"]["start-up"]["start-up"]) tmp["sents"].push_back(uid);
+    auto stat_answer = engine.ask_query_stats(uids);
+    timer.here_then_reset("Processed a stats query.");
+//    data::rss::annotation_on_result(config, stat_answer["results"], dumpfile_hashes);
+    fmt::print("{}\n", stat_answer.dump(4));
+    util::json_t tmp;
+    for(auto& per_key : stat_answer["stats"])
+        for(auto& matches : per_key)
+            for(auto uid : matches)
+                tmp["sents"].push_back(uid);
+    fmt::print("{}\n", tmp.dump(4));
 //    auto content = engine.ask_sents_content(tmp);
-//    fmt::print("{}\n", content.dump(4));
+    //fmt::print("{}\n", content.dump(4));
     timer.here_then_reset("Queries are answered.");
 
     return 0;
