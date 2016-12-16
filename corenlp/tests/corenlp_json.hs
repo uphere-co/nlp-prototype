@@ -7,7 +7,7 @@ import           Control.Applicative               ((<|>))
 import           Data.Aeson
 import qualified Data.Aeson.Types
 import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.Map                   as M   (Map, alter, empty, fromList, lookup, map)
+import qualified Data.Map                   as M   (Map, delete, alter, empty, fromList, toList, lookup, map)
 import           Data.Maybe                        (fromJust, maybeToList)
 import           Data.List                         (foldl')
 import           Data.Monoid                       ((<>))
@@ -294,23 +294,97 @@ isLeaf pos gov2deps = let r = M.lookup (GovPos pos) gov2deps
                       in case r of
                           Nothing -> True
                           Just _  -> False
-                          
-buildDependentsMap es = foldl' update M.empty es
+
+-- Question : what is f??                          
+buildDependentsMap edges = foldl' update M.empty edges
+  where update acc (g,d) = let f Nothing   = Just [d]
+                               f (Just ds) = Just (d:ds)
+                           in M.alter f g acc
+
+toRoot idx dep2gov = toRoot_o idx [] dep2gov
+  where toRoot_o idx heads dep2gov = let r = M.lookup (DepPos idx) dep2gov
+            in case r of
+              Nothing -> (idx:heads)
+              Just (GovPos i) -> toRoot_o i (idx:heads) dep2gov
+
+toGov = (\(DepPos x) -> (GovPos x))
+toDep = (\(GovPos x) -> (DepPos x))
+
+data DepTree = Empty
+             | DLeaf GovPos
+             | DNode GovPos [DepTree]
+          deriving (Eq,Show)
+
+isRootMatch :: GovPos -> DepTree -> Bool
+isRootMatch n Empty = False
+isRootMatch n (DLeaf m)   | n==m = True
+isRootMatch n (DNode m _) | n==m = True
+isRootMatch n _    = False
+
+isNotRootMatch n tree = not $ isRootMatch n tree
+
+buildDepTree :: M.Map GovPos [DepPos] -> DepTree
+buildDepTree gov2deps = go (GovPos 0)
+  where go n = case mds of
+                   Nothing -> DLeaf n
+                   Just ds -> DNode n (map go $ map toGov ds)
+              where mds = M.lookup n gov2deps
+
+elimNode :: GovPos -> DepTree -> DepTree
+elimNode n Empty                    = Empty
+elimNode n (DLeaf m) | n ==m        = Empty -- Should not occur.
+                     | otherwise    = DLeaf m
+elimNode n (DNode m ds) | n ==m     = Empty 
+                        | otherwise = DNode m (map (elimNode n) $ filter (isNotRootMatch n) ds)
+
+cloneTree :: DepTree -> DepTree
+cloneTree Empty      = Empty
+cloneTree (DLeaf g)    = DLeaf g
+cloneTree (DNode g ds) = DNode g (map cloneTree ds)
+
+nonEmpty :: DepTree -> DepTree -> DepTree
+nonEmpty Empty Empty = Empty
+nonEmpty Empty n     = n
+nonEmpty n     Empty = n
+
+subTree :: GovPos -> DepTree -> DepTree
+subTree n Empty = Empty
+subTree n (DLeaf g) | n==g = DLeaf g
+subTree n (DLeaf g) | n/=g = Empty
+subTree n (DNode g ds) | n==g = DNode g ds
+subTree n (DNode g ds) | n/=g = foldl' nonEmpty Empty (map (subTree n) ds)
+
+
+
+
+deregister acc (g,d) = let f Nothing   = Nothing
+                           f (Just ds) = Just (remove d ds)
+                           in M.alter f g acc
+--M.Map GovPos [DepPos]
+deleteGovKey Nothing  d g2ds = g2ds
+deleteGovKey (Just g) d g2ds = deregister g2ds (g,d)
+deleteDepKey d          d2g  = M.delete d d2g
+
+remove x ds = filter (\d -> x/=d) ds
+-- Fix : this assumes M.Map is original, un-modified ones.
+removeNode :: GovPos -> M.Map GovPos [DepPos] -> DepTree
+removeNode x gov2deps = go (GovPos 0)
   where 
-    update acc (g,d) = let f Nothing = Just [d]
-                           f (Just ds) = Just (d:ds)
-                       in M.alter f g acc
+    go n | n==x      = DLeaf (GovPos 0) -- Fix this. n == top gov2deps
+    go n | otherwise = case mds of
+                          Nothing -> DLeaf n
+                          Just ds -> DNode n (map go $ remove x $map toGov ds)
+                       where mds = M.lookup n gov2deps
 
-governorIndex idx dep2gov = let r = M.lookup (DepPos idx) dep2gov
-                            in case r of
-                               Nothing         -> Nothing
-                               Just (GovPos i) -> Just i
+                   
 
-toRoot idx heads dep2gov = let r = governorIndex idx dep2gov
-                           in case r of
-                               Nothing -> (idx:heads)
-                               Just i -> toRoot i (idx:heads) dep2gov
+--iterateTree tree = 
 
+--subTree
+--removeNode :: DepTree -> DepTree
+--removeNode n tree = 
+--cloneTree
+--iterateTree
 {-
 jsonstr <- BL.readFile "data/sent.json"
 ej = eitherDecode jsonstr :: Either String DepChunk
@@ -326,7 +400,22 @@ dep2gov = M.fromList $ fmap (\x -> (dep_pos x, gov_pos x)) sent_deps
 gov2deps = buildDependentsMap $ fmap (\x -> (gov_pos x, dep_pos x)) sent_deps
 
 all_leaf = filter (\x -> isLeaf x gov2deps) all_nodes
-all_paths = map (\x -> toRoot x [] dep2gov) all_leaf
+all_paths = map (\x -> toRoot x dep2gov) all_leaf
+
+dep_tree = buildDepTree gov2deps
+pruned_tree = removeNode (GovPos 15) gov2deps
+
+print.assert$ Empty == elimNode (GovPos 0) dep_tree -- Removing head should result Empty
+print.assert$ Empty == elimNode (GovPos 0) dep_tree -- Removing non-existing node does nothing.
+print $ elimNode (GovPos 15) dep_tree
+
+--Try another method
+node = (GovPos 10)
+parent_node = M.lookup (toDep node) dep2gov
+
+subtree1 = elimNode node dep_tree
+subtree2 = buildDepTree $ deleteGovKey parent_node (toDep node) gov2deps
+print.assert $ subtree1 == subtree2
 
 -- list => map, "fold", concat, concatMap, take, break, scanl` 
 -}
@@ -350,6 +439,7 @@ main = do
     jsondump = tryDump ej
     ejd = eitherDecode jsondump :: Either String DepChunk
   print.assert$ ej==ejd
+  print.assert$ remove 3 [1,2,3,4] == [1,2,4]
 
   case ejd of
     Left err -> error err
