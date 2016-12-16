@@ -216,8 +216,8 @@ int main(int /*argc*/, char** argv){
 
     util::Timer timer{};
 
-//    DepSimilaritySearch engine{config};
-    RSSQueryEngine engine{config};
+    DepSimilaritySearch engine{config};
+//    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
@@ -230,19 +230,19 @@ int main(int /*argc*/, char** argv){
     fmt::print("{}\n", answers.dump(4));
     fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
-//    auto chain_answers = engine.ask_chain_query(uids);
+    auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");
 //    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
-//    data::ygp::annotation_on_result(config, chain_answers);
-//    fmt::print("{}\n", chain_answers.dump(4));
-    auto answer = engine.ask_query_stats(uids);
-    timer.here_then_reset("Processed a stats query.");
-    data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
-    fmt::print("{}\n", answer.dump(4));
-    util::json_t tmp;
-    for(int64_t uid : answer["stats"]["start-up"]["start-up"]) tmp["sents"].push_back(uid);
-    auto content = engine.ask_sents_content(tmp);
-    fmt::print("{}\n", content.dump(4));
+    data::ygp::annotation_on_result(config, chain_answers);
+    fmt::print("{}\n", chain_answers.dump(4));
+//    auto answer = engine.ask_query_stats(uids);
+//    timer.here_then_reset("Processed a stats query.");
+//    data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
+//    fmt::print("{}\n", answer.dump(4));
+//    util::json_t tmp;
+//    for(int64_t uid : answer["stats"]["start-up"]["start-up"]) tmp["sents"].push_back(uid);
+//    auto content = engine.ask_sents_content(tmp);
+//    fmt::print("{}\n", content.dump(4));
     timer.here_then_reset("Queries are answered.");
 
     return 0;

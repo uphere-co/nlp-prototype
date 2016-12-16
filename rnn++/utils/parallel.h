@@ -29,4 +29,15 @@ TVAL parallel_reducer(IT beg, IT end, OP reducer, TVAL zero){
     return sum;
 }
 
+template<typename T>
+struct ConcurrentVector{
+    void push_back(T const& value ) {vec.push_back(value);}
+    void push_back(T&& value ) {vec.push_back(std::move(value));}
+    auto to_vector(){
+        std::vector<T> vs;
+        for(auto const &v : vec) vs.push_back(v);
+        return vs;
+    }
+    tbb::concurrent_vector<T> vec;
+};
 }//namespace util

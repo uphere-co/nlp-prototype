@@ -2,18 +2,22 @@
 
 #include <fmt/printf.h>
 
+#include "similarity/dataset.h"
+
 #include "utils/string.h"
 #include "utils/versioned_name.h"
+#include "utils/hdf5.h"
 
 #include "wordrep/dep_parsed.h"
 
 #include "data_source/ygp_db.h" //TODO: some indexes should be separated out from YGP ETL.
 #include "data_source/ygp_etl.h" //TODO: some ETL function should be separated out from YGP ETL.
 
+using util::io::h5read;
+using wordrep::Sentence;
+
 namespace data{
 namespace rss{
-
-
 
 RSSRowFilePath::RSSRowFilePath(std::string full_path)
         : table{"nyt"}    {
@@ -39,10 +43,7 @@ void write_column_indexes(util::json_t const &config,
     std::vector<RowUID> row_uids;
 
     HashIndexer hash2idx{dumpfile_hashes};
-    std::map<std::string,ColumnUID> col2uid;
-    col2uid["title"]    = 0;
-    col2uid["summary"]  = 1;
-    col2uid["maintext"] = 2;
+    Columns rssdb{config["column_uids_dump"].get<std::string>()};
 
     RowUID row_uid{};
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
@@ -55,7 +56,7 @@ void write_column_indexes(util::json_t const &config,
             fmt::print(std::cerr, "Empty file : {}\n", file_path);
             continue;
         }
-        auto col_uid = col2uid.at(row.column);
+        auto col_uid = rssdb.col_uid(row.column);
         RowIndex row_idx{hash2idx.idx(row.hash).val};
 
         col_uids.push_back(col_uid);
@@ -75,13 +76,9 @@ void write_column_indexes(util::json_t const &config,
 }
 
 
-void annotation_on_result(util::json_t const &/*config*/, util::json_t &answers,
+void annotation_on_result(util::json_t const& config, util::json_t &answers,
                           std::string dumpfile_hashes){
-    std::map<ColumnUID,std::string> uid2col;
-    uid2col[0] = "title";
-    uid2col[1] = "summary";
-    uid2col[2] = "maintext";
-
+    Columns rssdb{config["column_uids_dump"].get<std::string>()};
     HashIndexer hash2idx{dumpfile_hashes};
     for(auto &answer : answers){
         auto col_uids = answer["result_column_uid"];
@@ -95,7 +92,7 @@ void annotation_on_result(util::json_t const &/*config*/, util::json_t &answers,
             auto offset_end = offsets[i][1].get<int64_t>();
 
             auto hash = hash2idx.hash(HashIndex{row_idx.val});
-            auto column = uid2col.at(col_uid);
+            auto column = rssdb.column(col_uid);
 
             auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
@@ -103,6 +100,24 @@ void annotation_on_result(util::json_t const &/*config*/, util::json_t &answers,
             answer["result_row_DEBUG"].push_back(row_str);
         }
     }
+}
+
+
+Columns::Columns(std::string column_uids){
+    auto lines = util::string::readlines(column_uids);
+    assert(ColumnUID{}==ColumnUID{0});
+    for(auto line : lines){
+        auto cols = util::string::split(line, ".");
+        tables.push_back(cols[0]);
+        columns.push_back(cols[1]);
+        index_cols.push_back(cols[2]);
+        full_names.push_back(line);
+    }
+}
+ColumnUID Columns::col_uid(std::string name) const{
+    auto beg = columns.cbegin();
+    auto it= std::find(beg, columns.cend(), name);
+    return it - beg;
 }
 
 }//namespace rss::data

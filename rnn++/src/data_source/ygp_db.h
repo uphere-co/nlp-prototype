@@ -20,26 +20,6 @@
 namespace data {
 namespace ygp {
 
-struct YGPindexer{
-    YGPindexer(util::io::H5file const &file, std::string prefix);
-    ColumnUID column_uid(wordrep::ChunkIndex idx) const {return chunk2col_uid[idx.val];}
-    RowIndex row_idx(wordrep::ChunkIndex idx) const {return chunk2idx[idx.val];}
-    RowUID row_uid(wordrep::ChunkIndex idx) const {return chunk2row_uid[idx.val];}
-    bool is_empty(ColumnUID uid, RowIndex idx) const {return map_to_uid.find({uid,idx})==map_to_uid.cend();}
-    RowUID row_uid(ColumnUID uid, RowIndex idx) const {
-        if(is_empty(uid,idx)) return RowUID{-1};
-        auto it=map_to_uid.find({uid,idx});
-        return it->second;
-    }
-    wordrep::ChunkIndex chunk_idx(RowUID uid) const {return row_uid2chunk.at(uid);}
-
-    std::vector<RowIndex> chunk2idx;
-    std::vector<RowUID> chunk2row_uid;
-    std::vector<ColumnUID> chunk2col_uid;
-    std::map<std::pair<ColumnUID,RowIndex>,RowUID> map_to_uid;
-    std::map<RowUID, wordrep::ChunkIndex> row_uid2chunk;
-};
-
 struct CountryCodeAnnotator{
     static std::string unknown() {return "All";}
     CountryCodeAnnotator(std::string country_list);
