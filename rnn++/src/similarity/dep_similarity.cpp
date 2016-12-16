@@ -512,13 +512,14 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto n_cut = 10;
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -537,13 +538,21 @@ template<typename T>
 json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
+    auto maybe_sents = util::find<std::vector<int64_t>>(ask, "sents");
+    if(maybe_sents) {
+        auto uids = util::deserialize<SentUID>(maybe_sents.value());
+        std::vector<Sentence> custom_sents;
+        for(auto uid : uids) custom_sents.push_back(db.uid2sent.find(uid).value());
+        candidate_sents = custom_sents;
+    }
 
     output_t answers{};
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -572,6 +581,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto n_cut = 10;
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -593,7 +603,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
         }
     };
     output_t answers{};
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };

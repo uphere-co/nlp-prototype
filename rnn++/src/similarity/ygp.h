@@ -35,8 +35,8 @@ struct DBInfo{
     using query_t = Query;
     DBInfo(util::json_t const& config);
 
-    auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents) const {
-        return per_table_rank_cut(relevant_sents, 5, indexer, db);
+    auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
+        return per_table_rank_cut(relevant_sents, n_cut, indexer, db);
     }
 
     void tag_on_register_documents(util::json_t const& ask, util::json_t& answer) const{

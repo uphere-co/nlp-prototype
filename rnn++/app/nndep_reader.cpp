@@ -241,14 +241,28 @@ int main(int /*argc*/, char** argv){
 //    data::rss::annotation_on_result(config, stat_answer["results"], dumpfile_hashes);
     fmt::print("{}\n", stat_answer.dump(4));
     util::json_t tmp;
+    std::vector<int64_t> sents;
     for(auto& per_key : stat_answer["stats"])
         for(auto& matches : per_key)
             for(auto uid : matches)
-                tmp["sents"].push_back(uid);
+                sents.push_back(uid);
+    tmp["sents"]=sents;
     fmt::print("{}\n", tmp.dump(4));
+
+    auto custom_query = uids;
+    custom_query["sents"]=sents;
+    custom_query["n_cut"]=30;
+    fmt::print("{}\n", uids.dump(4));
+    fmt::print("{}\n", custom_query.dump(4));
+    auto chain_answers_custom = engine.ask_chain_query(custom_query);
+    data::ygp::annotation_on_result(config, chain_answers_custom);
+    fmt::print("{}\n", chain_answers_custom.dump(4));
+
+
 //    auto content = engine.ask_sents_content(tmp);
     //fmt::print("{}\n", content.dump(4));
     timer.here_then_reset("Queries are answered.");
 
     return 0;
 }
+
