@@ -572,11 +572,11 @@ int main(int argc, char** argv){
     data::corenlp::test::parse_batch_output();
     return 0;
 
-//    process_rss_dump(argc, argv);
-    process_ygp_dump(argc,argv);
-
-//    data::ygp::dump_psql(col_uids);
 //    parse_textfile(dump_files);
+//    process_rss_dump(argc, argv);
+//    process_ygp_dump(argc,argv);
+//    data::ygp::dump_psql(col_uids);
+
     return 0;
 //    pruning_voca();
 //    convert_h5py_to_native();
