@@ -511,14 +511,15 @@ template<typename T>
 json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -537,13 +538,21 @@ template<typename T>
 json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
+    auto maybe_sents = util::find<std::vector<int64_t>>(ask, "sents");
+    if(maybe_sents) {
+        auto uids = util::deserialize<SentUID>(maybe_sents.value());
+        std::vector<Sentence> custom_sents;
+        for(auto uid : uids) custom_sents.push_back(db.uid2sent.find(uid).value());
+        candidate_sents = custom_sents;
+    }
 
     output_t answers{};
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -571,14 +580,16 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
-    auto max_clip_len = ask["max_clip_len"].get<int64_t>();
+    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
-    std::map<WordUID,std::map<WordUID,std::vector<SentUID>>> results_by_match;
-    std::map<WordUID,std::map<WordUID,std::size_t>> stats;
+    std::map<SentUID, std::map<WordUID,std::map<WordUID,std::vector<SentUID>>>> results_by_match;
+    std::map<SentUID, std::map<WordUID,std::map<WordUID,std::size_t>>> stats;
     auto collect_result_stats = [&results_by_match,&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
+        auto sent_uid = query_sent.uid;
         for(auto const &scored_sent : relevant_sents){
             for(auto elm : scored_sent.scores.serialize()){
                 auto qidx = std::get<0>(elm);
@@ -587,13 +598,13 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
                 auto muid = scored_sent.sent.tokens->word_uid(midx);
                 auto score = std::get<2>(elm);
                 if(score<0.6) continue;
-                ++stats[quid][muid];
-                results_by_match[quid][muid].push_back(scored_sent.sent.uid);
+                ++stats[sent_uid][quid][muid];
+                results_by_match[sent_uid][quid][muid].push_back(scored_sent.sent.uid);
             }
         }
     };
     output_t answers{};
-    auto op_cut =[this](auto const& xs){return dbinfo.rank_cut(xs);};
+    auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -619,26 +630,36 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     processor(query_sents, candidate_sents, op_per_sent);
 
     util::json_t stats_output;
+    util::json_t stats_output_idxs;
     fmt::print(std::cerr, "Result stats\n");
-    for(auto pair : stats){
-        util::json_t per_qword{};
-        auto quid = pair.first;
-        for(auto elm : pair.second){
-            auto muid = elm.first;
-            for(auto uid : results_by_match[quid][muid]) per_qword[db.token2uid.word[muid]].push_back(uid.val);
-            //per_qword[wordUIDs[muid]]={elm.second, quid.val, muid.val};
-            fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                       db.token2uid.word[quid], db.token2uid.word[muid], elm.second);
+    for(auto per_sent_stats : stats) {
+        auto sent_uid = per_sent_stats.first;
+        fmt::print(std::cerr, "For query sent {}:\n", sent_uid.val);
+
+        util::json_t stats_output_per_sent;
+        stats_output_idxs.push_back(sent_uid.val);
+        for (auto pair : per_sent_stats.second) {
+            util::json_t per_qword{};
+            auto quid = pair.first;
+            for (auto elm : pair.second) {
+                auto muid = elm.first;
+                for (auto uid : results_by_match[sent_uid][quid][muid]) per_qword[db.token2uid.word[muid]].push_back(uid.val);
+                fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
+                           db.token2uid.word[quid], db.token2uid.word[muid], elm.second);
+            }
+            stats_output_per_sent[db.token2uid.word[quid]] = per_qword;
+            fmt::print(std::cerr, "------------------\n");
         }
-        stats_output[db.token2uid.word[quid]]=per_qword;
-        fmt::print(std::cerr, "------------------\n");
+        fmt::print(std::cerr, "==================\n");
+        stats_output.push_back(stats_output_per_sent);
     }
-    fmt::print(std::cerr, "==================\n");
+    fmt::print(std::cerr, "//////////////////////////////////////////////////\n");
 
     util::json_t output{};
     util::json_t results = to_json(answers);
     for(auto& result : results) output["results"].push_back(result);
     output["stats"]=stats_output;
+    output["stats_uid"] = stats_output_idxs;
     return output;
 }
 
