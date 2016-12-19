@@ -53,3 +53,4 @@ data::PerSentQueryResult build_query_result_POD(
         data::DBIndexer const &db_indexer, int64_t max_clip_len);
 
 }//namespace engine
+

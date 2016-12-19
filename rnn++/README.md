@@ -32,5 +32,5 @@ echo Batteries mercury restriction > query.0
 
 ## Build tests
 ```
-nix-build nix/release.nix -A query --argstr nixpkgs $HOME/repo/srcc/nixpkgs
+nix-build nix/release.nix -A query --argstr nixpkgs $HOME/repo/srcc/nixpkgs --max-jobs 20 --cores 20
 ```
