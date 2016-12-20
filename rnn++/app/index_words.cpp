@@ -18,25 +18,25 @@ using wordrep::WordUIDindex;
 using util::Timer;
 
 
+std::string strip(std::string str){
+    return str.substr(str.find_first_not_of(" \n\t"));
+}
+
 struct WordIter{
     WordIter(std::string text)
             : text_strs{std::move(text)}, text{gsl::ensure_z(text_strs.data())}
     {}
     template<typename OP>
-    void iter(OP const &op){
-        auto text_beg = std::begin(text);
-        auto text_end = std::end(text);
-        //for(auto it=beg; it!=end; it = test.find_first_not_of(" \n\t"))
-        auto it=text_beg;
-        //for(auto end=beg; end!=text_end; ){
-        while(it!=text_end){
-            auto beg = it;
-            it=std::find_if(it, text_end, [](auto x){return std::isspace(x);});
-            if(it==text_end) break;
-            auto end = it;
+    void iter(OP const &op) const {
+        auto text_beg = std::cbegin(text);
+        auto text_end = std::cend(text);
+        auto beg = std::find_if_not(text_beg, text_end, [](auto x){return std::isspace(x);});
+        while(beg!=text_end){
+            auto end=std::find_if(beg, text_end, [](auto x){return std::isspace(x);});
             auto word = text.subspan(beg-text_beg, end-beg);
             op(word);
-            it=std::find_if_not(it, text_end, [](auto x){return std::isspace(x);});
+            if(end==text_end) break;
+            beg = std::find_if_not(end, text_end, [](auto x){return std::isspace(x);});
         }
     }
 
@@ -50,7 +50,7 @@ struct WordIter2{
     {}
     template<typename OP>
     void iter(OP const &op){
-        for(auto&& word : util::string::split(text_strs, " ")){
+        for(auto&& word : util::string::split(strip(text_strs), " ")){
             op(word);
         }
     }
@@ -73,21 +73,11 @@ void string_iterator(){
 }
 
 void benchmark(){
-    auto lines = util::string::readlines("news.2014.test");
+    auto lines = util::string::readlines("../rnn++/tests/data/sentence.2.corenlp");
 
     util::Timer timer{};
-
+    std::map<std::string, size_t> word_counts;
     {
-        std::map<std::string, size_t> word_counts;
-        for(auto &line : lines){
-            for(auto&& word : util::string::split(line, " ")){
-                ++word_counts[word];
-            }
-        }
-        timer.here_then_reset("Finish word count.");
-    }
-    {
-        std::map<std::string, size_t> word_counts;
         for(auto &line : lines){
             WordIter text{line};
             text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
@@ -95,13 +85,16 @@ void benchmark(){
         timer.here_then_reset("Finish word count.");
     }
     {
-        std::map<std::string, size_t> word_counts;
+        std::map<std::string, size_t> word_counts0;
         for(auto &line : lines){
             WordIter2 text{line};
             text.iter([&word_counts](auto& word){++word_counts[word];});
         }
+        for(auto elm : word_counts0) assert(word_counts[elm.first]==elm.second);
         timer.here_then_reset("Finish word count.");
     }
+    for(auto elm : word_counts)
+        fmt::print("{} {}\n", elm.first, elm.second);
 }
 
 }
@@ -114,12 +107,11 @@ int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
-    std::map<std::string, size_t> word_counts;
     util::Timer timer{};
+    std::map<std::string, size_t> word_counts;
     for (std::string line; std::getline(std::cin, line);) {
-        for(auto&& word : util::string::split(line, " ")){
-            ++word_counts[word];
-        }
+        WordIter text{line};
+        text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
     }
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
