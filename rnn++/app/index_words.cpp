@@ -17,7 +17,6 @@
 using wordrep::WordUIDindex;
 using util::Timer;
 
-namespace test{
 
 struct WordIter{
     WordIter(std::string text)
@@ -46,8 +45,8 @@ struct WordIter{
 };
 
 struct WordIter2{
-    WordIter2(std::string&& text_strs)
-            : text_strs{text_strs}
+    WordIter2(std::string text)
+            : text_strs{std::move(text)}
     {}
     template<typename OP>
     void iter(OP const &op){
@@ -58,6 +57,8 @@ struct WordIter2{
 
     std::string text_strs;
 };
+
+namespace test{
 
 void string_iterator(){
     WordIter text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
@@ -71,14 +72,48 @@ void string_iterator(){
 
 }
 
+void benchmark(){
+    auto lines = util::string::readlines("news.2014.test");
+
+    util::Timer timer{};
+
+    {
+        std::map<std::string, size_t> word_counts;
+        for(auto &line : lines){
+            for(auto&& word : util::string::split(line, " ")){
+                ++word_counts[word];
+            }
+        }
+        timer.here_then_reset("Finish word count.");
+    }
+    {
+        std::map<std::string, size_t> word_counts;
+        for(auto &line : lines){
+            WordIter text{line};
+            text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
+        }
+        timer.here_then_reset("Finish word count.");
+    }
+    {
+        std::map<std::string, size_t> word_counts;
+        for(auto &line : lines){
+            WordIter2 text{line};
+            text.iter([&word_counts](auto& word){++word_counts[word];});
+        }
+        timer.here_then_reset("Finish word count.");
+    }
+}
+
 }
 
 int main(int argc, char** argv){
-    test::string_iterator();
+//    test::string_iterator();
+    test::benchmark();
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
     std::map<std::string, size_t> word_counts;
     util::Timer timer{};
     for (std::string line; std::getline(std::cin, line);) {
@@ -89,5 +124,6 @@ int main(int argc, char** argv){
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
         fmt::print("{} {}\n", elm.first, elm.second);
+
     return 0;
 }
