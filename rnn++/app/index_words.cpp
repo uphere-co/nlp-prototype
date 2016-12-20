@@ -4,6 +4,7 @@
 #include <map>
 #include <cassert>
 #include <cctype>
+#include <iterator>
 
 #include <fmt/printf.h>
 
@@ -99,6 +100,17 @@ void benchmark(){
         fmt::print("{} {}\n", elm.first, elm.second);
 }
 
+void reverse_iterator(){
+    std::vector<char> buffer(100);
+    std::string str = "12 34 56 78";
+    for(size_t i=0; i<str.size(); ++i) buffer[i]=str[i];
+    auto end=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return x!='\0';});
+    assert(end!=buffer.crbegin());
+    assert(end-buffer.crend() == std::distance(str.cend(),str.cbegin()));
+    auto it=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return std::isspace(x);});
+    assert(it-end==2);
+}
+
 }
 
 template<typename T>
@@ -112,7 +124,32 @@ std::optional<std::string> getlines(T& is, int n){
     if(str.empty()) return {};
     return str;
 }
+
+template<typename T>
+std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
+    std::vector<char> buffer(n_buf);
+    is.read(buffer.data(), buffer.size());
+    if(!is.gcount()) return {};
+    if(is.gcount()==n_buf){
+        for(char c=is.get(); is&&c!='\n'; c=is.get())
+            buffer.push_back(c);
+    }
+    buffer.push_back('\0');
+    return buffer;
+}
+
+void word_count(){
+    std::map<std::string, size_t> word_counts;
+    for (std::string str; std::getline(std::cin, str);) {
+        WordIter text{str};
+        text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
+    }
+    for(auto elm : word_counts)
+        fmt::print("{} {}\n", elm.first, elm.second);
+}
+
 int main(int argc, char** argv){
+//    test::reverse_iterator();
 //    test::string_iterator();
 //    test::benchmark();
 //    return 0;
@@ -121,22 +158,14 @@ int main(int argc, char** argv){
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
     util::Timer timer{};
-    std::map<std::string, size_t> word_counts;
-//    for (std::string str; std::getline(std::cin, str);) {
-//        WordIter text{str};
-//        text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
-//    }
     tbb::task_group g;
     using map_t = tbb::concurrent_hash_map<std::string, size_t>;
     map_t wcs;
-    while (auto str=getlines(std::cin, 1000)) {
-//    std::vector<char> buffer(20000);//[20000];
-//    while (std::cin.read(buffer.data(), buffer.size())) {
-//        std::string str{buffer.data()};
+    while (auto buffer=read_chunk(std::cin, 20000)) {
+        std::string str{buffer.value().data()};
         g.run([&wcs,str](){
-            WordIter text{str.value()};
+            WordIter text{str};
             std::map<std::string, size_t> word_counts;
-//            WordIter text{str};
             text.iter([&word_counts](auto& word) {++word_counts[gsl::to_string(word)];});
             for(auto const& elm : word_counts){
                 map_t::accessor a;
@@ -144,15 +173,14 @@ int main(int argc, char** argv){
                 a->second += elm.second;
             }
         });
-//        for(auto& x : buffer) x='\0';
     }
     g.wait();
+    std::map<std::string, size_t> word_counts;
     for(auto const& elm : wcs){
         word_counts[elm.first] = elm.second;
     }
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
         fmt::print("{} {}\n", elm.first, elm.second);
-
     return 0;
 }
