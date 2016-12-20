@@ -21,10 +21,6 @@ using wordrep::WordUIDindex;
 using util::Timer;
 
 
-std::string strip(std::string str){
-    return str.substr(str.find_first_not_of(" \n\t"));
-}
-
 struct WordIter{
     WordIter(std::string text)
             : text_strs{std::move(text)}, text{gsl::ensure_z(text_strs.data())}
@@ -47,83 +43,6 @@ struct WordIter{
     gsl::cstring_span<> text;
 };
 
-struct WordIter2{
-    WordIter2(std::string text)
-            : text_strs{std::move(text)}
-    {}
-    template<typename OP>
-    void iter(OP const &op){
-        for(auto&& word : util::string::split(strip(text_strs), " ")){
-            op(word);
-        }
-    }
-
-    std::string text_strs;
-};
-
-namespace test{
-
-void string_iterator(){
-    WordIter text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
-    WordIter2 text2{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
-
-    Timer timer{};
-    text.iter([](auto& word){fmt::print("{}\n", gsl::to_string(word));});
-    timer.here_then_reset("span.");
-    text2.iter([](auto& word){fmt::print("{}\n", word);});
-    timer.here_then_reset("Plain string.");
-
-}
-
-void benchmark(){
-    auto lines = util::string::readlines("../rnn++/tests/data/sentence.2.corenlp");
-
-    util::Timer timer{};
-    std::map<std::string, size_t> word_counts;
-    {
-        for(auto &line : lines){
-            WordIter text{line};
-            text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
-        }
-        timer.here_then_reset("Finish word count.");
-    }
-    {
-        std::map<std::string, size_t> word_counts0;
-        for(auto &line : lines){
-            WordIter2 text{line};
-            text.iter([&word_counts](auto& word){++word_counts[word];});
-        }
-        for(auto elm : word_counts0) assert(word_counts[elm.first]==elm.second);
-        timer.here_then_reset("Finish word count.");
-    }
-    for(auto elm : word_counts)
-        fmt::print("{} {}\n", elm.first, elm.second);
-}
-
-void reverse_iterator(){
-    std::vector<char> buffer(100);
-    std::string str = "12 34 56 78";
-    for(size_t i=0; i<str.size(); ++i) buffer[i]=str[i];
-    auto end=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return x!='\0';});
-    assert(end!=buffer.crbegin());
-    assert(end-buffer.crend() == std::distance(str.cend(),str.cbegin()));
-    auto it=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return std::isspace(x);});
-    assert(it-end==2);
-}
-
-}
-
-template<typename T>
-std::optional<std::string> getlines(T& is, int n){
-    std::string str{};
-    std::string line;
-    for(int i=0; i!=n; ++i){
-        if(!std::getline(is, line)) break;
-        str.append(line+"\n");
-    }
-    if(str.empty()) return {};
-    return str;
-}
 
 template<typename T>
 std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
@@ -138,15 +57,103 @@ std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
     return buffer;
 }
 
-void word_count(){
-    std::map<std::string, size_t> word_counts;
-    for (std::string str; std::getline(std::cin, str);) {
+class WordCounter{
+public:
+    using map_t = tbb::concurrent_hash_map<std::string, size_t>;
+    void count(std::string const &str){
         WordIter text{str};
+        std::map<std::string, size_t> word_counts;
+        text.iter([&word_counts](auto& word) {++word_counts[gsl::to_string(word)];});
+        for(auto const& elm : word_counts){
+            map_t::accessor a;
+            wcs.insert(a, elm.first);
+            a->second += elm.second;
+        }
+    }
+    std::map<std::string, size_t> get() const {
+        std::map<std::string, size_t> word_counts;
+        for(auto const& elm : wcs){
+            word_counts[elm.first] = elm.second;
+        }
+        return word_counts;
+    };
+
+private:
+    map_t wcs;
+};
+
+template<typename T>
+std::map<std::string, size_t> word_count(T&& is){
+    WordCounter counter;
+    tbb::task_group g;
+    while (auto buffer=read_chunk(is, 200000)) {
+        std::string str{buffer.value().data()};
+        g.run([&counter,str](){ //important to copy the str variable.
+            counter.count(str);
+        });
+    }
+    g.wait();
+    return counter.get();
+}
+
+namespace test{
+
+void string_iterator(){
+    WordIter text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
+    std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
+
+    std::vector<int64_t> tokens;
+    text.iter([&tokens](auto& word){tokens.push_back(std::stoi(gsl::to_string(word)));});
+    assert(tokens.size()==xs.size());
+    for(auto pair : util::zip(xs,tokens)) assert(pair.first==pair.second);
+}
+
+std::string strip(std::string const& str){
+    auto beg=std::find_if_not(str.cbegin(), str.cend(), [](auto x){return std::isspace(x);});
+    auto end=std::find_if_not(str.crbegin(), str.crend(), [](auto x){return std::isspace(x);});
+    return str.substr(beg-str.cbegin(), end.base()-beg);
+}
+
+void benchmark(){
+    util::Timer timer{};
+    auto lines = util::string::readlines("../rnn++/tests/data/sentence.2.corenlp");
+    timer.here_then_reset("Finish file readlines.");
+
+
+    std::map<std::string, size_t> word_counts;
+    for(auto &line : lines){
+        WordIter text{line};
         text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
     }
-    for(auto elm : word_counts)
-        fmt::print("{} {}\n", elm.first, elm.second);
+    timer.here_then_reset("Finish word count / excluding file reading.");
+    auto word_counts2 = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    timer.here_then_reset("Finish parallel word count / including file reading.");
+
+    std::map<std::string, size_t> word_counts0;
+    for(auto &line : lines){
+        auto stripped_line = strip(line);
+        assert(!stripped_line.empty());
+        for(auto&& word : util::string::split(stripped_line, " ")){
+            ++word_counts0[word];
+        }
+    }
+    timer.here_then_reset("Finish word count.");
+    for(auto elm : word_counts0) assert(word_counts[elm.first]==elm.second);
+    for(auto elm : word_counts0) assert(word_counts2[elm.first]==elm.second);
 }
+
+void reverse_iterator(){
+    std::vector<char> buffer(100);
+    std::string str = "12 34 56 78";
+    for(size_t i=0; i<str.size(); ++i) buffer[i]=str[i];
+    auto end=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return x!='\0';});
+    assert(end!=buffer.crbegin());
+    assert(end-buffer.crend() == std::distance(str.cend(),str.cbegin()));
+    auto it=std::find_if(buffer.crbegin(), buffer.crend(), [](auto x){return std::isspace(x);});
+    assert(it-end==2);
+}
+
+}//namespace test
 
 int main(int argc, char** argv){
 //    test::reverse_iterator();
@@ -158,27 +165,7 @@ int main(int argc, char** argv){
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
     util::Timer timer{};
-    tbb::task_group g;
-    using map_t = tbb::concurrent_hash_map<std::string, size_t>;
-    map_t wcs;
-    while (auto buffer=read_chunk(std::cin, 20000)) {
-        std::string str{buffer.value().data()};
-        g.run([&wcs,str](){
-            WordIter text{str};
-            std::map<std::string, size_t> word_counts;
-            text.iter([&word_counts](auto& word) {++word_counts[gsl::to_string(word)];});
-            for(auto const& elm : word_counts){
-                map_t::accessor a;
-                wcs.insert(a, elm.first);
-                a->second += elm.second;
-            }
-        });
-    }
-    g.wait();
-    std::map<std::string, size_t> word_counts;
-    for(auto const& elm : wcs){
-        word_counts[elm.first] = elm.second;
-    }
+    auto word_counts = word_count(std::cin);
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
         fmt::print("{} {}\n", elm.first, elm.second);
