@@ -99,8 +99,8 @@ class WordCounter{
 public:
     using count_type = count_t;
     using map_t = tbb::concurrent_hash_map<count_type::key_type, size_t>;
-    void count(std::string const &str){
-        WordIter text{str};
+    void count(std::string str){
+        WordIter text{std::move(str)};
         count_type word_counts;
         text.iter([&word_counts](auto& word) {++word_counts[word];});
         for(auto const& elm : word_counts){
@@ -129,8 +129,9 @@ WordCounter::count_type word_count(T&& is){
     tbb::task_group g;
     Timer timer;
     while (auto buffer=read_chunk(is, 200000)) {
+        //auto ptr = std::make_unique<std::vector<char>>(buffer.value());
         std::string str{buffer.value().data()};
-        g.run([&counter,str](){ //important to copy the str variable.
+        g.run([&counter,str{std::move(str)}]() { //important to copy the str variable.
             counter.count(str);
         });
     }
@@ -222,6 +223,6 @@ int main(int argc, char** argv){
     auto word_counts = word_count(std::cin);
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
-        fmt::print("{} {}\n", elm.first, elm.second);
+        fmt::print(std::cout, "{} {}\n", elm.first, elm.second);
     return 0;
 }
