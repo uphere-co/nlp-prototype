@@ -8,6 +8,7 @@
 , fmt
 , msgsl
 , spdlog
+, xxhashct
 , backwardcpp
 }:
 
@@ -19,7 +20,7 @@ let
       query-common = self.callPackage ../query-common {
       };
       query = self.callPackage (import ./default.nix) {
-        inherit hdf5_cpp tbb rnnpp json elfutils fmt msgsl spdlog backwardcpp;
+        inherit hdf5_cpp tbb rnnpp json elfutils fmt msgsl spdlog xxhashct backwardcpp ;
 	pqxx = libpqxx;
       };
     };
