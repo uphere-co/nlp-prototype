@@ -87,6 +87,11 @@ add_executable(ygpdb_etl app/ygpdb_etl
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
+add_executable(index_words app/index_words
+               ${util_files} ${wordrep_files})
+target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+
+
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
 target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb)
 
