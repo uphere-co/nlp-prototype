@@ -6,6 +6,7 @@
 #include <cctype>
 #include <iterator>
 
+#include <xxhashct/xxh64.hpp>
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
@@ -21,26 +22,34 @@ using wordrep::WordUIDindex;
 using util::Timer;
 
 
+template<typename T>
+auto hash(T* ptr, size_t len){
+    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, 113377);
+}
+
 struct WordIter{
     WordIter(std::string text)
-            : text_strs{std::move(text)}, text{gsl::ensure_z(text_strs.data())}
+            : text_strs{std::move(text)}
     {}
     template<typename OP>
     void iter(OP const &op) const {
-        auto text_beg = std::cbegin(text);
-        auto text_end = std::cend(text);
+        auto text_beg = std::cbegin(text_strs);
+        auto text_end = std::cend(text_strs);
         auto beg = std::find_if_not(text_beg, text_end, [](auto x){return std::isspace(x);});
         while(beg!=text_end){
             auto end=std::find_if(beg, text_end, [](auto x){return std::isspace(x);});
-            auto word = text.subspan(beg-text_beg, end-beg);
+            //gsl::cstring_span<> text{gsl::ensure_z(text_strs.data())};
+            //auto word = text.subspan(beg-text_beg, end-beg);
+            auto word = text_strs.substr(beg-text_beg, end-beg);
             op(word);
+//            auto wuid = hash(text_strs.data()+(beg-text_beg), end-beg);
+//            op(wuid);
             if(end==text_end) break;
             beg = std::find_if_not(end, text_end, [](auto x){return std::isspace(x);});
         }
     }
 
     std::string text_strs;
-    gsl::cstring_span<> text;
 };
 
 
@@ -63,7 +72,7 @@ public:
     void count(std::string const &str){
         WordIter text{str};
         std::map<std::string, size_t> word_counts;
-        text.iter([&word_counts](auto& word) {++word_counts[gsl::to_string(word)];});
+        text.iter([&word_counts](auto& word) {++word_counts[word];});
         for(auto const& elm : word_counts){
             map_t::accessor a;
             wcs.insert(a, elm.first);
@@ -71,10 +80,12 @@ public:
         }
     }
     std::map<std::string, size_t> get() const {
+        Timer timer;
         std::map<std::string, size_t> word_counts;
         for(auto const& elm : wcs){
             word_counts[elm.first] = elm.second;
         }
+        timer.here_then_reset("Serialization to std::map is finished.");
         return word_counts;
     };
 
@@ -86,6 +97,7 @@ template<typename T>
 std::map<std::string, size_t> word_count(T&& is){
     WordCounter counter;
     tbb::task_group g;
+    Timer timer;
     while (auto buffer=read_chunk(is, 200000)) {
         std::string str{buffer.value().data()};
         g.run([&counter,str](){ //important to copy the str variable.
@@ -93,6 +105,7 @@ std::map<std::string, size_t> word_count(T&& is){
         });
     }
     g.wait();
+    timer.here_then_reset("Word counting is finished.");
     return counter.get();
 }
 
@@ -103,7 +116,7 @@ void string_iterator(){
     std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
 
     std::vector<int64_t> tokens;
-    text.iter([&tokens](auto& word){tokens.push_back(std::stoi(gsl::to_string(word)));});
+    text.iter([&tokens](auto& word){tokens.push_back(std::stoi(word));});
     assert(tokens.size()==xs.size());
     for(auto pair : util::zip(xs,tokens)) assert(pair.first==pair.second);
 }
@@ -123,7 +136,7 @@ void benchmark(){
     std::map<std::string, size_t> word_counts;
     for(auto &line : lines){
         WordIter text{line};
-        text.iter([&word_counts](auto& word){++word_counts[gsl::to_string(word)];});
+        text.iter([&word_counts](auto& word){++word_counts[word];});
     }
     timer.here_then_reset("Finish word count / excluding file reading.");
     auto word_counts2 = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
@@ -153,12 +166,22 @@ void reverse_iterator(){
     assert(it-end==2);
 }
 
+void hash(){
+    auto seed = 1;
+    char cs[10] = "Hello";
+
+    uint64_t hash = xxh64::hash (reinterpret_cast<const char*> (cs), 10, seed);
+    assert(sizeof(cs)==10);
+    fmt::print("{}\n", hash);
+}
+
 }//namespace test
 
 int main(int argc, char** argv){
 //    test::reverse_iterator();
 //    test::string_iterator();
 //    test::benchmark();
+//    test::hash();
 //    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
