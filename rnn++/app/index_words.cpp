@@ -27,8 +27,37 @@ auto hash(T* ptr, size_t len){
     return xxh64::hash(reinterpret_cast<const char*>(ptr), len, 113377);
 }
 
-struct WordIter{
-    WordIter(std::string text)
+template<typename KEY>
+struct TokenHash{
+    template<typename T>
+    KEY operator() (std::string const &text, T text_beg, T beg, T end) const;
+};
+template<>
+struct TokenHash<std::string>{
+    template<typename T>
+    std::string operator() (std::string const &text, T text_beg, T beg, T end) const {
+        return text.substr(beg-text_beg, end-beg);
+    }
+    std::string operator() (std::string const &word) const {
+        return word;
+    }
+};
+template<>
+struct TokenHash<uint64_t>{
+    template<typename T>
+    uint64_t operator() (std::string const &text, T text_beg, T beg, T end) const {
+        return hash(text.data()+(beg-text_beg), end-beg);
+    }
+    uint64_t operator() (std::string const &word) const {
+        return hash(word.data(), std::distance(word.cend(),word.cbegin()));
+    }
+};
+
+template<typename KEY>
+struct WordIterBase{
+    using key_type    = KEY;
+    using hasher_type = TokenHash<KEY>;
+    WordIterBase(std::string text)
             : text_strs{std::move(text)}
     {}
     template<typename OP>
@@ -38,20 +67,20 @@ struct WordIter{
         auto beg = std::find_if_not(text_beg, text_end, [](auto x){return std::isspace(x);});
         while(beg!=text_end){
             auto end=std::find_if(beg, text_end, [](auto x){return std::isspace(x);});
-            //gsl::cstring_span<> text{gsl::ensure_z(text_strs.data())};
-            //auto word = text.subspan(beg-text_beg, end-beg);
-            auto word = text_strs.substr(beg-text_beg, end-beg);
+            auto word = get_hash(text_strs, text_beg, beg, end);
             op(word);
-//            auto wuid = hash(text_strs.data()+(beg-text_beg), end-beg);
-//            op(wuid);
             if(end==text_end) break;
             beg = std::find_if_not(end, text_end, [](auto x){return std::isspace(x);});
         }
     }
 
+    hasher_type get_hash{};
     std::string text_strs;
 };
 
+using WordIter=WordIterBase<uint64_t>;
+//using WordIter=WordIterBase<std::string>;
+using count_t = std::map<WordIter::key_type, size_t>;
 
 template<typename T>
 std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
@@ -68,10 +97,11 @@ std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
 
 class WordCounter{
 public:
-    using map_t = tbb::concurrent_hash_map<std::string, size_t>;
+    using count_type = count_t;
+    using map_t = tbb::concurrent_hash_map<count_type::key_type, size_t>;
     void count(std::string const &str){
         WordIter text{str};
-        std::map<std::string, size_t> word_counts;
+        count_type word_counts;
         text.iter([&word_counts](auto& word) {++word_counts[word];});
         for(auto const& elm : word_counts){
             map_t::accessor a;
@@ -79,9 +109,9 @@ public:
             a->second += elm.second;
         }
     }
-    std::map<std::string, size_t> get() const {
+    count_type get() const {
         Timer timer;
-        std::map<std::string, size_t> word_counts;
+        count_type word_counts;
         for(auto const& elm : wcs){
             word_counts[elm.first] = elm.second;
         }
@@ -94,7 +124,7 @@ private:
 };
 
 template<typename T>
-std::map<std::string, size_t> word_count(T&& is){
+WordCounter::count_type word_count(T&& is){
     WordCounter counter;
     tbb::task_group g;
     Timer timer;
@@ -112,7 +142,7 @@ std::map<std::string, size_t> word_count(T&& is){
 namespace test{
 
 void string_iterator(){
-    WordIter text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
+    WordIterBase<std::string> text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
     std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
 
     std::vector<int64_t> tokens;
@@ -133,7 +163,7 @@ void benchmark(){
     timer.here_then_reset("Finish file readlines.");
 
 
-    std::map<std::string, size_t> word_counts;
+    count_t word_counts;
     for(auto &line : lines){
         WordIter text{line};
         text.iter([&word_counts](auto& word){++word_counts[word];});
@@ -142,12 +172,13 @@ void benchmark(){
     auto word_counts2 = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     timer.here_then_reset("Finish parallel word count / including file reading.");
 
-    std::map<std::string, size_t> word_counts0;
+    typename WordIter::hasher_type hasher{};
+    count_t word_counts0;
     for(auto &line : lines){
         auto stripped_line = strip(line);
         assert(!stripped_line.empty());
         for(auto&& word : util::string::split(stripped_line, " ")){
-            ++word_counts0[word];
+            ++word_counts0[hasher(word)];
         }
     }
     timer.here_then_reset("Finish word count.");
