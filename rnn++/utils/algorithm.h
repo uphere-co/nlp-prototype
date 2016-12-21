@@ -44,8 +44,14 @@ auto map(T const &elms, OP const &op){
 template<typename T>
 T to_type(size_t uval){
     assert(uval <std::numeric_limits<T>::max());
-
     return static_cast<T>(uval);
+}
+
+template<typename T>
+T to_signed_positive(size_t u){
+    T s = u;
+    if(s<0) return -s;
+    return s;
 }
 
 template<typename T>

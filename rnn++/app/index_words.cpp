@@ -42,14 +42,17 @@ struct TokenHash<std::string>{
         return word;
     }
 };
+
 template<>
-struct TokenHash<uint64_t>{
+struct TokenHash<wordrep::WordUID>{
+    using WordUID = wordrep::WordUID;
     template<typename T>
-    uint64_t operator() (std::string const &text, T text_beg, T beg, T end) const {
-        return hash(text.data()+(beg-text_beg), end-beg);
+    WordUID  operator() (std::string const &text, T text_beg, T beg, T end) const {
+        return WordUID::from_unsigned(hash(text.data()+(beg-text_beg), end-beg));
     }
-    uint64_t operator() (std::string const &word) const {
-        return hash(word.data(), std::distance(word.cend(),word.cbegin()));
+    WordUID  operator() (std::string const &word) const {
+        assert(word.size());
+        return WordUID::from_unsigned(hash(word.data(), std::distance(word.cbegin(),word.cend())));
     }
 };
 
@@ -78,7 +81,7 @@ struct WordIterBase{
     std::string text_strs;
 };
 
-using WordIter=WordIterBase<uint64_t>;
+using WordIter=WordIterBase<wordrep::WordUID>;
 //using WordIter=WordIterBase<std::string>;
 using count_t = std::map<WordIter::key_type, size_t>;
 
@@ -98,7 +101,7 @@ std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
 class WordCounter{
 public:
     using count_type = count_t;
-    using map_t = tbb::concurrent_hash_map<count_type::key_type, size_t>;
+    using map_t = tbb::concurrent_hash_map<count_type::key_type, size_t,util::TBBHashCompare<count_type::key_type>>;
     void count(std::string str){
         WordIter text{std::move(str)};
         count_type word_counts;
@@ -207,6 +210,15 @@ void hash(){
     fmt::print("{}\n", hash);
 }
 
+void uint_to_int(){
+    auto umax = std::numeric_limits<uint64_t>::max();
+    auto max = std::numeric_limits<int64_t>::max();
+    assert(util::to_signed_positive<int64_t>(umax) == 1);
+    assert(util::to_signed_positive<int64_t>(umax-10) == 11);
+    uint64_t n = max;
+    assert(util::to_signed_positive<int64_t>(n)==max);
+}
+
 }//namespace test
 
 int main(int argc, char** argv){
@@ -214,6 +226,7 @@ int main(int argc, char** argv){
 //    test::string_iterator();
 //    test::benchmark();
 //    test::hash();
+//    test::uint_to_int();
 //    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);

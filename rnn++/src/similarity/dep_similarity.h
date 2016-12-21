@@ -29,18 +29,12 @@ struct Distances{
     std::vector<TV> val;
 };
 
-template<typename T>
-struct TBBHashCompare {
-    static size_t hash(T const& x) {return std::hash<T>{}(x);}
-    static bool equal(T const& x, T const& y ) {return x==y;}
-};
-
 class WordSimCache{
 public:
     using voca_info_t  = wordrep::VocaInfo;
     using val_t        = voca_info_t::val_t;
     using dist_cache_t = Distances<val_t>;
-    using data_t = tbb::concurrent_hash_map<wordrep::VocaIndex, dist_cache_t,TBBHashCompare<wordrep::VocaIndex>>;
+    using data_t = tbb::concurrent_hash_map<wordrep::VocaIndex, dist_cache_t,util::TBBHashCompare<wordrep::VocaIndex>>;
 
     WordSimCache(voca_info_t const &voca);
     void cache(std::vector<wordrep::VocaIndex> const &words);
@@ -56,7 +50,7 @@ private:
 class QueryResultCache{
 public:
     using result_t = data::QueryResult;
-    using data_t = tbb::concurrent_hash_map<wordrep::SentUID,result_t,TBBHashCompare<wordrep::SentUID>>;
+    using data_t = tbb::concurrent_hash_map<wordrep::SentUID,result_t,util::TBBHashCompare<wordrep::SentUID>>;
     QueryResultCache() {}
     void insert(wordrep::SentUID uid, result_t const&result);
     result_t get(wordrep::SentUID uid) const;

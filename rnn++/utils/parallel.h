@@ -11,6 +11,12 @@
 
 namespace util {
 
+template<typename T>
+struct TBBHashCompare {
+    static size_t hash(T const& x) {return std::hash<T>{}(x);}
+    static bool equal(T const& x, T const& y ) {return x==y;}
+};
+
 template<typename IT, typename OP, typename TVAL>
 TVAL parallel_reducer(IT beg, IT end, OP reducer, TVAL zero){
     auto sum=tbb::parallel_reduce(
@@ -40,5 +46,6 @@ struct ConcurrentVector{
     }
     tbb::concurrent_vector<T> vec;
 };
+
 }//namespace util
 
