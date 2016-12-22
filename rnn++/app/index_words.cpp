@@ -98,10 +98,46 @@ std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
     return buffer;
 }
 
+
+template<typename TK, typename TV, typename TH>
+auto to_map(tbb::concurrent_hash_map<TK,TV,TH> const& src){
+    std::map<TK,TV> out;
+    for(auto const& elm : src){
+        out[elm.first] = elm.second;
+    }
+    return out;
+}
+template<typename TK, typename TV, typename TH>
+auto to_vector_pair(tbb::concurrent_hash_map<TK,TV,TH> const& src){
+    std::pair<std::vector<TK>,std::vector<TV>> out;
+    for(auto const& elm : src){
+        out.first.push_back(elm.first);
+        out.second.push_back(elm.second);
+    }
+    return out;
+}
+template<typename TK, typename TV, typename TH>
+auto to_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
+    std::vector<std::pair<TK,TV>> out;
+    for(auto const& elm : src){
+        out.push_back(elm);
+    }
+    return out;
+}
+
+template<typename TK, typename TV, typename TH>
+auto to_sorted_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
+    auto out = to_pairs(src);
+    std::sort(out.begin(),out.end(),[](auto x, auto y){return x.first<y.first;});
+    return out;
+}
+
 class WordCounter{
 public:
     using count_type = count_t;
-    using map_t = tbb::concurrent_hash_map<count_type::key_type, size_t,util::TBBHashCompare<count_type::key_type>>;
+    using key_type   = count_t::key_type;
+    using mapped_type = count_t::mapped_type;
+    using map_t = tbb::concurrent_hash_map<key_type,mapped_type,util::TBBHashCompare<key_type>>;
     void count(std::string str){
         WordIter text{std::move(str)};
         count_type word_counts;
@@ -112,22 +148,18 @@ public:
             a->second += elm.second;
         }
     }
-    count_type get() const {
-        Timer timer;
-        count_type word_counts;
-        for(auto const& elm : wcs){
-            word_counts[elm.first] = elm.second;
-        }
-        timer.here_then_reset("Serialization to std::map is finished.");
-        return word_counts;
-    };
+    std::map<key_type,mapped_type >
+    to_map() const { return ::to_map(wcs); };
+    //std::pair<std::vector<key_type>,std::vector<mapped_type>>
+    std::vector<std::pair<key_type,mapped_type>>
+    to_pairs() const { return ::to_sorted_pairs(wcs);};
 
 private:
     map_t wcs;
 };
 
 template<typename T>
-WordCounter::count_type word_count(T&& is){
+auto word_count(T&& is){
     WordCounter counter;
     tbb::task_group g;
     Timer timer;
@@ -140,7 +172,8 @@ WordCounter::count_type word_count(T&& is){
     }
     g.wait();
     timer.here_then_reset("Word counting is finished.");
-    return counter.get();
+    return counter.to_pairs();
+//    return counter.to_map();
 }
 
 namespace test{
@@ -186,8 +219,10 @@ void benchmark(){
         }
     }
     timer.here_then_reset("Finish word count.");
-    for(auto elm : word_counts0) assert(word_counts[elm.first]==elm.second);
-    for(auto elm : word_counts0) assert(word_counts2[elm.first]==elm.second);
+    for(auto elm : word_counts)  assert(word_counts0[elm.first]==elm.second);
+    assert(word_counts.size()==word_counts0.size());
+    for(auto elm : word_counts2) assert(word_counts0[elm.first]==elm.second);
+    assert(word_counts2.size()==word_counts0.size());
 }
 
 void reverse_iterator(){
