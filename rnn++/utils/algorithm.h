@@ -5,6 +5,9 @@
 #include <limits>
 #include <algorithm>
 #include <utility>
+#include <map>
+
+#include "utils/optional.h"
 
 namespace util {
 
@@ -92,4 +95,53 @@ auto sort_by_values(T const &wcs){
     std::sort(vals.begin(), vals.end(), [](auto x, auto y){return x.second>y.second;});
     return vals;
 }
+
+
+template<typename TK, typename TV>
+auto to_pairs(std::map<TK,TV> const& src){
+    std::vector<std::pair<TK,TV>> out;
+    for(auto const& elm : src){
+        out.push_back(elm);
+    }
+    return out;
+}
+template<typename TK, typename TV>
+auto to_sorted_pairs(std::map<TK,TV> const& src){
+    return to_pairs(src);
+}
+
+
+template<typename TI, typename T>
+std::optional<TI> binary_find(TI beg, TI end, T val) {
+    if(beg==end) return {};
+    auto it = beg + (end-beg)/2;
+    if(*it==val) return it;
+    else if(end-beg==1) return {};
+    else if(*it>val) return binary_find(beg,it, val);
+    return binary_find(it, end, val);
+}
+template<typename TI, typename TE, typename TL>
+std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
+    if(beg==end) return {};
+    auto it = beg + (end-beg)/2;
+    if(eq(*it)) return it;
+    else if(end-beg==1) return {};
+    else if(less(*it)) return binary_find(it, end, eq, less);
+    return binary_find(beg, it, eq, less);
+}
+
+template<typename T>
+auto binary_find(std::vector<T> const &vs, T val){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find(beg,end,val);
+}
+
+template<typename T, typename TE, typename TL>
+auto binary_find(std::vector<T> const &vs, TE const& eq, TL const& less){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find(beg,end,eq, less);
+}
+
 }//namespace util

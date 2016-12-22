@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cctype>
 #include <iterator>
+#include <random>
 
 #include <xxhashct/xxh64.hpp>
 #include <fmt/printf.h>
@@ -13,14 +14,16 @@
 
 #include "utils/string.h"
 #include "utils/json.h"
-#include "utils/algorithm.h"
 #include "utils/profiling.h"
 #include "utils/span.h"
-#include "utils/parallel.h"
+#include "utils/parallel_algorithm.h"
 
 using wordrep::WordUIDindex;
 using util::Timer;
 
+using util::binary_find;
+using util::to_map;
+using util::to_sorted_pairs;
 
 template<typename T>
 auto hash(T* ptr, size_t len){
@@ -99,39 +102,6 @@ std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
 }
 
 
-template<typename TK, typename TV, typename TH>
-auto to_map(tbb::concurrent_hash_map<TK,TV,TH> const& src){
-    std::map<TK,TV> out;
-    for(auto const& elm : src){
-        out[elm.first] = elm.second;
-    }
-    return out;
-}
-template<typename TK, typename TV, typename TH>
-auto to_vector_pair(tbb::concurrent_hash_map<TK,TV,TH> const& src){
-    std::pair<std::vector<TK>,std::vector<TV>> out;
-    for(auto const& elm : src){
-        out.first.push_back(elm.first);
-        out.second.push_back(elm.second);
-    }
-    return out;
-}
-template<typename TK, typename TV, typename TH>
-auto to_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
-    std::vector<std::pair<TK,TV>> out;
-    for(auto const& elm : src){
-        out.push_back(elm);
-    }
-    return out;
-}
-
-template<typename TK, typename TV, typename TH>
-auto to_sorted_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
-    auto out = to_pairs(src);
-    std::sort(out.begin(),out.end(),[](auto x, auto y){return x.first<y.first;});
-    return out;
-}
-
 class WordCounter{
 public:
     using count_type = count_t;
@@ -157,6 +127,7 @@ public:
 private:
     map_t wcs;
 };
+
 
 template<typename T>
 auto word_count(T&& is){
@@ -254,6 +225,52 @@ void uint_to_int(){
     assert(util::to_signed_positive<int64_t>(n)==max);
 }
 
+
+void binary_find_check(){
+    std::vector<int> vs = {1,2,3,4, 6,7,8,9};
+    assert(binary_find(vs, 4).value()-vs.begin()==3);
+    assert(binary_find(vs, 1).value()-vs.begin()==0);
+    assert(binary_find(vs, 9).value()-vs.begin()==7);
+    assert(!binary_find(vs, 0));
+    assert(!binary_find(vs, 5));
+    assert(!binary_find(vs, 10));
+}
+
+template<typename TK, typename TV>
+TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){
+    return binary_find(pairs,
+                       [key](auto elm){return elm.first==key;},
+                       [key](auto elm){return elm.first<key;}).value()->second;
+};
+void binary_find_benchmark(){
+    using wordrep::WordUID;
+    std::random_device rd{};
+    std::mt19937 e{rd()};
+    std::uniform_int_distribution<int64_t> ran_int{-1, 0xffffffff};
+    std::uniform_int_distribution<uint64_t> ran_uint{0, 0xffffffff};
+
+    std::vector<WordUID> keys;
+    std::map<WordUID,size_t> count;
+    for(int i=0; i<200000; ++i) {
+        auto key = WordUID{ran_int(e)};
+        keys.push_back(key);
+        count[key] =  ran_uint(e);
+    }
+    Timer timer{};
+
+    auto count_pairs = to_pairs(count);
+    for(auto key : keys){
+        assert(count[key] == get_val(count_pairs, key));
+    }
+    timer.here_then_reset("Passed consistancy check.");
+    auto sum0=0;
+    for(auto key : keys) sum0 += count[key];
+    timer.here_then_reset("Iter std::map.");
+    auto sum1=0;
+    for(auto key : keys) sum1 += get_val(count_pairs, key);
+    timer.here_then_reset("Iter std::vector<std::map>.");
+    assert(sum0==sum1);
+}
 }//namespace test
 
 int main(int argc, char** argv){
@@ -262,7 +279,9 @@ int main(int argc, char** argv){
 //    test::benchmark();
 //    test::hash();
 //    test::uint_to_int();
-//    return 0;
+    test::binary_find_check();
+    test::binary_find_benchmark();
+    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
