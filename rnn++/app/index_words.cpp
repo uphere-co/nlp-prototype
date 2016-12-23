@@ -18,12 +18,14 @@
 #include "utils/span.h"
 #include "utils/parallel_algorithm.h"
 
+using wordrep::WordUID;
 using wordrep::WordUIDindex;
 using util::Timer;
 
 using util::binary_find;
 using util::to_map;
 using util::to_sorted_pairs;
+using util::string::strip;
 
 template<typename T>
 auto hash(T* ptr, size_t len){
@@ -147,6 +149,11 @@ auto word_count(T&& is){
 //    return counter.to_map();
 }
 
+template<typename T, typename TK>
+auto get_vals(T const& count_pairs, TK keys){
+    std::vector<> vals;
+}
+
 namespace test{
 
 void string_iterator(){
@@ -157,12 +164,6 @@ void string_iterator(){
     text.iter([&tokens](auto& word){tokens.push_back(std::stoi(word));});
     assert(tokens.size()==xs.size());
     for(auto pair : util::zip(xs,tokens)) assert(pair.first==pair.second);
-}
-
-std::string strip(std::string const& str){
-    auto beg=std::find_if_not(str.cbegin(), str.cend(), [](auto x){return std::isspace(x);});
-    auto end=std::find_if_not(str.crbegin(), str.crend(), [](auto x){return std::isspace(x);});
-    return str.substr(beg-str.cbegin(), end.base()-beg);
 }
 
 void benchmark(){
@@ -236,26 +237,24 @@ void binary_find_check(){
     assert(!binary_find(vs, 10));
 }
 
-template<typename TK, typename TV>
-TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){
-    return binary_find(pairs,
-                       [key](auto elm){return elm.first==key;},
-                       [key](auto elm){return elm.first<key;}).value()->second;
-};
-void binary_find_benchmark(){
-    using wordrep::WordUID;
+
+std::map<WordUID, size_t> random_word_counts(int n) {
     std::random_device rd{};
     std::mt19937 e{rd()};
     std::uniform_int_distribution<int64_t> ran_int{-1, 0xffffffff};
     std::uniform_int_distribution<uint64_t> ran_uint{0, 0xffffffff};
 
-    std::vector<WordUID> keys;
-    std::map<WordUID,size_t> count;
-    for(int i=0; i<200000; ++i) {
+    std::map<WordUID, size_t> count;
+    for (int i = 0; i !=n; ++i) {
         auto key = WordUID{ran_int(e)};
-        keys.push_back(key);
-        count[key] =  ran_uint(e);
+        count[key] = ran_uint(e);
     }
+    return count;
+}
+void binary_find_benchmark(){
+
+    auto count = random_word_counts(200000);
+    std::vector<WordUID> keys = get_keys(count);
     Timer timer{};
 
     auto count_pairs = to_pairs(count);
@@ -270,17 +269,35 @@ void binary_find_benchmark(){
     for(auto key : keys) sum1 += get_val(count_pairs, key);
     timer.here_then_reset("Iter std::vector<std::map>.");
     assert(sum0==sum1);
+
+    auto sum2=0;
+    auto vals = get_vals(count_pairs, keys);
+    timer.here_then_reset("Bulk iter std::vector<std::map>.");
+    assert(sum0==sum2);
+}
+
+void bulk_sampling(){
+
+}
+void container_filter(){
+    assert(0);
+}
+
+void bulk_lookup(){
+    assert(0);
 }
 }//namespace test
 
 int main(int argc, char** argv){
-//    test::reverse_iterator();
-//    test::string_iterator();
-//    test::benchmark();
-//    test::hash();
-//    test::uint_to_int();
+    test::reverse_iterator();
+    test::string_iterator();
+    test::benchmark();
+    test::hash();
+    test::uint_to_int();
     test::binary_find_check();
     test::binary_find_benchmark();
+//    test::container_filter();
+//    test::bulk_lookup();
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);

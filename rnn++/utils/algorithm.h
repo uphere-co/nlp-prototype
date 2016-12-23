@@ -68,27 +68,28 @@ auto isin(T const &elms, typename T::value_type const &elm){
 }
 
 
-template<typename T>
-auto map_to_vectors(T const &wcs){
-    using TK = typename T::key_type;
-    using TV = typename T::mapped_type;
-    std::vector<TK> keys;
-    std::vector<TV> vals;
-    for(auto x : wcs) {
-        keys.push_back(x.first);
-        vals.push_back(x.second);
-    }
-    return std::make_pair(keys, vals);
-}
+//template<typename T>
+//auto map_to_vectors(T const &wcs){
+//    using TK = typename T::key_type;
+//    using TV = typename T::mapped_type;
+//    std::vector<TK> keys;
+//    std::vector<TV> vals;
+//    for(auto x : wcs) {
+//        keys.push_back(x.first);
+//        vals.push_back(x.second);
+//    }
+//    return std::make_pair(keys, vals);
+//}
+//
+//template<typename T>
+//auto map_to_pairs(T const &wcs){
+//    using TK = typename T::key_type;
+//    using TV = typename T::mapped_type;
+//    std::vector<std::pair<TK,TV>> vec;
+//    for(auto x : wcs) vec.push_back(x);
+//    return vec;
+//}
 
-template<typename T>
-auto map_to_pairs(T const &wcs){
-    using TK = typename T::key_type;
-    using TV = typename T::mapped_type;
-    std::vector<std::pair<TK,TV>> vec;
-    for(auto x : wcs) vec.push_back(x);
-    return vec;
-}
 template<typename T>
 auto sort_by_values(T const &wcs){
     auto vals = map_to_pairs(wcs);
@@ -97,6 +98,7 @@ auto sort_by_values(T const &wcs){
 }
 
 
+//algorithms for std::vector of std::pair
 template<typename TK, typename TV>
 auto to_pairs(std::map<TK,TV> const& src){
     std::vector<std::pair<TK,TV>> out;
@@ -142,6 +144,31 @@ auto binary_find(std::vector<T> const &vs, TE const& eq, TL const& less){
     auto beg = vs.cbegin();
     auto end = vs.cend();
     return binary_find(beg,end,eq, less);
+}
+template<typename TK, typename TV>
+auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
+    return binary_find(pairs,
+                       [key](auto elm){return elm.first==key;},
+                       [key](auto elm){return elm.first<key;});
+}
+template<typename TK, typename TV>
+TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){
+    return get_elm(pairs, key).value()->second;
+};
+
+template<typename TK, typename TV>
+auto get_keys(std::map<TK,TV> const& vs){
+    std::vector<TK> keys;
+    keys.reserve(vs.size());
+    for(auto const &elm : vs) keys.push_back(elm.first);
+    return keys;
+}
+template<typename TK, typename TV>
+auto get_values(std::map<TK,TV> const& vs){
+    std::vector<TK> values;
+    values.reserve(vs.size());
+    for(auto const &elm : vs) values.push_back(elm.second);
+    return values;
 }
 
 }//namespace util
