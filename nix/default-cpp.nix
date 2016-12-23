@@ -206,6 +206,21 @@ rec {
         cp -a *.hpp $out/include/
       '';
     };
+    xxhashct = stdenv.mkDerivation rec {
+      name = "xxhashct";
+      version = "1.0";
+      src = fetchgit {
+        url = "https://github.com/ekpyron/xxhashct";
+        rev = "9da67392c38a3c5d92bcc4ef7074f0e02fe54a99";
+        sha256 = "0z8irykzd8rsd6h88p30ffjay9k4jszk6w5sxxyky7p8fj3qrdb6";
+      };
+      #buildInputs = [ cmake ];
+      installPhase = ''
+        mkdir -p $out/include/xxhashct
+        cp -a *.hpp $out/include/xxhashct
+      '';
+    };
+
 
 
 

@@ -11,6 +11,7 @@ with pkgs;
   toolz_cpp.json
   toolz_cpp.csv
   toolz_cpp.backwardcpp
+  toolz_cpp.xxhashct
   elfutils
   cppzmq
   postgresql

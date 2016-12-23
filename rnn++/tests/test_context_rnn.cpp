@@ -987,10 +987,9 @@ Param load_param(std::string const &h5_name,
     H5file param_storage{H5name{h5_name}, hdf5::FileMode::read_exist};
     if(param_type == util::DataType::sp){
         return Param{param_storage.getRawData<double>(H5name{param_name})};
-    } else if(param_type == util::DataType::dp){
-        return Param{param_storage.getRawData<double>(H5name{param_name})};
-    }
-    assert(0);
+    } 
+    assert(param_type == util::DataType::dp);
+    return Param{param_storage.getRawData<double>(H5name{param_name})};
 }
 
 void crnn_parser(char **argv){

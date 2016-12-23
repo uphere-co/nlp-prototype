@@ -29,6 +29,23 @@ Just run `doxygen` inside this directory, then documentation is generated and st
 echo Batteries mercury restriction > query.0
 ./nndep_reader config.ygptest.json query.0
 ```
+# ETL pipeline for query engines
+## Word vector training
+### Word counting
+`app/index_words` takes stdin and outputs to stdout. The `tcpserver` of `ucspi-tcp` package can be used to deploy it as a service.
+
+Launch word counter as a TCP server :
+```
+#Standalone :
+tcpserver mark 22224 ./index_words config.nyt.json
+#With CoreNLP word tokenizer :
+tcpserver mark 22224 sh -c "java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./index_words config.nyt.json"
+```
+Example client usage :
+```
+time cat news.2014.train  | nc mark 22224 > a
+```
+
 
 ## Build tests
 ```
