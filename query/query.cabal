@@ -81,7 +81,7 @@ Executable cpptest
                         -fno-warn-unused-do-bind
 
   ghc-prof-options:     -auto-all
-  extra-libraries:      stdc++
+  extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++, stdc++fs
   c-sources:            csrc/stub.cc
   cc-options:           -std=c++14
   build-depends:        base,

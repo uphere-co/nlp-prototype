@@ -5,16 +5,15 @@
 import Foreign.C.Types
 import Foreign.Ptr
 
-import Query.Binding.Vector.Template
+import           Query.Binding.Vector.Template
 import qualified Query.Binding.Vector.TH as TH
 
  
--- import STL.Foo
--- import STL.Foo.RawType
+import           Query.Binding.Engine
 
 
 $(TH.genVectorInstanceFor ''CInt "int")
-----  $(TH.genVectorInstanceFor ''Foo  "Foo")
+---    $(TH.genVectorInstanceFor ''Engine  "Engine")
 
 main = do
   v :: Vector CInt <- newVector
@@ -31,11 +30,23 @@ main = do
   print =<< at v 5
   deleteVector v
 
-{-
-  --
-  f <- newFoo 9
-  showme f
 
+  --
+  f <- newEngine 9
+  showme f
+  v2 <- getVector f
+  print =<< size v2
+  print =<< v2 `at` 0
+  print =<< v2 `at` 2
+
+  v3 <- newVector
+  mapM_ (push_back v3) [1..1000]
+
+  addContents f v3
+  print =<< size v2
+
+  
+{- 
   g <- newFoo 10
   w <- newVector
   push_back w g
@@ -49,17 +60,6 @@ main = do
   deleteVector w
   
   --
-
-  v2 <- getVector f
-  print =<< size v2
-  print =<< v2 `at` 0
-  print =<< v2 `at` 2
-
-  v3 <- newVector
-  mapM_ (push_back v3) [1..1000]
-
-  addContents f v3
-  print =<< size v2
 
 
 -}

@@ -10,7 +10,7 @@ cabal = Cabal { cabal_pkgname = "query-binding"
               , cabal_cheaderprefix = "QB"
               , cabal_moduleprefix = "Query.Binding" }
 
-extraDep = [] -- [ ("Foo", ["STL.Vector.Template"]) ]
+extraDep = [ ("Engine", ["Query.Binding.Vector.Template"]) ]
 
 
 cabalattr = 
@@ -22,25 +22,25 @@ cabalattr =
     }
 
 
--- vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
+vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
 
-{-
-class1 :: Class
-class1 =
-  Class cabal "Foo" [] mempty Nothing
+
+engine :: Class
+engine =
+  Class cabal "Engine" [] mempty Nothing
   [ Constructor [ int "n" ] Nothing
   , Virtual void_ "showme" [] Nothing
   , Virtual vectorint_ "getVector" [] Nothing
   , Virtual void_ "addContents" [ (vectorint_, "v") ] Nothing
   ]
--}
 
-classes = [] -- [ class1 ]
+
+classes = [ engine ]
 
 toplevelfunctions =  [ ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
-             [ TFunNew []
+             [ TFunNew [ ]
              , TFun void_ "push_back" "push_back" [(TemplateParam "t","x")] Nothing
              , TFun void_ "pop_back"  "pop_back"  []                        Nothing
              , TFun (TemplateParam "t") "at" "at" [int "n"]                 Nothing
@@ -53,7 +53,7 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [] -- [ ( "Foo", ([], [HdrName "Foo.h"])) ]
+headerMap = [ ( "Engine", ([], [HdrName "similarity/similarity.h"])) ]
 
 main :: IO ()
 main = do 
