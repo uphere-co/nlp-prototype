@@ -21,6 +21,8 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      http-client http-client-tls
 	      hdf5 query-common
 	      network-simple
+	      fficxx-runtime
+	      fficxx
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";

@@ -70,3 +70,19 @@ Executable query
                         --
                         query-common
 
+
+Executable cpptest
+  Main-is:              cpptest.hs
+  hs-source-dirs:       exe
+  other-modules:       
+  ghc-options:          -Wall -O2
+                        -threaded
+                        -funbox-strict-fields
+                        -fno-warn-unused-do-bind
+
+  ghc-prof-options:     -auto-all
+  extra-libraries:      stdc++
+  cc-options:           -std=c++14
+  build-depends:        base, fficxx-runtime
+
+

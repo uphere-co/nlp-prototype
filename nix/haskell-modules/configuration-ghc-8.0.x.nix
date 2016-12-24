@@ -8,6 +8,12 @@ let
       rev = "646bfa6168430b56035f9858c9676ac22fba4976";
       sha256 = "1g97vi8jmp7n783s0kbk5vhrh4kjqf619nhw3qxjjlpz08vhjr9m";
     };
+    fficxxSrc = fetchgit {
+      url = "git://github.com/wavewave/fficxx.git";
+      rev = "d6c12bf0ffc057eb5a2979352d5212bc68da1c2d";
+      sha256 = "0d6rqlg3w5zb59c7ckbbhphyl7l7iks44c8rhaia8qiva8h6y20y";
+    };
+
 in self: super: {
       "lbfgs" = self.callPackage
         ({ mkDerivation, array, base, stdenv, vector }:
@@ -117,6 +123,36 @@ in self: super: {
 	   license = stdenv.lib.licenses.bsd3;
 	   doCheck = false;
 	 }) {};
-
+	 
+      "fficxx-runtime" = self.callPackage
+        ({ mkDerivation, base, stdenv, template-haskell }:
+	 mkDerivation {
+           pname = "fficxx-runtime";
+           version = "0.2.999";
+           src = "${fficxxSrc}/fficxx-runtime";
+           libraryHaskellDepends = [ base template-haskell ];
+           description = "Runtime for fficxx-generated library";
+           license = stdenv.lib.licenses.bsd3;
+         }) {};
+      "fficxx" = self.callPackage
+        ({ mkDerivation, base, bytestring, Cabal, containers, data-default
+         , directory, either, errors, filepath, hashable, haskell-src-exts
+         , lens, mtl, process, pureMD5, split, stdenv, template
+         , template-haskell, text, transformers, unordered-containers
+         }:
+         mkDerivation {
+           pname = "fficxx";
+           version = "0.2.999";
+           src = "${fficxxSrc}/fficxx";
+           libraryHaskellDepends = [
+             base bytestring Cabal containers data-default directory either
+             errors filepath hashable haskell-src-exts lens mtl process pureMD5
+             split template template-haskell text transformers
+             unordered-containers
+           ];
+           description = "automatic C++ binding generation";
+           license = stdenv.lib.licenses.bsd3;
+         }) {};
+      
 
     }
