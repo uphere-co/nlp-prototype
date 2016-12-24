@@ -5,8 +5,8 @@
 import Foreign.C.Types
 import Foreign.Ptr
 
-import Query.Binding.Vector.Template
-import qualified Query.Binding.Vector.TH as TH
+import STL.Vector.Template
+import qualified STL.Vector.TH as TH
 
  
 -- import STL.Foo

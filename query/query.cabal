@@ -82,7 +82,10 @@ Executable cpptest
 
   ghc-prof-options:     -auto-all
   extra-libraries:      stdc++
+  c-sources:            csrc/stub.cc
   cc-options:           -std=c++14
-  build-depends:        base, fficxx-runtime
+  build-depends:        base,
+                        fficxx-runtime,
+                        query-binding
 
 
