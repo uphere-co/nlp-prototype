@@ -13,8 +13,9 @@ using engine_t = engine::YGPQueryEngine;
 class JsonWrapper {
 public:
     json content;
-    JsonWrapper(const json& c ) { content= c; };
-    JsonWrapper(const char* str); 
+    JsonWrapper(const json& c ) { content = c; };
+    JsonWrapper(const char* str);
+    const char* serialize();
 };
 
 class EngineWrapper {
@@ -23,7 +24,9 @@ class EngineWrapper {
     util::Timer timer;
 public:
     EngineWrapper(const char* configfile);
-    JsonWrapper* query( JsonWrapper* input );    
+    JsonWrapper* register_documents( const char* str, JsonWrapper* input ); 
+    JsonWrapper* query( JsonWrapper* input );
+    
     ~EngineWrapper() { delete engine0; } 
 };
 

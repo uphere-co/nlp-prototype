@@ -85,6 +85,7 @@ Executable cpptest
   c-sources:            csrc/stub.cc
   cc-options:           -std=c++14
   build-depends:        base,
+                        bytestring,
                         fficxx-runtime,
                         query-binding
 

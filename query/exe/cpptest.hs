@@ -2,10 +2,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+import qualified Data.ByteString.Char8 as B
+
 -- import Foreign.C.Types
 -- import Foreign.Ptr
 
 import Foreign.C.String
+
+
 
 -- import           Query.Binding.Vector.Template
 -- import qualified Query.Binding.Vector.TH as TH
@@ -21,7 +25,11 @@ main = do
   cstr2 <- newCString "{ \"key\": \"value\" }"
   json <- newJsonWrapper cstr2
 
-  delete e
+  cstr3 <- serialize json
+  bstr <- B.packCString cstr3
+  B.putStrLn bstr
+
+  deleteEngineWrapper e
   return ()
 
 
