@@ -22,3 +22,9 @@ public:
     ~EngineWrapper() { delete engine0; } 
 };
 
+class JsonWrapper {
+    json content;
+public:
+    JsonWrapper(const char* str); 
+}
+

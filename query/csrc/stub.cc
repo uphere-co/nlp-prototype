@@ -8,6 +8,7 @@
 
 
 using namespace engine;
+using json = nlohmann::json;
 
 //template QueryEngine<data::ygp::DBInfo>::QueryEngine(json);
 //engine_t t; 
@@ -25,6 +26,10 @@ EngineWrapper::EngineWrapper(const char* configfile)
     timer.here_then_reset("Search engine loaded.");
 }
 
+JsonWrapper::JsonWrapper(const char* str )
+{
+    content = json::parse( str ); 
+}
 
 void force_instantiation() {
   EngineWrapper t("");
