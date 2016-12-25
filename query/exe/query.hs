@@ -31,15 +31,12 @@ import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
 --
 import           Query.Binding.EngineWrapper
-import           Query.Binding.JsonWrapper
+import           Query.Binding.Json
 import           QueryServer.Type
 --
 import           Broadcast
 import           Network
 import           Worker
-
--- foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
--- foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
 withHeartBeat them action = do

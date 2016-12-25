@@ -20,16 +20,11 @@ EngineWrapper::EngineWrapper(const char* configfile)
     timer.here_then_reset("Search engine loaded.");
 }
 
-JsonWrapper::JsonWrapper(const char* str )
-{
-    content = json::parse( str ); 
-}
-
-const char* JsonWrapper::serialize()
+const char* serialize( json* j )
 {
     //  content;
     stringstream ss;
-    ss << content.dump(4);
+    ss << j->dump(4);
     const std::string& str = ss.str();
     char* n_str = new char[str.size()+1];
     strcpy(n_str,str.c_str() );
@@ -38,17 +33,17 @@ const char* JsonWrapper::serialize()
 
 
 
-JsonWrapper* EngineWrapper::query( JsonWrapper* input )
+json* EngineWrapper::query( json* input )
 {
-    auto r = engine0->ask_chain_query(input->content);
-    return (new JsonWrapper(r));
+    auto r = engine0->ask_chain_query(*input);
+    return (new json(r));
 }
 
-JsonWrapper* EngineWrapper::register_documents( const char* str, JsonWrapper* input )
+json* EngineWrapper::register_documents( const char* str, json* input )
 {
     std::string query_str(str);
-    input->content["query_str"] = query_str;
-    return (new JsonWrapper(engine0->register_documents(input->content)));
+    (*input)["query_str"] = query_str;
+    return (new json(engine0->register_documents(*input)));
 }
 
 
