@@ -47,14 +47,16 @@ json :: Class
 json =
   Class cabal "json" []  mempty (Just "Json")
   [ Constructor [ ] Nothing
+  , Static (cppclasscopy_ json) "parse" [cstring "txt"] Nothing 
+    
   ]
 
 
 
 classes = [ engineWrapper, jsonWrapper, json ]
 
-toplevelfunctions =
-  [ TopLevelFunction (cppclasscopy_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+toplevelfunctions = []
+--    [ TopLevelFunction (cppclasscopy_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
