@@ -2,19 +2,30 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-import Foreign.C.Types
-import Foreign.Ptr
+-- import Foreign.C.Types
+-- import Foreign.Ptr
 
-import           Query.Binding.Vector.Template
-import qualified Query.Binding.Vector.TH as TH
+import Foreign.C.String
+
+-- import           Query.Binding.Vector.Template
+-- import qualified Query.Binding.Vector.TH as TH
 
  
-import           Query.Binding.Engine
+import           Query.Binding.EngineWrapper
+
+main = do
+  cstr <- newCString "config.ygp.json"
+  e <- newEngineWrapper cstr
+
+  delete e
+  return ()
 
 
-$(TH.genVectorInstanceFor ''CInt "int")
+
+-- $(TH.genVectorInstanceFor ''CInt "int")
 ---    $(TH.genVectorInstanceFor ''Engine  "Engine")
 
+{- 
 main = do
   v :: Vector CInt <- newVector
   n <- size v 
@@ -44,7 +55,7 @@ main = do
 
   addContents f v3
   print =<< size v2
-
+-}
   
 {- 
   g <- newFoo 10

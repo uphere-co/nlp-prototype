@@ -10,7 +10,8 @@ cabal = Cabal { cabal_pkgname = "query-binding"
               , cabal_cheaderprefix = "QB"
               , cabal_moduleprefix = "Query.Binding" }
 
-extraDep = [ ("Engine", ["Query.Binding.Vector.Template"]) ]
+extraDep = []
+-- [ ("Engine", ["Query.Binding.Vector.Template"]) ]
 
 
 cabalattr = 
@@ -25,17 +26,15 @@ cabalattr =
 vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
 
 
-engine :: Class
-engine =
-  Class cabal "Engine" [] mempty Nothing
-  [ Constructor [ int "n" ] Nothing
-  , Virtual void_ "showme" [] Nothing
-  , Virtual vectorint_ "getVector" [] Nothing
-  , Virtual void_ "addContents" [ (vectorint_, "v") ] Nothing
+engineWrapper :: Class
+engineWrapper =
+  Class cabal "EngineWrapper" [] mempty Nothing
+  [ Constructor [ cstring "configfile" ] Nothing
+  , Destructor Nothing
   ]
 
 
-classes = [ engine ]
+classes = [ engineWrapper ]
 
 toplevelfunctions =  [ ]  
 
@@ -53,7 +52,7 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [ ( "Engine", ([], [HdrName "similarity/similarity.h"])) ]
+headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"])) ]
 
 main :: IO ()
 main = do 
