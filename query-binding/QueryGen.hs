@@ -43,11 +43,18 @@ jsonWrapper =
   , Destructor (Just "deleteJsonWrapper")
   ]
 
+json :: Class
+json =
+  Class cabal "json" []  mempty (Just "Json")
+  [ Constructor [ ] Nothing
+  ]
 
-classes = [ engineWrapper, jsonWrapper ]
 
-toplevelfunctions = [] 
-  -- [ TopLevelFunction (cppclassref_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+
+classes = [ engineWrapper, jsonWrapper, json ]
+
+toplevelfunctions =
+  [ TopLevelFunction (cppclass_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -65,6 +72,7 @@ templates = [ ( t_vector, HdrName "Vector.h" )
 
 headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"]))
             , ( "JsonWrapper"  , ([], [HdrName "similarity/similarity.h"]))
+            , ( "json"         , ([NS "nlohmann"], [HdrName "utils/json.h"]))
             ]
 
 main :: IO ()
