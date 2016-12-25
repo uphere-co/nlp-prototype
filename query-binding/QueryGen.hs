@@ -30,19 +30,21 @@ engineWrapper :: Class
 engineWrapper =
   Class cabal "EngineWrapper" [] mempty Nothing
   [ Constructor [ cstring "configfile" ] Nothing
+  , Virtual (cppclass_ jsonWrapper) "query" [ cppclass jsonWrapper "input" ] Nothing
   , Destructor Nothing
   ]
 
-json :: Class
-json =
-  Class cabal "json" []  mempty (Just "Json")
-  [ ]
+jsonWrapper :: Class
+jsonWrapper =
+  Class cabal "JsonWrapper" []  mempty Nothing
+  [ Constructor [ cstring "str" ] Nothing
+  ]
 
 
-classes = [ engineWrapper, json ]
+classes = [ engineWrapper, jsonWrapper ]
 
-toplevelfunctions =
-  [ TopLevelFunction (cppclassref_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+toplevelfunctions = [] 
+  -- [ TopLevelFunction (cppclassref_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -58,8 +60,9 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"]))
-            , ( "json"         , ([NS "nlohmann"], [HdrName "utils/json.h"]))
+headerMap = [ ( "EngineWrapper", ([], [HdrName "/home/wavewave/repo/srcp/nlp-prototype/rnn++/src/similarity/similarity.h"]))
+            , ( "JsonWrapper"  , ([], [HdrName "/home/wavewave/repo/srcp/nlp-prototype/rnn++/src/similarity/similarity.h"]))
+            -- , ( "json"         , ([NS "nlohmann"], [HdrName "utils/json.h"]))
             ]
 
 main :: IO ()

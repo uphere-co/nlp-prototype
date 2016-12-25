@@ -12,10 +12,14 @@ import Foreign.C.String
 
  
 import           Query.Binding.EngineWrapper
+import           Query.Binding.JsonWrapper
 
 main = do
   cstr <- newCString "config.ygp.json"
   e <- newEngineWrapper cstr
+
+  cstr2 <- newCString "{ \"key\": \"value\" }"
+  json <- newJsonWrapper cstr2
 
   delete e
   return ()

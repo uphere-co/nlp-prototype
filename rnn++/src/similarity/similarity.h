@@ -10,7 +10,12 @@ using namespace std;
 using json = nlohmann::json;
 using engine_t = engine::YGPQueryEngine;
 
-//template class engine::QueryEngine<data::ygp::DBInfo>;
+class JsonWrapper {
+public:
+    json content;
+    JsonWrapper(const json& c ) { content= c; };
+    JsonWrapper(const char* str); 
+};
 
 class EngineWrapper {
     json config; 
@@ -18,13 +23,7 @@ class EngineWrapper {
     util::Timer timer;
 public:
     EngineWrapper(const char* configfile);
-
+    JsonWrapper* query( JsonWrapper* input );    
     ~EngineWrapper() { delete engine0; } 
 };
-
-class JsonWrapper {
-    json content;
-public:
-    JsonWrapper(const char* str); 
-}
 

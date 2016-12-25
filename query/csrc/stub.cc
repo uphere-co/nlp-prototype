@@ -31,6 +31,13 @@ JsonWrapper::JsonWrapper(const char* str )
     content = json::parse( str ); 
 }
 
+JsonWrapper* EngineWrapper::query( JsonWrapper* input )
+{
+    auto r = engine0->ask_chain_query(input->content);
+    JsonWrapper* x = new JsonWrapper(r);
+    return x;
+}
+
 void force_instantiation() {
   EngineWrapper t("");
 }
