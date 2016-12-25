@@ -10,16 +10,6 @@ using namespace std;
 using json = nlohmann::json;
 using engine_t = engine::YGPQueryEngine;
 
-/*
-class JsonWrapper {
-public:
-    json content;
-    JsonWrapper(const json& c ) { content = c; };
-    JsonWrapper(const char* str);
-    const char* serialize();
-};
-*/
-
 const char* serialize( json* j );
 
 class EngineWrapper {

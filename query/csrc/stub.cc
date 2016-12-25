@@ -22,7 +22,6 @@ EngineWrapper::EngineWrapper(const char* configfile)
 
 const char* serialize( json* j )
 {
-    //  content;
     stringstream ss;
     ss << j->dump(4);
     const std::string& str = ss.str();
