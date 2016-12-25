@@ -54,7 +54,7 @@ json =
 classes = [ engineWrapper, jsonWrapper, json ]
 
 toplevelfunctions =
-  [ TopLevelFunction (cppclass_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+  [ TopLevelFunction (cppclasscopy_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
