@@ -23,7 +23,7 @@ cabalattr =
     }
 
 
-vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
+-- vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
 
 
 engineWrapper :: Class

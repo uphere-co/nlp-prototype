@@ -32,6 +32,7 @@ in stdenv.mkDerivation {
                   toolz_cpp.msgsl
 		  toolz_cpp.json
                   toolz_cpp.spdlog
+		  toolz_cpp.xxhashct
                   toolz_cpp.backwardcpp
                 ];
   shellHook = ''

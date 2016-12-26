@@ -34,8 +34,7 @@ const char* serialize( json* j )
 
 json* EngineWrapper::query( json* input )
 {
-    auto r = engine0->ask_chain_query(*input);
-    return (new json(r));
+    return (new json(engine0->ask_chain_query(*input)));
 }
 
 json* EngineWrapper::register_documents( const char* str, json* input )
@@ -46,9 +45,9 @@ json* EngineWrapper::register_documents( const char* str, json* input )
 }
 
 
-void force_instantiation() {
-  EngineWrapper t("");
-}
+//void force_instantiation() {
+//  EngineWrapper t("");
+//}
 
 
 
