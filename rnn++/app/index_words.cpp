@@ -12,6 +12,7 @@
 
 #include "wordrep/word_uid.h"
 
+#include "utils/math.h"
 #include "utils/string.h"
 #include "utils/json.h"
 #include "utils/profiling.h"
@@ -25,6 +26,8 @@ using util::Timer;
 using util::binary_find;
 using util::to_map;
 using util::to_sorted_pairs;
+using util::filter;
+using util::filter_inplace;
 using util::string::strip;
 
 template<typename T>
@@ -149,11 +152,6 @@ auto word_count(T&& is){
 //    return counter.to_map();
 }
 
-template<typename T, typename TK>
-auto get_vals(T const& count_pairs, TK keys){
-    std::vector<> vals;
-}
-
 namespace test{
 
 void string_iterator(){
@@ -253,7 +251,7 @@ std::map<WordUID, size_t> random_word_counts(int n) {
 }
 void binary_find_benchmark(){
 
-    auto count = random_word_counts(200000);
+    auto count = random_word_counts(500000);
     std::vector<WordUID> keys = get_keys(count);
     Timer timer{};
 
@@ -270,22 +268,22 @@ void binary_find_benchmark(){
     timer.here_then_reset("Iter std::vector<std::map>.");
     assert(sum0==sum1);
 
-    auto sum2=0;
-    auto vals = get_vals(count_pairs, keys);
-    timer.here_then_reset("Bulk iter std::vector<std::map>.");
-    assert(sum0==sum2);
 }
 
-void bulk_sampling(){
-
-}
 void container_filter(){
-    assert(0);
+    std::vector<int> vs{1,3,4,5,6};
+    auto fvs = filter(vs, [](auto v){return v%3!=0;});
+    assert(util::math::sum(fvs)==10);
+    assert(util::math::sum(filter_inplace(vs, [](auto v){return v%3!=0;}))==10);
+
+    size_t n_cut = 1;
+    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    fmt::print(std::cerr, "{} words.\n", word_counts.size());
+    filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
+    fmt::print(std::cerr, "{} words are left after filtering.\n", word_counts.size());
+    for(auto elm : word_counts) assert(elm.second>n_cut);
 }
 
-void bulk_lookup(){
-    assert(0);
-}
 }//namespace test
 
 int main(int argc, char** argv){
@@ -296,7 +294,7 @@ int main(int argc, char** argv){
     test::uint_to_int();
     test::binary_find_check();
     test::binary_find_benchmark();
-//    test::container_filter();
+    test::container_filter();
 //    test::bulk_lookup();
     return 0;
     assert(argc>1);
@@ -305,6 +303,9 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
     auto word_counts = word_count(std::cin);
+    fmt::print(std::cerr, "{} words.\n", word_counts.size());
+    filter_inplace(word_counts, [](auto v){return v.second>10;});
+    fmt::print(std::cerr, "{} words are left after filtering.\n", word_counts.size());
     timer.here_then_reset("Finish word count.");
     for(auto elm : word_counts)
         fmt::print(std::cout, "{} {}\n", elm.first, elm.second);

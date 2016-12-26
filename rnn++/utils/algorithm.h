@@ -68,6 +68,21 @@ auto isin(T const &elms, typename T::value_type const &elm){
 }
 
 
+
+template<typename TC, typename TO>
+TC filter(TC const &vs, TO op){
+    TC filtered{};
+    std::copy_if(std::begin(vs),std::end(vs), std::back_inserter(filtered), op);
+    return filtered;
+};
+template<typename TC, typename TO>
+TC& filter_inplace(TC &vs, TO op){
+    auto beg = std::begin(vs);
+    auto it = std::partition(beg,std::end(vs), op);
+    vs.resize(it-beg);
+    return vs;
+};
+
 //template<typename T>
 //auto map_to_vectors(T const &wcs){
 //    using TK = typename T::key_type;
