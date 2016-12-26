@@ -2,19 +2,42 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-import Foreign.C.Types
-import Foreign.Ptr
+import qualified Data.ByteString.Char8 as B
 
-import           Query.Binding.Vector.Template
-import qualified Query.Binding.Vector.TH as TH
+-- import Foreign.C.Types
+-- import Foreign.Ptr
+
+import Foreign.C.String
+
+
+
+-- import           Query.Binding.Vector.Template
+-- import qualified Query.Binding.Vector.TH as TH
 
  
-import           Query.Binding.Engine
+import           Query.Binding.EngineWrapper
+import           Query.Binding.JsonWrapper
+
+main = do
+  cstr <- newCString "config.ygp.json"
+  e <- newEngineWrapper cstr
+
+  cstr2 <- newCString "{ \"key\": \"value\" }"
+  json <- newJsonWrapper cstr2
+
+  cstr3 <- serialize json
+  bstr <- B.packCString cstr3
+  B.putStrLn bstr
+
+  deleteEngineWrapper e
+  return ()
 
 
-$(TH.genVectorInstanceFor ''CInt "int")
+
+-- $(TH.genVectorInstanceFor ''CInt "int")
 ---    $(TH.genVectorInstanceFor ''Engine  "Engine")
 
+{- 
 main = do
   v :: Vector CInt <- newVector
   n <- size v 
@@ -44,7 +67,7 @@ main = do
 
   addContents f v3
   print =<< size v2
-
+-}
   
 {- 
   g <- newFoo 10

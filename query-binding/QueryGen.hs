@@ -10,7 +10,8 @@ cabal = Cabal { cabal_pkgname = "query-binding"
               , cabal_cheaderprefix = "QB"
               , cabal_moduleprefix = "Query.Binding" }
 
-extraDep = [ ("Engine", ["Query.Binding.Vector.Template"]) ]
+extraDep = []
+-- [ ("Engine", ["Query.Binding.Vector.Template"]) ]
 
 
 cabalattr = 
@@ -25,19 +26,28 @@ cabalattr =
 vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
 
 
-engine :: Class
-engine =
-  Class cabal "Engine" [] mempty Nothing
-  [ Constructor [ int "n" ] Nothing
-  , Virtual void_ "showme" [] Nothing
-  , Virtual vectorint_ "getVector" [] Nothing
-  , Virtual void_ "addContents" [ (vectorint_, "v") ] Nothing
+engineWrapper :: Class
+engineWrapper =
+  Class cabal "EngineWrapper" [] mempty Nothing
+  [ Constructor [ cstring "configfile" ] Nothing
+  , Virtual (cppclass_ jsonWrapper) "register_documents" [ cstring "str", cppclass jsonWrapper "input" ] Nothing    
+  , Virtual (cppclass_ jsonWrapper) "query" [ cppclass jsonWrapper "input" ] Nothing
+  , Destructor (Just "deleteEngineWrapper")
+  ]
+
+jsonWrapper :: Class
+jsonWrapper =
+  Class cabal "JsonWrapper" []  mempty Nothing
+  [ Constructor [ cstring "str" ] Nothing
+  , Virtual cstring_ "serialize" [ ] Nothing
+  , Destructor (Just "deleteJsonWrapper")
   ]
 
 
-classes = [ engine ]
+classes = [ engineWrapper, jsonWrapper ]
 
-toplevelfunctions =  [ ]  
+toplevelfunctions = [] 
+  -- [ TopLevelFunction (cppclassref_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -53,7 +63,9 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [ ( "Engine", ([], [HdrName "similarity/similarity.h"])) ]
+headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"]))
+            , ( "JsonWrapper"  , ([], [HdrName "similarity/similarity.h"]))
+            ]
 
 main :: IO ()
 main = do 

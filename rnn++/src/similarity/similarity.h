@@ -1,29 +1,32 @@
 #pragma once
 
 #include "similarity/dep_similarity.h"
+#include "utils/json.h"
+#include "utils/profiling.h"
 
 #include <iostream>
 
 using namespace std;
+using json = nlohmann::json;
+using engine_t = engine::YGPQueryEngine;
 
-class Engine {
-  int n;
-  vector<int> t; 
-    
+class JsonWrapper {
 public:
-  Engine(int m) {
-    n = m;
-    t.push_back(101);
-    t.push_back(102);
-    t.push_back(103);
-  }; 
-  virtual void showme( ) { cout << "Engine: " << n << endl; }
-  virtual vector<int>* getVector() { return &t ; }
-  virtual void addContents( vector<int>* v ) {
-    for( auto& x : *v ) {
-      t.push_back( x ); 
-    }
-  }
-
-
+    json content;
+    JsonWrapper(const json& c ) { content = c; };
+    JsonWrapper(const char* str);
+    const char* serialize();
 };
+
+class EngineWrapper {
+    json config; 
+    engine_t* engine0;
+    util::Timer timer;
+public:
+    EngineWrapper(const char* configfile);
+    JsonWrapper* register_documents( const char* str, JsonWrapper* input ); 
+    JsonWrapper* query( JsonWrapper* input );
+    
+    ~EngineWrapper() { delete engine0; } 
+};
+

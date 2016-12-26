@@ -33,23 +33,22 @@ Executable query
 
   ghc-prof-options:     -auto-all
   extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++, stdc++fs
-  c-sources:            csrc/invoke.cpp
+  c-sources:            csrc/stub.cc
   cc-options:           -std=c++14
   build-depends:        base,
                         --
                         aeson,
                         attoparsec,
                         base64-bytestring,
-                        
                         binary,
                         bytestring,
                         conduit,
                         conduit-extra,
                         connection,
                         containers,
-
                         directory,
                         distributed-process,
+                        fficxx-runtime,
                         filepath,
                         http-client,
                         http-client-tls,
@@ -68,24 +67,26 @@ Executable query
                         uuid,
                         vector,
                         --
+                        query-binding,
                         query-common
 
 
-Executable cpptest
-  Main-is:              cpptest.hs
-  hs-source-dirs:       exe
-  other-modules:       
-  ghc-options:          -Wall -O2
-                        -threaded
-                        -funbox-strict-fields
-                        -fno-warn-unused-do-bind
+-- Executable cpptest
+--   Main-is:              cpptest.hs
+--   hs-source-dirs:       exe
+--   other-modules:       
+--   ghc-options:          -Wall -O2
+--                         -threaded
+--                         -funbox-strict-fields
+--                         -fno-warn-unused-do-bind
 
-  ghc-prof-options:     -auto-all
-  extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++, stdc++fs
-  c-sources:            csrc/stub.cc
-  cc-options:           -std=c++14
-  build-depends:        base,
-                        fficxx-runtime,
-                        query-binding
+--   ghc-prof-options:     -auto-all
+--   extra-libraries:      similarity, parser, tbb, hdf5_cpp, fmt, pqxx, stdc++, stdc++fs
+--   c-sources:            csrc/stub.cc
+--   cc-options:           -std=c++14
+--   build-depends:        base,
+--                         bytestring,
+--                         fficxx-runtime,
+--                         query-binding
 
 
