@@ -22,20 +22,11 @@ import qualified Data.Text.IO                        as TIO
 import           Foreign.C.String
 import           Foreign.ForeignPtr
 --
+import           Query.Binding
 import           Query.Binding.EngineWrapper
-import           Query.Binding.JsonWrapper
+import           Query.Binding.Json
 import           QueryServer.Type
 import           CoreNLP
--- import           JsonUtil
-
--- foreign import ccall "register_documents" c_register_documents :: CString -> Json_t -> IO Json_t
--- foreign import ccall "query"              c_query              :: Json_t -> IO Json_t
-
--- query :: Json -> IO Json
--- query q = withForeignPtr q c_query >>= newForeignPtr c_json_finalize
-
--- register_documents :: CString -> Json -> IO Json
--- register_documents str q = withForeignPtr q (c_register_documents str) >>= newForeignPtr c_json_finalize
 
 registerText :: (MonadIO m) => EngineWrapper -> Text -> MaybeT m RegisteredSentences
 registerText engine txt = do
@@ -45,7 +36,7 @@ registerText engine txt = do
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp $ \cstr_nlp -> 
       B.useAsCString bstr_txt $ \cstr_txt ->
-        newJsonWrapper cstr_nlp >>=
+        jsonparse cstr_nlp >>=
         register_documents engine cstr_txt >>=
         serialize >>=
         unsafePackCString
@@ -61,7 +52,7 @@ queryRegisteredSentences engine r = do
   -- need to be configured.  
   let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })  
   bstr' <- B.useAsCString bstr $
-     newJsonWrapper >=> query engine >=> serialize >=> unsafePackCString
+     jsonparse >=> query engine >=> serialize >=> unsafePackCString
     -- json_create >=> query >=> json_serialize >=> unsafePackCString
   return (BL.fromStrict bstr')
 

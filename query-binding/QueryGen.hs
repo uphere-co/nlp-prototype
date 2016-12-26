@@ -30,11 +30,12 @@ engineWrapper :: Class
 engineWrapper =
   Class cabal "EngineWrapper" [] mempty Nothing
   [ Constructor [ cstring "configfile" ] Nothing
-  , Virtual (cppclass_ jsonWrapper) "register_documents" [ cstring "str", cppclass jsonWrapper "input" ] Nothing    
-  , Virtual (cppclass_ jsonWrapper) "query" [ cppclass jsonWrapper "input" ] Nothing
+  , Virtual (cppclass_ json) "register_documents" [ cstring "str", cppclass json "input" ] Nothing    
+  , Virtual (cppclass_ json) "query" [ cppclass json "input" ] Nothing
   , Destructor (Just "deleteEngineWrapper")
   ]
 
+{- 
 jsonWrapper :: Class
 jsonWrapper =
   Class cabal "JsonWrapper" []  mempty Nothing
@@ -42,12 +43,23 @@ jsonWrapper =
   , Virtual cstring_ "serialize" [ ] Nothing
   , Destructor (Just "deleteJsonWrapper")
   ]
+-}
+
+json :: Class
+json =
+  Class cabal "json" []  mempty (Just "Json")
+  [ Constructor [ ] Nothing
+  , Static (cppclasscopy_ json) "parse" [cstring "txt"] Nothing 
+    
+  ]
 
 
-classes = [ engineWrapper, jsonWrapper ]
 
-toplevelfunctions = [] 
-  -- [ TopLevelFunction (cppclassref_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+classes = [ engineWrapper, json ] -- jsonWrapper
+
+toplevelfunctions =
+  [ TopLevelFunction cstring_ "serialize" [cppclass json "j"] Nothing ]
+--    [ TopLevelFunction (cppclasscopy_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -65,6 +77,7 @@ templates = [ ( t_vector, HdrName "Vector.h" )
 
 headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"]))
             , ( "JsonWrapper"  , ([], [HdrName "similarity/similarity.h"]))
+            , ( "json"         , ([NS "nlohmann"], [HdrName "utils/json.h", HdrName "similarity/similarity.h"]))
             ]
 
 main :: IO ()
