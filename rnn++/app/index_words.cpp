@@ -23,8 +23,10 @@ using wordrep::WordUID;
 using wordrep::WordUIDindex;
 using util::Timer;
 
+using util::binary_find_cell;
 using util::binary_find;
 using util::to_map;
+using util::map;
 using util::to_sorted_pairs;
 using util::filter;
 using util::filter_inplace;
@@ -151,6 +153,7 @@ auto word_count(T&& is){
     return counter.to_pairs();
 //    return counter.to_map();
 }
+
 
 namespace test{
 
@@ -284,6 +287,39 @@ void container_filter(){
     for(auto elm : word_counts) assert(elm.second>n_cut);
 }
 
+
+
+void binary_find_cell_for_cdf(){
+    size_t n_cut = 2;
+    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
+
+    auto counts = map(word_counts, [](auto x){return x.second;});
+    for(auto x : util::zip(word_counts, counts)) assert(x.first.second==x.second);
+    std::partial_sum(counts.cbegin(),counts.cend(), counts.begin());
+    auto cdf = word_counts;
+    for(auto elm : util::zip(cdf, word_counts)) assert(elm.first==elm.second);
+    std::partial_sum(word_counts.cbegin(),word_counts.cend(), cdf.begin(),
+                     [](auto x, auto y){return std::make_pair(y.first, x.second+y.second);});
+    for(auto elm : util::zip(cdf, word_counts)) assert(elm.first.first==elm.second.first);
+    assert(counts.back()==cdf.back().second);
+
+    for(auto elm : util::zip(cdf, word_counts))
+        fmt::print(std::cerr, "{} : {} vs {}\n", elm.first.first, elm.first.second, elm.second.second);
+    //auto n = pdf.size();
+
+    auto n = counts.back();
+    for(decltype(n)i=0; i!=n; ++i){
+        auto maybe_it = binary_find_cell(counts, i);
+        auto maybe_it2 = binary_find_cell(cdf, [i](auto x){return i<x.second;});
+        assert(maybe_it);
+        auto it = maybe_it.value();
+        assert(i<*it);
+        if(it!=counts.cbegin()) assert(*(it-1)<=i);
+        assert(*it==maybe_it2.value()->second);
+    }
+}
+
 }//namespace test
 
 int main(int argc, char** argv){
@@ -295,7 +331,7 @@ int main(int argc, char** argv){
     test::binary_find_check();
     test::binary_find_benchmark();
     test::container_filter();
-//    test::bulk_lookup();
+    test::binary_find_cell_for_cdf();
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);

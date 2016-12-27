@@ -40,6 +40,7 @@ auto map(T const &elms, OP const &op){
     using TV = typename T::value_type;
     using TM = typename std::result_of<OP(TV)>::type;
     std::vector<TM> vals;
+    vals.reserve(elms.size());
     for(auto const &elm : elms) vals.push_back(op(elm));
     return vals;
 };
@@ -128,6 +129,38 @@ auto to_sorted_pairs(std::map<TK,TV> const& src){
 }
 
 
+template<typename TI, typename TL>
+std::optional<TI> binary_find_cell(TI beg, TI last, TL const& comp) {
+    if(last-beg==1) return last; //assert(*beg<=val && val<*last);
+    auto it = beg + (last-beg)/2;
+    if(comp(*it)) return binary_find_cell(beg,it, comp);
+    return binary_find_cell(it, last, comp);
+}
+
+//comp{val} (x) :: true if val < x;
+template<typename T, typename TL>
+auto binary_find_cell(std::vector<T> const &vs, TL const& comp)
+-> std::optional<decltype(vs.cbegin())> {
+    if(vs.empty()) return {};
+    else if(!comp(vs.back())) return {};
+    auto beg = vs.cbegin();
+    auto last = vs.cend()-1;
+    if (comp(vs.front())) return beg;
+    return binary_find_cell(beg,last,comp);
+}
+template<typename T>
+auto binary_find_cell(std::vector<T> const &vs, T val)
+-> std::optional<decltype(vs.cbegin())> {
+    if(vs.empty()) return {};
+    else if(vs.back()<=val) return {};
+    auto beg = vs.cbegin();
+    auto last = vs.cend()-1;
+    if (vs.front() > val) return beg;
+    return binary_find_cell(beg,last,[val](auto x){return val<x;});
+}
+
+
+
 template<typename TI, typename T>
 std::optional<TI> binary_find(TI beg, TI end, T val) {
     if(beg==end) return {};
@@ -137,6 +170,8 @@ std::optional<TI> binary_find(TI beg, TI end, T val) {
     else if(*it>val) return binary_find(beg,it, val);
     return binary_find(it, end, val);
 }
+
+//less{val}(x) :: true if v < x;
 template<typename TI, typename TE, typename TL>
 std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
     if(beg==end) return {};
@@ -160,6 +195,7 @@ auto binary_find(std::vector<T> const &vs, TE const& eq, TL const& less){
     auto end = vs.cend();
     return binary_find(beg,end,eq, less);
 }
+
 template<typename TK, typename TV>
 auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
     return binary_find(pairs,
