@@ -96,16 +96,15 @@ struct WordIterBase{
 
 using WordIter=WordIterBase<wordrep::WordUID>;
 //using WordIter=WordIterBase<std::string>;
-using count_t = std::map<WordIter::key_type, size_t>;
 
 class WordCounter{
 public:
-    using count_type = count_t;
-    using key_type   = count_t::key_type;
-    using mapped_type = count_t::mapped_type;
+    using key_type   = WordIter::key_type;
+    using mapped_type = size_t;
+    using count_type = std::map<key_type, mapped_type>;
     using map_t = tbb::concurrent_hash_map<key_type,mapped_type,util::TBBHashCompare<key_type>>;
 
-    std::map<key_type,mapped_type >
+    std::map<key_type,mapped_type>
     to_map() const { return util::to_map(wcs); };
     std::vector<std::pair<key_type,mapped_type>>
     to_pairs() const { return util::to_sorted_pairs(wcs);};
@@ -147,7 +146,7 @@ private:
 namespace test{
 
 void string_iterator(){
-    WordIterBase<std::string> text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
+    WordIterBase<std::string> text{"11\r22\r\r\r33\t\t14 15\r\n16 17 18   119\t \n 11110\n"};
     std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
 
     std::vector<int64_t> tokens;
@@ -160,34 +159,35 @@ void benchmark(){
     util::Timer timer{};
     auto filename = "../rnn++/tests/data/sentence.2.corenlp";
 //    auto filename = "news.2014.train";
-    auto lines = util::string::readlines(filename);
-    timer.here_then_reset("Finish file readlines.");
 
-
-    count_t word_counts;
-    for(auto &line : lines){
-        WordIter text{line};
-        text.iter([&word_counts](auto& word){++word_counts[word];});
-    }
-    timer.here_then_reset("Finish word count / excluding file reading.");
     WordCounter word_count;
-    auto word_counts2 = word_count.count(std::fstream{filename});
+    auto word_counts = word_count.count(std::fstream{filename});
     timer.here_then_reset("Finish parallel word count / including file reading.");
 
+    auto lines = util::string::readlines(filename);
+    timer.here_then_reset("Finish file readlines.");
+    WordCounter::count_type word_counts_serial;
+    for(auto &line : lines){
+        WordIter text{line};
+        text.iter([&word_counts_serial](auto& word){++word_counts_serial[word];});
+    }
+    timer.here_then_reset("Finish word count / excluding file reading.");
+
+
     typename WordIter::hasher_type hasher{};
-    count_t word_counts0;
+    WordCounter::count_type word_counts_simple;
     for(auto &line : lines){
         auto stripped_line = strip(line);
         assert(!stripped_line.empty());
         for(auto&& word : util::string::split(stripped_line, " ")){
-            ++word_counts0[hasher(word)];
+            ++word_counts_simple[hasher(word)];
         }
     }
     timer.here_then_reset("Finish word count.");
-    for(auto elm : word_counts)  assert(word_counts0[elm.first]==elm.second);
-    assert(word_counts.size()==word_counts0.size());
-    for(auto elm : word_counts2) assert(word_counts0[elm.first]==elm.second);
-    assert(word_counts2.size()==word_counts0.size());
+    for(auto elm : word_counts)  assert(word_counts_simple[elm.first]==elm.second);
+    assert(word_counts.size()==word_counts_simple.size());
+    for(auto elm : word_counts_serial) assert(word_counts_simple[elm.first]==elm.second);
+    assert(word_counts_serial.size()==word_counts_simple.size());
 }
 
 void reverse_iterator(){
@@ -395,7 +395,7 @@ void test_all(){
 
 auto serial_word_count(std::istream&& is){
     std::string line;
-    count_t word_counts;
+    WordCounter::count_type word_counts;
     while(std::getline(is, line)){
         WordIter text{line};
         text.iter([&word_counts](auto& word){++word_counts[word];});
@@ -403,8 +403,8 @@ auto serial_word_count(std::istream&& is){
     return util::to_pairs(word_counts);
 }
 int main(int argc, char** argv){
-//    test_all();
-//    return 0;
+    test_all();
+    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
