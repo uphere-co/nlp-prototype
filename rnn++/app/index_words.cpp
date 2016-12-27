@@ -18,6 +18,7 @@
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/parallel_algorithm.h"
+#include "utils/random.h"
 
 using wordrep::WordUID;
 using wordrep::WordUIDindex;
@@ -304,8 +305,8 @@ void binary_find_cell_for_cdf(){
     for(auto elm : util::zip(cdf, word_counts)) assert(elm.first.first==elm.second.first);
     assert(counts.back()==cdf.back().second);
 
-    for(auto elm : util::zip(cdf, word_counts))
-        fmt::print(std::cerr, "{} : {} vs {}\n", elm.first.first, elm.first.second, elm.second.second);
+//    for(auto elm : util::zip(cdf, word_counts))
+//        fmt::print(std::cerr, "{} : {} vs {}\n", elm.first.first, elm.first.second, elm.second.second);
     //auto n = pdf.size();
 
     auto n = counts.back();
@@ -320,29 +321,12 @@ void binary_find_cell_for_cdf(){
     }
 }
 
-template<typename KEY, typename VAL>
-struct Sampler{
-    Sampler(std::vector<std::pair<KEY,VAL>> const &counts)
-    : cdf{counts} {
-        std::partial_sum(counts.cbegin(),counts.cend(), cdf.begin(),
-                         [](auto x, auto y){return std::make_pair(y.first, x.second+y.second);});
-        u = std::uniform_int_distribution<size_t>{0, cdf.back().second-1};
-    }
-    KEY sample() {
-        auto ran = u(gen);
-        return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
-    }
 
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::vector<std::pair<KEY,VAL>> cdf;
-    std::uniform_int_distribution<size_t> u;
-};
 
 void weighted_sampling_benchmark(){
     size_t n_cut = 2;
-    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
-//    auto word_counts = word_count(std::fstream{"news.2014.train"});
+//    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    auto word_counts = word_count(std::fstream{"news.2014.train"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     auto counts = map(word_counts, [](auto x){return x.second;});
     auto uids = map(word_counts, [](auto x){return x.first;});
@@ -351,7 +335,7 @@ void weighted_sampling_benchmark(){
     for(auto x : word_counts) sum_exact += 1.0*x.first.val*x.second;
     sum_exact /= util::math::sum(counts);
 
-    auto n= 100000;
+    auto n= 1000000;
     Timer timer{};
 
     std::random_device rd{};
@@ -363,6 +347,7 @@ void weighted_sampling_benchmark(){
     timer.here_then_reset("std::random");
 
     Sampler<WordUID,size_t> sampler{word_counts};
+    timer.here_then_reset("prepare custom");
     auto sum = 0.0;
     for(int i=0; i<n; ++i) sum += 1.0* sampler.sample().val;
     sum /= n;
