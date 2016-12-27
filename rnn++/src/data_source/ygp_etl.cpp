@@ -69,10 +69,9 @@ namespace data {
 namespace ygp {
 
 
-int dump_column(std::string table, std::string column, std::string index_col){
+int parse_column(std::string table, std::string column, std::string index_col){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
-    try
-    {
+    try {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         std::cout << "Connected to " << C.dbname() << std::endl;
         pqxx::work W(C);
@@ -98,16 +97,54 @@ int dump_column(std::string table, std::string column, std::string index_col){
             dump_file << parsed_json.dump(4);
             dump_file.close();
         });
-    }
-    catch (const std::exception &e)
-    {
+    } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
     return 0;
 }
 
-void dump_psql(const char *cols_to_exports){
+int dump_column(std::string table, std::string column, std::string index_col){
+    try {
+        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+        std::cout << "Connected to " << C.dbname() << std::endl;
+        pqxx::work W(C);
+
+
+        auto query=fmt::format("SELECT {}, {} FROM {};", column, index_col, table);
+        auto body= W.exec(query);
+        W.commit();
+        auto n = body.size();
+        for(decltype(n)i = 0; i!=n; ++i){
+            auto row = body[i];
+            std::string raw_text = row[0].c_str();
+            auto index = row[1];
+            if(raw_text.size()<6) {
+                auto row_full_name=fmt::format("{}.{}.{}.{}", table, column, index_col, index);
+                fmt::print("{} is missing.\n", row_full_name);
+                continue;
+            }
+            std::cout << raw_text;
+        }
+        std::cout << std::endl;
+    } catch (const std::exception &e){
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+void parse_psql(std::string cols_to_exports){
+    YGPdb db{cols_to_exports};
+    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
+        auto table = db.table(col_uid);
+        auto column = db.column(col_uid);
+        auto index_col = db.index_col(col_uid);
+        std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
+        parse_column(table, column, index_col);
+    }
+}
+void dump_psql(std::string cols_to_exports){
     YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
