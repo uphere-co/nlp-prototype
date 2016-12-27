@@ -27,8 +27,8 @@ struct Sampler{
     }
     KEY sample() {
         auto ran = u(gen);
-        //10~20 % speed up. Not that good.
-        if(ran<n_low) return binary_find_cell(beg,it_low, [ran](auto x){return ran<x.second;}).value()->first;
+        //10~20 % speed up. Check if no bias.
+//        if(ran<n_low) return binary_find_cell(beg,it_low, [ran](auto x){return ran<x.second;}).value()->first;
         return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
     }
 
@@ -41,6 +41,27 @@ struct Sampler{
     std::uniform_real_distribution<double> ran01{0.0,1.0};
     int64_t i_low;
     double n_low;
+};
+template<typename KEY>
+struct Sampler<KEY,double>{
+    using VAL = double;
+    Sampler(std::vector<std::pair<KEY,VAL>> const &counts)
+            : cdf{counts} {
+        std::sort(cdf.begin(), cdf.end(), [](auto x, auto y){return x.second>y.second;});
+        std::partial_sum(cdf.cbegin(),cdf.cend(), cdf.begin(),
+                         [](auto x, auto y){return std::make_pair(y.first, x.second+y.second);});
+        auto n_total = cdf.back().second;
+        u = std::uniform_real_distribution<double>{0, n_total};
+    }
+    KEY sample() {
+        auto ran = u(gen);
+        return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
+    }
+
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::vector<std::pair<KEY,VAL>> cdf;
+    std::uniform_real_distribution<double> u;
 };
 
 }

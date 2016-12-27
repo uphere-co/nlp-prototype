@@ -45,6 +45,12 @@ auto map(T const &elms, OP const &op){
     return vals;
 };
 
+template<typename T, typename OP>
+void apply(T &elms, OP const &op){
+    for(auto &elm : elms) elm = op(elm);
+};
+
+
 template<typename T>
 T to_type(size_t uval){
     assert(uval <std::numeric_limits<T>::max());

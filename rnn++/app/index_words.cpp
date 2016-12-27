@@ -28,6 +28,8 @@ using util::binary_find_cell;
 using util::binary_find;
 using util::to_map;
 using util::map;
+using util::zip;
+using util::apply;
 using util::to_sorted_pairs;
 using util::filter;
 using util::filter_inplace;
@@ -346,7 +348,7 @@ void weighted_sampling_benchmark(){
     sum_std /= n;
     timer.here_then_reset("std::random");
 
-    Sampler<WordUID,size_t> sampler{word_counts};
+    util::Sampler<WordUID,size_t> sampler{word_counts};
     timer.here_then_reset("prepare custom");
     auto sum = 0.0;
     for(int i=0; i<n; ++i) sum += 1.0* sampler.sample().val;
@@ -356,6 +358,35 @@ void weighted_sampling_benchmark(){
     fmt::print(std::cerr, "{},  {} vs {}\n", sum_exact, sum_std, sum);
 }
 
+template<typename T>
+bool almost_equal(T x, T y){
+    return std::abs((x/y)-1) < 0.000001;
+}
+
+
+void negative_sampling(){
+    size_t n_cut = 2;
+    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
+    auto neg_sampled_counts = util::map(word_counts, [](auto x){return std::make_pair(x.first, std::pow(x.second, 0.75));});
+
+    for(auto x : zip(word_counts, neg_sampled_counts))
+        assert(almost_equal(std::pow(x.first.second,0.75),x.second.second));
+
+
+    auto sum_exact=0.0;
+    for(auto x : word_counts) sum_exact += x.first.val*std::pow(x.second,0.75);
+    auto counts = map(neg_sampled_counts, [](auto x){return x.second;});
+    sum_exact /= util::math::sum(counts);
+
+    auto n=1000000;
+    util::Sampler<WordUID,double> neg_sampler{neg_sampled_counts};
+    auto sum = 0.0;
+    for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample().val;
+    sum /= n;
+
+    fmt::print(std::cerr, "{} vs {}\n", sum_exact,  sum);
+}
 }//namespace test
 
 int main(int argc, char** argv){
@@ -369,6 +400,7 @@ int main(int argc, char** argv){
     test::container_filter();
     test::binary_find_cell_for_cdf();
     test::weighted_sampling_benchmark();
+    test::negative_sampling();
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
