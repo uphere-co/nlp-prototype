@@ -320,6 +320,57 @@ void binary_find_cell_for_cdf(){
     }
 }
 
+template<typename KEY, typename VAL>
+struct Sampler{
+    Sampler(std::vector<std::pair<KEY,VAL>> const &counts)
+    : cdf{counts} {
+        std::partial_sum(counts.cbegin(),counts.cend(), cdf.begin(),
+                         [](auto x, auto y){return std::make_pair(y.first, x.second+y.second);});
+        u = std::uniform_int_distribution<size_t>{0, cdf.back().second-1};
+    }
+    KEY sample() {
+        auto ran = u(gen);
+        return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
+    }
+
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::vector<std::pair<KEY,VAL>> cdf;
+    std::uniform_int_distribution<size_t> u;
+};
+
+void weighted_sampling_benchmark(){
+    size_t n_cut = 2;
+    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+//    auto word_counts = word_count(std::fstream{"news.2014.train"});
+    filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
+    auto counts = map(word_counts, [](auto x){return x.second;});
+    auto uids = map(word_counts, [](auto x){return x.first;});
+
+    auto sum_exact=0.0;
+    for(auto x : word_counts) sum_exact += 1.0*x.first.val*x.second;
+    sum_exact /= util::math::sum(counts);
+
+    auto n= 100000;
+    Timer timer{};
+
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::discrete_distribution<size_t> d{counts.cbegin(), counts.cend()};
+    auto sum_std=0.0;
+    for(int i=0; i<n; ++i) sum_std += uids[d(gen)].val;
+    sum_std /= n;
+    timer.here_then_reset("std::random");
+
+    Sampler<WordUID,size_t> sampler{word_counts};
+    auto sum = 0.0;
+    for(int i=0; i<n; ++i) sum += 1.0* sampler.sample().val;
+    sum /= n;
+    timer.here_then_reset("finish custom");
+
+    fmt::print(std::cerr, "{},  {} vs {}\n", sum_exact, sum_std, sum);
+}
+
 }//namespace test
 
 int main(int argc, char** argv){
@@ -332,6 +383,7 @@ int main(int argc, char** argv){
     test::binary_find_benchmark();
     test::container_filter();
     test::binary_find_cell_for_cdf();
+    test::weighted_sampling_benchmark();
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
