@@ -254,8 +254,8 @@ void weighted_sampling_benchmark(){
 }
 
 template<typename T>
-bool almost_equal(T x, T y){
-    return std::abs((x/y)-1) < 0.000001;
+bool almost_equal(T x, T y, T err=0.000001){
+    return std::abs((x/y)-1) < err;
 }
 
 
@@ -280,7 +280,7 @@ void negative_sampling(){
     for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample().val;
     sum /= n;
 
-    fmt::print(std::cerr, "{} vs {}\n", sum_exact,  sum);
+    assert(almost_equal(sum_exact,  sum, 0.005));//allow ~ 5-sigma errors.
 }
 }//namespace test
 
@@ -308,7 +308,7 @@ auto serial_word_count(std::istream&& is){
     return util::to_pairs(word_counts);
 }
 
-void iter_sentences(){
+void iter_sentences(int argc, char** argv){
     using util::io::h5read;
     auto file = h5read("texts.h5");
     std::string prefix =  "ygp";
@@ -316,12 +316,22 @@ void iter_sentences(){
     util::TypedPersistentVector<SentUID> sents_uid {file,prefix+".sent_uid"};
     util::TypedPersistentVector<WordUID> words_uid {file,prefix+".word_uid"};
 
+    Timer timer;
+    auto config = util::load_json(argv[1]);
+    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
+    timer.here_then_reset("Load wordUIDs");
+    wordrep::TokenHash<wordrep::WordUID> hasher;
+    std::map<WordUID,std::string> wuid2str;
+    for(auto word : words) wuid2str[hasher(word)]=word;
+    timer.here_then_reset("Build table.");
+
+
     auto iter = util::IterChunkIndex_factory(sents_uid.get());
     while(auto maybe_chunk = iter.next()){
         auto chunk = maybe_chunk.value();
         fmt::print("{} {}\n", chunk.first, chunk.second);
         for(auto i=chunk.first; i!=chunk.second; ++i){
-            fmt::print("{} ", words_uid[i]);
+            fmt::print("{} ", wuid2str[words_uid[i]]);
         }
         fmt::print("\n");
     }
@@ -368,9 +378,9 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
 }
 
 int main(int argc, char** argv){
-//    test_all();
+    test_all();
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
-    iter_sentences();
+    iter_sentences(argc,argv);
     return 0;
 
 
