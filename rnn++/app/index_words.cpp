@@ -346,6 +346,16 @@ void iter_sentences(int argc, char** argv){
             fmt::print("{} ", wuid2str[uid]);
         }
         fmt::print("\n");
+
+        for(auto i=chunk.first; i!=chunk.second; ++i){
+            assert(i>=0);
+            WordContext context{i, chunk.first, chunk.second, 5, 5};
+            fmt::print("{} : ", wuid2str[words_uid[context.self]]);
+            for(auto cword : context.contexts)
+                fmt::print("{} ", wuid2str[words_uid[cword]]);
+            fmt::print("\n");
+        }
+        fmt::print("\n");
     }
 }
 

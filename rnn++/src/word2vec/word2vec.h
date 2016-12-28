@@ -37,4 +37,18 @@ private:
     std::uniform_real_distribution<float_t> uni01{0.0,1.0};
 };
 
+struct WordContext{
+    using idx_t = std::ptrdiff_t;
+    using VocaIndex = wordrep::VocaIndex;
+    WordContext(idx_t self, idx_t beg, idx_t end,
+                int left, int right)
+    : self{self} {
+        auto left_beg = self-left<beg? beg : self-left;
+        auto right_end= self+1+right>end? end : self+1+right;
+        for(auto i=left_beg; i!=self; ++i) contexts.push_back(i);
+        for(auto i=self+1; i!=right_end; ++i) contexts.push_back(i);
+    }
+    idx_t self;
+    std::vector<idx_t> contexts;
+};
 }//namespace word2vec

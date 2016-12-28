@@ -135,7 +135,7 @@ public:
     dist_t dist;
 };
 
-struct WordVecContext{
+struct WordVecContext [[deprecated]] {
     using widxs_t = std::vector<idx_t> ;
     using iter_t = widxs_t::const_iterator; 
     WordVecContext(iter_t self, widxs_t const &widxs, 
