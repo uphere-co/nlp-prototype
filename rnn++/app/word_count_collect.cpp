@@ -27,7 +27,7 @@ std::map<token_t,count_t> collect_count(std::istream&& is){
     return counts;
 }
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** argv) {
     auto dumpfile = argv[1];
     //auto prefix = argv[2];
     auto prefix = "unigram.";
