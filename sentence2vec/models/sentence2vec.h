@@ -23,7 +23,7 @@ using val_t = double;
 
 constexpr int word_dim=100;
 
-struct UnigramDist{
+struct UnigramDist [[deprecated]] {
     using count_t = sent2vec::wcount_t; 
 
     UnigramDist(util::io::H5file const &h5store, 
@@ -46,7 +46,7 @@ struct OccurrenceFilter{
 */
 
 template<typename T>
-class Sampler{
+class Sampler [[deprecated]]{
 public:
     Sampler(T beg, T end)
     : dist{beg, end} {}
@@ -59,7 +59,7 @@ private:
     std::discrete_distribution<idx_t> dist;
 };
 
-class Sampler2{
+class Sampler2 [[deprecated]]{
 public:
     using dist_t = std::vector<val_t>;
     using iter_t = dist_t::const_iterator;
@@ -96,7 +96,7 @@ private:
     val_t resolution;
 };
 
-class SubSampler{
+class SubSampler [[deprecated]]{
 public:
     SubSampler(val_t rate, UnigramDist const &unigram)
     : unigram{unigram}, rate_inv{1.0/rate} {}

@@ -25,6 +25,8 @@
 #include "utils/hdf5.h"
 #include "utils/persistent_vector.h"
 
+#include "word2vec/word2vec.h"
+
 using wordrep::ChunkIndex;
 using wordrep::SentUID;
 using wordrep::WordUID;
@@ -312,9 +314,9 @@ void iter_sentences(int argc, char** argv){
     using util::io::h5read;
     auto file = h5read("texts.h5");
     std::string prefix =  "ygp";
-    util::TypedPersistentVector<ChunkIndex> chunks_idx{file,prefix+".chunk_idx"};
-    util::TypedPersistentVector<SentUID> sents_uid {file,prefix+".sent_uid"};
-    util::TypedPersistentVector<WordUID> words_uid {file,prefix+".word_uid"};
+    const util::TypedPersistentVector<ChunkIndex> chunks_idx{file,prefix+".chunk_idx"};
+    const util::TypedPersistentVector<SentUID> sents_uid {file,prefix+".sent_uid"};
+    const util::TypedPersistentVector<WordUID> words_uid {file,prefix+".word_uid"};
 
     Timer timer;
     auto config = util::load_json(argv[1]);
@@ -325,6 +327,9 @@ void iter_sentences(int argc, char** argv){
     for(auto word : words) wuid2str[hasher(word)]=word;
     timer.here_then_reset("Build table.");
 
+    using namespace word2vec;
+    UnigramDist unigram{h5read("words.h5")};
+    SubSampler subsampler{0.001, unigram};
 
     auto iter = util::IterChunkIndex_factory(sents_uid.get());
     while(auto maybe_chunk = iter.next()){
@@ -332,6 +337,13 @@ void iter_sentences(int argc, char** argv){
         fmt::print("{} {}\n", chunk.first, chunk.second);
         for(auto i=chunk.first; i!=chunk.second; ++i){
             fmt::print("{} ", wuid2str[words_uid[i]]);
+        }
+        fmt::print("\n");
+
+        for(auto i=chunk.first; i!=chunk.second; ++i){
+            auto uid = words_uid[i];
+            if(!subsampler(unigram.voca[uid])) continue;
+            fmt::print("{} ", wuid2str[uid]);
         }
         fmt::print("\n");
     }
