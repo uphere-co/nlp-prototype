@@ -94,11 +94,12 @@ struct WordIterBase{
     std::string text_strs;
 };
 
-using WordIter=WordIterBase<wordrep::WordUID>;
-//using WordIter=WordIterBase<std::string>;
 
 class WordCounter{
 public:
+    using WordIter=WordIterBase<wordrep::WordUID>;
+//using WordIter=WordIterBase<std::string>;
+
     using key_type   = WordIter::key_type;
     using mapped_type = size_t;
     using count_type = std::map<key_type, mapped_type>;
@@ -168,13 +169,13 @@ void benchmark(){
     timer.here_then_reset("Finish file readlines.");
     WordCounter::count_type word_counts_serial;
     for(auto &line : lines){
-        WordIter text{line};
+        WordCounter::WordIter text{line};
         text.iter([&word_counts_serial](auto& word){++word_counts_serial[word];});
     }
     timer.here_then_reset("Finish word count / excluding file reading.");
 
 
-    typename WordIter::hasher_type hasher{};
+    typename WordCounter::WordIter::hasher_type hasher{};
     WordCounter::count_type word_counts_simple;
     for(auto &line : lines){
         auto stripped_line = strip(line);
@@ -397,13 +398,27 @@ auto serial_word_count(std::istream&& is){
     std::string line;
     WordCounter::count_type word_counts;
     while(std::getline(is, line)){
-        WordIter text{line};
+        WordCounter::WordIter text{line};
         text.iter([&word_counts](auto& word){++word_counts[word];});
     }
     return util::to_pairs(word_counts);
 }
+
+void parse_count(std::istream&& is){
+    std::string line;
+    while(std::getline(is, line)){
+        auto elms = util::string::split(line, " ");
+        assert(elms.size()==2);
+        auto key = std::stoll(elms[0]);
+        auto count = std::stoll(elms[1]);
+        fmt::print(std::cout, "{} {}\n", key, count);
+    }
+}
+
+
 int main(int argc, char** argv){
-    test_all();
+//    test_all();
+    parse_count(std::move(std::cin));
     return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);

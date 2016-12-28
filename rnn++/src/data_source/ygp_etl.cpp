@@ -118,10 +118,10 @@ int dump_column(std::string table, std::string column, std::string index_col){
         for(decltype(n)i = 0; i!=n; ++i){
             auto row = body[i];
             std::string raw_text = row[0].c_str();
-            auto index = row[1];
             if(raw_text.size()<6) {
-                auto row_full_name=fmt::format("{}.{}.{}.{}", table, column, index_col, index);
-                fmt::print("{} is missing.\n", row_full_name);
+                //auto index = row[1];
+                //auto row_full_name=fmt::format("{}.{}.{}.{}", table, column, index_col, index);
+                //fmt::print(std::cerr, "{} is empty.\n", row_full_name);
                 continue;
             }
             std::cout << raw_text;
