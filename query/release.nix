@@ -30,7 +30,7 @@ let
       };
       "query-binding" = self.callPackage
         ({ mkDerivation, base, fficxx, fficxx-runtime, stdenv
-         , template-haskell
+         , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb
          }:
          mkDerivation {
            pname = "query-binding";
@@ -39,8 +39,11 @@ let
            libraryHaskellDepends = [
 	     base fficxx fficxx-runtime template-haskell
 	   ];
+	   librarySystemDepends = [
+	     rnnpp json hdf5_cpp msgsl tbb
+	   ];
 	   license = stdenv.lib.licenses.bsd3;
-	 }) { };
+	 }) { inherit rnnpp json hdf5_cpp msgsl tbb; };
     };
     hsconfig = self: super: (hsconfig1 self super // hsconfig2 self super); 
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };

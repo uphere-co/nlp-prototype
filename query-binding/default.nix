@@ -3,10 +3,7 @@
 with pkgs;
 
 let 
-    #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
-    #newHaskll
     hsenv = haskellPackages.ghcWithPackages (p: with p; [ fficxx-runtime fficxx ]);
-
 in
 
 stdenv.mkDerivation {
