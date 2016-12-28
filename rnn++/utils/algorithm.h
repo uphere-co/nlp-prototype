@@ -229,3 +229,34 @@ auto get_values(std::map<TK,TV> const& vs){
 }
 
 }//namespace util
+
+//Algorithms with function objects.
+namespace util{
+
+
+template<typename T>
+struct IterChunkIndex{
+    IterChunkIndex(T beg, T end)
+            : data_beg{beg}, data_end{end}, now{data_beg}
+    {}
+    std::optional<std::pair<int64_t,int64_t>> next() {
+        if(now==data_end) return {};
+        auto val = *now;
+        auto it = std::find_if_not(now, data_end,[val](auto x){return val==x;});
+        auto chunk = std::make_pair(now-data_beg,it-data_beg);
+        now=it;
+        return chunk;
+    }
+    T const data_beg;
+    T const data_end;
+    T now;
+};
+
+template<typename T>
+auto IterChunkIndex_factory(T const &vals){
+    auto beg = vals.cbegin();
+    auto end = vals.cend();
+    return IterChunkIndex<decltype(beg)>{beg,end};
+}
+
+}//namespace util
