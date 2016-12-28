@@ -7,10 +7,11 @@
 #include <iterator>
 #include <random>
 
-#include <xxhashct/xxh64.hpp>
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/word_iter.h"
+#include "wordrep/word_count.h"
 
 #include "utils/math.h"
 #include "utils/string.h"
@@ -22,6 +23,8 @@
 
 using wordrep::WordUID;
 using wordrep::WordUIDindex;
+using wordrep::WordCounter;
+
 using util::Timer;
 
 using util::binary_find_cell;
@@ -35,111 +38,6 @@ using util::filter;
 using util::filter_inplace;
 using util::string::strip;
 
-template<typename T>
-auto hash(T* ptr, size_t len){
-    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, 113377);
-}
-
-template<typename KEY>
-struct TokenHash{
-    template<typename T>
-    KEY operator() (std::string const &text, T text_beg, T beg, T end) const;
-};
-template<>
-struct TokenHash<std::string>{
-    template<typename T>
-    std::string operator() (std::string const &text, T text_beg, T beg, T end) const {
-        return text.substr(beg-text_beg, end-beg);
-    }
-    std::string operator() (std::string const &word) const {
-        return word;
-    }
-};
-
-template<>
-struct TokenHash<wordrep::WordUID>{
-    using WordUID = wordrep::WordUID;
-    template<typename T>
-    WordUID  operator() (std::string const &text, T text_beg, T beg, T end) const {
-        return WordUID::from_unsigned(hash(text.data()+(beg-text_beg), end-beg));
-    }
-    WordUID  operator() (std::string const &word) const {
-        assert(word.size());
-        return WordUID::from_unsigned(hash(word.data(), std::distance(word.cbegin(),word.cend())));
-    }
-};
-
-template<typename KEY>
-struct WordIterBase{
-    using key_type    = KEY;
-    using hasher_type = TokenHash<KEY>;
-    WordIterBase(std::string text)
-            : text_strs{std::move(text)}
-    {}
-    template<typename OP>
-    void iter(OP const &op) const {
-        auto text_beg = std::cbegin(text_strs);
-        auto text_end = std::cend(text_strs);
-        auto beg = std::find_if_not(text_beg, text_end, [](auto x){return std::isspace(x);});
-        while(beg!=text_end){
-            auto end=std::find_if(beg, text_end, [](auto x){return std::isspace(x);});
-            auto word = get_hash(text_strs, text_beg, beg, end);
-            op(word);
-            if(end==text_end) break;
-            beg = std::find_if_not(end, text_end, [](auto x){return std::isspace(x);});
-        }
-    }
-
-    hasher_type get_hash{};
-    std::string text_strs;
-};
-
-
-class WordCounter{
-public:
-    using WordIter=WordIterBase<wordrep::WordUID>;
-//using WordIter=WordIterBase<std::string>;
-
-    using key_type   = WordIter::key_type;
-    using mapped_type = size_t;
-    using count_type = std::map<key_type, mapped_type>;
-    using map_t = tbb::concurrent_hash_map<key_type,mapped_type,util::TBBHashCompare<key_type>>;
-
-    std::map<key_type,mapped_type>
-    to_map() const { return util::to_map(wcs); };
-    std::vector<std::pair<key_type,mapped_type>>
-    to_pairs() const { return util::to_sorted_pairs(wcs);};
-
-    auto count(std::istream&& is){
-        tbb::task_group g;
-        Timer timer;
-        while (auto buffer=util::string::read_chunk(is, 200000)) {
-            //auto ptr = std::make_unique<std::vector<char>>(buffer.value());
-            std::string str{buffer.value().data()};
-            g.run([this,str{std::move(str)}]() { //important to copy the str variable.
-                count(str);
-            });
-        }
-        g.wait();
-        timer.here_then_reset("Word counting is finished.");
-        return to_pairs();
-//    return counter.to_map();
-    }
-
-private:
-    void count(std::string str){
-        WordIter text{std::move(str)};
-        count_type word_counts;
-        text.iter([&word_counts](auto& word) {++word_counts[word];});
-        for(auto const& elm : word_counts){
-            map_t::accessor a;
-            wcs.insert(a, elm.first);
-            a->second += elm.second;
-        }
-    }
-
-    map_t wcs;
-};
 
 
 
@@ -147,7 +45,7 @@ private:
 namespace test{
 
 void string_iterator(){
-    WordIterBase<std::string> text{"11\r22\r\r\r33\t\t14 15\r\n16 17 18   119\t \n 11110\n"};
+    wordrep::WordIterBase<std::string> text{"11\r22\r\r\r33\t\t14 15\r\n16 17 18   119\t \n 11110\n"};
     std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
 
     std::vector<int64_t> tokens;
@@ -205,9 +103,9 @@ void reverse_iterator(){
 void hash(){
     auto seed = 1;
     char cs[10] = "Hello";
+    assert(sizeof(cs)==10);
 
     uint64_t hash = xxh64::hash (reinterpret_cast<const char*> (cs), 10, seed);
-    assert(sizeof(cs)==10);
     fmt::print("{}\n", hash);
 }
 
@@ -404,22 +302,10 @@ auto serial_word_count(std::istream&& is){
     return util::to_pairs(word_counts);
 }
 
-void parse_count(std::istream&& is){
-    std::string line;
-    while(std::getline(is, line)){
-        auto elms = util::string::split(line, " ");
-        assert(elms.size()==2);
-        auto key = std::stoll(elms[0]);
-        auto count = std::stoll(elms[1]);
-        fmt::print(std::cout, "{} {}\n", key, count);
-    }
-}
-
 
 int main(int argc, char** argv){
 //    test_all();
-    parse_count(std::move(std::cin));
-    return 0;
+//    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};

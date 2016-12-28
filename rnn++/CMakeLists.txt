@@ -89,6 +89,9 @@ target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(ygpdb_dump app/ygpdb_dump
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(ygpdb_dump stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(word_count app/word_count
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(word_count stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_count_collect app/word_count_collect
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(word_count_collect stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)

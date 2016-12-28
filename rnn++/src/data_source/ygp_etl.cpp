@@ -73,7 +73,7 @@ int parse_column(std::string table, std::string column, std::string index_col){
     CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
     try {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        std::cout << "Connected to " << C.dbname() << std::endl;
+        std::cerr << "Connected to " << C.dbname() << std::endl;
         pqxx::work W(C);
 
 
@@ -107,7 +107,7 @@ int parse_column(std::string table, std::string column, std::string index_col){
 int dump_column(std::string table, std::string column, std::string index_col){
     try {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        std::cout << "Connected to " << C.dbname() << std::endl;
+        std::cerr << "Connected to " << C.dbname() << std::endl;
         pqxx::work W(C);
 
 
