@@ -5,7 +5,8 @@
 , network-transport-uphere, process, query-common
 , scientific, stdenv, stm, text, transformers
 , unix, unordered-containers, uuid, vector
-
+, fficxx-runtime
+, query-binding
 , json, rnnpp, pqxx, elfutils, tbb, fmt, hdf5_cpp, msgsl, spdlog, xxhashct, backwardcpp
 }:
 mkDerivation {
@@ -20,6 +21,8 @@ mkDerivation {
     filepath http-client http-client-tls http-types monad-loops network-simple
     network-transport-uphere process query-common scientific stm text
     transformers unix unordered-containers uuid vector
+    fficxx-runtime
+    query-binding
   ];
   executableSystemDepends = [
     fmt hdf5_cpp json msgsl pqxx elfutils rnnpp tbb spdlog xxhashct backwardcpp 
