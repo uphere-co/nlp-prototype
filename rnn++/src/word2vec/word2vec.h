@@ -9,18 +9,14 @@ namespace word2vec {
 
 struct UnigramDist {
     using WordUID = wordrep::WordUID;
+    using VocaIndex = wordrep::VocaIndex;
     using float_t = double;
     UnigramDist(util::io::H5file const &h5store);
 
-    float_t get_prob(wordrep::VocaIndex idx) const{
-        return get_prob(voca[idx]);
-    };
-    float_t get_prob(wordrep::WordUID idx) const;
+    float_t get_prob(VocaIndex idx) const;
+    std::vector<std::pair<VocaIndex,float_t>> get_negsample_dist(float_t pow) const;
 
-    const util::PersistentVector<WordUID,WordUID::val_t> uid;
-    const util::PersistentVector<size_t,size_t> count;
-    const wordrep::VocaIndexMap voca;
-    std::vector<float_t> prob;
+    std::vector<std::pair<VocaIndex,float_t>> weights;
 };
 
 class SubSampler{

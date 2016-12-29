@@ -102,6 +102,8 @@ void iter_sentences(int argc, char** argv){
             fmt::print("{} : ", wuid2str[voca[subsampled[context.self]]]);
             for(auto cword : context.contexts)
                 fmt::print("{} ", wuid2str[voca[subsampled[cword]]]);
+            fmt::print(" | ");
+            //for(int j=0; j!=5; ++j) fmt::print("{} ", wuid2str[voca[subsampled[cword]]]);
             fmt::print("\n");
         }
         fmt::print("\n");

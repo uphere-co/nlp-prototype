@@ -8,9 +8,9 @@ namespace util{
 int64_t uuid_gen();
 std::string get_uuid_str();
 
-template<typename KEY, typename VAL>
+template<typename KEY, typename WEIGHT>
 struct Sampler{
-    Sampler(std::vector<std::pair<KEY,VAL>> const &counts)
+    Sampler(std::vector<std::pair<KEY,WEIGHT>> const &counts)
             : cdf{counts} {
         std::sort(cdf.begin(), cdf.end(), [](auto x, auto y){return x.second>y.second;});
         std::partial_sum(cdf.cbegin(),cdf.cend(), cdf.begin(),
@@ -34,7 +34,7 @@ struct Sampler{
 
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    std::vector<std::pair<KEY,VAL>> cdf;
+    std::vector<std::pair<KEY,WEIGHT>> cdf;
     std::uniform_int_distribution<size_t> u;
 //    decltype(cdf.cbegin()) beg;
 //    decltype(cdf.cbegin()) it_low;

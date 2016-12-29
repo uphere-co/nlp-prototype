@@ -182,7 +182,7 @@ std::optional<TI> binary_find(TI beg, TI end, T val) {
     return binary_find(it, end, val);
 }
 
-//less{val}(x) :: true if v < x;
+//less{val}(x) :: true if val < x;
 template<typename TI, typename TE, typename TL>
 std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
     if(beg==end) return {};

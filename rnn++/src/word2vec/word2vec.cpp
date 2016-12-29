@@ -8,21 +8,28 @@
 
 namespace word2vec {
 
-UnigramDist::UnigramDist(util::io::H5file const &h5store)
-        :   uid{h5store,"unigram.uid"},
-            count{h5store,"unigram.count"},
-            voca{util::TypedPersistentVector<WordUID>{h5store,"widx2wuid"}.get()},
-            prob(count.size()) {
+UnigramDist::UnigramDist(util::io::H5file const &h5store) {
+    util::PersistentVector<WordUID,WordUID::val_t> uid{h5store,"unigram.uid"};
+    util::PersistentVector<size_t,size_t> count{h5store,"unigram.count"};
+    wordrep::VocaIndexMap voca{util::TypedPersistentVector<WordUID>{h5store,"widx2wuid"}.get()};
+    weights.reserve(count.size());
     auto norm = 1.0 / util::math::sum(count.get());
-    for(size_t i=0; i<count.size(); ++i) prob[i]=count[i]*norm;
+    auto n = count.size();
+    for(size_t i=0; i!=n; ++i){
+        weights.push_back({voca[uid[i]], count[i]*norm});
+    }
 }
 
-UnigramDist::float_t UnigramDist::get_prob(wordrep::WordUID idx) const{
-    auto it = util::binary_find(uid.get(), idx);
+UnigramDist::float_t UnigramDist::get_prob(VocaIndex idx) const{
+    auto it = util::binary_find(weights,
+                                [idx](auto x){return idx==x.first;},
+                                [idx](auto x){return idx< x.first;});
     if(!it) return 0.0;
-    //TODO: figure out why .get() is necessary??
-    auto i = it.value()-uid.get().cbegin();
-    return prob[i];
+    return it.value()->second;
+}
+std::vector<std::pair<UnigramDist::VocaIndex,UnigramDist::float_t>>
+UnigramDist::get_negsample_dist(float_t pow) const {
+    return util::map(weights, [pow](auto x){return std::make_pair(x.first, std::pow(x.second, pow));});
 }
 
 SubSampler::SubSampler(float_t rate, UnigramDist const &unigram)
