@@ -241,6 +241,7 @@ void weighted_sampling_benchmark(){
 
     std::random_device rd{};
     std::mt19937 gen{rd()};
+
     std::discrete_distribution<size_t> d{counts.cbegin(), counts.cend()};
     auto sum_std=0.0;
     for(int i=0; i<n; ++i) sum_std += uids[d(gen)].val;
@@ -248,9 +249,10 @@ void weighted_sampling_benchmark(){
     timer.here_then_reset("std::random");
 
     util::Sampler<WordUID,size_t> sampler{word_counts};
+    std::uniform_int_distribution<size_t> uni{0, sampler.total_weight()-1};
     timer.here_then_reset("prepare custom");
     auto sum = 0.0;
-    for(int i=0; i<n; ++i) sum += 1.0* sampler.sample(gen).val;
+    for(int i=0; i<n; ++i) sum += 1.0* sampler.sample(uni(gen)).val;
     sum /= n;
     timer.here_then_reset("finish custom");
 
@@ -282,8 +284,9 @@ void negative_sampling(){
     std::mt19937 gen{rd()};
     auto n=1000000;
     util::Sampler<WordUID,double> neg_sampler{neg_sampled_counts};
+    std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
     auto sum = 0.0;
-    for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample(gen).val;
+    for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample(uni(gen)).val;
     sum /= n;
 
     assert(almost_equal(sum_exact,  sum, 0.005));//allow ~ 5-sigma errors.

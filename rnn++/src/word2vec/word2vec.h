@@ -26,14 +26,14 @@ public:
     using VocaIndex = wordrep::VocaIndex;
 
     SubSampler(float_t rate, UnigramDist const &unigram);
-    template<typename RNG>
-    bool operator() (VocaIndex word, RNG& gen) { return is_sampled(unigram.get_prob(word), uni01(gen));}
+
+    bool operator() (VocaIndex word, float_t ran) const { return is_sampled(unigram.get_prob(word), ran);}
+
 private:
     bool is_sampled(float_t p_word, float_t ran) const;
 
     UnigramDist const &unigram;
     float_t rate_inv;
-    std::uniform_real_distribution<float_t> uni01{0.0,1.0};
 };
 
 struct WordContext{
