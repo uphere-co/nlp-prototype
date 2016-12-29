@@ -27,6 +27,11 @@ std::string join(std::vector<std::string> words, std::string delim){
     }
     return s.str();
 }
+std::string strip(std::string const& str){
+    auto beg=std::find_if_not(str.cbegin(), str.cend(), [](auto x){return std::isspace(x);});
+    auto end=std::find_if_not(str.crbegin(), str.crend(), [](auto x){return std::isspace(x);});
+    return str.substr(beg-str.cbegin(), end.base()-beg);
+}
 
 
 std::vector<std::string> readlines(std::string file){
