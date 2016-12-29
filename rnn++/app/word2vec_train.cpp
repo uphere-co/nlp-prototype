@@ -168,6 +168,7 @@ void training(int argc, char** argv){
 
     word2vec::UnigramDist unigram{util::io::h5read("nyt_words.h5")};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
+    word2vec::SubSampler subsampler{0.001, unigram};
 
     //Setup word vector blocks
     using WordBlock = wordrep::WordBlock_base<UnigramDist::float_t,100>;
@@ -179,25 +180,39 @@ void training(int argc, char** argv){
 
     auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
 
-    tbb::task_group g;
-    while(auto maybe_chunk = iter.next()){
-        g.run([&texts,&maybe_chunk,&unigram,&neg_sampler,&wvecs,&cvecs,alpha](){
-            auto chunk = maybe_chunk.value();
-            std::random_device rd{};
-            std::mt19937 gen{rd()};
-            std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
-            std::uniform_real_distribution<double> uni01{0.0,1.0};
-            word2vec::SubSampler subsampler{0.001, unigram};
+    std::random_device rd{};
+    auto seed = rd();
 
+    std::vector<std::pair<size_t,size_t>> chunks;
+    while(auto maybe_chunk = iter.next()) chunks.push_back(maybe_chunk.value());
+    auto n = chunks.size();
+//    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,200},
+//                      [&texts,&chunks,&unigram,&subsampler,&neg_sampler,&wvecs,&cvecs,alpha,seed](auto& r){
+//    std::mt19937 gen{seed+util::to_signed_positive<decltype(seed)>(r.begin())};
+    //tbb::parallel_for(decltype(n){0},n,[&texts,&chunks,&subsampler,&neg_sampler,&wvecs,&cvecs,alpha,seed](auto& i_chunk){
+    for(decltype(n)i_chunk=0; i_chunk!=n; ++i_chunk){
+        timer.here_then_reset("loop begin");
+        std::mt19937 gen{seed+util::to_signed_positive<decltype(seed)>(i_chunk)};
+        std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
+        std::uniform_real_distribution<double> uni01{0.0,1.0};
+        util::math::VecLoop_void<WordBlock::val_t,WordBlock::dim> vecloop_void{};
+        timer.here_then_reset("create objects");
+//        for(auto i_chunk=r.begin(); i_chunk!=r.end(); ++i_chunk){
+            auto chunk = chunks[i_chunk];
             std::vector<VocaIndex> subsampled;
             subsampled.reserve(chunk.second-chunk.first);
             for(auto i=chunk.first; i!=chunk.second; ++i){
                 if(auto idx = texts.word(i); subsampler(idx,uni01(gen)))
-                subsampled.push_back(idx);
+                    subsampled.push_back(idx);
             }
+        timer.here_then_reset("sub_sampling");
+        auto len=util::singed_size(subsampled);
+        std::vector<VocaIndex> cns;
+        auto n_neg = 5;
+        for(int j=0;j!=10*n_neg*len;++j) cns.push_back(neg_sampler.sample(uni(gen)));
+        int jj=0;
+        timer.here_then_reset("neg_sampling");
 
-            util::math::VecLoop_void<WordBlock::val_t,WordBlock::dim> vecloop_void{};
-            auto len=util::singed_size(subsampled);
             for(std::ptrdiff_t i=0; i<len; ++i){
                 word2vec::WordContext context{i, subsampled, 5, 5};
                 auto w=wvecs[subsampled[context.self]];
@@ -206,9 +221,9 @@ void training(int argc, char** argv){
                     auto x_wc = 1 - sigmoid(w, c);
                     //plain gradient descent:
                     vecloop_void(symm_fma_vec, alpha * x_wc, w, c);
-                    for (int j = 0; j != 8; ++j) {
+                    for (int j = 0; j != n_neg; ++j) {
                         //TODO: fix thread safety
-                        auto cn = cvecs[neg_sampler.sample(uni(gen))];
+                        auto cn = cvecs[cns[jj++]];
                         //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
                         //grad_c : (1-sigmoid(w,c)) * w
                         //grad_cn : (sigmoid_plus(w,c)-1) *w
@@ -217,15 +232,17 @@ void training(int argc, char** argv){
                     }
                 }
             }
-        });
-    }
-    g.wait();
-    auto n = wvecs.size();
+        timer.here_then_reset("vec updates");
+//        }
+
+    }//);
+
+    auto len = n_voca*WordBlock::dim;
     using val_t = WordBlock::val_t;
-    std::vector<val_t> word_vectors(n);
+    std::vector<val_t> word_vectors(len);
     auto tmp1 = wvecs.serialize();
     auto tmp2 = cvecs.serialize();
-    for(decltype(n)i=0; i!=n; ++i) word_vectors[i]=0.5*(tmp1[i]+tmp2[i]);
+    for(decltype(len)i=0; i!=len; ++i) word_vectors[i]=0.5*(tmp1[i]+tmp2[i]);
     auto h5store=util::io::h5replace("nyt_vecs.h5");
     util::PersistentVector<val_t,val_t> w2v{"words.vecs", std::move(word_vectors)};
     w2v.write(h5store);
