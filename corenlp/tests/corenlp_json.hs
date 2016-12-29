@@ -370,7 +370,7 @@ parse_double ds = map read (lines ds)
 parse_int :: String -> [Int]
 parse_int ds = map read (lines ds)
 
-all_wuids = map (\x -> WUID x) [0..]
+all_wuids = map WUID [0..]
 loadWordUIDs wuidstr = M.fromList $ zip (map T.pack $ lines wuidstr) all_wuids
 
 instance Functor DepTree where
@@ -387,10 +387,28 @@ nodeDepWord :: Maybe Dep -> Maybe Text
 nodeDepWord Nothing = Nothing
 nodeDepWord (Just (Dep x)) = Just x
 
+-- newtype Dep = Dep { unDep :: Text }
+-- unDep (Dep x ) = x
+
+-- unDep :: Dep -> Text
+-- nodeDepWord :: (Functor f) => f Dep -> f Text
+-- nodeDepWord = fmap unDep 
+
 composeMap a2b b2c a = let f Nothing  = Nothing
                            f (Just b) = M.lookup b b2c
                        in f (M.lookup a a2b)
+{-
+M.Map k v
+M.Map v w
+a :: k
+a2b :: k -> Maybe v
+b2c :: v  Maybe w
+(>>=) ::m a -> (a -> m b) -> m b
+(return a >>= a2b) >>= b2c 
+-}
+
 -- Show??
+-- f = composeMap map1 map2
 
 maybeFun f Nothing = Nothing
 maybeFun f (Just x) = (f x)
@@ -536,7 +554,7 @@ word2wuid = loadWordUIDs wuidstr
 wuid2score = M.fromList $ zip all_wuids wimps
 word2score = composeMap  word2wuid wuid2score
 
-fmap (\x -> (x, maybeFun word2score $ nodeDepWord $ M.lookup (toDep x) dep2word)) dep_tree
+scored_tree = fmap (\x -> (x, maybeFun word2score $ nodeDepWord $ M.lookup (toDep x) dep2word)) dep_tree
 
 --Try another method
 node = (GovPos 10)
