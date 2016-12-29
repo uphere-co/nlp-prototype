@@ -15,6 +15,7 @@ struct UnigramDist {
 
     float_t get_prob(VocaIndex idx) const;
     std::vector<std::pair<VocaIndex,float_t>> get_neg_sample_dist(float_t pow) const;
+    size_t size() const {return weights.size();}
 
     std::vector<std::pair<VocaIndex,float_t>> weights;
 };

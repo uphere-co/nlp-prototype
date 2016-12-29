@@ -52,7 +52,7 @@ void check_word_uid(int argc, char** argv){
 //    }
 }
 void iter_sentences(int argc, char** argv){
-    assert(argc>1);
+    //assert(argc>1);
     //auto config = util::load_json(argv[1]);
 
     auto file = util::io::h5read("nyt_texts.h5");
@@ -138,17 +138,50 @@ std::vector<typename T::result_type> random_vector_serial(size_t len, T dist){
     return vec;
 }
 void training(int argc, char** argv){
+    //assert(argc>1);
+    //auto config = util::load_json(argv[1]);
+    util::Timer timer;
+
+    IndexedTexts texts{util::io::h5read("nyt_texts.h5"), "nyt"};
+
+    word2vec::UnigramDist unigram{util::io::h5read("nyt_words.h5")};
+    word2vec::SubSampler subsampler{0.001, unigram};
+    util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
+
+    //Setup word vector blocks
     using WordBlock = wordrep::WordBlock_base<double,100>;
     std::uniform_real_distribution<WordBlock::val_t> dist{-0.05,0.05};
-    util::Timer timer;
-    auto n_voca = 100000;
-    auto vec_init = random_vector(WordBlock::dim*n_voca,dist);
-    timer.here_then_reset("Created random vector.");
-    {
-        auto vec_init = random_vector_serial(WordBlock::dim * n_voca, dist);
-        timer.here_then_reset("Created random vector using a single thread version.");
+    auto n_voca = unigram.size();
+    auto vecs = random_vector(WordBlock::dim*n_voca,dist);
+
+    auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
+    while(auto maybe_chunk = iter.next()){
+        auto chunk = maybe_chunk.value();
+
+        std::vector<VocaIndex> subsampled;
+        subsampled.reserve(chunk.second-chunk.first);
+        for(auto i=chunk.first; i!=chunk.second; ++i){
+            if(auto idx = texts.word(i); subsampler(idx)) subsampled.push_back(idx);
+        }
+
+        auto len=util::singed_size(subsampled);
+        for(std::ptrdiff_t i=0; i<len; ++i){
+            word2vec::WordContext context{i, subsampled, 5, 5};
+            for(auto cword : context.contexts) cword;
+            for(int j=0; j!=5; ++j) neg_sampler.sample();
+        }
     }
-    fmt::printf("{}\n", util::math::sum(vec_init));
+}
+
+void test_random_vector_gen(){
+    std::uniform_real_distribution<double> dist{-0.05,0.05};
+    auto len = 1000000;
+    util::Timer timer;
+    auto vec_init = random_vector(len,dist);
+    timer.here_then_reset(fmt::format("Created random vectors of {} words.", len));
+    auto vec_init_serial = random_vector_serial(len,dist);
+    timer.here_then_reset("Created random vector using a single thread version.");
+    fmt::printf("{} vs {}\n", util::math::sum(vec_init), util::math::sum(vec_init_serial));
     timer.here_then_reset("Check summation.");
 }
 
