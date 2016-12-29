@@ -34,7 +34,7 @@ constexpr size_t xxh64_seed = 113377;
 
 template<typename T>
 auto hash(T* ptr, size_t len){
-    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, xxh64_seeed);
+    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, xxh64_seed);
 }
 
 template<>
