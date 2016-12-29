@@ -14,7 +14,7 @@ struct UnigramDist {
 
     float_t get_prob(wordrep::VocaIndex idx) const;
 
-    util::PersistentVector<WordUID,WordUID::val_t>   uid;
+    util::PersistentVector<WordUID,WordUID::val_t> uid;
     util::PersistentVector<size_t,size_t> count;
     wordrep::VocaIndexMap voca;
     std::vector<float_t> prob;

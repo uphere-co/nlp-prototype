@@ -9,6 +9,7 @@
 
 #include "utils/string.h"
 #include "utils/persistent_vector.h"
+#include "utils/math.h"
 
 using util::PersistentVector;
 using token_t = wordrep::WordUID;
@@ -39,6 +40,7 @@ int main(int /*argc*/, char** argv) {
         count.push_back(x.second);
     }
     util::io::H5file file{util::io::H5name{dumpfile}, util::io::hdf5::FileMode::replace};
+    fmt::print("Total {} words after filtering.\n", util::math::sum(count.get()));
     uid.write(file,   prefix);
     count.write(file, prefix);
     return 0;

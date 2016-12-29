@@ -12,6 +12,7 @@
 #include "wordrep/word_uid.h"
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
+#include "wordrep/voca.h"
 #include "wordrep/indexes.h"
 
 #include "utils/math.h"
@@ -29,6 +30,7 @@
 using wordrep::ChunkIndex;
 using wordrep::SentUID;
 using wordrep::WordUID;
+using wordrep::VocaIndex;
 using wordrep::WordUIDindex;
 using wordrep::WordCounter;
 
@@ -311,48 +313,62 @@ auto serial_word_count(std::istream&& is){
 
 
 void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
-
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
     using util::io::h5read;
     auto oldfile = h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
     auto prefix=util::get_str(config,"dep_parsed_prefix");
-
     util::TypedPersistentVector<ChunkIndex> chunks_idx{oldfile,prefix+".chunk_idx"};
     util::TypedPersistentVector<SentUID> sents_uid {oldfile,prefix+".sent_uid"};
     util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
+    util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
+    WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
+    wordrep::VocaIndexMap old_voca{word_uids};
 
-    auto countfile = h5read("words.h5");
-    std::string count_prefix = "unigram.";
-    util::PersistentVector<WordUID,WordUID::val_t>   uid{countfile,count_prefix+"uid"};
-    util::PersistentVector<size_t,size_t> count{countfile,count_prefix+"count"};
+    wordrep::TokenHash<wordrep::WordUID> hasher{};
 
-    wordrep::TokenHash<wordrep::WordUID> hasher;
+    for(int i=0; i<1000; ++i){
+        auto word = words_idx[i];
+        fmt::print("{} ",old_wordUIDs[old_voca[word]]);
+    }
+    fmt::print("\n");
 
     auto n  = words_uid.size();
     tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
         for(auto i=r.begin(); i!=r.end(); ++i){
             auto& x = words_uid[i];
-            auto hash = hasher(wordUIDs[x]);
-//        auto it = util::binary_find(uid.get(), hash);
-//        if (!it) fmt::print("{} {}\n", hash, wordUIDs[x]);
-            x= hash;
+            x= hasher(old_wordUIDs[x]);
         }
     });
 
-    auto newfile = util::io::h5replace("texts.h5");
-    chunks_idx.get().resize(100000);
-    sents_uid.get().resize(100000);
-    words_uid.get().resize(100000);
+    //update wordUID, too.
+    for(auto& x: word_uids)  x = hasher(old_wordUIDs[x]);
+
+    wordrep::VocaIndexMap voca{word_uids};
+
+    fmt::print("-------------------------------------------------\n");
+    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
+    words.push_back("-UNKNOWN-");
+    std::map<WordUID,std::string> wuid2str;
+    wuid2str[-1]="-UNKNOWN-";
+    for(auto word : words) wuid2str[hasher(word)]=word;
+    for(int i=0; i<1000; ++i){
+        auto word = words_idx[i];
+        fmt::print("{} ", wuid2str[voca[word]]);
+    }
+    fmt::print("\n");
+
+    auto newfile = util::io::h5replace("nyt_texts.h5");
     chunks_idx.write(newfile);
     sents_uid.write(newfile);
     words_uid.write(newfile);
+    words_idx.write(newfile);
 }
 
 int main(int argc, char** argv){
     test_all();
-    //translate_ordered_worduid_to_hashed_worduid(argc,argv);
+    translate_ordered_worduid_to_hashed_worduid(argc,argv);
     return 0;
 
 

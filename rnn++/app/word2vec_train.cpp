@@ -17,26 +17,47 @@
 using wordrep::ChunkIndex;
 using wordrep::SentUID;
 using wordrep::WordUID;
+using word2vec::UnigramDist;
 
 struct IndexedTexts{
     IndexedTexts(util::io::H5file const &file, std::string prefix)
             : chunks_idx{file,prefix+".chunk_idx"},
               sents_uid {file,prefix+".sent_uid"},
-              words_uid {file,prefix+".word_uid"}
+              words_uid {file,prefix+".word_uid"},
+              words {file,prefix+".word"}
     {}
-    wordrep::WordUID word(size_t n) const {return words_uid[n];}
+    wordrep::WordUID   word_uid(size_t n) const {return words_uid[n];}
+    wordrep::VocaIndex word(size_t n) const {return words[n];}
 
     util::TypedPersistentVector<wordrep::ChunkIndex> chunks_idx;
     util::TypedPersistentVector<wordrep::SentUID> sents_uid;
     util::TypedPersistentVector<wordrep::WordUID> words_uid;
+    util::TypedPersistentVector<wordrep::VocaIndex> words;
 };
 
+void check_word_uid(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+
+    UnigramDist unigram{util::io::h5read("nyt_words.h5")};
+    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
+
+    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
+//    for(auto word : words){
+//        fmt::print("{} {}\n", word, unigram.count)
+//    }
+}
 void iter_sentences(int argc, char** argv){
-    auto file = util::io::h5read("texts.h5");
-    IndexedTexts texts{file, "ygp"};
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+
+    auto file = util::io::h5read("nyt_texts.h5");
+    std::string prefix = "nyt";
+    IndexedTexts texts{file, prefix};
 
     util::Timer timer;
-    auto config = util::load_json(argv[1]);
+    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
     auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
     timer.here_then_reset("Load wordUIDs");
     wordrep::TokenHash<wordrep::WordUID> hasher;
@@ -45,34 +66,34 @@ void iter_sentences(int argc, char** argv){
     timer.here_then_reset("Build table.");
 
     using namespace word2vec;
-    UnigramDist unigram{util::io::h5read("words.h5")};
-    SubSampler subsampler{0.001, unigram};
+//    UnigramDist unigram{util::io::h5read("words.h5")};
+//    SubSampler subsampler{0.001, unigram};
 
     auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     while(auto maybe_chunk = iter.next()){
         auto chunk = maybe_chunk.value();
         fmt::print("{} {}\n", chunk.first, chunk.second);
         for(auto i=chunk.first; i!=chunk.second; ++i){
-            fmt::print("{} ", wuid2str[texts.word(i)]);
+            fmt::print("{} ", wuid2str[voca[texts.word(i)]]);
         }
         fmt::print("\n");
 
-        for(auto i=chunk.first; i!=chunk.second; ++i){
-            auto uid = texts.word(i);
-            if(!subsampler(unigram.voca[uid])) continue;
-            fmt::print("{} ", wuid2str[uid]);
-        }
-        fmt::print("\n");
-
-        for(auto i=chunk.first; i!=chunk.second; ++i){
-            assert(i>=0);
-            WordContext context{i, chunk.first, chunk.second, 5, 5};
-            fmt::print("{} : ", wuid2str[texts.word(context.self)]);
-            for(auto cword : context.contexts)
-                fmt::print("{} ", wuid2str[texts.word(cword)]);
-            fmt::print("\n");
-        }
-        fmt::print("\n");
+//        for(auto i=chunk.first; i!=chunk.second; ++i){
+//            auto uid = texts.word(i);
+//            if(!subsampler(unigram.voca[uid])) continue;
+//            fmt::print("{} ", wuid2str[uid]);
+//        }
+//        fmt::print("\n");
+//
+//        for(auto i=chunk.first; i!=chunk.second; ++i){
+//            assert(i>=0);
+//            WordContext context{i, chunk.first, chunk.second, 5, 5};
+//            fmt::print("{} : ", wuid2str[texts.word(context.self)]);
+//            for(auto cword : context.contexts)
+//                fmt::print("{} ", wuid2str[texts.word(cword)]);
+//            fmt::print("\n");
+//        }
+//        fmt::print("\n");
     }
 }
 
