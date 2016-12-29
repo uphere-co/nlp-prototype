@@ -14,7 +14,8 @@ struct Sampler{
             : cdf{counts} { init(); }
     Sampler(std::vector<std::pair<KEY,WEIGHT>> &&counts)
             : cdf{std::move(counts)} { init(); }
-    KEY sample() {
+    template<typename RNG>
+    KEY sample(RNG& gen) {
         auto ran = u(gen);
         //10~20 % speed up. Check if no bias.
 //        if(ran<n_low) return binary_find_cell(beg,it_low, [ran](auto x){return ran<x.second;}).value()->first;
@@ -35,8 +36,6 @@ private:
 //        }
         u = std::uniform_int_distribution<size_t>{0, n_total-1};
     }
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
     std::vector<std::pair<KEY,WEIGHT>> cdf;
     std::uniform_int_distribution<size_t> u;
 //    decltype(cdf.cbegin()) beg;
@@ -52,7 +51,8 @@ struct Sampler<KEY,double>{
             : cdf{std::move(counts)} { init(); }
     Sampler(std::vector<std::pair<KEY,WEIGHT>> const &counts)
             : cdf{counts} { init(); }
-    KEY sample() {
+    template<typename RNG>
+    KEY sample(RNG& gen) {
         auto ran = u(gen);
         return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
     }
@@ -65,8 +65,6 @@ private:
         auto n_total = cdf.back().second;
         u = std::uniform_real_distribution<double>{0, n_total};
     }
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
     std::vector<std::pair<KEY,WEIGHT>> cdf;
     std::uniform_real_distribution<double> u;
 };

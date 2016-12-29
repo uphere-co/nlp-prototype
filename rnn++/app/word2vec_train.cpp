@@ -72,6 +72,8 @@ void iter_sentences(int argc, char** argv){
     timer.here_then_reset("Build table.");
 
     using namespace word2vec;
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
     UnigramDist unigram{util::io::h5read("nyt_words.h5")};
     SubSampler subsampler{0.001, unigram};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
@@ -92,7 +94,7 @@ void iter_sentences(int argc, char** argv){
             auto uid = texts.word_uid(i);
             //TODO: move this to unittest
             assert(voca[idx]==WordUID{-1}||voca[idx]==WordUID{hasher("-UNKNOWN-")}||voca[idx]==uid);
-            if(!subsampler(idx)) continue;
+            if(!subsampler(idx,gen)) continue;
             subsampled.push_back(idx);
             fmt::print("{}({}) ", wuid2str[voca[idx]],unigram.get_prob(idx));
         }
@@ -105,7 +107,7 @@ void iter_sentences(int argc, char** argv){
             for(auto cword : context.contexts)
                 fmt::print("{} ", wuid2str[voca[subsampled[cword]]]);
             fmt::print(" | ");
-            for(int j=0; j!=5; ++j) fmt::print("{} ", wuid2str[voca[neg_sampler.sample()]]);
+            for(int j=0; j!=5; ++j) fmt::print("{} ", wuid2str[voca[neg_sampler.sample(gen)]]);
             fmt::print("\n");
         }
         fmt::print("\n");
@@ -177,11 +179,12 @@ void training(int argc, char** argv){
     auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     while(auto maybe_chunk = iter.next()){
         auto chunk = maybe_chunk.value();
-
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
         std::vector<VocaIndex> subsampled;
         subsampled.reserve(chunk.second-chunk.first);
         for(auto i=chunk.first; i!=chunk.second; ++i){
-            if(auto idx = texts.word(i); subsampler(idx))
+            if(auto idx = texts.word(i); subsampler(idx,gen))
                 subsampled.push_back(idx);
         }
 
@@ -197,7 +200,7 @@ void training(int argc, char** argv){
                 vecloop_void(symm_fma_vec, alpha * x_wc, w, c);
                 for (int j = 0; j != 5; ++j) {
                     //TODO: fix thread safety
-                    auto cn = cvecs[neg_sampler.sample()];
+                    auto cn = cvecs[neg_sampler.sample(gen)];
                     //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
                     //grad_c : (1-sigmoid(w,c)) * w
                     //grad_cn : (sigmoid_plus(w,c)-1) *w
