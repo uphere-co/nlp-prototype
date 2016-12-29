@@ -222,8 +222,6 @@ auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
     auto tmp = vec2[i];
     vec2[i] += x*vec1[i];
     vec1[i] += x*tmp;
-    // vec2[i] += x*vec1[i];
-    // vec1[i] += x*vec2[i];
 };
 
 auto accum_adagrad_factor = [](int64_t i, auto &out, auto x, auto const &vec){

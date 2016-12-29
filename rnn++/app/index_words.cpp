@@ -157,7 +157,8 @@ void binary_find_benchmark(){
     std::vector<WordUID> keys = get_keys(count);
     Timer timer{};
 
-    auto count_pairs = to_pairs(count);
+    auto count_pairs = to_sorted_pairs(count);
+    assert(count_pairs.front().first<count_pairs.back().first);
     for(auto key : keys){
         assert(count[key] == get_val(count_pairs, key));
     }
@@ -345,8 +346,13 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     //update wordUID, too.
     auto count_file = util::io::h5rw_exist("nyt_words.h5");
     auto words = util::string::readlines("/home/jihuni/word2vec/news/nyt.model.words");
-    words.push_back("-UNKNOWN-");
-    auto word_uids = util::map(words, [&hasher](auto x){return hasher(x);});
+    auto known_word_uids = util::map(words, [&hasher](auto x){return hasher(x);});
+    util::TypedPersistentVector<WordUID> counted_uids{count_file,"unigram.uid"};
+    auto is_counted=[&counted_uids](auto uid)->bool{
+        if(util::binary_find(counted_uids.get(),uid)) return true;
+        return false;
+    };
+    auto word_uids = util::filter(known_word_uids, is_counted);
     //auto word_uids  = util::TypedPersistentVector<WordUID>(count_file, "unigram.count");
     wordrep::VocaIndexMap voca{word_uids};
     util::TypedPersistentVector<WordUID> widx2wuid {"widx2wuid", std::move(word_uids)};
@@ -354,20 +360,18 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     fmt::print("-------------------------------------------------\n");
 
     std::map<WordUID,std::string> wuid2str;
-    wuid2str[-1]="-UNKNOWN-";
     for(auto word : words) wuid2str[hasher(word)]=word;
-    for(int i=0; i<1000; ++i){
-        auto word = words_idx[i];
-        fmt::print("{} ", wuid2str[voca[word]]);
-    }
-    fmt::print("\n");
-
     tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
         for(auto i=r.begin(); i!=r.end(); ++i){
             auto& x = words_idx[i];
             x= voca[hasher(old_wordUIDs[old_voca[x]])];
         }
     });
+    for(int i=0; i<1000; ++i){
+        auto word = words_idx[i];
+        fmt::print("{} ", wuid2str[voca[word]]);
+    }
+    fmt::print("\n");
 
 
     widx2wuid.write(count_file);

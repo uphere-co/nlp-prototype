@@ -94,7 +94,7 @@ void iter_sentences(int argc, char** argv){
             assert(voca[idx]==WordUID{-1}||voca[idx]==WordUID{hasher("-UNKNOWN-")}||voca[idx]==uid);
             if(!subsampler(idx)) continue;
             subsampled.push_back(idx);
-            fmt::print("{}({}) ", wuid2str[voca[idx]], unigram.get_prob(idx));
+            fmt::print("{}({}) ", wuid2str[voca[idx]],unigram.get_prob(idx));
         }
         fmt::print("\n");
 
@@ -137,6 +137,24 @@ std::vector<typename T::result_type> random_vector_serial(size_t len, T dist){
     for(auto& x : vec) x = dist(gen);
     return vec;
 }
+
+auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
+    auto tmp = vec2[i];
+    vec2[i] += x*vec1[i];
+    vec1[i] += x*tmp;
+};
+auto sigmoid=[](auto const &x, auto const &y){
+    using util::math::dot;
+    auto xy = dot(x,y);
+    return  1/(1+std::exp(-xy));
+};
+auto sigmoid_plus=[](auto const &x, auto const &y){
+    using util::math::dot;
+    auto xy = dot(x,y);
+    return  1/(1+std::exp(xy));
+};
+
+
 void training(int argc, char** argv){
     //assert(argc>1);
     //auto config = util::load_json(argv[1]);
@@ -149,10 +167,12 @@ void training(int argc, char** argv){
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
 
     //Setup word vector blocks
-    using WordBlock = wordrep::WordBlock_base<double,100>;
+    using WordBlock = wordrep::WordBlock_base<UnigramDist::float_t,100>;
+    WordBlock::val_t alpha=0.025;
     std::uniform_real_distribution<WordBlock::val_t> dist{-0.05,0.05};
     auto n_voca = unigram.size();
-    auto vecs = random_vector(WordBlock::dim*n_voca,dist);
+    WordBlock wvecs{random_vector(WordBlock::dim*n_voca,dist)};
+    WordBlock cvecs{random_vector(WordBlock::dim*n_voca,dist)};
 
     auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     while(auto maybe_chunk = iter.next()){
@@ -161,16 +181,41 @@ void training(int argc, char** argv){
         std::vector<VocaIndex> subsampled;
         subsampled.reserve(chunk.second-chunk.first);
         for(auto i=chunk.first; i!=chunk.second; ++i){
-            if(auto idx = texts.word(i); subsampler(idx)) subsampled.push_back(idx);
+            if(auto idx = texts.word(i); subsampler(idx))
+                subsampled.push_back(idx);
         }
 
+        util::math::VecLoop_void<WordBlock::val_t,WordBlock::dim> vecloop_void{};
         auto len=util::singed_size(subsampled);
         for(std::ptrdiff_t i=0; i<len; ++i){
             word2vec::WordContext context{i, subsampled, 5, 5};
-            for(auto cword : context.contexts) cword;
-            for(int j=0; j!=5; ++j) neg_sampler.sample();
+            auto w=wvecs[subsampled[context.self]];
+            for(auto cword : context.contexts) {
+                auto c = cvecs[subsampled[cword]];
+                auto x_wc = 1 - sigmoid(w, c);
+                //plain gradient descent:
+                vecloop_void(symm_fma_vec, alpha * x_wc, w, c);
+                for (int j = 0; j != 5; ++j) {
+                    //TODO: fix thread safety
+                    auto cn = cvecs[neg_sampler.sample()];
+                    //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+                    //grad_c : (1-sigmoid(w,c)) * w
+                    //grad_cn : (sigmoid_plus(w,c)-1) *w
+                    auto x_wcn = sigmoid_plus(w, cn) - 1;
+                    vecloop_void(symm_fma_vec, alpha * x_wcn, w, cn);
+                }
+            }
         }
     }
+    auto n = wvecs.size();
+    using val_t = WordBlock::val_t;
+    std::vector<val_t> word_vectors(n);
+    auto tmp1 = wvecs.serialize();
+    auto tmp2 = cvecs.serialize();
+    for(decltype(n)i=0; i!=n; ++i) word_vectors[i]=0.5*(tmp1[i]+tmp2[i]);
+    auto h5store=util::io::h5replace("nyt_vecs.h5");
+    util::PersistentVector<val_t,val_t> w2v{"words.vecs", std::move(word_vectors)};
+    w2v.write(h5store);
 }
 
 void test_random_vector_gen(){
@@ -186,7 +231,7 @@ void test_random_vector_gen(){
 }
 
 int main(int argc, char** argv){
-    iter_sentences(argc,argv);
-//    training(argc,argv);
+//    iter_sentences(argc,argv);
+    training(argc,argv);
     return 0;
 }

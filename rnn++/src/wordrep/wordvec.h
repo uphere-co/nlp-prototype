@@ -48,6 +48,7 @@ public:
         return WordBlock_base{new_block};
     }
     auto size() const {return _val.size()/word_dim;};
+    data_t serialize() const { return _val;}
 
 private:
     data_t _val;

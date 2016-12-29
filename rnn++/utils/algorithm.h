@@ -136,7 +136,9 @@ auto to_pairs(std::map<TK,TV> const& src){
 }
 template<typename TK, typename TV>
 auto to_sorted_pairs(std::map<TK,TV> const& src){
-    return to_pairs(src);
+    auto pairs = to_pairs(src);
+    std::sort(pairs.begin(),pairs.end(), [](auto x, auto y){return x.first<y.first;});
+    return pairs;
 }
 
 
@@ -189,8 +191,8 @@ std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
     auto it = beg + (end-beg)/2;
     if(eq(*it)) return it;
     else if(end-beg==1) return {};
-    else if(less(*it)) return binary_find(it, end, eq, less);
-    return binary_find(beg, it, eq, less);
+    else if(less(*it)) return binary_find(beg, it, eq, less);
+    return binary_find(it, end, eq, less);
 }
 
 template<typename T>
@@ -211,7 +213,7 @@ template<typename TK, typename TV>
 auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
     return binary_find(pairs,
                        [key](auto elm){return elm.first==key;},
-                       [key](auto elm){return elm.first<key;});
+                       [key](auto elm){return elm.first>key;});
 }
 template<typename TK, typename TV>
 TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){

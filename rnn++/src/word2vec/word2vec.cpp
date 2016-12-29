@@ -18,13 +18,14 @@ UnigramDist::UnigramDist(util::io::H5file const &h5store) {
     for(size_t i=0; i!=n; ++i){
         weights.push_back({voca[uid[i]], count[i]*norm});
     }
+    std::sort(weights.begin(),weights.end(), [](auto x, auto y){return x.first<y.first;});
 }
 
 UnigramDist::float_t UnigramDist::get_prob(VocaIndex idx) const{
     auto it = util::binary_find(weights,
                                 [idx](auto x){return idx==x.first;},
                                 [idx](auto x){return idx< x.first;});
-    if(!it) return 0.0;
+    if(!it) return 1.0;
     return it.value()->second;
 }
 std::vector<std::pair<UnigramDist::VocaIndex,UnigramDist::float_t>>
