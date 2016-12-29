@@ -21,6 +21,8 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      http-client http-client-tls
 	      hdf5 query-common
 	      network-simple
+	      fficxx-runtime
+	      fficxx
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
@@ -30,6 +32,7 @@ in stdenv.mkDerivation {
                   toolz_cpp.msgsl
 		  toolz_cpp.json
                   toolz_cpp.spdlog
+		  toolz_cpp.xxhashct
                   toolz_cpp.backwardcpp
                 ];
   shellHook = ''

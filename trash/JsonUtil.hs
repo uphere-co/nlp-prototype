@@ -26,5 +26,3 @@ json_serialize p = withForeignPtr p c_json_serialize
 json_create :: CString -> IO Json
 json_create cstr = c_json_create cstr >>= newForeignPtr c_json_finalize
 
-failed :: BL.ByteString
-failed = encode Null
