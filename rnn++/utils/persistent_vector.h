@@ -21,6 +21,9 @@ struct PersistentVector{
     PersistentVector()
             : name{}, vals{}
     {}
+    PersistentVector(std::string name, std::vector<T> &&vec)
+            : name{name}, vals{std::move(vec)}
+    {}
     PersistentVector(std::string name)
             : name{name}, vals{}
     {}

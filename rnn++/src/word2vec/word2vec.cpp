@@ -1,26 +1,28 @@
+#include <fmt/printf.h>
+
 #include "word2vec/word2vec.h"
 
 #include "utils/math.h"
 #include "utils/optional.h"
+#include "utils/algorithm.h"
 
 namespace word2vec {
 
 UnigramDist::UnigramDist(util::io::H5file const &h5store)
         :   uid{h5store,"unigram.uid"},
             count{h5store,"unigram.count"},
-            voca{uid.get()},
+            voca{util::TypedPersistentVector<WordUID>{h5store,"widx2wuid"}.get()},
             prob(count.size()) {
     auto norm = 1.0 / util::math::sum(count.get());
-//    util::map(count, [])
-    for(size_t i=0; i<count.size(); ++i) {
-        prob[i]=count[i]*norm;
-    }
+    for(size_t i=0; i<count.size(); ++i) prob[i]=count[i]*norm;
 }
 
-UnigramDist::float_t UnigramDist::get_prob(wordrep::VocaIndex idx) const {
-    auto i=idx.val;
-    if(i<0 || i >= util::to_type<int64_t>(prob.size())) return -1.0;
-    return prob[idx.val];
+UnigramDist::float_t UnigramDist::get_prob(wordrep::WordUID idx) const{
+    auto it = util::binary_find(uid.get(), idx);
+    if(!it) return 0.0;
+    //TODO: figure out why .get() is necessary??
+    auto i = it.value()-uid.get().cbegin();
+    return prob[i];
 }
 
 SubSampler::SubSampler(float_t rate, UnigramDist const &unigram)

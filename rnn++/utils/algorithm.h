@@ -12,6 +12,11 @@
 namespace util {
 
 template<typename T>
+auto singed_size(T const& vs){
+    return vs.cend()-vs.cbegin();
+}
+
+template<typename T>
 void append(std::vector<T> &orig, std::vector<T> const &elms) {
     std::copy(elms.cbegin(), elms.cend(), std::back_inserter(orig));
 }

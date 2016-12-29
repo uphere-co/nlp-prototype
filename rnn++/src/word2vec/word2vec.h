@@ -12,11 +12,14 @@ struct UnigramDist {
     using float_t = double;
     UnigramDist(util::io::H5file const &h5store);
 
-    float_t get_prob(wordrep::VocaIndex idx) const;
+    float_t get_prob(wordrep::VocaIndex idx) const{
+        return get_prob(voca[idx]);
+    };
+    float_t get_prob(wordrep::WordUID idx) const;
 
-    util::PersistentVector<WordUID,WordUID::val_t> uid;
-    util::PersistentVector<size_t,size_t> count;
-    wordrep::VocaIndexMap voca;
+    const util::PersistentVector<WordUID,WordUID::val_t> uid;
+    const util::PersistentVector<size_t,size_t> count;
+    const wordrep::VocaIndexMap voca;
     std::vector<float_t> prob;
 };
 
@@ -40,9 +43,11 @@ private:
 struct WordContext{
     using idx_t = std::ptrdiff_t;
     using VocaIndex = wordrep::VocaIndex;
-    WordContext(idx_t self, idx_t beg, idx_t end,
-                int left, int right)
+    WordContext(idx_t self, std::vector<VocaIndex> const& words,
+                idx_t left, idx_t right)
     : self{self} {
+        idx_t beg = 0;
+        idx_t end = words.end()-words.begin();
         auto left_beg = self-left<beg? beg : self-left;
         auto right_end= self+1+right>end? end : self+1+right;
         for(auto i=left_beg; i!=self; ++i) contexts.push_back(i);

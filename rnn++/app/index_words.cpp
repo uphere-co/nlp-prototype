@@ -323,8 +323,8 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
     util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
     WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
-    auto word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
-    wordrep::VocaIndexMap old_voca{word_uids};
+    auto old_word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
+    wordrep::VocaIndexMap old_voca{old_word_uids};
 
     wordrep::TokenHash<wordrep::WordUID> hasher{};
 
@@ -343,13 +343,16 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     });
 
     //update wordUID, too.
-    for(auto& x: word_uids)  x = hasher(old_wordUIDs[x]);
-
+    auto count_file = util::io::h5rw_exist("nyt_words.h5");
+    auto words = util::string::readlines("/home/jihuni/word2vec/news/nyt.model.words");
+    words.push_back("-UNKNOWN-");
+    auto word_uids = util::map(words, [&hasher](auto x){return hasher(x);});
+    //auto word_uids  = util::TypedPersistentVector<WordUID>(count_file, "unigram.count");
     wordrep::VocaIndexMap voca{word_uids};
+    util::TypedPersistentVector<WordUID> widx2wuid {"widx2wuid", std::move(word_uids)};
 
     fmt::print("-------------------------------------------------\n");
-    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
-    words.push_back("-UNKNOWN-");
+
     std::map<WordUID,std::string> wuid2str;
     wuid2str[-1]="-UNKNOWN-";
     for(auto word : words) wuid2str[hasher(word)]=word;
@@ -359,6 +362,15 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     }
     fmt::print("\n");
 
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
+        for(auto i=r.begin(); i!=r.end(); ++i){
+            auto& x = words_idx[i];
+            x= voca[hasher(old_wordUIDs[old_voca[x]])];
+        }
+    });
+
+
+    widx2wuid.write(count_file);
     auto newfile = util::io::h5replace("nyt_texts.h5");
     chunks_idx.write(newfile);
     sents_uid.write(newfile);
