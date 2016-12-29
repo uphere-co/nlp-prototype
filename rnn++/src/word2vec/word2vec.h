@@ -14,7 +14,7 @@ struct UnigramDist {
     UnigramDist(util::io::H5file const &h5store);
 
     float_t get_prob(VocaIndex idx) const;
-    std::vector<std::pair<VocaIndex,float_t>> get_negsample_dist(float_t pow) const;
+    std::vector<std::pair<VocaIndex,float_t>> get_neg_sample_dist(float_t pow) const;
 
     std::vector<std::pair<VocaIndex,float_t>> weights;
 };

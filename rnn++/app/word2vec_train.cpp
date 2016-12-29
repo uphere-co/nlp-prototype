@@ -1,4 +1,5 @@
 #include <fmt/printf.h>
+#include <utils/random.h>
 
 #include "word2vec/word2vec.h"
 
@@ -73,6 +74,7 @@ void iter_sentences(int argc, char** argv){
     using namespace word2vec;
     UnigramDist unigram{util::io::h5read("nyt_words.h5")};
     SubSampler subsampler{0.001, unigram};
+    util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
 
     auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     while(auto maybe_chunk = iter.next()){
@@ -103,7 +105,7 @@ void iter_sentences(int argc, char** argv){
             for(auto cword : context.contexts)
                 fmt::print("{} ", wuid2str[voca[subsampled[cword]]]);
             fmt::print(" | ");
-            //for(int j=0; j!=5; ++j) fmt::print("{} ", wuid2str[voca[subsampled[cword]]]);
+            for(int j=0; j!=5; ++j) fmt::print("{} ", wuid2str[voca[neg_sampler.sample()]]);
             fmt::print("\n");
         }
         fmt::print("\n");

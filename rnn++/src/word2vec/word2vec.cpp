@@ -28,7 +28,7 @@ UnigramDist::float_t UnigramDist::get_prob(VocaIndex idx) const{
     return it.value()->second;
 }
 std::vector<std::pair<UnigramDist::VocaIndex,UnigramDist::float_t>>
-UnigramDist::get_negsample_dist(float_t pow) const {
+UnigramDist::get_neg_sample_dist(float_t pow) const {
     return util::map(weights, [pow](auto x){return std::make_pair(x.first, std::pow(x.second, pow));});
 }
 
