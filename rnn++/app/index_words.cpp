@@ -7,10 +7,11 @@
 #include <iterator>
 #include <random>
 
-#include <xxhashct/xxh64.hpp>
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/word_iter.h"
+#include "wordrep/word_count.h"
 
 #include "utils/math.h"
 #include "utils/string.h"
@@ -22,6 +23,8 @@
 
 using wordrep::WordUID;
 using wordrep::WordUIDindex;
+using wordrep::WordCounter;
+
 using util::Timer;
 
 using util::binary_find_cell;
@@ -35,133 +38,14 @@ using util::filter;
 using util::filter_inplace;
 using util::string::strip;
 
-template<typename T>
-auto hash(T* ptr, size_t len){
-    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, 113377);
-}
-
-template<typename KEY>
-struct TokenHash{
-    template<typename T>
-    KEY operator() (std::string const &text, T text_beg, T beg, T end) const;
-};
-template<>
-struct TokenHash<std::string>{
-    template<typename T>
-    std::string operator() (std::string const &text, T text_beg, T beg, T end) const {
-        return text.substr(beg-text_beg, end-beg);
-    }
-    std::string operator() (std::string const &word) const {
-        return word;
-    }
-};
-
-template<>
-struct TokenHash<wordrep::WordUID>{
-    using WordUID = wordrep::WordUID;
-    template<typename T>
-    WordUID  operator() (std::string const &text, T text_beg, T beg, T end) const {
-        return WordUID::from_unsigned(hash(text.data()+(beg-text_beg), end-beg));
-    }
-    WordUID  operator() (std::string const &word) const {
-        assert(word.size());
-        return WordUID::from_unsigned(hash(word.data(), std::distance(word.cbegin(),word.cend())));
-    }
-};
-
-template<typename KEY>
-struct WordIterBase{
-    using key_type    = KEY;
-    using hasher_type = TokenHash<KEY>;
-    WordIterBase(std::string text)
-            : text_strs{std::move(text)}
-    {}
-    template<typename OP>
-    void iter(OP const &op) const {
-        auto text_beg = std::cbegin(text_strs);
-        auto text_end = std::cend(text_strs);
-        auto beg = std::find_if_not(text_beg, text_end, [](auto x){return std::isspace(x);});
-        while(beg!=text_end){
-            auto end=std::find_if(beg, text_end, [](auto x){return std::isspace(x);});
-            auto word = get_hash(text_strs, text_beg, beg, end);
-            op(word);
-            if(end==text_end) break;
-            beg = std::find_if_not(end, text_end, [](auto x){return std::isspace(x);});
-        }
-    }
-
-    hasher_type get_hash{};
-    std::string text_strs;
-};
-
-using WordIter=WordIterBase<wordrep::WordUID>;
-//using WordIter=WordIterBase<std::string>;
-using count_t = std::map<WordIter::key_type, size_t>;
-
-template<typename T>
-std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
-    std::vector<char> buffer(n_buf);
-    is.read(buffer.data(), buffer.size());
-    if(!is.gcount()) return {};
-    if(is.gcount()==n_buf){
-        for(char c=is.get(); is&&c!='\n'; c=is.get())
-            buffer.push_back(c);
-    }
-    buffer.push_back('\0');
-    return buffer;
-}
 
 
-class WordCounter{
-public:
-    using count_type = count_t;
-    using key_type   = count_t::key_type;
-    using mapped_type = count_t::mapped_type;
-    using map_t = tbb::concurrent_hash_map<key_type,mapped_type,util::TBBHashCompare<key_type>>;
-    void count(std::string str){
-        WordIter text{std::move(str)};
-        count_type word_counts;
-        text.iter([&word_counts](auto& word) {++word_counts[word];});
-        for(auto const& elm : word_counts){
-            map_t::accessor a;
-            wcs.insert(a, elm.first);
-            a->second += elm.second;
-        }
-    }
-    std::map<key_type,mapped_type >
-    to_map() const { return ::to_map(wcs); };
-    //std::pair<std::vector<key_type>,std::vector<mapped_type>>
-    std::vector<std::pair<key_type,mapped_type>>
-    to_pairs() const { return ::to_sorted_pairs(wcs);};
-
-private:
-    map_t wcs;
-};
-
-
-template<typename T>
-auto word_count(T&& is){
-    WordCounter counter;
-    tbb::task_group g;
-    Timer timer;
-    while (auto buffer=read_chunk(is, 200000)) {
-        //auto ptr = std::make_unique<std::vector<char>>(buffer.value());
-        std::string str{buffer.value().data()};
-        g.run([&counter,str{std::move(str)}]() { //important to copy the str variable.
-            counter.count(str);
-        });
-    }
-    g.wait();
-    timer.here_then_reset("Word counting is finished.");
-    return counter.to_pairs();
-//    return counter.to_map();
-}
 
 
 namespace test{
 
 void string_iterator(){
-    WordIterBase<std::string> text{"11 22 33\t\t14 15\n16 17 18   119\t \n 11110\n"};
+    wordrep::WordIterBase<std::string> text{"11\r22\r\r\r33\t\t14 15\r\n16 17 18   119\t \n 11110\n"};
     std::vector<int64_t> xs{11,22,33,14,15,16,17,18,119,11110};
 
     std::vector<int64_t> tokens;
@@ -172,33 +56,37 @@ void string_iterator(){
 
 void benchmark(){
     util::Timer timer{};
-    auto lines = util::string::readlines("../rnn++/tests/data/sentence.2.corenlp");
-    timer.here_then_reset("Finish file readlines.");
+    auto filename = "../rnn++/tests/data/sentence.2.corenlp";
+//    auto filename = "news.2014.train";
 
-
-    count_t word_counts;
-    for(auto &line : lines){
-        WordIter text{line};
-        text.iter([&word_counts](auto& word){++word_counts[word];});
-    }
-    timer.here_then_reset("Finish word count / excluding file reading.");
-    auto word_counts2 = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::fstream{filename});
     timer.here_then_reset("Finish parallel word count / including file reading.");
 
-    typename WordIter::hasher_type hasher{};
-    count_t word_counts0;
+    auto lines = util::string::readlines(filename);
+    timer.here_then_reset("Finish file readlines.");
+    WordCounter::count_type word_counts_serial;
+    for(auto &line : lines){
+        WordCounter::WordIter text{line};
+        text.iter([&word_counts_serial](auto& word){++word_counts_serial[word];});
+    }
+    timer.here_then_reset("Finish word count / excluding file reading.");
+
+
+    typename WordCounter::WordIter::hasher_type hasher{};
+    WordCounter::count_type word_counts_simple;
     for(auto &line : lines){
         auto stripped_line = strip(line);
         assert(!stripped_line.empty());
         for(auto&& word : util::string::split(stripped_line, " ")){
-            ++word_counts0[hasher(word)];
+            ++word_counts_simple[hasher(word)];
         }
     }
     timer.here_then_reset("Finish word count.");
-    for(auto elm : word_counts)  assert(word_counts0[elm.first]==elm.second);
-    assert(word_counts.size()==word_counts0.size());
-    for(auto elm : word_counts2) assert(word_counts0[elm.first]==elm.second);
-    assert(word_counts2.size()==word_counts0.size());
+    for(auto elm : word_counts)  assert(word_counts_simple[elm.first]==elm.second);
+    assert(word_counts.size()==word_counts_simple.size());
+    for(auto elm : word_counts_serial) assert(word_counts_simple[elm.first]==elm.second);
+    assert(word_counts_serial.size()==word_counts_simple.size());
 }
 
 void reverse_iterator(){
@@ -215,9 +103,9 @@ void reverse_iterator(){
 void hash(){
     auto seed = 1;
     char cs[10] = "Hello";
+    assert(sizeof(cs)==10);
 
     uint64_t hash = xxh64::hash (reinterpret_cast<const char*> (cs), 10, seed);
-    assert(sizeof(cs)==10);
     fmt::print("{}\n", hash);
 }
 
@@ -256,7 +144,6 @@ std::map<WordUID, size_t> random_word_counts(int n) {
     return count;
 }
 void binary_find_benchmark(){
-
     auto count = random_word_counts(500000);
     std::vector<WordUID> keys = get_keys(count);
     Timer timer{};
@@ -273,7 +160,6 @@ void binary_find_benchmark(){
     for(auto key : keys) sum1 += get_val(count_pairs, key);
     timer.here_then_reset("Iter std::vector<std::map>.");
     assert(sum0==sum1);
-
 }
 
 void container_filter(){
@@ -283,7 +169,8 @@ void container_filter(){
     assert(util::math::sum(filter_inplace(vs, [](auto v){return v%3!=0;}))==10);
 
     size_t n_cut = 1;
-    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     fmt::print(std::cerr, "{} words.\n", word_counts.size());
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     fmt::print(std::cerr, "{} words are left after filtering.\n", word_counts.size());
@@ -294,7 +181,8 @@ void container_filter(){
 
 void binary_find_cell_for_cdf(){
     size_t n_cut = 2;
-    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
 
     auto counts = map(word_counts, [](auto x){return x.second;});
@@ -328,7 +216,8 @@ void binary_find_cell_for_cdf(){
 void weighted_sampling_benchmark(){
     size_t n_cut = 2;
 //    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
-    auto word_counts = word_count(std::fstream{"news.2014.train"});
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::fstream{"news.2014.train"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     auto counts = map(word_counts, [](auto x){return x.second;});
     auto uids = map(word_counts, [](auto x){return x.first;});
@@ -366,13 +255,13 @@ bool almost_equal(T x, T y){
 
 void negative_sampling(){
     size_t n_cut = 2;
-    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     auto neg_sampled_counts = util::map(word_counts, [](auto x){return std::make_pair(x.first, std::pow(x.second, 0.75));});
 
     for(auto x : zip(word_counts, neg_sampled_counts))
         assert(almost_equal(std::pow(x.first.second,0.75),x.second.second));
-
 
     auto sum_exact=0.0;
     for(auto x : word_counts) sum_exact += x.first.val*std::pow(x.second,0.75);
@@ -389,7 +278,7 @@ void negative_sampling(){
 }
 }//namespace test
 
-int main(int argc, char** argv){
+void test_all(){
     test::reverse_iterator();
     test::string_iterator();
     test::benchmark();
@@ -401,13 +290,31 @@ int main(int argc, char** argv){
     test::binary_find_cell_for_cdf();
     test::weighted_sampling_benchmark();
     test::negative_sampling();
-    return 0;
+}
+
+auto serial_word_count(std::istream&& is){
+    std::string line;
+    WordCounter::count_type word_counts;
+    while(std::getline(is, line)){
+        WordCounter::WordIter text{line};
+        text.iter([&word_counts](auto& word){++word_counts[word];});
+    }
+    return util::to_pairs(word_counts);
+}
+
+
+int main(int argc, char** argv){
+//    test_all();
+//    return 0;
     assert(argc>1);
     auto config = util::load_json(argv[1]);
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
+
     util::Timer timer{};
-    auto word_counts = word_count(std::cin);
+    WordCounter word_count;
+    auto word_counts = word_count.count(std::move(std::cin));
+//    auto word_counts = serial_word_count(std::move(std::cin));
     fmt::print(std::cerr, "{} words.\n", word_counts.size());
     filter_inplace(word_counts, [](auto v){return v.second>10;});
     fmt::print(std::cerr, "{} words are left after filtering.\n", word_counts.size());

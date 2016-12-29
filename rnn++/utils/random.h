@@ -16,12 +16,12 @@ struct Sampler{
         std::partial_sum(cdf.cbegin(),cdf.cend(), cdf.begin(),
                          [](auto x, auto y){return std::make_pair(y.first, x.second+y.second);});
         auto n_total = cdf.back().second;
-        for(auto ratio : {0.1,0.2,0.5,0.8}){ //,0.9,0.99
-            auto n_cutoff = n_total*ratio;
-            beg = cdf.cbegin();
-            it_low =std::find_if_not(beg,cdf.cend(),[n_cutoff ](auto x){return x.second<n_cutoff;});
-            n_low = it_low->second;
-        }
+//        for(auto ratio : {0.1,0.2,0.5,0.8}){ //,0.9,0.99
+//            auto n_cutoff = n_total*ratio;
+//            beg = cdf.cbegin();
+//            it_low =std::find_if_not(beg,cdf.cend(),[n_cutoff ](auto x){return x.second<n_cutoff;});
+//            n_low = it_low->second;
+//        }
 
         u = std::uniform_int_distribution<size_t>{0, n_total-1};
     }
@@ -35,12 +35,12 @@ struct Sampler{
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::vector<std::pair<KEY,VAL>> cdf;
-    decltype(cdf.cbegin()) beg;
-    decltype(cdf.cbegin()) it_low;
     std::uniform_int_distribution<size_t> u;
-    std::uniform_real_distribution<double> ran01{0.0,1.0};
-    int64_t i_low;
-    double n_low;
+//    decltype(cdf.cbegin()) beg;
+//    decltype(cdf.cbegin()) it_low;
+//    std::uniform_real_distribution<double> ran01{0.0,1.0};
+//    int64_t i_low;
+//    double n_low;
 };
 template<typename KEY>
 struct Sampler<KEY,double>{
