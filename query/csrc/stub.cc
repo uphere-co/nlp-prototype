@@ -1,12 +1,15 @@
 #include <MacroPatternMatch.h>
 #include <vector>
+#include <iostream>
 #include "Vector.h"
 
 #include "query-bindingType.h"
 
 #include "similarity/similarity.h"
 
+#include "utils/profiling.h"
 
+using namespace std;
 using namespace engine;
 using json = nlohmann::json;
 

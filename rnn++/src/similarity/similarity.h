@@ -2,18 +2,13 @@
 
 #include "similarity/dep_similarity.h"
 #include "utils/json.h"
-#include "utils/profiling.h"
 
-#include <iostream>
-
-using namespace std;
-using json = nlohmann::json;
-using engine_t = engine::YGPQueryEngine;
-
+class json; //forward declaration.
 const char* serialize( json* j );
 
 class EngineWrapper {
-    json config; 
+    using engine_t = engine::YGPQueryEngine;
+    util::json_t config; 
     engine_t* engine0;
     util::Timer timer;
 public:
