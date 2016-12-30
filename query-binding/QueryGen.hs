@@ -11,8 +11,6 @@ cabal = Cabal { cabal_pkgname = "query-binding"
               , cabal_moduleprefix = "Query.Binding" }
 
 extraDep = []
--- [ ("Engine", ["Query.Binding.Vector.Template"]) ]
-
 
 cabalattr = 
     CabalAttr 
@@ -21,10 +19,6 @@ cabalattr =
     , cabalattr_extraincludedirs = [ ]
     , cabalattr_extralibdirs = []
     }
-
-
--- vectorint_ = TemplateApp t_vector "CInt" "std::vector<int>"
-
 
 engineWrapper :: Class
 engineWrapper =
@@ -35,16 +29,6 @@ engineWrapper =
   , Destructor (Just "deleteEngineWrapper")
   ]
 
-{- 
-jsonWrapper :: Class
-jsonWrapper =
-  Class cabal "JsonWrapper" []  mempty Nothing
-  [ Constructor [ cstring "str" ] Nothing
-  , Virtual cstring_ "serialize" [ ] Nothing
-  , Destructor (Just "deleteJsonWrapper")
-  ]
--}
-
 json :: Class
 json =
   Class cabal "json" []  mempty (Just "Json")
@@ -53,13 +37,9 @@ json =
     
   ]
 
+classes = [ engineWrapper, json ] 
 
-
-classes = [ engineWrapper, json ] -- jsonWrapper
-
-toplevelfunctions =
-  [ TopLevelFunction cstring_ "serialize" [cppclass json "j"] Nothing ]
---    [ TopLevelFunction (cppclasscopy_ json) "json::parse" [cstring "txt"] (Just "parse") ]  
+toplevelfunctions = [ TopLevelFunction cstring_ "serialize" [cppclass json "j"] Nothing ]
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -84,5 +64,3 @@ main :: IO ()
 main = do 
   simpleBuilder "Query.Binding" headerMap (cabal,cabalattr,classes,toplevelfunctions,templates)
     [ ] extraDep
-
-
