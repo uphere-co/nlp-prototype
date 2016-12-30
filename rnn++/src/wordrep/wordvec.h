@@ -25,6 +25,10 @@ public:
         for(auto x : raw_data) _val.push_back(static_cast<val_t>(x));
         span = _val;
     }
+    WordBlock_base(std::vector<val_t> &&raw_data)
+            : _val{std::move(raw_data)},span{_val}
+    {}
+
     WordBlock_base(WordBlock_base&& )= default;
     WordBlock_base(const WordBlock_base& )= delete;
     WordBlock_base& operator=(const WordBlock_base& )= delete;
@@ -44,6 +48,7 @@ public:
         return WordBlock_base{new_block};
     }
     auto size() const {return _val.size()/word_dim;};
+    data_t serialize() const { return _val;}
 
 private:
     data_t _val;

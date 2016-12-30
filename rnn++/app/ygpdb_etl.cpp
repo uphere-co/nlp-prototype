@@ -574,7 +574,7 @@ void test_all(int /*argc*/, char** argv){
     data::corenlp::test::parse_batch_output();
 
 }
-int main(int argc, char** argv){
+int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    test_all(argc, argv);
 //    return 0;

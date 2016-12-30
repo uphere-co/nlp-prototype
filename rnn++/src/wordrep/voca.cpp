@@ -17,11 +17,13 @@ VocaIndexMap::VocaIndexMap(std::vector<WordUID> const &uids) {
         uid2idx[uid]=idx;
         idx2uid[idx]=uid;
     }
+    uid2idx[WordUID{}]=VocaIndex{0};
+    idx2uid[VocaIndex{0}]=WordUID{};
 }
 VocaIndex VocaIndexMap::operator[](WordUID uid) const {
     //return uid2idx[uid];
     auto it=uid2idx.find(uid);
-    if(it==uid2idx.cend()) return VocaIndex{};
+    if(it==uid2idx.cend()) return VocaIndex{0};
     return it->second;
 }
 WordUID VocaIndexMap::operator[](VocaIndex idx) const {

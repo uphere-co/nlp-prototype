@@ -21,6 +21,9 @@ struct PersistentVector{
     PersistentVector()
             : name{}, vals{}
     {}
+    PersistentVector(std::string name, std::vector<T> &&vec)
+            : name{name}, vals{std::move(vec)}
+    {}
     PersistentVector(std::string name)
             : name{name}, vals{}
     {}
@@ -37,6 +40,8 @@ struct PersistentVector{
     size_t size() const {return vals.size();}
     auto cbegin() const {return vals.cbegin();};
     auto cend() const {return vals.cend();};
+    auto begin() const {return vals.begin();};
+    auto end() const {return vals.end();};
     T& front() {return vals.front();}
     T& back()  {return vals.back();}
     T front() const {return vals.front();}

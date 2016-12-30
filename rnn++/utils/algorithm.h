@@ -12,6 +12,11 @@
 namespace util {
 
 template<typename T>
+auto singed_size(T const& vs){
+    return vs.cend()-vs.cbegin();
+}
+
+template<typename T>
 void append(std::vector<T> &orig, std::vector<T> const &elms) {
     std::copy(elms.cbegin(), elms.cend(), std::back_inserter(orig));
 }
@@ -131,7 +136,9 @@ auto to_pairs(std::map<TK,TV> const& src){
 }
 template<typename TK, typename TV>
 auto to_sorted_pairs(std::map<TK,TV> const& src){
-    return to_pairs(src);
+    auto pairs = to_pairs(src);
+    std::sort(pairs.begin(),pairs.end(), [](auto x, auto y){return x.first<y.first;});
+    return pairs;
 }
 
 
@@ -177,15 +184,15 @@ std::optional<TI> binary_find(TI beg, TI end, T val) {
     return binary_find(it, end, val);
 }
 
-//less{val}(x) :: true if v < x;
+//less{val}(x) :: true if val < x;
 template<typename TI, typename TE, typename TL>
 std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
     if(beg==end) return {};
     auto it = beg + (end-beg)/2;
     if(eq(*it)) return it;
     else if(end-beg==1) return {};
-    else if(less(*it)) return binary_find(it, end, eq, less);
-    return binary_find(beg, it, eq, less);
+    else if(less(*it)) return binary_find(beg, it, eq, less);
+    return binary_find(it, end, eq, less);
 }
 
 template<typename T>
@@ -206,7 +213,7 @@ template<typename TK, typename TV>
 auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
     return binary_find(pairs,
                        [key](auto elm){return elm.first==key;},
-                       [key](auto elm){return elm.first<key;});
+                       [key](auto elm){return elm.first>key;});
 }
 template<typename TK, typename TV>
 TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){
@@ -226,6 +233,37 @@ auto get_values(std::map<TK,TV> const& vs){
     values.reserve(vs.size());
     for(auto const &elm : vs) values.push_back(elm.second);
     return values;
+}
+
+}//namespace util
+
+//Algorithms with function objects.
+namespace util{
+
+
+template<typename T>
+struct IterChunkIndex{
+    IterChunkIndex(T beg, T end)
+            : data_beg{beg}, data_end{end}, now{data_beg}
+    {}
+    std::optional<std::pair<int64_t,int64_t>> next() {
+        if(now==data_end) return {};
+        auto val = *now;
+        auto it = std::find_if_not(now, data_end,[val](auto x){return val==x;});
+        auto chunk = std::make_pair(now-data_beg,it-data_beg);
+        now=it;
+        return chunk;
+    }
+    T const data_beg;
+    T const data_end;
+    T now;
+};
+
+template<typename T>
+auto IterChunkIndex_factory(T const &vals){
+    auto beg = vals.cbegin();
+    auto end = vals.cend();
+    return IterChunkIndex<decltype(beg)>{beg,end};
 }
 
 }//namespace util

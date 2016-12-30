@@ -12,6 +12,8 @@
 #include "wordrep/word_uid.h"
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
+#include "wordrep/voca.h"
+#include "wordrep/indexes.h"
 
 #include "utils/math.h"
 #include "utils/string.h"
@@ -20,8 +22,15 @@
 #include "utils/span.h"
 #include "utils/parallel_algorithm.h"
 #include "utils/random.h"
+#include "utils/versioned_name.h"
+#include "utils/hdf5.h"
+#include "utils/persistent_vector.h"
 
+
+using wordrep::ChunkIndex;
+using wordrep::SentUID;
 using wordrep::WordUID;
+using wordrep::VocaIndex;
 using wordrep::WordUIDindex;
 using wordrep::WordCounter;
 
@@ -148,7 +157,8 @@ void binary_find_benchmark(){
     std::vector<WordUID> keys = get_keys(count);
     Timer timer{};
 
-    auto count_pairs = to_pairs(count);
+    auto count_pairs = to_sorted_pairs(count);
+    assert(count_pairs.front().first<count_pairs.back().first);
     for(auto key : keys){
         assert(count[key] == get_val(count_pairs, key));
     }
@@ -231,6 +241,7 @@ void weighted_sampling_benchmark(){
 
     std::random_device rd{};
     std::mt19937 gen{rd()};
+
     std::discrete_distribution<size_t> d{counts.cbegin(), counts.cend()};
     auto sum_std=0.0;
     for(int i=0; i<n; ++i) sum_std += uids[d(gen)].val;
@@ -238,9 +249,10 @@ void weighted_sampling_benchmark(){
     timer.here_then_reset("std::random");
 
     util::Sampler<WordUID,size_t> sampler{word_counts};
+    std::uniform_int_distribution<size_t> uni{0, sampler.total_weight()-1};
     timer.here_then_reset("prepare custom");
     auto sum = 0.0;
-    for(int i=0; i<n; ++i) sum += 1.0* sampler.sample().val;
+    for(int i=0; i<n; ++i) sum += 1.0* sampler.sample(uni(gen)).val;
     sum /= n;
     timer.here_then_reset("finish custom");
 
@@ -248,8 +260,8 @@ void weighted_sampling_benchmark(){
 }
 
 template<typename T>
-bool almost_equal(T x, T y){
-    return std::abs((x/y)-1) < 0.000001;
+bool almost_equal(T x, T y, T err=0.000001){
+    return std::abs((x/y)-1) < err;
 }
 
 
@@ -268,13 +280,16 @@ void negative_sampling(){
     auto counts = map(neg_sampled_counts, [](auto x){return x.second;});
     sum_exact /= util::math::sum(counts);
 
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
     auto n=1000000;
     util::Sampler<WordUID,double> neg_sampler{neg_sampled_counts};
+    std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
     auto sum = 0.0;
-    for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample().val;
+    for(int i=0; i<n; ++i) sum += 1.0* neg_sampler.sample(uni(gen)).val;
     sum /= n;
 
-    fmt::print(std::cerr, "{} vs {}\n", sum_exact,  sum);
+    assert(almost_equal(sum_exact,  sum, 0.005));//allow ~ 5-sigma errors.
 }
 }//namespace test
 
@@ -303,12 +318,79 @@ auto serial_word_count(std::istream&& is){
 }
 
 
-int main(int argc, char** argv){
-//    test_all();
-//    return 0;
+void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    using util::io::h5read;
+    auto oldfile = h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
+    auto prefix=util::get_str(config,"dep_parsed_prefix");
+    util::TypedPersistentVector<ChunkIndex> chunks_idx{oldfile,prefix+".chunk_idx"};
+    util::TypedPersistentVector<SentUID> sents_uid {oldfile,prefix+".sent_uid"};
+    util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
+    util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
+    WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto old_word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
+    wordrep::VocaIndexMap old_voca{old_word_uids};
+
+    wordrep::TokenHash<wordrep::WordUID> hasher{};
+
+    for(int i=0; i<1000; ++i){
+        auto word = words_idx[i];
+        fmt::print("{} ",old_wordUIDs[old_voca[word]]);
+    }
+    fmt::print("\n");
+
+    auto n  = words_uid.size();
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
+        for(auto i=r.begin(); i!=r.end(); ++i){
+            auto& x = words_uid[i];
+            x= hasher(old_wordUIDs[x]);
+        }
+    });
+
+    //update wordUID, too.
+    auto count_file = util::io::h5rw_exist("nyt_words.h5");
+    auto words = util::string::readlines("/home/jihuni/word2vec/news/nyt.model.words");
+    auto known_word_uids = util::map(words, [&hasher](auto x){return hasher(x);});
+    util::TypedPersistentVector<WordUID> counted_uids{count_file,"unigram.uid"};
+    auto is_counted=[&counted_uids](auto uid)->bool{
+        if(util::binary_find(counted_uids.get(),uid)) return true;
+        return false;
+    };
+    auto word_uids = util::filter(known_word_uids, is_counted);
+    //auto word_uids  = util::TypedPersistentVector<WordUID>(count_file, "unigram.count");
+    wordrep::VocaIndexMap voca{word_uids};
+    util::TypedPersistentVector<WordUID> widx2wuid {"widx2wuid", std::move(word_uids)};
+
+    fmt::print("-------------------------------------------------\n");
+
+    std::map<WordUID,std::string> wuid2str;
+    for(auto word : words) wuid2str[hasher(word)]=word;
+    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
+        for(auto i=r.begin(); i!=r.end(); ++i){
+            auto& x = words_idx[i];
+            x= voca[hasher(old_wordUIDs[old_voca[x]])];
+        }
+    });
+    for(int i=0; i<1000; ++i){
+        auto word = words_idx[i];
+        fmt::print("{} ", wuid2str[voca[word]]);
+    }
+    fmt::print("\n");
+
+
+    widx2wuid.write(count_file);
+    auto newfile = util::io::h5replace("nyt_texts.h5");
+    chunks_idx.write(newfile);
+    sents_uid.write(newfile);
+    words_uid.write(newfile);
+    words_idx.write(newfile);
+}
+
+int main(int argc, char** argv){
+    test_all();
+    translate_ordered_worduid_to_hashed_worduid(argc,argv);
+    return 0;
 
 
     util::Timer timer{};
