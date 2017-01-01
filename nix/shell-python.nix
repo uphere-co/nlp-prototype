@@ -28,7 +28,7 @@ stdenv.mkDerivation {
                    psycopg2
                    #cgroup-utils
                    toolz.cldoc
-                   toolz.feedparser beautifulsoup
+                   toolz.feedparser beautifulsoup4
                  ]) 
                    ++ 
                  [
