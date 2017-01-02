@@ -54,6 +54,7 @@ struct PerSentQueryResult {
 struct QueryResult{
     QuerySentInfo query;
     std::vector<PerSentQueryResult> results;
+    int64_t n_relevant_matches;
 };
 
 }//namespace data
