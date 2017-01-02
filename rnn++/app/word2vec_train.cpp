@@ -236,7 +236,6 @@ void training(int argc, char** argv){
                                   }
                               }
                               timer.here_then_reset("vec updates");
-//        }
                           });
     }
 
