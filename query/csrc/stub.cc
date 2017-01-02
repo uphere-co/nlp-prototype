@@ -7,8 +7,6 @@
 
 #include "similarity/similarity.h"
 
-#include "utils/profiling.h"
-
 using namespace std;
 using namespace engine;
 using json = nlohmann::json;

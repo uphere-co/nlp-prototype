@@ -2,6 +2,7 @@
 
 #include "similarity/dep_similarity.h"
 #include "utils/json.h"
+#include "utils/profiling.h"
 
 class json; //forward declaration.
 const char* serialize( json* j );
