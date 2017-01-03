@@ -189,54 +189,55 @@ void training(int argc, char** argv){
 //    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,200},
 //                      [&texts,&chunks,&unigram,&subsampler,&neg_sampler,&wvecs,&cvecs,alpha,seed](auto& r){
 //    std::mt19937 gen{seed+util::to_signed_positive<decltype(seed)>(r.begin())};
-    tbb::parallel_for(decltype(n){0},n,[&timer,&texts,&chunks,&subsampler,&neg_sampler,&wvecs,&cvecs,alpha,seed]
-            (auto& i_chunk){
+    for(int epoch=0; epoch!=5; ++epoch) {
+        tbb::parallel_for(decltype(n){0}, n,
+                          [&timer, &texts, &chunks, &subsampler, &neg_sampler, &wvecs, &cvecs, alpha, seed]
+                                  (auto &i_chunk) {
 //    for(decltype(n)i_chunk=0; i_chunk!=n; ++i_chunk) {
-        timer.here_then_reset("loop begin");
-        std::mt19937 gen{seed + util::to_signed_positive<decltype(seed)>(i_chunk)};
-        std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
-        std::uniform_real_distribution<double> uni01{0.0, 1.0};
-        util::math::VecLoop_void<WordBlock::val_t, WordBlock::dim> vecloop_void{};
-        timer.here_then_reset("create objects");
+                              timer.here_then_reset("loop begin");
+                              std::mt19937 gen{seed + util::to_signed_positive<decltype(seed)>(i_chunk)};
+                              std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
+                              std::uniform_real_distribution<double> uni01{0.0, 1.0};
+                              util::math::VecLoop_void<WordBlock::val_t, WordBlock::dim> vecloop_void{};
+                              timer.here_then_reset("create objects");
 //        for(auto i_chunk=r.begin(); i_chunk!=r.end(); ++i_chunk){
-        auto chunk = chunks[i_chunk];
-        std::vector<VocaIndex> subsampled;
-        subsampled.reserve(chunk.second - chunk.first);
-        for (auto i = chunk.first; i != chunk.second; ++i) {
-            auto idx = texts.word(i);
-            if (subsampler(idx, uni01(gen)))
-                subsampled.push_back(idx);
-        }
-        timer.here_then_reset("sub_sampling");
-        auto len = util::singed_size(subsampled);
-        std::vector<VocaIndex> cns;
-        auto n_neg = 5;
-        for (int j = 0; j != 10 * n_neg * len; ++j) cns.push_back(neg_sampler.sample(uni(gen)));
-        int jj = 0;
-        timer.here_then_reset("neg_sampling");//about 50% of time is for 'uni(gen)' eval.
-        for (std::ptrdiff_t i = 0; i < len; ++i) {
-            word2vec::WordContext context{i, subsampled, 5, 5};
-            auto w = wvecs[subsampled[context.self]];
-            for (auto cword : context.contexts) {
-                auto c = cvecs[subsampled[cword]];
-                auto x_wc = 1 - sigmoid(w, c);
-                //plain gradient descent:
-                vecloop_void(symm_fma_vec, alpha * x_wc, w, c);
-                for (int j = 0; j != n_neg; ++j) {
-                    //TODO: fix thread safety
-                    auto cn = cvecs[cns[jj++]];
-                    //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
-                    //grad_c : (1-sigmoid(w,c)) * w
-                    //grad_cn : (sigmoid_plus(w,c)-1) *w
-                    auto x_wcn = sigmoid_plus(w, cn) - 1;
-                    vecloop_void(symm_fma_vec, alpha * x_wcn, w, cn);
-                }
-            }
-        }
-        timer.here_then_reset("vec updates");
-//        }
-
-    });
+                              auto chunk = chunks[i_chunk];
+                              std::vector<VocaIndex> subsampled;
+                              subsampled.reserve(chunk.second - chunk.first);
+                              for (auto i = chunk.first; i != chunk.second; ++i) {
+                                  if (auto idx = texts.word(i);
+                                  subsampler(idx, uni01(gen)))
+                                  subsampled.push_back(idx);
+                              }
+                              timer.here_then_reset("sub_sampling");
+                              auto len = util::singed_size(subsampled);
+                              std::vector<VocaIndex> cns;
+                              auto n_neg = 5;
+                              for (int j = 0; j != 10 * n_neg * len; ++j) cns.push_back(neg_sampler.sample(uni(gen)));
+                              int jj = 0;
+                              timer.here_then_reset("neg_sampling");//about 50% of time is for 'uni(gen)' eval.
+                              for (std::ptrdiff_t i = 0; i < len; ++i) {
+                                  word2vec::WordContext context{i, subsampled, 5, 5};
+                                  auto w = wvecs[subsampled[context.self]];
+                                  for (auto cword : context.contexts) {
+                                      auto c = cvecs[subsampled[cword]];
+                                      auto x_wc = 1 - sigmoid(w, c);
+                                      //plain gradient descent:
+                                      vecloop_void(symm_fma_vec, alpha * x_wc, w, c);
+                                      for (int j = 0; j != n_neg; ++j) {
+                                          //TODO: fix thread safety
+                                          auto cn = cvecs[cns[jj++]];
+                                          //grad_w : (1-sigmoid(w,c)) *c + (sigmoid_plus(w,c)-1) * c_n
+                                          //grad_c : (1-sigmoid(w,c)) * w
+                                          //grad_cn : (sigmoid_plus(w,c)-1) *w
+                                          auto x_wcn = sigmoid_plus(w, cn) - 1;
+                                          vecloop_void(symm_fma_vec, alpha * x_wcn, w, cn);
+                                      }
+                                  }
+                              }
+                              timer.here_then_reset("vec updates");
+                          });
+    }
 
     auto len = n_voca*WordBlock::dim;
     using val_t = WordBlock::val_t;
