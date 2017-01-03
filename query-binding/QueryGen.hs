@@ -24,22 +24,22 @@ engineWrapper :: Class
 engineWrapper =
   Class cabal "EngineWrapper" [] mempty Nothing
   [ Constructor [ cstring "configfile" ] Nothing
-  , Virtual (cppclass_ json) "register_documents" [ cstring "str", cppclass json "input" ] Nothing    
-  , Virtual (cppclass_ json) "query" [ cppclass json "input" ] Nothing
+  , Virtual (cppclass_ json_t) "register_documents" [ cstring "str", cppclass json_t "input" ] Nothing    
+  , Virtual (cppclass_ json_t) "query" [ cppclass json_t "input" ] Nothing
   , Destructor (Just "deleteEngineWrapper")
   ]
 
-json :: Class
-json =
-  Class cabal "json" []  mempty (Just "Json")
+json_t :: Class
+json_t =
+  Class cabal "json_t" []  mempty (Just "Json_t")
   [ Constructor [ ] Nothing
-  , Static (cppclasscopy_ json) "parse" [cstring "txt"] Nothing 
+  , Static (cppclasscopy_ json_t) "parse" [cstring "txt"] Nothing 
     
   ]
 
-classes = [ engineWrapper, json ] 
+classes = [ engineWrapper, json_t ] 
 
-toplevelfunctions = [ TopLevelFunction cstring_ "serialize" [cppclass json "j"] Nothing ]
+toplevelfunctions = [ TopLevelFunction cstring_ "serialize" [cppclass json_t "j"] Nothing ]
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
@@ -55,9 +55,8 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [ ( "EngineWrapper", ([], [HdrName "similarity/similarity.h"]))
-            , ( "JsonWrapper"  , ([], [HdrName "similarity/similarity.h"]))
-            , ( "json"         , ([NS "nlohmann"], [HdrName "utils/json.h", HdrName "similarity/similarity.h"]))
+headerMap = [ ( "EngineWrapper", ([NS "util"], [HdrName "similarity/similarity.h"]))
+            , ( "json_t"         , ([NS "util"], [HdrName "utils/json.h", HdrName "similarity/similarity.h" ]))
             ]
 
 main :: IO ()
