@@ -205,9 +205,9 @@ void training(int argc, char** argv){
                               std::vector<VocaIndex> subsampled;
                               subsampled.reserve(chunk.second - chunk.first);
                               for (auto i = chunk.first; i != chunk.second; ++i) {
-                                  if (auto idx = texts.word(i);
-                                  subsampler(idx, uni01(gen)))
-                                  subsampled.push_back(idx);
+                                  auto idx = texts.word(i)
+                                  if (subsampler(idx, uni01(gen)))
+                                      subsampled.push_back(idx);
                               }
                               timer.here_then_reset("sub_sampling");
                               auto len = util::singed_size(subsampled);
