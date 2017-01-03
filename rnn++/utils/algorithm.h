@@ -229,7 +229,7 @@ auto get_keys(std::map<TK,TV> const& vs){
 }
 template<typename TK, typename TV>
 auto get_values(std::map<TK,TV> const& vs){
-    std::vector<TK> values;
+    std::vector<TV> values;
     values.reserve(vs.size());
     for(auto const &elm : vs) values.push_back(elm.second);
     return values;
