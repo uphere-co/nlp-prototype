@@ -513,7 +513,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -541,7 +541,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -584,7 +584,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);

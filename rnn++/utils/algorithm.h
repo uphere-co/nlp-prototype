@@ -235,6 +235,10 @@ auto get_values(std::map<TK,TV> const& vs){
     return values;
 }
 
+template<typename T, typename TO>
+auto max_element(T const& vals, TO op){
+    return std::max_element(std::begin(vals),std::end(vals), op);
+};
 }//namespace util
 
 //Algorithms with function objects.

@@ -61,18 +61,29 @@ std::vector<ScoredSentence> rank_cut_per_row_index(
         size_t n_max_per_table,
         DBIndexer const &ygp_indexer,
         ygp::YGPdb const &ygpdb){
-    using ssents_per_rowidx = std::map<RowIndex,std::vector<ScoredSentence>>;
-    std::map<std::string, ssents_per_rowidx> outputs_per_row_index;
+    using ssents_per_rowidx = std::map<RowIndex,std::map<ColumnUID,std::vector<ScoredSentence>>>;
+    std::map<std::string, ssents_per_rowidx> outputs_per_table_row_index;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
         auto cidx = sent.tokens->chunk_idx(sent.beg);
-        auto table_name = ygpdb.table(ygp_indexer.column_uid(cidx));
+        auto col_uid = ygp_indexer.column_uid(cidx);
+        auto table_name = ygpdb.table(col_uid);
         auto row_idx=ygp_indexer.row_idx(cidx);
-        outputs_per_row_index[table_name][row_idx].push_back(scored_sent);
+        outputs_per_table_row_index[table_name][row_idx][col_uid].push_back(scored_sent);
+        //keep_max_score_sent(outputs_per_table_row_index[table_name][row_idx], col_uid, scored_sent);
     }
     std::vector<ScoredSentence> top_N_results;
-    for(auto const &pair : outputs_per_row_index){
-        util::append(top_N_results, top_n_per_row_index(util::get_values(pair.second), n_max_per_table));
+    for(auto const &pair : outputs_per_table_row_index){
+        std::vector<std::vector<ScoredSentence>> sents;
+        for(auto& x : pair.second){
+            std::vector<ScoredSentence> sents_per_row_elm;
+            for(auto &y : x.second){
+                std::vector<ScoredSentence> const& ss = y.second;
+                sents_per_row_elm.push_back(*util::max_element(ss,[](auto a,auto b){return a.score<b.score;}));
+            }
+            sents.push_back(sents_per_row_elm);
+        }
+        util::append(top_N_results, top_n_per_row_index(sents, n_max_per_table));
     }
     //return plain_rank_cut(top_N_results, n_max_per_table*2);
     return top_N_results;
