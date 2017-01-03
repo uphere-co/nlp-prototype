@@ -85,6 +85,7 @@ std::vector<ScoredSentence> rank_cut_per_row_index(
         }
         util::append(top_N_results, top_n_per_row_index(sents, n_max_per_table));
     }
+    std::sort(top_N_results.begin(),top_N_results.end(), [](auto a,auto b){return a.score>b.score;});
     //return plain_rank_cut(top_N_results, n_max_per_table*2);
     return top_N_results;
 }

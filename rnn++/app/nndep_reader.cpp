@@ -206,8 +206,9 @@ using engine::RSSQueryEngine;
 int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    auto dumpfile_hashes = argv[3];
-//    wordrep::test::dependency_graph();
+//    auto dumpfile_hashes = argv[3];
+
+    wordrep::test::dependency_graph();
 //    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
@@ -236,7 +237,6 @@ int main(int /*argc*/, char** argv){
 //    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
     data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
-    return 0;
 
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
