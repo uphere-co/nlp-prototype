@@ -13,11 +13,10 @@ using namespace engine;
 
 Vector_instance_s(int)
 
-EngineWrapper::EngineWrapper(const char* configfile) 
-//  : engine0{util::load_json(configfile)}
+EngineWrapper::EngineWrapper(const char* configfile) : engine0{util::load_json(configfile)}
 {
-    config = util::load_json(configfile);
-    engine0 = new engine_t(config);
+    // config = util::load_json(configfile);
+    // engine0 = new engine_t(config);
     std::cout << config.dump(4) << std:: endl;
     timer.here_then_reset("Search engine loaded.");
 }
@@ -36,14 +35,14 @@ const char* serialize( util::json_t* j )
 
 util::json_t* EngineWrapper::query( util::json_t* input )
 {
-    return (new util::json_t(engine0->ask_chain_query(*input)));
+    return (new util::json_t(engine0.ask_chain_query(*input)));
 }
 
 util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* input )
 {
     std::string query_str(str);
     (*input)["query_str"] = query_str;
-    return (new util::json_t(engine0->register_documents(*input)));
+    return (new util::json_t(engine0.register_documents(*input)));
 }
 
 
