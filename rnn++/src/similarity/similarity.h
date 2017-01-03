@@ -4,18 +4,21 @@
 #include "utils/json.h"
 #include "utils/profiling.h"
 
-class json; //forward declaration.
-const char* serialize( json* j );
+
+//class json_t; //forward declaration.
+
+const char* serialize( util::json_t* j );
 
 class EngineWrapper {
     using engine_t = engine::YGPQueryEngine;
+    
     util::json_t config; 
     engine_t* engine0;
     util::Timer timer;
 public:
     EngineWrapper(const char* configfile);
-    json* register_documents( const char* str, json* input ); 
-    json* query( json* input );
+    util::json_t* register_documents( const char* str, util::json_t* input ); 
+    util::json_t* query( util::json_t* input );
     
     ~EngineWrapper() { delete engine0; } 
 };

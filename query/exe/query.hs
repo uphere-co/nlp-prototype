@@ -31,7 +31,7 @@ import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
 --
 import           Query.Binding.EngineWrapper
-import           Query.Binding.Json
+import           Query.Binding.Json_t
 import           QueryServer.Type
 --
 import           Broadcast

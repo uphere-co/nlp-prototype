@@ -24,7 +24,7 @@ import           Foreign.ForeignPtr
 --
 import           Query.Binding
 import           Query.Binding.EngineWrapper
-import           Query.Binding.Json
+import           Query.Binding.Json_t
 import           QueryServer.Type
 import           CoreNLP
 
@@ -36,7 +36,7 @@ registerText engine txt = do
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp $ \cstr_nlp -> 
       B.useAsCString bstr_txt $ \cstr_txt ->
-        jsonparse cstr_nlp >>=
+        json_tparse cstr_nlp >>=
         register_documents engine cstr_txt >>=
         serialize >>=
         unsafePackCString
@@ -52,7 +52,7 @@ queryRegisteredSentences engine r = do
   -- need to be configured.  
   let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })  
   bstr' <- B.useAsCString bstr $
-     jsonparse >=> query engine >=> serialize >=> unsafePackCString
+     json_tparse >=> query engine >=> serialize >=> unsafePackCString
     -- json_create >=> query >=> json_serialize >=> unsafePackCString
   return (BL.fromStrict bstr')
 
