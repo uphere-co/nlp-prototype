@@ -236,6 +236,8 @@ int main(int /*argc*/, char** argv){
 //    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
     data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
+    return 0;
+
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
 //    data::rss::annotation_on_result(config, stat_answer["results"], dumpfile_hashes);

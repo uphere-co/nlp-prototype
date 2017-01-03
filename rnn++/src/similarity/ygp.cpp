@@ -12,9 +12,11 @@ using engine::plain_rank_cut;
 namespace data{
 namespace ygp{
 
-std::vector<ScoredSentence> per_table_rank_cut(
-        std::vector<ScoredSentence> const &relevant_sents, size_t n_max_per_table,
-        DBIndexer const &ygp_indexer, ygp::YGPdb const &ygpdb){
+std::vector<ScoredSentence> rank_cut_per_column(
+        std::vector<ScoredSentence> const &relevant_sents,
+        size_t n_max_per_table,
+        DBIndexer const &ygp_indexer,
+        ygp::YGPdb const &ygpdb){
     std::map<std::string, std::vector<ScoredSentence>> outputs_per_column;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
@@ -26,7 +28,8 @@ std::vector<ScoredSentence> per_table_rank_cut(
     for(auto const &pair : outputs_per_column){
         util::append(top_N_results, plain_rank_cut(pair.second, n_max_per_table));
     }
-    return plain_rank_cut(top_N_results, n_max_per_table*2);
+    //return plain_rank_cut(top_N_results, n_max_per_table*2);
+    return top_N_results;
 }
 
 DBInfo::DBInfo(util::json_t const& config)
