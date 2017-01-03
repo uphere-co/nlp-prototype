@@ -9,19 +9,19 @@
 
 using namespace std;
 using namespace engine;
-using json = nlohmann::json;
+//using json = nlohmann::json;
 
 Vector_instance_s(int)
 
-EngineWrapper::EngineWrapper(const char* configfile) 
+EngineWrapper::EngineWrapper(const char* configfile) : engine0{util::load_json(configfile)}
 {
-    config = util::load_json(configfile);
-    engine0 = new engine_t(config);
+    // config = util::load_json(configfile);
+    // engine0 = new engine_t(config);
     std::cout << config.dump(4) << std:: endl;
     timer.here_then_reset("Search engine loaded.");
 }
 
-const char* serialize( json* j )
+const char* serialize( util::json_t* j )
 {
     stringstream ss;
     ss << j->dump(4);
@@ -33,16 +33,16 @@ const char* serialize( json* j )
 
 
 
-json* EngineWrapper::query( json* input )
+util::json_t* EngineWrapper::query( util::json_t* input )
 {
-    return (new json(engine0->ask_chain_query(*input)));
+    return (new util::json_t(engine0.ask_chain_query(*input)));
 }
 
-json* EngineWrapper::register_documents( const char* str, json* input )
+util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* input )
 {
     std::string query_str(str);
     (*input)["query_str"] = query_str;
-    return (new json(engine0->register_documents(*input)));
+    return (new util::json_t(engine0.register_documents(*input)));
 }
 
 
