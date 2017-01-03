@@ -13,10 +13,8 @@ using namespace engine;
 
 Vector_instance_s(int)
 
-EngineWrapper::EngineWrapper(const char* configfile) : engine0{util::load_json(configfile)}
+EngineWrapper::EngineWrapper(const char* configfile) : config(util::load_json(configfile)), engine0(config)
 {
-    // config = util::load_json(configfile);
-    // engine0 = new engine_t(config);
     std::cout << config.dump(4) << std:: endl;
     timer.here_then_reset("Search engine loaded.");
 }
