@@ -387,9 +387,34 @@ void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
     words_idx.write(newfile);
 }
 
+
+void update_wordvec_h5store(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    using util::io::h5read;
+    using util::io::h5rw_exist;
+    //util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
+    //util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
+    WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
+    //auto old_word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
+
+    auto file = h5rw_exist(config["wordvec_store"]);
+    auto old_word_uids = util::deserialize<WordUID>(file.getRawData<WordUID::val_t>({"news.en.uids"}));
+    auto old_word_chars = file.getRawData<char>({"news.en.words"});
+    auto words = util::string::unpack_words(old_word_chars);
+    for(auto word : words) fmt::print("{}\n", word);
+
+    wordrep::TokenHash<WordUID> hasher{};
+    auto hash_uids = util::map(words, [&hasher](auto word){return WordUID{hasher(word)};});
+    util::TypedPersistentVector<WordUID> new_uids{"news.en.hash_uids",std::move(hash_uids)};
+    new_uids.write(file);
+}
+
+
 int main(int argc, char** argv){
-    test_all();
-    translate_ordered_worduid_to_hashed_worduid(argc,argv);
+    //test_all();
+    //translate_ordered_worduid_to_hashed_worduid(argc,argv);
+    update_wordvec_h5store(argc,argv);
     return 0;
 
 

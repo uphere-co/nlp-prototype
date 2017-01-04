@@ -583,7 +583,6 @@ int main(int /*argc*/, char** argv){
 //    process_rss_dump(argc, argv);
 //    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
-    data::ygp::dump_psql(get_str(config,"column_uids_dump"));
 
     return 0;
 //    pruning_voca();
