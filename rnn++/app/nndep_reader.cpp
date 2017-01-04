@@ -32,36 +32,34 @@ void dependency_graph(){
     //tokens.build_voca_index(voca.indexmap);
 
     auto sents = tokens.IndexSentences();
+
+    PhraseSegmenter phrase_segmenter{importance};
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
     for(auto sent : sents){
         DependencyGraph graph{sent};
+
         for(auto &node : graph.all_nodes()){
-            auto uid = tokens.word_uid(node.idx);
+            auto uid = sent.tokens->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
-            if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[tokens.word_uid(node.governor.value()->idx)]);
+            if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[sent.tokens->word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", " ");
             fmt::print(std::cerr, "child: ");
-            for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[tokens.word_uid(child->idx)]);
+            for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[sent.tokens->word_uid(child->idx)]);
             std::cerr<<std::endl;
         }
-        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[tokens.word_uid(graph.front().root_node().idx)]);
+        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[sent.tokens->word_uid(graph.front().root_node().idx)]);
+
+        //auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5.0);
+        auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 7);
 
         ConnectionFragility subgrapher{graph, importance};
-        subgrapher.set_score();
         for(auto node : graph.all_nodes()){
             auto uid = graph.sentence().tokens->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
                        wordUIDs[uid], importance.score(uid), subgrapher.score(node));
         }
         fmt::print(std::cerr, "\n\n");
-        std::vector<DPTokenIndex> sub_heads;
-        sub_heads.push_back(graph.front().root_node().idx);
-        for(int i=0; i<5; ++i){
-            auto sub_head = graph.node(subgrapher.max_score_node_idx());
-            sub_heads.push_back(sub_head.idx);
-            graph.disconnect_head(sub_head.idx);
-            subgrapher.set_score(); //TODO: remove duplicated computation.
-        }
+
         for(auto sub_head_idx : sub_heads){
             auto sub_head = graph.node(sub_head_idx);
             fmt::print(std::cerr, "Head of subgraph : {}\n",

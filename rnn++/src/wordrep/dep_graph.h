@@ -70,4 +70,19 @@ private:
     wordrep::WordImportance const &importance;
 };
 
+struct PhraseSegmenter{
+    using val_t = ConnectionFragility::val_t;
+
+    PhraseSegmenter(WordImportance const& importance)
+            : importance{importance}
+    {}
+
+    std::vector<DPTokenIndex> broke_into_phrases(DependencyGraph& graph, int n_phrase) const;
+    std::vector<DPTokenIndex> broke_into_phrases(DependencyGraph& graph, val_t cutoff) const;
+
+
+private:
+    WordImportance const& importance;
+};
+
 }//namespace wordrep;

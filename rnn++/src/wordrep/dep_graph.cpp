@@ -1,3 +1,5 @@
+#include <fmt/printf.h>
+
 #include "wordrep/dep_graph.h"
 
 #include "utils/algorithm.h"
@@ -58,6 +60,7 @@ void DependencyGraph::disconnect_head(DPTokenIndex idx){
 ConnectionFragility::ConnectionFragility(DependencyGraph const &graph,
                                          WordImportance const &importance)
         : graph{graph}, importance(importance) {
+    set_score();
 }
 
 void ConnectionFragility::set_score(){
@@ -84,5 +87,34 @@ DPTokenIndex ConnectionFragility::max_score_node_idx() const {
     });
     return pair->first;
 }
+
+std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& graph, int n_phrase) const {
+    ConnectionFragility subgrapher{graph, importance};
+    std::vector<DPTokenIndex> sub_heads;
+    sub_heads.push_back(graph.front().root_node().idx);
+    for(int i=0; i<n_phrase; ++i){
+        auto sub_head = graph.node(subgrapher.max_score_node_idx());
+//        fmt::print("{} : {} score\n", i, subgrapher.score(sub_head));
+        sub_heads.push_back(sub_head.idx);
+        graph.disconnect_head(sub_head.idx);
+        subgrapher.set_score(); //TODO: remove duplicated computation.
+    }
+    return sub_heads;
+}
+std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& graph, val_t cutoff) const {
+    ConnectionFragility subgrapher{graph, importance};
+    std::vector<DPTokenIndex> sub_heads;
+    sub_heads.push_back(graph.front().root_node().idx);
+    for(;;){
+        auto sub_head = graph.node(subgrapher.max_score_node_idx());
+//        fmt::print("{} : {} score\n", i, subgrapher.score(sub_head));
+        if(subgrapher.score(sub_head) < cutoff) break;
+        sub_heads.push_back(sub_head.idx);
+        graph.disconnect_head(sub_head.idx);
+        subgrapher.set_score(); //TODO: remove duplicated computation.
+    }
+    return sub_heads;
+}
+
 
 }//namespace wordrep;
