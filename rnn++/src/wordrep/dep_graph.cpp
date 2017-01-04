@@ -101,7 +101,9 @@ std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& g
     }
     return sub_heads;
 }
+
 std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& graph, val_t cutoff) const {
+    if(graph.empty()) return {};
     ConnectionFragility subgrapher{graph, importance};
     std::vector<DPTokenIndex> sub_heads;
     sub_heads.push_back(graph.front().root_node().idx);

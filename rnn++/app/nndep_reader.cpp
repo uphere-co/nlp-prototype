@@ -15,11 +15,11 @@
 #include "utils/algorithm.h"
 
 namespace wordrep{
-namespace test{
+namespace test {
 
-void dependency_graph(){
-    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}  };
-    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}  };
+void dependency_graph() {
+    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
+    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
@@ -35,36 +35,39 @@ void dependency_graph(){
 
     PhraseSegmenter phrase_segmenter{importance};
     fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
-    for(auto sent : sents){
+    for (auto sent : sents) {
         DependencyGraph graph{sent};
 
-        for(auto &node : graph.all_nodes()){
+        for (auto &node : graph.all_nodes()) {
             auto uid = sent.tokens->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
-            if(node.governor) fmt::print(std::cerr, "head : {:<15}", wordUIDs[sent.tokens->word_uid(node.governor.value()->idx)]);
+            if (node.governor)
+                fmt::print(std::cerr, "head : {:<15}", wordUIDs[sent.tokens->word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", " ");
             fmt::print(std::cerr, "child: ");
-            for(auto child : node.dependents) fmt::print(std::cerr, "{:<15} ", wordUIDs[sent.tokens->word_uid(child->idx)]);
-            std::cerr<<std::endl;
+            for (auto child : node.dependents)
+                fmt::print(std::cerr, "{:<15} ", wordUIDs[sent.tokens->word_uid(child->idx)]);
+            std::cerr << std::endl;
         }
-        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(), wordUIDs[sent.tokens->word_uid(graph.front().root_node().idx)]);
+        fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(),
+                   wordUIDs[sent.tokens->word_uid(graph.front().root_node().idx)]);
 
-        //auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5.0);
-        auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 7);
+        auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5.0);
+//        auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5);
 
         ConnectionFragility subgrapher{graph, importance};
-        for(auto node : graph.all_nodes()){
+        for (auto node : graph.all_nodes()) {
             auto uid = graph.sentence().tokens->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
                        wordUIDs[uid], importance.score(uid), subgrapher.score(node));
         }
         fmt::print(std::cerr, "\n\n");
 
-        for(auto sub_head_idx : sub_heads){
+        for (auto sub_head_idx : sub_heads) {
             auto sub_head = graph.node(sub_head_idx);
             fmt::print(std::cerr, "Head of subgraph : {}\n",
                        wordUIDs[sub_head.graph->sentence().tokens->word_uid(sub_head.idx)]);
-            graph.iter_subgraph(sub_head, [&wordUIDs,&importance,&subgrapher](auto &node){
+            graph.iter_subgraph(sub_head, [&wordUIDs, &importance, &subgrapher](auto &node) {
                 auto uid = node.graph->sentence().tokens->word_uid(node.idx);
                 fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
                            wordUIDs[uid], importance.score(uid), subgrapher.score(node));
@@ -74,6 +77,32 @@ void dependency_graph(){
     }
 }
 
+void phrases_in_sentence() {
+    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
+    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
+    WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
+    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
+    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
+    WordImportance importance{"../rnn++/tests/data/word_importance"};
+
+    DepParsedTokens tokens{};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.build_sent_uid(0);
+    auto sents = tokens.IndexSentences();
+
+    PhraseSegmenter phrase_segmenter{importance};
+    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    for (auto sent : sents) {
+        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
+        for (auto phrase : phrases) {
+            for (auto idx : phrase.idxs) {
+                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
+            }
+            fmt::print(std::cerr, "\n");
+        }
+    }
+}
 
 }//namespace wordrep::test
 }//namespace wordrep
@@ -88,6 +117,7 @@ int main(int /*argc*/, char** argv){
 //    auto dumpfile_hashes = argv[3];
 
     wordrep::test::dependency_graph();
+    wordrep::test::phrases_in_sentence();
     return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
