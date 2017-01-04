@@ -86,8 +86,9 @@ private:
 
 struct Phrase{
     Phrase(std::vector<DPTokenIndex> &&tokens)
-            : idxs{std::move(tokens)}
-    {}
+            : idxs{std::move(tokens)} {
+        std::sort(idxs.begin(), idxs.end());
+    }
 
     std::vector<DPTokenIndex> idxs;
 };
