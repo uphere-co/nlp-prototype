@@ -32,7 +32,7 @@ using wordrep::SentUID;
 using wordrep::WordUID;
 using wordrep::VocaIndex;
 using wordrep::WordUIDindex;
-using wordrep::WordCounter;
+using WordCounter = wordrep::WordCounter<WordUID>;
 
 using util::Timer;
 
