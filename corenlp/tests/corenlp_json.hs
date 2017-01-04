@@ -19,6 +19,8 @@ import           GHC.Generics
 
 import           Prelude      hiding (words)
 
+newtype WUID = WUID Int
+             deriving (Ord, Eq, Show, ToJSON, FromJSON)
 
 newtype ArcLabel = ArcLabel Text
              deriving (Eq, Show, ToJSON, FromJSON)
@@ -310,12 +312,12 @@ toRoot idx dep2gov = toRoot_o idx [] dep2gov
 toGov = (\(DepPos x) -> (GovPos x))
 toDep = (\(GovPos x) -> (DepPos x))
 
-data DepTree = Empty
-             | DLeaf GovPos
-             | DNode GovPos [DepTree]
+data DepTree a = Empty
+               | DLeaf a
+               | DNode a [DepTree a]
           deriving (Eq,Show)
 
-isRootMatch :: GovPos -> DepTree -> Bool
+isRootMatch :: (Eq a) => a -> DepTree a -> Bool
 isRootMatch n Empty = False
 isRootMatch n (DLeaf m)   | n==m = True
 isRootMatch n (DNode m _) | n==m = True
@@ -323,30 +325,36 @@ isRootMatch n _    = False
 
 isNotRootMatch n tree = not $ isRootMatch n tree
 
-buildDepTree :: M.Map GovPos [DepPos] -> DepTree
+buildDepTree :: M.Map GovPos [DepPos] -> DepTree GovPos
 buildDepTree gov2deps = go (GovPos 0)
   where go n = case mds of
                    Nothing -> DLeaf n
                    Just ds -> DNode n (map go $ map toGov ds)
               where mds = M.lookup n gov2deps
 
-elimNode :: GovPos -> DepTree -> DepTree
+elimNode :: (Eq a) => a -> DepTree a -> DepTree a
 elimNode n Empty                    = Empty
 elimNode n (DLeaf m) | n ==m        = Empty
                      | otherwise    = DLeaf m
 elimNode n (DNode m ds) | n ==m     = Empty 
                         | otherwise = DNode m (map (elimNode n) $ filter (isNotRootMatch n) ds)
 
-cloneTree :: DepTree -> DepTree
+cloneTree :: DepTree a -> DepTree a
 cloneTree Empty      = Empty
 cloneTree (DLeaf g)    = DLeaf g
 cloneTree (DNode g ds) = DNode g (map cloneTree ds)
 
-nonEmpty :: DepTree -> DepTree -> DepTree
+treeMap :: (a -> b) -> DepTree a -> DepTree b
+treeMap f Empty      = Empty
+treeMap f (DLeaf g)    = DLeaf (f g)
+treeMap f (DNode g ds) = DNode (f g) (map (treeMap f) ds)
+
+
+nonEmpty :: DepTree a -> DepTree a -> DepTree a
 nonEmpty Empty n     = n
 nonEmpty n     _     = n
 
-subTree :: GovPos -> DepTree -> DepTree
+subTree :: (Eq a) => a -> DepTree a -> DepTree a
 subTree n Empty = Empty
 subTree n (DLeaf g)
   | n==g      = DLeaf g
@@ -354,6 +362,59 @@ subTree n (DLeaf g)
 subTree n (DNode g ds)
   | n==g      = DNode g ds
   | otherwise = foldr nonEmpty Empty (map (subTree n) ds)
+
+
+parse_double :: String -> [Double]
+parse_double ds = map read (lines ds)
+
+parse_int :: String -> [Int]
+parse_int ds = map read (lines ds)
+
+all_wuids = map WUID [0..]
+loadWordUIDs wuidstr = M.fromList $ zip (map T.pack $ lines wuidstr) all_wuids
+
+instance Functor DepTree where
+  fmap = treeMap    -- define fmap for Tree, ad hoc polymorphism
+
+
+data DepWord = ROOT 
+             | A Text
+             deriving (Show)
+
+--nodeDepWord :: Maybe Dep -> DepWord
+--nodeDepWord Nothing = ROOT
+nodeDepWord :: Maybe Dep -> Maybe Text
+nodeDepWord Nothing = Nothing
+nodeDepWord (Just (Dep x)) = Just x
+
+-- newtype Dep = Dep { unDep :: Text }
+-- unDep (Dep x ) = x
+
+-- unDep :: Dep -> Text
+-- nodeDepWord :: (Functor f) => f Dep -> f Text
+-- nodeDepWord = fmap unDep 
+
+composeMap a2b b2c a = let f Nothing  = Nothing
+                           f (Just b) = M.lookup b b2c
+                       in f (M.lookup a a2b)
+{-
+M.Map k v
+M.Map v w
+a :: k
+a2b :: k -> Maybe v
+b2c :: v  Maybe w
+(>>=) ::m a -> (a -> m b) -> m b
+(return a >>= a2b) >>= b2c 
+-}
+
+-- Show??
+-- f = composeMap map1 map2
+
+maybeFun f Nothing = Nothing
+maybeFun f (Just x) = (f x)
+
+maybeLookup x2y Nothing  = Nothing
+maybeLookup x2y (Just x)  = M.lookup x x2y
 
 
 {-
@@ -407,7 +468,7 @@ f x y = value
 -- foldr ((:) . f) 
 
 
-findSub :: GovPos -> DepTree -> Maybe DepTree
+findSub :: (Eq a) => a -> DepTree a -> Maybe (DepTree a)
 findSub n Empty = Nothing
 findSub n (DLeaf g)
   | n==g      = Just (DLeaf g)
@@ -471,6 +532,7 @@ all_nodess = fmap (fmap $ unDepPos.dep_pos ) sents_deps
 all_nodes = head all_nodess
 
 dep2gov = M.fromList $ fmap (\x -> (dep_pos x, gov_pos x)) sent_deps
+dep2word = M.fromList $ fmap (\x -> (dep_pos x, dep x)) sent_deps
 gov2deps = buildDependentsMap $ fmap (\x -> (gov_pos x, dep_pos x)) sent_deps
 
 all_leaf = filter (\x -> isLeaf x gov2deps) all_nodes
@@ -480,8 +542,19 @@ dep_tree = buildDepTree gov2deps
 pruned_tree = removeNode (GovPos 15) gov2deps
 
 print.assert$ Empty == elimNode (GovPos 0) dep_tree -- Removing head should result Empty
-print.assert$ Empty == elimNode (GovPos 0) dep_tree -- Removing non-existing node does nothing.
+print.assert$ dep_tree == elimNode (GovPos 1000) dep_tree -- Removing non-existing node does nothing.
 print $ elimNode (GovPos 15) dep_tree
+
+
+wuidstr <- readFile "../../rnn++/tests/data/words.uid"
+wimpstr <- readFile "../../rnn++/tests/data/word_importance"
+let wuids = loadWordUIDs wuidstr
+let wimps = parse_double wimpstr
+word2wuid = loadWordUIDs wuidstr
+wuid2score = M.fromList $ zip all_wuids wimps
+word2score = composeMap  word2wuid wuid2score
+
+scored_tree = fmap (\x -> (x, maybeFun word2score $ nodeDepWord $ M.lookup (toDep x) dep2word)) dep_tree
 
 --Try another method
 node = (GovPos 10)

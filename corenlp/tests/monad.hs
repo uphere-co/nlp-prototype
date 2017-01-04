@@ -8,6 +8,11 @@ class Show (a :: *) where
   show :: a -> String
 -}
 
+import Control.Monad (forever, guard)
+
+-- useful
+-- import Control.Monad.Loops
+
 data Test = Test
 
 instance Show Test where
@@ -296,8 +301,8 @@ main0 = do
   print (fmap (\x -> show x ++ "!") t2)
 
 
-main  :: IO ()
-main =
+main2  :: IO ()
+main2 =
   getContents >>= \str -> 
   putStrLn (combineshow 1 str) >>= \_ -> 
   print test_tree >>= \_ -> 
@@ -305,11 +310,175 @@ main =
   let t2 = fmap (\x->x+1) test_tree
   in print (fmap (\x -> show x ++ "!") t2)
 
+
+
 {-
-main  :: IO ()
-main = getContents >>=
+main2  :: IO ()
+main2 = getContents >>=
        (\str -> putStrLn (combineshow 1 str)) >>=
        (\_ -> print test_tree) >>=
        (\_ -> print (fmap (\x->x+1) test_tree)) >>=
        (\_ -> let t2 = fmap (\x->x+1) test_tree in print (fmap (\x -> show x ++ "!") t2))
 -}
+
+main3  :: IO ()
+main3 = do
+  let divideBy y 0 = Nothing
+      divideBy y x = Just (y/x)
+  print (9 `divideBy` 3)
+  -- print (bind (flip divideBy 2) (9 `divideBy` 0))
+  print ((9 `divideBy` 3) >>= (\x -> x `divideBy` 7) >>= (\y -> return (y + 1)) >>= (\z -> z `divideBy` 3))
+  print (9 `divideBy` 3 >>= \x ->
+         x `divideBy` 7 >>= \y ->
+         return (y + 1) >>= \z ->
+         z `divideBy` 3)
+  print (do
+            x <- 9 `divideBy` 3
+            y <- x `divideBy` 7
+            -- z <- return (y+1)
+            let z = y+1
+            z `divideBy` 3
+        )
+
+
+  
+  let xs = mapM (12938 `divideBy`) [3,4,7,0,1,2,3]
+  print xs
+
+  forever $ print "abc"
+  
+
+{-
+mapM :: (Monad m) => (a -> m b) -> [a] -> m [b]
+mapM f lst = sequence (fmap f lst )
+
+sequence = sequenceA  for monad
+
+sequence :: (Monad m) => [m a] -> m [a]
+sequence [] = return []
+sequence (mx:mxs) = do x <- mx
+                       xs <- sequence mxs
+                       return (x:xs)
+-}
+
+{-                = mx >>= (\x -> (sequence mxs >>= (\xs -> return (x:xs))))
+
+Just x >>= f = Just (f x)
+Nothing >>= f = Nothing
+
+-}
+  
+{-
+mx :: m a
+x :: a 
+
+sequenceA :: [m a] -> m [a]
+sequenceA = .. 
+-}
+
+-- sequenceA :: (T t, A f) => t (f a) -> f (t a)
+
+
+--- list monad
+--  [a] = [] a 
+{-
+instance Monad [] where
+  -- return :: a -> [a]
+  return x = [x] 
+  
+  -- (>>=) :: m a -> (a -> m b) -> m b
+  -- (>>=) :: [a] -> (a -> [b]) -> [b]
+  concat :: [[a]] -> [a]
+
+  fmap :: (a -> b) -> [a] -> [b]
+  fmap = map
+-- class (Functor m) => Monad m
+bind = flip (>>=)
+(>>=) x f = bind f x 
+
+(>>=) x f = join (fmap f x)
+          = concat (map f x)
+            concat . map = concatMap
+bind = concatMap
+(>>=) = flip concatMap
+
+
+-- fmap 
+return, bind or return, join
+
+--  join :: m (m a) -> m a
+-- join = concat
+
+bind :: (a -> m b) -> m a -> m b
+
+bind (f :: a -> m b) 
+fmap f :: m a -> m (m b)
+
+x :: m a
+fmap f x :: m (m b)
+
+bind f x = join (fmap f x) :: m b
+
+bind f = join . fmap f 
+-}
+
+{-
+m a
+
+a -> m b
+
+b -> m c
+-}
+
+
+main = do
+  let f :: Int -> [(Int,Int)]
+      f x = [(x,1),(x,2),(x,3)]
+      g :: (Int,Int) -> [(Int,Int,Int)]
+      g (a,b) = [(a,b,-1),(a,b,-2),(a,b,-3),(a,b,-4)]
+  
+  let lst = {- do x <- [1,2,3]
+                  y <- f x
+                  z <- g y
+                  return z  -}
+            do x <- [1,2,3]
+               y@(y1,y2) <- f x
+               guard (y1-y2 > 0) 
+               (a,b,c) <- g y
+               guard (a+b+c < 2)
+               return (a,b,c)
+               
+            -- [ z | x <- [1,2,3], y <- f x, z <- g y ]
+            -- Monadic Comprehension
+            -- {-# LANGUAGE MonadComprehension #-}
+
+  print lst 
+
+{-
+fail = Nothing
+fail = [] 
+-}
+
+
+{-
+standard: 
+monad
+
+maybe, list, reader, writer, "state"
+
+IO 
+
+reader (env variable)
+writer (logger)
+
+state
+
+(Applicative, Alternative)
+
+---> parsing --> combinator <|>
+
+-}
+
+--
+-- monad transformer
+--
