@@ -48,6 +48,8 @@ Example usages
 ```
 #Get unigram distribution of YGP DB:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | ./word_count_collect words.h5
+#Get lists of words
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | cut -d' ' -f1
 ```
 
 Launch word counter as a TCP server :
