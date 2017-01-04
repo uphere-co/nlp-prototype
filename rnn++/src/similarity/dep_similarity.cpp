@@ -578,15 +578,17 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         for(auto ssent : relevant_sents){
             if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
             if(++i>20) break;
+            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
+
             for(auto idx=ssent.sent.beg; idx!=ssent.sent.end; ++idx){
                 fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
             }
-            fmt::print(std::cerr, "\n:Original sentence. Phrases:\n");
+            fmt::print(std::cerr, "\n:Original sentence. {} phrases:\n", phrases.size());
 
-            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
             for (auto phrase : phrases) {
                 for (auto idx : phrase.idxs) {
-                    fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
+                    fmt::print(std::cerr, "{} ",
+                               db.token2uid.word[db.tokens.word_uid(idx)]);
                 }
                 fmt::print(std::cerr, "\n");
             }

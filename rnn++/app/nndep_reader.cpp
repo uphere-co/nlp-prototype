@@ -13,6 +13,7 @@
 #include "utils/optional.h"
 #include "utils/span.h"
 #include "utils/algorithm.h"
+#include "utils/versioned_name.h"
 
 namespace wordrep{
 namespace test {
@@ -104,6 +105,38 @@ void phrases_in_sentence() {
     }
 }
 
+
+void phrases_in_sentence(util::json_t const& config) {
+    using util::io::h5read;
+    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
+                           config["dep_parsed_prefix"]};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
+    data::DBIndexer indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                            config["dep_parsed_prefix"].get<std::string>()};
+    auto sents = tokens.IndexSentences();
+
+    PhraseSegmenter phrase_segmenter{importance};
+    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    auto i=0;
+    for (auto sent : sents) {
+        if(util::diff(sent.end,sent.beg) > 30) continue;
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
+        }
+        if(++i>100) break;
+        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
+        fmt::print(std::cerr, "\n:Original sentence of {} words. {} phrases:\n",
+                   util::diff(sent.end,sent.beg), phrases.size());
+        for (auto phrase : phrases) {
+            for (auto idx : phrase.idxs) {
+                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
+            }
+            fmt::print(std::cerr, "\n");
+        }
+    }
+}
+
 }//namespace wordrep::test
 }//namespace wordrep
 
@@ -118,6 +151,7 @@ int main(int /*argc*/, char** argv){
 
 //    wordrep::test::dependency_graph();
 //    wordrep::test::phrases_in_sentence();
+//    wordrep::test::phrases_in_sentence(config);
 //    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
