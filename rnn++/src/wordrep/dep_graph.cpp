@@ -1,9 +1,12 @@
+#include <cmath>
+
 #include <fmt/printf.h>
 
 #include "wordrep/dep_graph.h"
 
-#include "utils/algorithm.h"
 #include "wordrep/dep_parsed.h"
+
+#include "utils/algorithm.h"
 
 namespace wordrep {
 
@@ -110,7 +113,8 @@ std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& g
     for(;;){
         auto sub_head = graph.node(subgrapher.max_score_node_idx());
 //        fmt::print("{} : {} score\n", i, subgrapher.score(sub_head));
-        if(subgrapher.score(sub_head) < cutoff) break;
+        auto score = subgrapher.score(sub_head);
+        if(score < cutoff || std::isnan(score)) break;
         sub_heads.push_back(sub_head.idx);
         graph.disconnect_head(sub_head.idx);
         subgrapher.set_score(); //TODO: remove duplicated computation.
