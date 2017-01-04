@@ -16,6 +16,7 @@ rec {
                      json = toolz_cpp.json;
 		     fmt = toolz_cpp.fmt;
 		     msgsl = toolz_cpp.msgsl;
+                     xxhashct = toolz_cpp.xxhashct;
 		     libpqxx =pkgs.libpqxx;
 		     elfutils = pkgs.elfutils;
 		     spdlog = toolz_cpp.spdlog;

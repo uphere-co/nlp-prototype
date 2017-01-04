@@ -30,6 +30,7 @@ FILE(GLOB simple_model_parsers src/*cpp
 
 FILE(GLOB etl_files src/data_source/*cpp)
 FILE(GLOB wordrep_files src/wordrep/*cpp)
+FILE(GLOB word2vec_files src/word2vec/*cpp)
 FILE(GLOB similarity_files src/similarity/*cpp)
 FILE(GLOB util_files utils/*cpp)
 
@@ -86,9 +87,22 @@ target_link_libraries(nndep_reader stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw
 add_executable(ygpdb_etl app/ygpdb_etl
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(ygpdb_dump app/ygpdb_dump
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(ygpdb_dump stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(word_count app/word_count
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(word_count stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(word_count_collect app/word_count_collect
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(word_count_collect stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+
+add_executable(word2vec_train app/word2vec_train
+        ${util_files} ${wordrep_files} ${word2vec_files})
+target_link_libraries(word2vec_train stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(index_words app/index_words
-               ${util_files} ${wordrep_files})
+               ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 

@@ -63,6 +63,12 @@ H5file::~H5file(){
 H5file h5read(std::string path){
     return H5file{H5name{path}, hdf5::FileMode::read_exist};
 }
+H5file h5replace(std::string path){
+    return H5file{H5name{path}, hdf5::FileMode::replace};
+}
+H5file h5rw_exist(std::string path){
+    return H5file{H5name{path}, hdf5::FileMode::rw_exist};
+}
 
 
 }//namespace util::io

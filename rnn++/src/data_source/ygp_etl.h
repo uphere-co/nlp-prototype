@@ -9,7 +9,9 @@ namespace ygp {
 
 
 int dump_column(std::string table, std::string column, std::string index_col);
-void dump_psql(const char *cols_to_exports);
+void dump_psql(std::string cols_to_exports);
+int parse_column(std::string table, std::string column, std::string index_col);
+void parse_psql(std::string cols_to_exports);
 
 void write_column(std::vector<int64_t> rows, std::string filename,
                   std::string prefix, std::string colname);

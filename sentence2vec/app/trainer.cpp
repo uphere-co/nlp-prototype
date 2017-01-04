@@ -135,14 +135,14 @@ int main(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    test::negative_sampling();
 //    test::context_words();
-    test::sampler();
+//    test::sampler();
 //    test_voca_update();
 //    test_word2vec_grad_update();
-    test::word_count("results.100");
-    test::io_unigram_dist(config, "results.100");
-    return 0;
+//    test::word_count("results.100");
+//    test::io_unigram_dist(config, "results.100");
+//    return 0;
 
-/*
+
     Timer timer{};
     constexpr int word_dim=100;
     val_t alpha=0.025;
@@ -270,7 +270,7 @@ int main(int /*argc*/, char** argv){
     file.overwriteRawData(H5name{"1b.training.1M"}, voca_vecs._val );
     file.writeRawData(H5name{"1b.training.1M.sentvec"}, sent_vecs._val );
     timer.here_then_reset("Wrote word2vecs to disk.");
-*/
+
     return 0;
 }
 

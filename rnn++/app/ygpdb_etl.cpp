@@ -26,6 +26,8 @@ using namespace util::io;
 using namespace wordrep;
 using namespace engine;
 
+using util::get_str;
+
 void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca_name, std::string uids_name){
     H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
     auto raw = file.getRawData<char>(H5name{voca_name});
@@ -552,7 +554,8 @@ int process_ygp_dump(int /*argc*/, char** argv){
     data::ygp::write_country_code(config);
     return 0;
 }
-int main(int argc, char** argv){
+
+void test_all(int /*argc*/, char** argv){
     auto config = util::load_json(argv[1]);
 //    data::ygp::test::ygpdb_indexing(config);
 //    data::ygp::test::country_annotator(config);
@@ -562,7 +565,6 @@ int main(int argc, char** argv){
 //    test::persistent_vector_float();
 //    test::persistent_vector_WordUID();
 //    test::filesystem(config);
-//    return 0;
 
 //    auto row_files = argv[2];
 //    auto hashes = argv[3];
@@ -570,12 +572,18 @@ int main(int argc, char** argv){
     data::rss::test::IndexUIDs(config);
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
-    return 0;
+
+}
+int main(int /*argc*/, char** argv){
+    auto config = util::load_json(argv[1]);
+//    test_all(argc, argv);
+//    return 0;
 
 //    parse_textfile(dump_files);
 //    process_rss_dump(argc, argv);
 //    process_ygp_dump(argc,argv);
-//    data::ygp::dump_psql(col_uids);
+    //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
+    data::ygp::dump_psql(get_str(config,"column_uids_dump"));
 
     return 0;
 //    pruning_voca();

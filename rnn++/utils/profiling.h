@@ -12,5 +12,11 @@ struct Timer{
     time_t t_start = std::chrono::high_resolution_clock::now();
 };
 
+struct MockTimer{
+    void here(std::string ) const {};
+    void reset() const {}
+    void here_then_reset(std::string) const {}
+};
+
 
 }//namespace util

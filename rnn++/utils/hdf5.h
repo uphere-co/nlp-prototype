@@ -147,6 +147,8 @@ struct H5file {
 };
 
 H5file h5read(std::string path);
+H5file h5replace(std::string path);
+H5file h5rw_exist(std::string path);
 
 }//namespace util::io
 }//namespace util

@@ -29,6 +29,39 @@ Just run `doxygen` inside this directory, then documentation is generated and st
 echo Batteries mercury restriction > query.0
 ./nndep_reader config.ygptest.json query.0
 ```
+# ETL pipeline for query engines
+## Relevant apps for word vector training.
+Note that all apps use stdin and stdout for data I/O.
+- `app/word_count`
+ - word counting. 
+ - takes stdin and outputs to stdout. The `tcpserver` of `ucspi-tcp` package can be used to deploy it as a service.
+ - input : output of CoreNLP PTBTokenizer
+- `app/ygpdb_dump`
+ - dump YGP db to stdout.
+ - input : a file with a list of columns to export; e.g. "column_uids_dump" file in JSON config of YGP query engine/
+- `app/word_count_collect`
+ - write sum of word count outputs of word_count into HDF5 file.
+ - will be used as unigram distribution for word2vec trainer
+ - input : ouput HDF5 filename
+
+Example usages
+```
+#Get unigram distribution of YGP DB:
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | ./word_count_collect words.h5
+```
+
+Launch word counter as a TCP server :
+```
+#Standalone :
+tcpserver mark 22224 ./index_words config.nyt.json
+#With CoreNLP word tokenizer :
+tcpserver mark 22224 sh -c "java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./index_words config.nyt.json"
+```
+Example client usage :
+```
+time cat news.2014.train  | nc mark 22224 > a
+```
+
 
 ## Build tests
 ```

@@ -14,10 +14,16 @@ struct IntegerLike{
     IntegerLike() : val{DEFAULT} {}
     IntegerLike(val_t val) : val{val} {}
     static IntegerLike from_unsigned(std::size_t uval){
-        return IntegerLike{util::to_type<val_t>(uval)};
+        return IntegerLike{util::to_signed_positive<val_t>(uval)};
     }
     val_t val;
 };
+
+template<typename T, int64_t VAL>
+auto& operator<<(std::ostream& os, IntegerLike<T,VAL> lhs) {
+    os << lhs.val;
+    return os;
+}
 
 template<typename T, int64_t VAL>
 IntegerLike<T,VAL> operator*(IntegerLike<T,VAL> lhs, typename IntegerLike<T,VAL>::val_t rhs) {

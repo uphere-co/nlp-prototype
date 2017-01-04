@@ -28,12 +28,13 @@ stdenv.mkDerivation {
                    psycopg2
                    #cgroup-utils
                    toolz.cldoc
-                   toolz.feedparser beautifulsoup
+                   toolz.feedparser beautifulsoup4
                  ]) 
                    ++ 
                  [
                    wget jdk zip unzip which stress htop
                    cmake pkgconfig clang clang-analyzer elfutils
+                   gcc6
                    #libcxx libcxxabi
                    boost
                    hdf5 hdf5-cpp liblbfgs 
@@ -46,10 +47,12 @@ stdenv.mkDerivation {
 		   toolz_cpp.json
                    toolz_cpp.csv
                    toolz_cpp.backwardcpp
+                   toolz_cpp.xxhashct
                    doxygen graphviz
                    libcgroup 
                    redis
                    libpqxx
+                   ucspi-tcp
                  ];
   shellHook = ''
      PS1="\n\[\033[0;34m\][\u@\h.devel:\w]\$\[\033[0m\] "

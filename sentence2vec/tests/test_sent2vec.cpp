@@ -113,7 +113,7 @@ void sampler(){
     timer.here_then_reset("Loop begins.");
     auto sum=0.0;
     auto n=1000000;
-    for(int i=0; i<n; ++i){
+    for(int i=0; i<n; ++i) {
         // auto widx = negative_sampler(gen);
         auto widx = negative_sampler2(ur(gen));
         sum += widx;

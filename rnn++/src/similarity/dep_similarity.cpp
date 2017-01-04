@@ -306,6 +306,7 @@ util::json_t to_json(std::vector<data::QueryResult> const &answers){
     util::json_t output{};
     for(auto &answer : answers){
         auto answer_json = to_json(answer.results);
+        answer_json["n_relevant_matches"] = answer.n_relevant_matches;
         annotate_input_info(answer_json, answer.query);
         output.push_back(answer_json);
     }
@@ -512,7 +513,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -528,6 +529,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
+        answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
     query_processor(query_sents, candidate_sents, per_sent);
@@ -539,7 +541,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -566,6 +568,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
+        answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
 
@@ -581,7 +584,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -618,6 +621,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
+        answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
     auto op_per_sent=[collect_result_stats,collect_query_result](

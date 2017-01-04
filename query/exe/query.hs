@@ -14,9 +14,6 @@ import           Control.Monad.Trans.Class                 (lift)
 import           Control.Monad.Trans.Maybe
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
---                                                           ,createBareLocalNode
---                                                           ,startServiceProcesses
---                                                           )
 import           Data.Aeson
 import qualified Data.Binary                         as Bi (decode,encode)
 import qualified Data.ByteString.Base64.Lazy         as B64
@@ -33,14 +30,13 @@ import           System.Environment
 import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
 --
+import           Query.Binding.EngineWrapper
+import           Query.Binding.Json_t
 import           QueryServer.Type
 --
 import           Broadcast
 import           Network
 import           Worker
-
-foreign import ccall "query_init"     c_query_init     :: CString -> IO ()
-foreign import ccall "query_finalize" c_query_finalize :: IO ()
 
 withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
 withHeartBeat them action = do
@@ -53,8 +49,8 @@ withHeartBeat them action = do
   kill pid "connection closed"                             -- and start over the whole process.
 
   
-server :: String -> Process ()
-server port = do
+server :: String -> EngineWrapper -> Process ()
+server port engine = do
   pid <- getSelfPid
   liftIO $ hPutStrLn stderr (show pid)
   
@@ -74,7 +70,7 @@ server port = do
               forever $ do
                 (q,sc') <- receiveChan rc
                 liftIO $ hPutStrLn stderr (show q)
-                spawnLocal (queryWorker ref sc' q)
+                spawnLocal (queryWorker ref sc' engine q)
   forever $ go
 
   
@@ -91,7 +87,8 @@ main = do
     Right transport -> do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
-        c_query_init configfile
-        runProcess node (server port)
-        c_query_finalize
+        engine <- newEngineWrapper configfile
+        runProcess node (server port engine)
+        deleteEngineWrapper engine
+
 
