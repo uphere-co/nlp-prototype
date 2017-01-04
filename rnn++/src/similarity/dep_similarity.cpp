@@ -25,8 +25,10 @@ using namespace util::io;
 namespace ygp = data::ygp;
 
 using util::json_t;
+using util::Timer;
 using data::PerSentQueryResult;
 using data::DBIndexer;
+using data::ColumnUID;
 
 namespace {
 using engine::ScoredSentence;
@@ -486,7 +488,8 @@ struct ProcessChainQuery{
 ///////////////////////////////////////////////////////////////
 template<typename T>
 QueryEngine<T>::QueryEngine(json_t const &config)
-: word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()}, hdf5::FileMode::read_exist}},
+: word_importance{util::io::h5read(util::get_str(config,"word_prob_dump"))},
+  phrase_segmenter{word_importance},
   db{config},
   dbinfo{config},
   queries{{config["wordvec_store"], config["voca_name"],
@@ -558,7 +561,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
-    auto per_sent = [&answers,max_clip_len,op_cut,op_results](
+    auto per_sent = [this,&answers,max_clip_len,op_cut,op_results](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         for(auto pair : util::zip(query_sent_info.words, query_sent_info.cutoffs)) {
             fmt::print(std::cerr, "{} : {}\n", pair.first, pair.second);
@@ -570,6 +573,26 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         answer.query = query_sent_info;
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
+        Timer timer;
+        int i=0;
+        for(auto ssent : relevant_sents){
+            if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
+            if(++i>20) break;
+            for(auto idx=ssent.sent.beg; idx!=ssent.sent.end; ++idx){
+                fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
+            }
+            fmt::print(std::cerr, "\n:Original sentence. Phrases:\n");
+
+            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
+            for (auto phrase : phrases) {
+                for (auto idx : phrase.idxs) {
+                    fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
+                }
+                fmt::print(std::cerr, "\n");
+            }
+            fmt::print(std::cerr, "-------------------\n");
+        }
+        timer.here_then_reset("Extract phrases.");
     };
 
     ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};

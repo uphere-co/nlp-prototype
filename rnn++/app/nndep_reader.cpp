@@ -116,9 +116,9 @@ int main(int /*argc*/, char** argv){
     std::string input = argv[2];
 //    auto dumpfile_hashes = argv[3];
 
-    wordrep::test::dependency_graph();
-    wordrep::test::phrases_in_sentence();
-    return 0;
+//    wordrep::test::dependency_graph();
+//    wordrep::test::phrases_in_sentence();
+//    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);

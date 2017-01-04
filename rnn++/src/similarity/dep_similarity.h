@@ -6,6 +6,7 @@
 #include "similarity/rss.h"
 
 #include "wordrep/dep_parsed.h"
+#include "wordrep/dep_graph.h"
 #include "wordrep/voca_info.h"
 #include "wordrep/word_prob.h"
 
@@ -79,6 +80,7 @@ public:
 
 private:
     wordrep::WordImportance const word_importance;
+    wordrep::PhraseSegmenter phrase_segmenter;
     Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;
