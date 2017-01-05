@@ -138,6 +138,7 @@ void phrases_in_sentence(util::json_t const& config) {
             }
             fmt::print(std::cerr, "\n");
         }
+        fmt::print("---------------------------------------\n");
     }
 }
 
@@ -157,13 +158,12 @@ using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
 int main(int argc, char** argv){
+//    test_all(argc,argv);
+//    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
 //    auto dumpfile_hashes = argv[3];
-
-    test_all(argc,argv);
-    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -184,7 +184,7 @@ int main(int argc, char** argv){
 //    data::ygp::annotation_on_result(config, answers);
     timer.here_then_reset("Query output annotation.");
     fmt::print("{}\n", answers.dump(4));
-    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
+    fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");

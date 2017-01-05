@@ -14,6 +14,9 @@ struct PersistentVector;
 template<typename T, typename TRAW>
 void append(PersistentVector<T,TRAW> &orig, PersistentVector<T,TRAW> const &elms);
 template<typename T, typename TRAW>
+void append(PersistentVector<T,TRAW> &orig, std::vector<T> const &vals);
+
+template<typename T, typename TRAW>
 std::vector<std::pair<T,T>> zip(PersistentVector<T,TRAW> &orig, PersistentVector<T,TRAW> const &elms);
 
 template<typename T, typename TRAW>
@@ -59,6 +62,7 @@ struct PersistentVector{
         store.overwriteRawData(fullname(prefix), util::serialize(vals));
     };
     friend void append<T,TRAW>(PersistentVector &orig, PersistentVector const &elms);
+    friend void append<T,TRAW>(PersistentVector &orig, std::vector<T> const &vals);
     friend std::vector<std::pair<T,T>> zip<T,TRAW>(PersistentVector &orig, PersistentVector const &elms);
 
 private:
@@ -75,8 +79,13 @@ using TypedPersistentVector = PersistentVector<T, typename T::val_t>;
 
 template<typename T, typename TRAW>
 void append(PersistentVector<T,TRAW> &orig, PersistentVector<T,TRAW> const &elms) {
-     util::append(orig.vals, elms.vals);
+    util::append(orig.vals, elms.vals);
 }
+template<typename T, typename TRAW>
+void append(PersistentVector<T,TRAW> &orig, std::vector<T> const &vals) {
+    util::append(orig.vals, vals);
+}
+
 template<typename T, typename TRAW>
 std::vector<std::pair<T,T>> zip(PersistentVector<T,TRAW> &orig, PersistentVector<T,TRAW> const &elms){
     return util::zip(orig.vals, elms.vals);
