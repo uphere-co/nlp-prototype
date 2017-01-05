@@ -10,6 +10,7 @@
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/word_hash.h"
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
 #include "wordrep/voca.h"
@@ -110,12 +111,14 @@ void reverse_iterator(){
 }
 
 void hash(){
-    auto seed = 1;
     char cs[10] = "Hello";
     assert(sizeof(cs)==10);
 
-    uint64_t hash = xxh64::hash (reinterpret_cast<const char*> (cs), 10, seed);
-    fmt::print("{}\n", hash);
+    uint64_t hash = xxh64::hash(reinterpret_cast<const char*> (cs), 10, wordrep::xxh64_seed);
+    fmt::print("With seed {}, hash of '{}' : {}\n", wordrep::xxh64_seed, cs, hash);
+    std::string str = "Hello";
+    assert(hash==wordrep::hash(cs, 10));
+//    assert(hash==wordrep::hash(str));
 }
 
 void uint_to_int(){
@@ -291,9 +294,25 @@ void negative_sampling(){
 
     assert(almost_equal(sum_exact,  sum, 0.005));//allow ~ 5-sigma errors.
 }
+
+void word_uid_spec(){
+    fmt::print("test::word_uid_spec\n");
+    WordUIDindex wordUIDs{"words.uid"};//news.en.words
+    std::vector<std::string> words = {"the", "-UNKNOWN-"};
+    for(auto word : words){
+        auto uid = wordUIDs[word];
+        fmt::print("{} : {}\n", uid, wordUIDs[uid]);
+        assert(wordUIDs[uid]==word);
+    }
+
+    std::string unknown_word{"WE60720KANFAFJ14RRaoqirh1orhaf149140"};
+    auto unknown_uid = wordUIDs[unknown_word];
+    assert(wordUIDs[unknown_uid]=="-UNKNOWN-");
+}
 }//namespace test
 
 void test_all(){
+    test::word_uid_spec();
     test::reverse_iterator();
     test::string_iterator();
     test::benchmark();
@@ -412,7 +431,8 @@ void update_wordvec_h5store(int argc, char** argv){
 
 
 int main(int argc, char** argv){
-    //test_all();
+    test_all();
+    return 0;
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
     update_wordvec_h5store(argc,argv);
     return 0;

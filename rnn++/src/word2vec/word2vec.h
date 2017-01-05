@@ -3,7 +3,11 @@
 #include <random>
 #include "wordrep/voca.h"
 
-#include "utils/persistent_vector.h"
+namespace util{
+namespace io{
+struct H5file; //forward declaration
+}
+}
 
 namespace word2vec {
 

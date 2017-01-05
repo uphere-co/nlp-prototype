@@ -3,9 +3,9 @@
 #include <string>
 #include <algorithm>
 
-#include <xxhashct/xxh64.hpp>
-
 #include "wordrep/word_uid.h"
+#include "wordrep/word_hash.h" //TODO:move to .cpp file.
+
 
 namespace wordrep{
 
@@ -14,7 +14,6 @@ struct TokenHash{
     template<typename T>
     KEY operator() (std::string const &text, T text_beg, T beg, T end) const;
 };
-
 
 template<>
 struct TokenHash<std::string>{
@@ -27,19 +26,8 @@ struct TokenHash<std::string>{
     }
 };
 
-
-//For computer security reasons, xxh64 needs a seed value. 
-//For our use case(use hash as unique ID of each word), a global, fixed number will do its job.
-constexpr size_t xxh64_seed = 113377;
-
-template<typename T>
-auto hash(T* ptr, size_t len){
-    return xxh64::hash(reinterpret_cast<const char*>(ptr), len, xxh64_seed);
-}
-
 template<>
-struct TokenHash<wordrep::WordUID>{
-    using WordUID = wordrep::WordUID;
+struct TokenHash<WordUID>{
     template<typename T>
     WordUID  operator() (std::string const &text, T text_beg, T beg, T end) const {
         return WordUID::from_unsigned(hash(text.data()+(beg-text_beg), end-beg));

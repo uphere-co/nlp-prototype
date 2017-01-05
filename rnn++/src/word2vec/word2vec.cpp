@@ -5,6 +5,7 @@
 #include "utils/math.h"
 #include "utils/optional.h"
 #include "utils/algorithm.h"
+#include "utils/persistent_vector.h"
 
 namespace word2vec {
 
