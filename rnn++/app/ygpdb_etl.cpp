@@ -539,7 +539,8 @@ int process_rss_dump(int /*argc*/, char** argv){
     data::rss::write_column_indexes(config, hashes, row_files, idxs);
     return 0;
 }
-int process_ygp_dump(int /*argc*/, char** argv){
+int process_ygp_dump(int argc, char** argv){
+    assert(argc>2);
     auto config = util::load_json(argv[1]);
     auto dump_files = argv[2];
 
@@ -593,12 +594,12 @@ int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     //test_common(argc, argv);
 //    test_ygp(argc, argv);
-    test_rss(argc, argv);
-    return 0;
+//    test_rss(argc, argv);
+//    return 0;
 
 //    parse_textfile(dump_files);
 //    process_rss_dump(argc, argv);
-//    process_ygp_dump(argc,argv);
+    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
 
     return 0;

@@ -298,7 +298,7 @@ void negative_sampling(){
 void word_uid_spec(){
     fmt::print("test::word_uid_spec\n");
     WordUIDindex wordUIDs{"words.uid"};//news.en.words
-    std::vector<std::string> words = {"the", "-UNKNOWN-"};
+    std::vector<std::string> words = {"the", "grundlegenden", u8"über", "-UNKNOWN-"};
     for(auto word : words){
         auto uid = wordUIDs[word];
         fmt::print("{} : {}\n", uid, wordUIDs[uid]);

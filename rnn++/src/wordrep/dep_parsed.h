@@ -53,7 +53,7 @@ struct Sentences{
 
 
 struct DepParsedTokens{
-    static constexpr int64_t major_version = 4;
+    static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
     DepParsedTokens(util::io::H5file const &file, std::string prefix);

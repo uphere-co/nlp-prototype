@@ -124,7 +124,7 @@ int dump_column(std::string table, std::string column, std::string index_col){
                 //fmt::print(std::cerr, "{} is empty.\n", row_full_name);
                 continue;
             }
-            std::cout << raw_text;
+            std::cout << raw_text << std::endl;
         }
         std::cout << std::endl;
     } catch (const std::exception &e){

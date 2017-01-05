@@ -108,6 +108,8 @@ void phrases_in_sentence() {
 
 void phrases_in_sentence(util::json_t const& config) {
     using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
     DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
                            config["dep_parsed_prefix"]};
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
@@ -140,19 +142,26 @@ void phrases_in_sentence(util::json_t const& config) {
 }//namespace wordrep::test
 }//namespace wordrep
 
+void test_all(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    wordrep::test::dependency_graph();
+    wordrep::test::phrases_in_sentence();
+    wordrep::test::phrases_in_sentence(config);
+}
+
 using namespace wordrep;
 using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
-int main(int /*argc*/, char** argv){
+int main(int argc, char** argv){
+    assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
 //    auto dumpfile_hashes = argv[3];
 
-//    wordrep::test::dependency_graph();
-//    wordrep::test::phrases_in_sentence();
-//    wordrep::test::phrases_in_sentence(config);
-//    return 0;
+    test_all(argc,argv);
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
