@@ -37,4 +37,7 @@ struct DummyArcLabelUID{};
 using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
 using ArcLabelUIDindex = UIDIndex<ArcLabelUID>;
 
+std::string the_unknown_word();
+WordUID the_unknown_word_uid();
+
 }//namespace wordrep

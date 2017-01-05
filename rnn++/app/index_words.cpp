@@ -307,7 +307,10 @@ void word_uid_spec(){
 
     std::string unknown_word{"WE60720KANFAFJ14RRaoqirh1orhaf149140"};
     auto unknown_uid = wordUIDs[unknown_word];
-    assert(wordUIDs[unknown_uid]=="-UNKNOWN-");
+    assert(wordUIDs[unknown_uid]==wordrep::the_unknown_word());
+
+    assert(wordrep::the_unknown_word_uid() == wordUIDs[wordrep::the_unknown_word()]);
+    assert(wordrep::the_unknown_word() == wordUIDs[wordrep::the_unknown_word_uid()]);
 }
 
 void pos_uid_spec(){
@@ -338,9 +341,10 @@ void voca_indexmap_spec(int argc, char** argv){
     std::string unknown_word{"WE60720KANFAFJ14RRaoqirh1orhaf149140"};
     auto unknown_uid = wordUIDs[unknown_word];
     auto unknown_idx = voca[unknown_uid];
-    assert(voca[unknown_idx] == wordUIDs["-UNKNOWN-"]);
+    assert(voca[unknown_idx] == wordUIDs[wordrep::the_unknown_word()]);
     fmt::print("{} : {}.uid {}.idx\n", unknown_word, unknown_uid, unknown_idx);
-    //assert(wordUIDs[unknown_uid]=="-UNKNOWN-")
+
+
 }
 
 }//namespace test

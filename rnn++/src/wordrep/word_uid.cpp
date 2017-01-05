@@ -10,7 +10,6 @@ template<typename TUID>
 UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}} {
     auto words = util::string::readlines(file);
     for(auto &word : words) insert(word);
-    uid2word[uid_t{}]="-UNKNOWN-";
 }
 //using WordUIDindex = UIDIndex<WordUID>;
 template<typename TUID>
@@ -27,7 +26,7 @@ template<typename TUID>
 std::string UIDIndex<TUID>::operator[](uid_t uid) const {
 //    return uid2word[uid];
     auto it=uid2word.find(uid);
-    if(it==uid2word.cend()) it = uid2word.find(uid_t{});
+    if(it==uid2word.cend()) return the_unknown_word();
     return it->second;
 }
 template<typename TUID>
@@ -42,6 +41,12 @@ void UIDIndex<TUID>::write_to_disk(std::string filename) const {
     file.close();
 }
 
+std::string the_unknown_word(){
+    return "-UNKNOWN-";
+}
+WordUID the_unknown_word_uid(){
+    return WordUID::from_unsigned(hash(the_unknown_word()));
+}
 //Explicit instantiations;
 template class UIDIndex<WordUID>;
 template class UIDIndex<POSUID>;

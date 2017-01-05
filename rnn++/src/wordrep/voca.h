@@ -18,6 +18,7 @@ public:
 private:
     std::unordered_map<WordUID, VocaIndex> uid2idx;
     std::vector<WordUID> uids;
+    VocaIndex unknown_word;
 };
 
 std::vector<WordUID> load_voca(std::string h5name, std::string voca_name);
