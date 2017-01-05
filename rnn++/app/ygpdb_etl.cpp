@@ -40,24 +40,26 @@ void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca
 }
 
 void pruning_voca(){
-    VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
-    VocaIndexMap pruner_uids{load_voca("s2010.h5", "s2010.uids")};
-
-    WordBlock_base<float,100> wvecs{load_raw_wvec("news.h5", "news.en.vecs", "float32")};
-    std::vector<float> pruned_wvecs;
-    std::vector<WordUID::val_t > pruned_uids;
-    for(auto const& pair: uids.uid2idx) {
-        auto uid = pair.first;
-        if (pruner_uids.isin(uid)) {
-            pruned_uids.push_back(uid.val);
-            auto wvec = wvecs[uids[uid]];
-            std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(pruned_wvecs));
-        }
-    }
-
-    H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
-    outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
-    outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
+    //TODO:reimplement this
+    assert(0);
+//    VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
+//    VocaIndexMap pruner_uids{load_voca("s2010.h5", "s2010.uids")};
+//
+//    WordBlock_base<float,100> wvecs{load_raw_wvec("news.h5", "news.en.vecs", "float32")};
+//    std::vector<float> pruned_wvecs;
+//    std::vector<WordUID::val_t > pruned_uids;
+//    for(auto const& pair: uids.uid2idx) {
+//        auto uid = pair.first;
+//        if (pruner_uids.isin(uid)) {
+//            pruned_uids.push_back(uid.val);
+//            auto wvec = wvecs[uids[uid]];
+//            std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(pruned_wvecs));
+//        }
+//    }
+//
+//    H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
+//    outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
+//    outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
 }
 
 

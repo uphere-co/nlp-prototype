@@ -14,10 +14,10 @@ public:
     VocaIndex operator[](WordUID   uid) const;
     WordUID   operator[](VocaIndex idx) const;
 
-    bool isin(WordUID uid) {return uid2idx[uid]!=VocaIndex{};}
-//private:
+    bool isin(WordUID uid) {return uid2idx.find(uid)!=uid2idx.end();}
+private:
     std::unordered_map<WordUID, VocaIndex> uid2idx;
-    std::unordered_map<VocaIndex, WordUID> idx2uid;
+    std::vector<WordUID> uids;
 };
 
 std::vector<WordUID> load_voca(std::string h5name, std::string voca_name);

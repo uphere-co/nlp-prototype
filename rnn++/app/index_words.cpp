@@ -323,11 +323,32 @@ void pos_uid_spec(){
     assert(posUIDs[unknown_uid]=="-UNKNOWN-");
 }
 
+void voca_indexmap_spec(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
+    WordUIDindex wordUIDs{"words.uid"};
+    std::vector<std::string> words = {"the", "-UNKNOWN-"};
+    for(auto word : words){
+        auto uid = wordUIDs[word];
+        auto idx = voca[uid];
+        fmt::print("{} : {}.uid {}.idx\n", word, uid, idx);
+        assert(voca[idx]==uid);
+    }
+    std::string unknown_word{"WE60720KANFAFJ14RRaoqirh1orhaf149140"};
+    auto unknown_uid = wordUIDs[unknown_word];
+    auto unknown_idx = voca[unknown_uid];
+    assert(voca[unknown_idx] == wordUIDs["-UNKNOWN-"]);
+    fmt::print("{} : {}.uid {}.idx\n", unknown_word, unknown_uid, unknown_idx);
+    //assert(wordUIDs[unknown_uid]=="-UNKNOWN-")
+}
+
 }//namespace test
 
-void test_all(){
+void test_all(int argc, char** argv){
     test::word_uid_spec();
     test::pos_uid_spec();
+    test::voca_indexmap_spec(argc,argv);
     test::reverse_iterator();
     test::string_iterator();
     test::benchmark();
@@ -446,7 +467,7 @@ void update_wordvec_h5store(int argc, char** argv){
 
 
 int main(int argc, char** argv){
-    test_all();
+    test_all(argc,argv);
     return 0;
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
     update_wordvec_h5store(argc,argv);
