@@ -309,10 +309,25 @@ void word_uid_spec(){
     auto unknown_uid = wordUIDs[unknown_word];
     assert(wordUIDs[unknown_uid]=="-UNKNOWN-");
 }
+
+void pos_uid_spec(){
+    wordrep::POSUIDindex posUIDs{"../rnn++/tests/data/poss.uid"};
+    std::vector<std::string> tokens = {"NN", "ADJ"};
+    for(auto token : tokens){
+        auto uid = posUIDs[token];
+        fmt::print("{} : {}\n", uid, posUIDs[uid]);
+        assert(posUIDs[uid]==token);
+    }
+    std::string unknown_token{"SADFGJOAWGFAKFJKQJRFAFWQEFASFGAG"};
+    auto unknown_uid = posUIDs[unknown_token];
+    assert(posUIDs[unknown_uid]=="-UNKNOWN-");
+}
+
 }//namespace test
 
 void test_all(){
     test::word_uid_spec();
+    test::pos_uid_spec();
     test::reverse_iterator();
     test::string_iterator();
     test::benchmark();
