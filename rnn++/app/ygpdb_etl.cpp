@@ -547,13 +547,18 @@ int process_ygp_dump(int argc, char** argv){
     data::CoreNLPoutputParser dump_parser{config};
 
     auto json_dumps = util::string::readlines(dump_files);
+    util::Timer timer;
     data::parallel_load_jsons(json_dumps, dump_parser);
+    timer.here_then_reset(fmt::format("Parsed {} files.\n",dump_parser.chunks.size()));
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto tokens = dump_parser.get(prefix);
+    auto non_null_idxs = dump_parser.get_nonnull_idx();
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
-    data::ygp::write_column_indexes(config, dump_files);
+    std::vector<std::string> non_null_dumps;
+    for(auto i : non_null_idxs) non_null_dumps.push_back(json_dumps[i]);
+    data::ygp::write_column_indexes(config, non_null_dumps);
     auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
                                                    DepParsedTokens::major_version, 0};
     data::ygp::write_country_code(config);

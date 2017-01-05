@@ -237,7 +237,7 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
 }
 
 void write_column_indexes(util::json_t const &config,
-                          std::string corenlp_outputs){
+                          std::vector<std::string> corenlp_outputs){
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0}.fullname;
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
@@ -249,8 +249,7 @@ void write_column_indexes(util::json_t const &config,
     RowUID row_uid{};
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
     YGPdb db{cols_to_exports};
-    auto files = util::string::readlines(corenlp_outputs);
-    for(auto dumpfile_path : files){
+    for(auto dumpfile_path : corenlp_outputs){
         RowDumpFilePath row{dumpfile_path};
         auto col_uid = db.col_uid(row.full_column_name());
         RowIndex row_idx{row.index};

@@ -18,7 +18,8 @@ void write_column(std::vector<int64_t> rows, std::string filename,
 void overwrite_column(std::vector<int64_t> rows, std::string filename,
                       std::string prefix, std::string colname);
 void write_country_code(util::json_t const &config);
-void write_column_indexes(util::json_t const &config, std::string corenlp_outputs);
+void write_column_indexes(util::json_t const &config,
+                          std::vector<std::string> corenlp_outputs);
 
 }//namespace data::ygp
 }//namespace data
