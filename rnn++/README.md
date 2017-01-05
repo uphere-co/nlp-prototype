@@ -61,8 +61,9 @@ Example usages
 cat ygp.raw | ./word_count | cut -d' ' -f1 >> all_words
 #Check `config.ygp.json` uses the upodated `all_words` file.
 
-#Collect JSON dumps of YGP DB row elements
-find ~/word2vec/ygp.corenlp/ > ygp.corenlp
+#Collect JSON dumps of YGP DB row elements. 
+#Beware the `-name` option to not include a directory itself.
+find ~/word2vec/ygp.corenlp/  -name '*.*.*.*' > ygp.corenlp
 #Run indexer with config JSON file.
 make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp
 #Test with phrases_in_sentence to see if everything works well
