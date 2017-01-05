@@ -226,7 +226,8 @@ void chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
-    CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
+    CountryCodeAnnotator country_tagger{
+            util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
     {
         auto tags = country_tagger.tag("Seoul is a capital city of South Korea.\n");
         assert(!util::isin(tags, "Japan"));
@@ -258,7 +259,8 @@ void country_code(util::json_t const &config) {
                        hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
     DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
-    DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
+    DBbyCountry ygpdb_country{ygp_h5store,
+                              util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
     DepParsedTokens tokens{ygp_h5store, ygp_prefix};
 
     auto sents = tokens.IndexSentences();
@@ -557,29 +559,42 @@ int process_ygp_dump(int /*argc*/, char** argv){
     return 0;
 }
 
-void test_all(int /*argc*/, char** argv){
+void test_rss(int argc, char** argv){
+    assert(argc > 1);
     auto config = util::load_json(argv[1]);
-//    data::ygp::test::ygpdb_indexing(config);
-//    data::ygp::test::country_annotator(config);
-//    data::ygp::test::country_code(config);
-//    test::word_importance(config);
-//    test::unicode_conversion();
-//    test::persistent_vector_float();
-//    test::persistent_vector_WordUID();
-//    test::filesystem(config);
-
-//    auto row_files = argv[2];
-//    auto hashes = argv[3];
-//    data::rss::test::rss_indexing(config, hashes);
+    auto row_files = argv[2];
+    auto hashes = argv[3];
     data::rss::test::IndexUIDs(config);
+    //TODO: update following test.
+//    data::rss::test::rss_indexing(config, hashes);
+}
+void test_ygp(int argc, char** argv) {
+    assert(argc > 1);
+    auto config = util::load_json(argv[1]);
+    data::ygp::test::ygpdb_indexing(config);
+    data::ygp::test::country_annotator(config);
+    data::ygp::test::country_code(config);
+}
+
+void test_common(int argc, char** argv){
+    assert(argc > 1);
+    auto config = util::load_json(argv[1]);
+    test::word_importance(config);
+    test::unicode_conversion();
+    test::persistent_vector_float();
+    test::persistent_vector_WordUID();
+    test::filesystem(config);
+
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
 
 }
-int main(int /*argc*/, char** argv){
+int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
-//    test_all(argc, argv);
-//    return 0;
+    //test_common(argc, argv);
+//    test_ygp(argc, argv);
+    test_rss(argc, argv);
+    return 0;
 
 //    parse_textfile(dump_files);
 //    process_rss_dump(argc, argv);
