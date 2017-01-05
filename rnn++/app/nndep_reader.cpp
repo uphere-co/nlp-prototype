@@ -130,7 +130,7 @@ void phrases_in_sentence(util::json_t const& config) {
         }
         if(++i>100) break;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        fmt::print(std::cerr, "\n:Original sentence of {} words. {} phrases:\n",
+        fmt::print(std::cerr, "\n: --- Original sentence of {} words. {} phrases --- :\n",
                    util::diff(sent.end,sent.beg), phrases.size());
         for (auto phrase : phrases) {
             for (auto idx : phrase.idxs) {

@@ -30,6 +30,35 @@ void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
     chunks[i]=tokens;
 }
 
+wordrep::DepParsedTokens CoreNLPoutputParser::serial_parse(std::vector<std::string> dump_files,
+                                                           std::string prefix) {
+    util::Timer timer;
+    wordrep::DepParsedTokens tokens{prefix};
+    auto n = dump_files.size();
+    //for(auto file : dump_files){
+    for(decltype(n)i=0; i<n; ++i){
+        auto file = dump_files[i];
+        std::cout << fmt::format("{} is being checked", file) << std::endl;
+        if(!util::file::is_exist(file)) {
+            std::cerr <<fmt::format("{} is not exist", file) << std::endl;
+            continue;
+        }
+        data::CoreNLPjson json{file};
+        if(json.val["sentences"].size()==0) {
+            std::cerr <<fmt::format("{} has null content", file) << std::endl;
+            continue;
+        }
+        std::cout << fmt::format("{} will be parsed\n", file) << std::endl;
+        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json);
+        timer.here_then_reset(fmt::format("{} is parsed", file));
+        chunks[i]={};
+    }
+    tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
+    timer.here_then_reset("Built sent UID.");
+    tokens.build_voca_index(voca.indexmap);
+    timer.here_then_reset("Built VocaIndex");
+    return tokens;
+}
 std::vector<size_t> CoreNLPoutputParser::get_nonnull_idx() const{
     std::vector<size_t> idxs;
     for(auto elm : chunks) idxs.push_back(elm.first);

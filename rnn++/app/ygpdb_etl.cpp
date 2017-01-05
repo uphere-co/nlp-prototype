@@ -544,14 +544,18 @@ int process_ygp_dump(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     auto dump_files = argv[2];
 
-    data::CoreNLPoutputParser dump_parser{config};
-
-    auto json_dumps = util::string::readlines(dump_files);
     util::Timer timer;
-    data::parallel_load_jsons(json_dumps, dump_parser);
-    timer.here_then_reset(fmt::format("Parsed {} files.\n",dump_parser.chunks.size()));
+    data::CoreNLPoutputParser dump_parser{config};
+    auto json_dumps = util::string::readlines(dump_files);
+    timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    data::parallel_load_jsons(json_dumps, dump_parser);
+    timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
     auto tokens = dump_parser.get(prefix);
+    timer.here_then_reset("Finish concatenation");
+//    auto tokens = dump_parser.serial_parse(json_dumps, prefix);
+    timer.here_then_reset("Parsing is finished.");
+
     auto non_null_idxs = dump_parser.get_nonnull_idx();
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
