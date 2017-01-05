@@ -4,6 +4,7 @@
 
 #include "utils/hdf5.h"
 #include "utils/string.h"
+#include "utils/persistent_vector.h"
 
 using namespace util::io;
 
@@ -33,10 +34,11 @@ WordUID VocaIndexMap::operator[](VocaIndex idx) const {
     return it->second;
 }
 
-
 std::vector<WordUID> load_voca(std::string h5name, std::string voca_name){
-    H5file file{H5name{h5name}, hdf5::FileMode::read_exist};
-    return util::deserialize<WordUID>(file.getRawData<WordUID::val_t>(H5name{voca_name}));
+    auto file = h5read(h5name);
+    util::TypedPersistentVector<WordUID> words_uids{file,voca_name};
+    std::vector<WordUID> vec = words_uids.get();
+    return vec;
 }
 
 }//namespace wordrep
