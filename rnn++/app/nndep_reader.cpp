@@ -24,7 +24,8 @@ void dependency_graph() {
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
-    WordImportance importance{"../rnn++/tests/data/word_importance"};
+    WordImportance importance{"../rnn++/tests/data/word_importance",
+                              "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
@@ -84,7 +85,8 @@ void phrases_in_sentence() {
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
-    WordImportance importance{"../rnn++/tests/data/word_importance"};
+    WordImportance importance{"../rnn++/tests/data/word_importance",
+                              "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);

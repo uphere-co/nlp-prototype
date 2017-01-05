@@ -13,6 +13,7 @@
 #include "wordrep/word_hash.h"
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
+#include "wordrep/word_prob.h"
 #include "wordrep/voca.h"
 #include "wordrep/indexes.h"
 
@@ -469,10 +470,62 @@ void update_wordvec_h5store(int argc, char** argv){
     new_uids.write(file);
 }
 
+void update_word_prob(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto file = util::io::h5rw_exist(util::get_str(config,"word_prob_dump"));
+    auto old_uids = util::deserialize<WordUID>(file.getRawData<int64_t>({"prob.word_uid"}));
+    auto words = util::string::readlines("/home/jihuni/word2vec/ygp/words.uid");
+
+    WordUID uid{0};
+    std::map<WordUID,std::string> uid2word;
+    for(auto word : words) uid2word[uid++]=word;
+
+    util::TypedPersistentVector<WordUID> uids{"prob.word_uid"};
+    for(auto old_uid : old_uids){
+        uids.push_back(wordUIDs[uid2word[old_uid]]);
+    }
+    uids.write(file);
+}
+void word_prob_check(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    auto file = util::io::h5read(util::get_str(config,"word_prob_dump"));
+    auto ratio_to_score = [](auto ratio){
+        auto factor = ratio+0.001;
+        factor = factor<1.0? 1.0: factor;
+        return 0.9*(1- 1/(factor));
+    };
+    auto scores = map(file.getRawData<double>({"prob.ratio"}), ratio_to_score);
+
+    wordrep::WordImportance importance{file};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    auto words = util::string::readlines("/home/jihuni/word2vec/ygp/words.uid");
+    for(int i=0; i!=words.size(); ++i){
+        auto word=words[i];
+        assert(scores[i] == importance.score(wordUIDs[word]));
+    }
+}
+
+void word_prob_check(){
+    wordrep::WordImportance importance{"../rnn++/tests/data/word_importance",
+                                       "../rnn++/tests/data/words.uid"};
+    WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
+
+    auto words = util::string::readlines("../rnn++/tests/data/words.uid");
+    for(auto word: words){
+        fmt::print("{}: {}\n", word, importance.score(wordUIDs[word]));
+    }
+}
 
 int main(int argc, char** argv){
-    test_all(argc,argv);
+//    test_all(argc,argv);
+    word_prob_check(argc,argv);
+    word_prob_check();
     return 0;
+    //update_word_prob(argc,argv);
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
     update_wordvec_h5store(argc,argv);
     return 0;

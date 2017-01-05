@@ -14,7 +14,8 @@ uint64_t hash(T* ptr, size_t len){
     return xxh64::hash(reinterpret_cast<const char*>(ptr), len, xxh64_seed);
 }
 
-template<typename T>
-uint64_t hash(T const& str);
+inline uint64_t hash(std::string const& str){
+    return xxh64::hash(str.data(), str.size(), xxh64_seed);
+};
 
 }//namespace wordrep

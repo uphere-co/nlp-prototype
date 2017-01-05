@@ -106,8 +106,8 @@ add_executable(index_words app/index_words
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 
-add_executable(hdf5io app/hdf5io src/parser/config src/parser/param utils/hdf5 utils/string src/wordrep/word_prob.h src/wordrep/word_prob.cpp)
-target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb)
+add_executable(hdf5io app/hdf5io src/parser/config src/parser/param  ${util_files} ${wordrep_files})
+target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 #add_executable(gsl boilerplate/gsl)
 #add_executable(string boilerplate/string)
