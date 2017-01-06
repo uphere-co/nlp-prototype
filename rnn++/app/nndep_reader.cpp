@@ -138,7 +138,7 @@ void phrases_in_sentence(util::json_t const& config) {
             }
             fmt::print(std::cerr, "\n");
         }
-        fmt::print("---------------------------------------\n");
+        fmt::print(std::cerr, "---------------------------------------\n\n");
     }
 }
 
