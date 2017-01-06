@@ -576,7 +576,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         Timer timer;
         int i=0;
         for(auto ssent : relevant_sents){
-            if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
+            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
             if(++i>20) break;
             auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
 

@@ -94,7 +94,7 @@ void annotation_on_result(util::json_t const& config, util::json_t &answers,
             auto hash = hash2idx.hash(HashIndex{row_idx.val});
             auto column = rssdb.column(col_uid);
 
-            auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
+            auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/NYT.text/{}.{}", hash, column));
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
