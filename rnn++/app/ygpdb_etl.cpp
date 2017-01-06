@@ -647,8 +647,8 @@ int main(int argc, char** argv){
 //    return 0;
 
 //    parse_textfile(dump_files);
-    pruning_voca();
-//    process_rss_dump(argc, argv);
+//    pruning_voca();
+    process_rss_dump(argc, argv);
 //    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
 

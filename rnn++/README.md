@@ -91,6 +91,13 @@ find ~/word2vec/NYT.corenlp/ -name '*.*.*'  -printf "%f\n" | cut -d'.' -f1 | ./w
 find ~/word2vec/NYT.corenlp/ -name '*.*.*' > article.corenlp
 ```
 
+## Build test dataset
+
+- Prepare config JSON for test dataset.
+- Build voca vecs by pruning unnecessary words for test dataset
+- Index the test dataset with it
+- Test and use it!
+
 #Standalone :
 tcpserver mark 22224 ./index_words config.nyt.json
 #With CoreNLP word tokenizer :

@@ -205,8 +205,8 @@ using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
 int main(int argc, char** argv){
-    test_all(argc,argv);
-    return 0;
+//    test_all(argc,argv);
+//    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
