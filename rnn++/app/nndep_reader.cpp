@@ -4,6 +4,8 @@
 #include "wordrep/dep_graph.h"
 
 #include "similarity/dep_similarity.h"
+#include "similarity/similarity_measure.h"
+
 #include "data_source/ygp_db.h"
 #include "data_source/rss.h"
 #include "data_source/corenlp_helper.h"
@@ -142,6 +144,50 @@ void phrases_in_sentence(util::json_t const& config) {
     }
 }
 
+
+void dataset_indexing_quality(util::json_t const& config){
+    using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
+    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
+                           config["dep_parsed_prefix"]};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+         config["w2vmodel_name"], config["w2v_float_t"]};
+    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
+    auto sents = tokens.IndexSentences();
+
+    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+
+    std::string word1 = "drink";
+    std::string word2 = "water";
+    auto widx1 = voca.indexmap[wordUIDs[word1]];
+    auto widx2 = voca.indexmap[wordUIDs[word2]];
+    auto similarity = dist_measure(voca.wvecs[widx1], voca.wvecs[widx2]);
+    fmt::print(std::cerr, "{} {} {} vs {} {} {}",
+               word1, widx1, util::math::sum(voca.wvecs[widx1]),
+               word2, widx2, util::math::sum(voca.wvecs[widx2]));
+    fmt::print(std::cerr, "{} {} : {}", word1, word2, similarity);
+    auto sent1 = sents[0];
+    auto sent2 = sents[1];
+    for(auto idx1=sent1.beg; idx1!=sent1.end; ++idx1){
+        auto widx1 = tokens.word(idx1);
+        auto uid1  = voca.indexmap[widx1];
+        auto word1 = wordUIDs[uid1];
+        for(auto idx2=sent2.beg; idx2!=sent2.end; ++idx2){
+            auto widx2 = tokens.word(idx2);
+            auto uid2  = voca.indexmap[widx2];
+            auto word2 = wordUIDs[uid2];
+            auto similarity = dist_measure(voca.wvecs[widx1], voca.wvecs[widx2]);
+            fmt::print(std::cerr, "{} {} {} vs {} {} {}",
+                       word1, widx1, util::math::sum(voca.wvecs[widx1]),
+                       word2, widx2, util::math::sum(voca.wvecs[widx2]));
+            fmt::print(std::cerr, " :  {}\n", similarity);
+        }
+    }
+}
+
 }//namespace wordrep::test
 }//namespace wordrep
 
@@ -151,6 +197,7 @@ void test_all(int argc, char** argv){
     wordrep::test::dependency_graph();
     wordrep::test::phrases_in_sentence();
     wordrep::test::phrases_in_sentence(config);
+    wordrep::test::dataset_indexing_quality(config);
 }
 
 using namespace wordrep;
@@ -158,8 +205,8 @@ using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
 int main(int argc, char** argv){
-//    test_all(argc,argv);
-//    return 0;
+    test_all(argc,argv);
+    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
@@ -171,8 +218,8 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-//    YGPQueryEngine engine{config};
-    RSSQueryEngine engine{config};
+    YGPQueryEngine engine{config};
+//    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
@@ -187,9 +234,9 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");
-    auto dumpfile_hashes = util::get_str(config,"row_hashes");
-    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
-//    data::ygp::annotation_on_result(config, chain_answers);
+//    auto dumpfile_hashes = util::get_str(config,"row_hashes");
+//    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
+    data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
 
     auto stat_answer = engine.ask_query_stats(uids);
