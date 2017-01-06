@@ -19,13 +19,15 @@ using wordrep::Sentence;
 namespace data{
 namespace rss{
 
-RSSRowFilePath::RSSRowFilePath(std::string full_path)
-        : table{"nyt"}    {
+RSSRowFilePath::RSSRowFilePath(std::string full_path) {
     using util::string::split;
-    auto tokens = split(split(full_path, "/").back(), ".");
-    auto n = tokens.size();
-    column = tokens[n-1];
-    hash   = tokens[n-2];
+    auto path_tokens = split(full_path, "/");
+    auto n = path_tokens.size();
+    table = split(path_tokens[n-2], ".")[0];
+    auto tokens = split(path_tokens[n-1], ".");
+    assert(tokens.size()==3&&tokens[2]=="corenlp");
+    column = tokens[1];
+    hash   = tokens[0];
 }
 
 HashIndexer::HashIndexer(std::string filename)
@@ -46,8 +48,6 @@ void write_column_indexes(util::json_t const &config,
     Columns rssdb{config["column_uids_dump"].get<std::string>()};
 
     RowUID row_uid{};
-    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
-
     auto files = util::string::readlines(row_rawfiles);
     for(auto idx : idxs){
         auto file_path = files[idx];

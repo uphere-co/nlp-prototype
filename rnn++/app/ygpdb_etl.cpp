@@ -307,6 +307,27 @@ namespace data{
 namespace rss{
 namespace test {
 
+void rss_corenlp_path(){
+    std::cerr<<"Run rss::test::rss_corenlp_path " <<std::endl;
+    auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
+    RSSRowFilePath path{fullpath};
+    assert(path.table =="nyt");
+    assert(path.column=="maintext");
+    assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
+}
+
+void IndexUIDs(util::json_t const& config){
+    std::cerr<<"Run rss::test::IndexUIDs " <<std::endl;
+    Columns rssdb{config["column_uids_dump"].get<std::string>()};
+    auto tmp = rssdb.col_uid("title");
+    fmt::print(std::cerr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {}\n", tmp.val);
+    for(int i=0; i<3; ++i)
+        fmt::print(std::cerr, "!!!!!!!!{} {}\n", rssdb.col_uid(rssdb.column(i)).val, rssdb.column(i));
+    assert(rssdb.col_uid("title") == data::ColumnUID{0});
+    assert(rssdb.col_uid("summary") == data::ColumnUID{1});
+    assert(rssdb.col_uid("maintext") == data::ColumnUID{2});
+}
+
 void rss_indexing(util::json_t const &config, std::string hashes) {
     wordrep::DepParsedTokens tokens{
             util::get_latest_version(util::get_str(config, "dep_parsed_store")),
@@ -342,16 +363,6 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     std::cerr << std::endl;
 }
 
-void IndexUIDs(util::json_t const& config){
-    Columns rssdb{config["column_uids_dump"].get<std::string>()};
-    auto tmp = rssdb.col_uid("title");
-    fmt::print(std::cerr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {}\n", tmp.val);
-    for(int i=0; i<3; ++i)
-        fmt::print(std::cerr, "!!!!!!!!{} {}\n", rssdb.col_uid(rssdb.column(i)).val, rssdb.column(i));
-    assert(rssdb.col_uid("title") == data::ColumnUID{0});
-    assert(rssdb.col_uid("summary") == data::ColumnUID{1});
-    assert(rssdb.col_uid("maintext") == data::ColumnUID{2});
-}
 
 }//namespace data::rss::test
 }//namespace data::rss
@@ -519,44 +530,48 @@ void parse_batch_output(){
 }//namespace data::corenlp
 }//namespace data
 
-int process_rss_dump(int /*argc*/, char** argv){
+int process_rss_dump(int argc, char** argv){
+    assert(argc>1);
     auto config = util::load_json(argv[1]);
-    auto row_files = argv[2];
-    auto hashes = argv[3];
+    util::Timer timer;
+
+    auto hashes = util::get_str(config,"row_hashes");
+    auto json_dump_path = util::get_str(config,"corenlp_dumps");
+    auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
 
     data::CoreNLPoutputParser dump_parser{config};
-
-    auto json_dumps = util::string::readlines(row_files);
-    for(auto& path : json_dumps) path += ".corenlp";
-
+    auto json_dumps = util::string::readlines(json_dump_path);
+    timer.here_then_reset(fmt::format("Begin to process {} JSON dump files. ",json_dumps.size()));
     data::parallel_load_jsons(json_dumps, dump_parser);
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-    auto tokens = dump_parser.get(prefix);
-    auto idxs = dump_parser.get_nonnull_idx();
+    timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
+    auto tokens = dump_parser.get(dataset_prefix);
+    auto non_null_idxs = dump_parser.get_nonnull_idx();
+    timer.here_then_reset("Parsing is finished. ");
+
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, hashes, row_files, idxs);
+    data::rss::write_column_indexes(config, hashes, json_dump_path, non_null_idxs);
     return 0;
 }
 int process_ygp_dump(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
-    auto dump_files = argv[2];
-
     util::Timer timer;
+
+    auto json_dump_path = util::get_str(config,"corenlp_dumps");
+    auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
+
     data::CoreNLPoutputParser dump_parser{config};
-    auto json_dumps = util::string::readlines(dump_files);
+    auto json_dumps = util::string::readlines(json_dump_path);
     timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
     data::parallel_load_jsons(json_dumps, dump_parser);
     timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
-    auto tokens = dump_parser.get(prefix);
-    timer.here_then_reset("Finish concatenation");
+    auto tokens = dump_parser.get(dataset_prefix);
 //    auto tokens = dump_parser.serial_parse(json_dumps, prefix);
-    timer.here_then_reset("Parsing is finished.");
-
     auto non_null_idxs = dump_parser.get_nonnull_idx();
+    timer.here_then_reset("Parsing is finished. ");
+
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
@@ -574,6 +589,7 @@ void test_rss(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     auto row_files = argv[2];
     auto hashes = argv[3];
+    data::rss::test::rss_corenlp_path();
     data::rss::test::IndexUIDs(config);
     //TODO: update following test.
 //    data::rss::test::rss_indexing(config, hashes);
@@ -595,20 +611,21 @@ void test_common(int argc, char** argv){
     test::persistent_vector_WordUID();
     test::filesystem(config);
 
+
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
 
 }
 int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
-    //test_common(argc, argv);
 //    test_ygp(argc, argv);
 //    test_rss(argc, argv);
+//    test_common(argc, argv);
 //    return 0;
 
 //    parse_textfile(dump_files);
-//    process_rss_dump(argc, argv);
-    process_ygp_dump(argc,argv);
+    process_rss_dump(argc, argv);
+//    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
 
     return 0;
