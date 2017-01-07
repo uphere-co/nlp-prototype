@@ -138,7 +138,7 @@ void phrases_in_sentence(util::json_t const& config) {
             }
             fmt::print(std::cerr, "\n");
         }
-        fmt::print("---------------------------------------\n");
+        fmt::print(std::cerr, "---------------------------------------\n\n");
     }
 }
 
@@ -163,7 +163,6 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-//    auto dumpfile_hashes = argv[3];
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -172,8 +171,8 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    YGPQueryEngine engine{config};
-//    RSSQueryEngine engine{config};
+//    YGPQueryEngine engine{config};
+    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
@@ -188,8 +187,9 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");
-//    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
-    data::ygp::annotation_on_result(config, chain_answers);
+    auto dumpfile_hashes = util::get_str(config,"row_hashes");
+    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
+//    data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
 
     auto stat_answer = engine.ask_query_stats(uids);

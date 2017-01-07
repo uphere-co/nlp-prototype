@@ -74,6 +74,23 @@ sort -R ygp.corenlp | head -n 10000 > aaa
 ```
 Launch word counter as a TCP server :
 ```
+
+## Indexing RSS data
+### Adapt updated indexing scheme
+- cp ygp/all_words rss/
+- cp ygp/news.h5 rss/
+- cp ygp/prob.test.h5 rss/
+- Update word_uids_dump field of RSSQueryEngine config JSON.
+
+
+### Build a hash list and a list of corenlp dump files
+```
+#Find all dump files  | show sha256 hash only | word count on them | select hashes with count 3 only(i.e. have all columns)
+find ~/word2vec/NYT.corenlp/ -name '*.*.*'  -printf "%f\n" | cut -d'.' -f1 | ./word_count | awk -F" " '$2==3{print $1}' > article.hashes
+find ~/word2vec/NYT.corenlp/ -name '*.*.*'  -printf "%f\n" | cut -d'.' -f1 | ./word_count | awk -F" " '{print $1}' > article.hashes
+find ~/word2vec/NYT.corenlp/ -name '*.*.*' > article.corenlp
+```
+
 #Standalone :
 tcpserver mark 22224 ./index_words config.nyt.json
 #With CoreNLP word tokenizer :
