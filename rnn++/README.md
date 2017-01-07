@@ -48,8 +48,30 @@ Example usages
 ```
 #Get unigram distribution of YGP DB:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | ./word_count_collect words.h5
+#Get lists of words
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | cut -d' ' -f1
+
 ```
 
+## Indexing YGP DB:
+```
+#Run word counter with std::string token type
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.raw
+#collect words
+cat ygp.raw | ./word_count | cut -d' ' -f1 >> all_words
+#Check `config.ygp.json` uses the upodated `all_words` file.
+
+#Collect JSON dumps of YGP DB row elements. 
+#Beware the `-name` option to not include a directory itself.
+find ~/word2vec/ygp.corenlp/  -name '*.*.*.*' > ygp.corenlp
+#Run indexer with config JSON file.
+make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp
+#Test with phrases_in_sentence to see if everything works well
+make -j20 && ./nndep_reader config.ygptest.json query.0
+
+#For testing dataset, randomly select N elements:
+sort -R ygp.corenlp | head -n 10000 > aaa
+```
 Launch word counter as a TCP server :
 ```
 #Standalone :

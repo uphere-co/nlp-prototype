@@ -5,6 +5,7 @@
 
 namespace wordrep{
 
+//TODO: Update load_raw_wvec to use PersistentVector
 std::vector<double> load_raw_wvec(std::string h5name, std::string wvec_name, std::string float_type){
     using namespace util::io;
     H5file file{H5name{h5name}, hdf5::FileMode::read_exist};

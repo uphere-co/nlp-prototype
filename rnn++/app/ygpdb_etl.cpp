@@ -40,24 +40,26 @@ void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca
 }
 
 void pruning_voca(){
-    VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
-    VocaIndexMap pruner_uids{load_voca("s2010.h5", "s2010.uids")};
-
-    WordBlock_base<float,100> wvecs{load_raw_wvec("news.h5", "news.en.vecs", "float32")};
-    std::vector<float> pruned_wvecs;
-    std::vector<WordUID::val_t > pruned_uids;
-    for(auto const& pair: uids.uid2idx) {
-        auto uid = pair.first;
-        if (pruner_uids.isin(uid)) {
-            pruned_uids.push_back(uid.val);
-            auto wvec = wvecs[uids[uid]];
-            std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(pruned_wvecs));
-        }
-    }
-
-    H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
-    outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
-    outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
+    //TODO:reimplement this
+    assert(0);
+//    VocaIndexMap uids{load_voca("news.h5", "news.en.uids")};
+//    VocaIndexMap pruner_uids{load_voca("s2010.h5", "s2010.uids")};
+//
+//    WordBlock_base<float,100> wvecs{load_raw_wvec("news.h5", "news.en.vecs", "float32")};
+//    std::vector<float> pruned_wvecs;
+//    std::vector<WordUID::val_t > pruned_uids;
+//    for(auto const& pair: uids.uid2idx) {
+//        auto uid = pair.first;
+//        if (pruner_uids.isin(uid)) {
+//            pruned_uids.push_back(uid.val);
+//            auto wvec = wvecs[uids[uid]];
+//            std::copy(wvec.cbegin(), wvec.cend(), std::back_inserter(pruned_wvecs));
+//        }
+//    }
+//
+//    H5file outfile{H5name{"test.Google.h5"}, hdf5::FileMode::replace};
+//    outfile.writeRawData(H5name{"news.en.uids"}, pruned_uids);
+//    outfile.writeRawData(H5name{"news.en.vecs"}, pruned_wvecs);
 }
 
 
@@ -224,7 +226,8 @@ void chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
-    CountryCodeAnnotator country_tagger{config["country_uids_dump"].get<std::string>()};
+    CountryCodeAnnotator country_tagger{
+            util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
     {
         auto tags = country_tagger.tag("Seoul is a capital city of South Korea.\n");
         assert(!util::isin(tags, "Japan"));
@@ -256,7 +259,8 @@ void country_code(util::json_t const &config) {
                        hdf5::FileMode::rw_exist};
     std::string ygp_prefix = config["dep_parsed_prefix"];
     DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
-    DBbyCountry ygpdb_country{ygp_h5store, config["country_uids_dump"].get<std::string>()};
+    DBbyCountry ygpdb_country{ygp_h5store,
+                              util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
     DepParsedTokens tokens{ygp_h5store, ygp_prefix};
 
     auto sents = tokens.IndexSentences();
@@ -535,55 +539,77 @@ int process_rss_dump(int /*argc*/, char** argv){
     data::rss::write_column_indexes(config, hashes, row_files, idxs);
     return 0;
 }
-int process_ygp_dump(int /*argc*/, char** argv){
+int process_ygp_dump(int argc, char** argv){
+    assert(argc>2);
     auto config = util::load_json(argv[1]);
     auto dump_files = argv[2];
 
+    util::Timer timer;
     data::CoreNLPoutputParser dump_parser{config};
-
     auto json_dumps = util::string::readlines(dump_files);
-    data::parallel_load_jsons(json_dumps, dump_parser);
+    timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
+    data::parallel_load_jsons(json_dumps, dump_parser);
+    timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
     auto tokens = dump_parser.get(prefix);
+    timer.here_then_reset("Finish concatenation");
+//    auto tokens = dump_parser.serial_parse(json_dumps, prefix);
+    timer.here_then_reset("Parsing is finished.");
+
+    auto non_null_idxs = dump_parser.get_nonnull_idx();
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
                                                DepParsedTokens::major_version, 0};
     tokens.write_to_disk(output_filename.fullname);
-    data::ygp::write_column_indexes(config, dump_files);
+    std::vector<std::string> non_null_dumps;
+    for(auto i : non_null_idxs) non_null_dumps.push_back(json_dumps[i]);
+    data::ygp::write_column_indexes(config, non_null_dumps);
     auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
                                                    DepParsedTokens::major_version, 0};
     data::ygp::write_country_code(config);
     return 0;
 }
 
-void test_all(int /*argc*/, char** argv){
+void test_rss(int argc, char** argv){
+    assert(argc > 1);
     auto config = util::load_json(argv[1]);
-//    data::ygp::test::ygpdb_indexing(config);
-//    data::ygp::test::country_annotator(config);
-//    data::ygp::test::country_code(config);
-//    test::word_importance(config);
-//    test::unicode_conversion();
-//    test::persistent_vector_float();
-//    test::persistent_vector_WordUID();
-//    test::filesystem(config);
-
-//    auto row_files = argv[2];
-//    auto hashes = argv[3];
-//    data::rss::test::rss_indexing(config, hashes);
+    auto row_files = argv[2];
+    auto hashes = argv[3];
     data::rss::test::IndexUIDs(config);
+    //TODO: update following test.
+//    data::rss::test::rss_indexing(config, hashes);
+}
+void test_ygp(int argc, char** argv) {
+    assert(argc > 1);
+    auto config = util::load_json(argv[1]);
+    data::ygp::test::ygpdb_indexing(config);
+    data::ygp::test::country_annotator(config);
+    data::ygp::test::country_code(config);
+}
+
+void test_common(int argc, char** argv){
+    assert(argc > 1);
+    auto config = util::load_json(argv[1]);
+    test::word_importance(config);
+    test::unicode_conversion();
+    test::persistent_vector_float();
+    test::persistent_vector_WordUID();
+    test::filesystem(config);
+
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
 
 }
-int main(int /*argc*/, char** argv){
+int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
-//    test_all(argc, argv);
+    //test_common(argc, argv);
+//    test_ygp(argc, argv);
+//    test_rss(argc, argv);
 //    return 0;
 
 //    parse_textfile(dump_files);
 //    process_rss_dump(argc, argv);
-//    process_ygp_dump(argc,argv);
+    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
-    data::ygp::dump_psql(get_str(config,"column_uids_dump"));
 
     return 0;
 //    pruning_voca();

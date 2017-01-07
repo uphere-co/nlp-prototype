@@ -7,12 +7,14 @@
 
 namespace wordrep{
 
+template<typename T>
 class WordCounter{
 public:
-    using WordIter=wordrep::WordIterBase<wordrep::WordUID>;
+    using WordIter=wordrep::WordIterBase<T>;
+    //using WordIter=wordrep::WordIterBase<wordrep::WordUID>;
 //using WordIter=WordIterBase<std::string>;
 
-    using key_type   = WordIter::key_type;
+    using key_type   = typename WordIter::key_type;
     using mapped_type = size_t;
     using count_type = std::map<key_type, mapped_type>;
     using map_t = tbb::concurrent_hash_map<key_type,mapped_type,util::TBBHashCompare<key_type>>;
@@ -42,7 +44,7 @@ private:
         count_type word_counts;
         text.iter([&word_counts](auto& word) {++word_counts[word];});
         for(auto const& elm : word_counts){
-            map_t::accessor a;
+            typename map_t::accessor a;
             wcs.insert(a, elm.first);
             a->second += elm.second;
         }

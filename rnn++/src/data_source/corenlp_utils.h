@@ -35,6 +35,8 @@ struct CoreNLPoutputParser{
     CoreNLPoutputParser(util::json_t const &config);
 
     void operator() (size_t i, CoreNLPjson const &json);
+    wordrep::DepParsedTokens serial_parse(std::vector<std::string> dump_files,
+                                          std::string prefix) ;
     std::vector<size_t> get_nonnull_idx() const;
     wordrep::DepParsedTokens get(std::string prefix) const;
 

@@ -24,7 +24,8 @@ void dependency_graph() {
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
-    WordImportance importance{"../rnn++/tests/data/word_importance"};
+    WordImportance importance{"../rnn++/tests/data/word_importance",
+                              "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
@@ -84,7 +85,8 @@ void phrases_in_sentence() {
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
     POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
     ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
-    WordImportance importance{"../rnn++/tests/data/word_importance"};
+    WordImportance importance{"../rnn++/tests/data/word_importance",
+                              "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
@@ -108,6 +110,8 @@ void phrases_in_sentence() {
 
 void phrases_in_sentence(util::json_t const& config) {
     using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
     DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
                            config["dep_parsed_prefix"]};
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
@@ -126,7 +130,7 @@ void phrases_in_sentence(util::json_t const& config) {
         }
         if(++i>100) break;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        fmt::print(std::cerr, "\n:Original sentence of {} words. {} phrases:\n",
+        fmt::print(std::cerr, "\n: --- Original sentence of {} words. {} phrases --- :\n",
                    util::diff(sent.end,sent.beg), phrases.size());
         for (auto phrase : phrases) {
             for (auto idx : phrase.idxs) {
@@ -134,25 +138,32 @@ void phrases_in_sentence(util::json_t const& config) {
             }
             fmt::print(std::cerr, "\n");
         }
+        fmt::print("---------------------------------------\n");
     }
 }
 
 }//namespace wordrep::test
 }//namespace wordrep
 
+void test_all(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    wordrep::test::dependency_graph();
+    wordrep::test::phrases_in_sentence();
+    wordrep::test::phrases_in_sentence(config);
+}
+
 using namespace wordrep;
 using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
-int main(int /*argc*/, char** argv){
+int main(int argc, char** argv){
+//    test_all(argc,argv);
+//    return 0;
+    assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
 //    auto dumpfile_hashes = argv[3];
-
-//    wordrep::test::dependency_graph();
-//    wordrep::test::phrases_in_sentence();
-//    wordrep::test::phrases_in_sentence(config);
-//    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -173,7 +184,7 @@ int main(int /*argc*/, char** argv){
 //    data::ygp::annotation_on_result(config, answers);
     timer.here_then_reset("Query output annotation.");
     fmt::print("{}\n", answers.dump(4));
-    fmt::print("\n\n--------- ------------\nA chain query find results:\n", answers.dump(4));
+    fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");

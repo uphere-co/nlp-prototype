@@ -189,8 +189,8 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
 void DepParsedTokens::append(DepParsedTokens const &tokens){
     if(!tokens.n_tokens()) return;
     util::append(sents_uid, tokens.sents_uid);
-    auto tmp = tokens.chunks_idx;
-    for(auto &x : tmp.get()) x += current_chunk_idx;
+    auto tmp = tokens.chunks_idx.get();
+    for(auto &x : tmp) x += current_chunk_idx;
     current_chunk_idx = tmp.back()+1;
     util::append(chunks_idx, tmp);
     util::append(sents_idx, tokens.sents_idx);
