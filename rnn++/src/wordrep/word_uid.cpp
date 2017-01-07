@@ -47,6 +47,11 @@ void UIDIndex<TUID>::write_to_disk(std::string filename) const {
     file.close();
 }
 
+template<typename TUID>
+std::vector<typename UIDIndex<TUID>::uid_t> UIDIndex<TUID>::get_uids() const{
+    return util::map(uid2word, [](auto elm){return elm.first;});
+}
+
 std::string the_unknown_word(){
     return "-UNKNOWN-";
 }

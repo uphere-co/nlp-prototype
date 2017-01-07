@@ -17,6 +17,7 @@ public:
     std::string operator[](uid_t uid) const;
     void write_to_disk (std::string filename) const;
     auto size() const {return uid2word.size();}
+    std::vector<uid_t> get_uids() const;
 
 private:
     uid_t get_uid(std::string const &word) const;
