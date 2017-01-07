@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "wordrep/indexes.h"
 
 namespace wordrep {
@@ -15,6 +17,8 @@ struct Sentence{
     CharOffset beg_offset() const;
     CharOffset end_offset() const;
     SentUID::val_t chrlen() const;
+    //TODO: Implement this
+    //std::string to_str() const;
     SentUID uid;
     DPTokenIndex beg;
     DPTokenIndex end;

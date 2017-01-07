@@ -175,38 +175,107 @@ void dataset_indexing_quality(util::json_t const& config){
         auto widx1 = tokens.word(idx1);
         auto uid1  = voca.indexmap[widx1];
         auto word1 = wordUIDs[uid1];
+        if(importance.score(uid1)<0.6) continue;
         for(auto idx2=sent2.beg; idx2!=sent2.end; ++idx2){
             auto widx2 = tokens.word(idx2);
             auto uid2  = voca.indexmap[widx2];
             auto word2 = wordUIDs[uid2];
+            if(importance.score(uid2)<0.6) continue;
             auto similarity = dist_measure(voca.wvecs[widx1], voca.wvecs[widx2]);
-            fmt::print(std::cerr, "{} {} {} vs {} {} {}",
-                       word1, widx1, util::math::sum(voca.wvecs[widx1]),
-                       word2, widx2, util::math::sum(voca.wvecs[widx2]));
-            fmt::print(std::cerr, " :  {}\n", similarity);
+//            fmt::print(std::cerr, "{} {} {} vs {} {} {}",
+//                       word1, widx1, util::math::sum(voca.wvecs[widx1]),
+//                       word2, widx2, util::math::sum(voca.wvecs[widx2]));
+//            fmt::print(std::cerr, " :  {}\n", similarity);
         }
     }
 }
 
-}//namespace wordrep::test
-}//namespace wordrep
+void phrase_stats(util::json_t const& config){
+    using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
+    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
+                           config["dep_parsed_prefix"]};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
+    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
+    PhraseSegmenter phrase_segmenter{importance};
+    auto sents = tokens.IndexSentences();
+
+    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+
+    auto word = wordUIDs["air"];
+    auto word2 = wordUIDs["pollution"];
+    auto isin = [](WordUID uid, Sentence const& sent){
+        for(auto idx=sent.beg; idx!=sent.end; ++idx)
+            if(sent.tokens->word_uid(idx)==uid) return true;
+        return false;
+    };
+    auto isin2 = [](WordUID uid, Phrase const& phrase){
+        for(auto idx : phrase.idxs)
+            if(phrase.sent.tokens->word_uid(idx)==uid) return true;
+        return false;
+    };
+    auto to_word_uids = [](Phrase const&phrase){
+        return util::map(phrase.idxs, [&phrase](auto idx){
+            return phrase.sent.tokens->word_uid(idx);
+        });
+    };
+    auto print_phrase = [&wordUIDs](Phrase const& phrase){
+        for(auto idx : phrase.idxs)
+            fmt::print("{} ", wordUIDs[phrase.sent.tokens->word_uid(idx)]);
+        fmt::print("\n");
+    };
+    auto print_sent = [&wordUIDs](Sentence const& sent){
+        for(auto idx=sent.beg; idx!=sent.end; ++idx)
+            fmt::print("{} ", wordUIDs[sent.tokens->word_uid(idx)]);
+        fmt::print("\n");
+    };
+    auto print_word_uids = [&wordUIDs](auto const& uids){
+        for(auto uid : uids)
+            fmt::print("{} ", wordUIDs[uid]);
+        fmt::print("\n");
+    };
+    std::map<std::vector<WordUID>,int> phrase_count;
+    for(auto sent : sents){
+        if(!isin(word, sent) || !isin(word2, sent)) continue;
+        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
+        for(auto phrase : phrases){
+            if(isin2(word, phrase))
+                phrase_count[to_word_uids(phrase)] += 1;
+        }
+    }
+
+    for(auto pair : phrase_count){
+        if(pair.second<2) continue;
+        print_word_uids(pair.first);
+    }
+}
+
 
 void test_all(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    wordrep::test::dependency_graph();
-    wordrep::test::phrases_in_sentence();
-    wordrep::test::phrases_in_sentence(config);
-    wordrep::test::dataset_indexing_quality(config);
+    dependency_graph();
+    phrases_in_sentence();
+    phrases_in_sentence(config);
+    dataset_indexing_quality(config);
+    phrase_stats(config);
 }
+
+
+}//namespace wordrep::test
+}//namespace wordrep
 
 using namespace wordrep;
 using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
 int main(int argc, char** argv){
-//    test_all(argc,argv);
-//    return 0;
+    wordrep::test::test_all(argc,argv);
+    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
