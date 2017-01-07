@@ -207,7 +207,7 @@ void phrase_stats(util::json_t const& config){
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
     auto word = wordUIDs["air"];
-    auto word2 = wordUIDs["pollution"];
+    auto word2 = wordUIDs["China"];
     auto isin = [](WordUID uid, Sentence const& sent){
         for(auto idx=sent.beg; idx!=sent.end; ++idx)
             if(sent.tokens->word_uid(idx)==uid) return true;
@@ -238,18 +238,35 @@ void phrase_stats(util::json_t const& config){
             fmt::print("{} ", wordUIDs[uid]);
         fmt::print("\n");
     };
+    auto score_uids = [&importance](auto const& uids){
+        auto score_sum = util::math::sum(util::map(uids, [&importance](auto uid){
+            return importance.score(uid);
+        }));
+        return score_sum / uids.size();
+    };
     std::map<std::vector<WordUID>,int> phrase_count;
     for(auto sent : sents){
-        if(!isin(word, sent) || !isin(word2, sent)) continue;
+        if(!isin(word, sent) && !isin(word2, sent)) continue;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         for(auto phrase : phrases){
-            if(isin2(word, phrase))
+            if(phrase.idxs.size()>10 || phrase.idxs.size()==1) continue;
+            if(isin2(word, phrase) || isin2(word2, phrase))
                 phrase_count[to_word_uids(phrase)] += 1;
         }
     }
-
-    for(auto pair : phrase_count){
+    auto counts = util::to_pairs(phrase_count);
+    auto score_phrase_count = [score_uids](auto const& pair){
+        auto uids=pair.first;
+        auto count=pair.second;
+        return score_uids(uids)*std::sqrt(count)/std::sqrt(uids.size());
+    };
+    std::sort(counts.begin(), counts.end(), [score_phrase_count](auto x, auto y){
+        return score_phrase_count(x)>score_phrase_count(y);
+    });
+    for(auto pair : counts){
         if(pair.second<2) continue;
+        fmt::print("{:<10} {:<10} {:<10} : ",
+                   score_phrase_count(pair), score_uids(pair.first), pair.second);
         print_word_uids(pair.first);
     }
 }
@@ -274,11 +291,13 @@ using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
 int main(int argc, char** argv){
-    wordrep::test::test_all(argc,argv);
-    return  0;
+//    wordrep::test::test_all(argc,argv);
+//    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
+    wordrep::test::phrase_stats(config);
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
