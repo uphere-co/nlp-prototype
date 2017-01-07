@@ -85,12 +85,13 @@ private:
 };
 
 struct Phrase{
-    Phrase(std::vector<DPTokenIndex> &&tokens)
-            : idxs{std::move(tokens)} {
+    Phrase(Sentence const& sent, std::vector<DPTokenIndex> &&tokens)
+            : idxs{std::move(tokens)}, sent{sent} {
         std::sort(idxs.begin(), idxs.end());
     }
 
     std::vector<DPTokenIndex> idxs;
+    Sentence const& sent;
 };
 struct PhraseSegmenter{
     using val_t = ConnectionFragility::val_t;
@@ -110,7 +111,7 @@ struct PhraseSegmenter{
             auto tokens_in_phrase = graph.map_subgraph(graph.node(phrase_head), [](auto &node){
                 return node.idx;
             });
-            phrases.emplace_back(std::move(tokens_in_phrase));
+            phrases.emplace_back(sent, std::move(tokens_in_phrase));
         }
         return phrases;
     }
