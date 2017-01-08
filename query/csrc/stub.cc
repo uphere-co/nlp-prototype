@@ -33,7 +33,7 @@ const char* serialize( util::json_t* j )
 
 util::json_t* EngineWrapper::query( util::json_t* input )
 {
-    return (new util::json_t(engine0.ask_chain_query(*input)));
+    return (new util::json_t(engine0.ask_query_stats(*input)));
 }
 
 util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* input )
