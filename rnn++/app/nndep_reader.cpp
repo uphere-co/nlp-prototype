@@ -3,7 +3,7 @@
 
 #include "wordrep/dep_graph.h"
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
 #include "similarity/similarity_measure.h"
 
 #include "data_source/ygp_db.h"
@@ -182,6 +182,7 @@ void dataset_indexing_quality(util::json_t const& config){
     }
 }
 
+
 void phrase_stats(util::json_t const& config){
     using util::io::h5read;
     fmt::print(std::cerr, "Read {}\n",
@@ -193,50 +194,34 @@ void phrase_stats(util::json_t const& config){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
-    PhraseSegmenter phrase_segmenter{importance};
+
     auto sents = tokens.IndexSentences();
 
-    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+    WordUsageInPhrase phrase_finder{sents, importance};
 
-    auto word = wordUIDs["air"];
-    auto word2 = wordUIDs["China"];
+    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
     auto print_word_uids = [&wordUIDs](auto const& uids){
         for(auto uid : uids)
             fmt::print("{} ", wordUIDs[uid]);
         fmt::print("\n");
     };
-    auto score_uids = [&importance](auto const& uids){
-        auto score_sum = util::math::sum(util::map(uids, [&importance](auto uid){
-            return importance.score(uid);
-        }));
-        return score_sum / uids.size();
-    };
-    std::map<std::vector<WordUID>,int> phrase_count;
-    for(auto sent : sents){
-        if(!sent.isin(word) && !sent.isin(word2)) continue;
-        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        for(auto phrase : phrases){
-            if(phrase.size()>10 || phrase.size()==1) continue;
-            if(phrase.isin(word) || phrase.isin(word2))
-                phrase_count[phrase.to_word_uids()] += 1;
-        }
-    }
-    auto counts = util::to_pairs(phrase_count);
-    auto score_phrase_count = [score_uids](auto const& pair){
-        auto uids=pair.first;
-        auto count=pair.second;
-        return score_uids(uids)*std::sqrt(count)/std::sqrt(uids.size());
-    };
-    std::sort(counts.begin(), counts.end(), [score_phrase_count](auto x, auto y){
-        return score_phrase_count(x)>score_phrase_count(y);
-    });
-    for(auto pair : counts){
-        if(pair.second<2) continue;
+
+    auto keywords = {"air", "China", "fire"};
+    for(auto word : keywords){
+        fmt::print("{} :\n", word);
+        auto wuid = wordUIDs[word];
+        auto counts = phrase_finder.usages(wuid);
+        for(auto pair : counts){
+            if(pair.second<2) continue;
 //        fmt::print("{:<10} {:<10} {:<10} : ",
 //                   score_phrase_count(pair), score_uids(pair.first), pair.second);
-        print_word_uids(pair.first);
+            print_word_uids(pair.first);
+        }
+        fmt::print("------------------------------------\n");
     }
+
+
 }
 
 
@@ -264,7 +249,7 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    wordrep::test::phrases_in_sentence(config);
+    //wordrep::test::phrases_in_sentence(config);
     wordrep::test::phrase_stats(config);
     return 0;
 
