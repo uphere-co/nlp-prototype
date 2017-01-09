@@ -232,16 +232,16 @@ public:
                 }
             }
 
-            total_score += score;
-            if(i_trial==n_cut){
-                if(total_score <cut) return scores;
-            }
-            else if(i_trial==n_cut2){
-                if(total_score < cut2) return scores;
-            }
-            else if(i_trial==n_cut3){
-                if(total_score < cut3) return scores;
-            }
+//            total_score += score;
+//            if(i_trial==n_cut){
+//                if(total_score <cut) return scores;
+//            }
+//            else if(i_trial==n_cut2){
+//                if(total_score < cut2) return scores;
+//            }
+//            else if(i_trial==n_cut3){
+//                if(total_score < cut3) return scores;
+//            }
         }
         return scores;
     }
