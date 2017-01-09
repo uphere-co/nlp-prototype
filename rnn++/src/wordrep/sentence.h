@@ -11,6 +11,7 @@ struct Sentence{
     Sentence();
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens);
 
+    bool isin(WordUID idx) const;
     DPTokenIndex front() const {return beg;}
     DPTokenIndex back() const {return end-1;}
     auto size() const {return util::diff(end, beg);}

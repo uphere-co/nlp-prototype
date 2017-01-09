@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "utils/base_types.h"
+#include "wordrep/indexes.h"
 
 namespace wordrep {
 
@@ -26,17 +26,9 @@ private:
     uid_t current_idx;
 };
 
-
 //forward declarations.
-struct DummyWordUID{};
-using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
 using WordUIDindex = UIDIndex<WordUID>;
-
-struct DummyPOSUID{};
-using POSUID = util::IntegerLike<DummyPOSUID,-1>; //UID -1 for unknown words.
 using POSUIDindex = UIDIndex<POSUID>;
-struct DummyArcLabelUID{};
-using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
 using ArcLabelUIDindex = UIDIndex<ArcLabelUID>;
 
 std::string the_unknown_word();

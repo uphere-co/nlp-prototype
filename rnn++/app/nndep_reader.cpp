@@ -208,26 +208,7 @@ void phrase_stats(util::json_t const& config){
 
     auto word = wordUIDs["air"];
     auto word2 = wordUIDs["China"];
-    auto isin = [](WordUID uid, Sentence const& sent){
-        for(auto idx=sent.beg; idx!=sent.end; ++idx)
-            if(sent.tokens->word_uid(idx)==uid) return true;
-        return false;
-    };
-    auto isin2 = [](WordUID uid, Phrase const& phrase){
-        for(auto idx : phrase.idxs)
-            if(phrase.sent.tokens->word_uid(idx)==uid) return true;
-        return false;
-    };
-    auto to_word_uids = [](Phrase const&phrase){
-        return util::map(phrase.idxs, [&phrase](auto idx){
-            return phrase.sent.tokens->word_uid(idx);
-        });
-    };
-    auto print_phrase = [&wordUIDs](Phrase const& phrase){
-        for(auto idx : phrase.idxs)
-            fmt::print("{} ", wordUIDs[phrase.sent.tokens->word_uid(idx)]);
-        fmt::print("\n");
-    };
+
     auto print_sent = [&wordUIDs](Sentence const& sent){
         for(auto idx=sent.beg; idx!=sent.end; ++idx)
             fmt::print("{} ", wordUIDs[sent.tokens->word_uid(idx)]);
@@ -238,6 +219,11 @@ void phrase_stats(util::json_t const& config){
             fmt::print("{} ", wordUIDs[uid]);
         fmt::print("\n");
     };
+    auto print_phrase = [&wordUIDs](Phrase const& phrase){
+        for(auto idx : phrase.idxs)
+            fmt::print("{} ", wordUIDs[phrase.sent.tokens->word_uid(idx)]);
+        fmt::print("\n");
+    };
     auto score_uids = [&importance](auto const& uids){
         auto score_sum = util::math::sum(util::map(uids, [&importance](auto uid){
             return importance.score(uid);
@@ -246,12 +232,12 @@ void phrase_stats(util::json_t const& config){
     };
     std::map<std::vector<WordUID>,int> phrase_count;
     for(auto sent : sents){
-        if(!isin(word, sent) && !isin(word2, sent)) continue;
+        if(!sent.isin(word) && !sent.isin(word2)) continue;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         for(auto phrase : phrases){
             if(phrase.idxs.size()>10 || phrase.idxs.size()==1) continue;
-            if(isin2(word, phrase) || isin2(word2, phrase))
-                phrase_count[to_word_uids(phrase)] += 1;
+            if(phrase.isin(word) || phrase.isin(word2))
+                phrase_count[phrase.to_word_uids()] += 1;
         }
     }
     auto counts = util::to_pairs(phrase_count);

@@ -122,5 +122,15 @@ std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& g
     return sub_heads;
 }
 
+std::vector<WordUID> Phrase::to_word_uids() const {
+    return util::map(idxs, [this](auto idx){
+        return sent.tokens->word_uid(idx);
+    });
+}
+bool Phrase::isin(WordUID word) const {
+    for(auto idx : idxs)
+        if(sent.tokens->word_uid(idx)==word) return true;
+    return false;
+};
 
 }//namespace wordrep;

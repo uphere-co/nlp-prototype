@@ -90,6 +90,8 @@ struct Phrase{
         std::sort(idxs.begin(), idxs.end());
     }
 
+    std::vector<WordUID> to_word_uids() const;
+    bool isin(WordUID uid) const;
     std::vector<DPTokenIndex> idxs;
     Sentence const& sent;
 };
