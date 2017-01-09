@@ -103,48 +103,6 @@ void iter_sentences(int argc, char** argv){
     }
 }
 
-//T is RandomNumberDistribution
-template<typename T>
-std::vector<typename T::result_type> random_vector(size_t len, T dist){
-    std::random_device rd{};
-    auto seed = rd();
-    std::vector<typename T::result_type> vec(len);
-    auto n=vec.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n),
-                      [dist,seed,&vec] (tbb::blocked_range<decltype(n)> const &r)  {
-                          std::mt19937 gen{seed+r.begin()};
-                          auto d=dist;
-                          for(auto i=r.begin(); i!=r.end(); ++i)
-                              vec[i]= d(gen);
-                      });
-    return vec;
-}
-template<typename T>
-std::vector<typename T::result_type> random_vector_serial(size_t len, T dist){
-    std::random_device rd{};
-    auto seed = rd();
-    std::vector<typename T::result_type> vec(len);
-    std::mt19937 gen{seed};
-    for(auto& x : vec) x = dist(gen);
-    return vec;
-}
-
-auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
-    auto tmp = vec2[i];
-    vec2[i] += x*vec1[i];
-    vec1[i] += x*tmp;
-};
-auto sigmoid=[](auto const &x, auto const &y){
-    using util::math::dot;
-    auto xy = dot(x,y);
-    return  1/(1+std::exp(-xy));
-};
-auto sigmoid_plus=[](auto const &x, auto const &y){
-    using util::math::dot;
-    auto xy = dot(x,y);
-    return  1/(1+std::exp(xy));
-};
-
 
 void training(int argc, char** argv){
     //assert(argc>1);
