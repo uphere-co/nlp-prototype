@@ -4,6 +4,7 @@
 #include "wordrep/dep_graph.h"
 
 #include "similarity/query_engine.h"
+#include "similarity/phrase_suggestion.h"
 #include "similarity/similarity_measure.h"
 
 #include "data_source/ygp_db.h"
@@ -183,6 +184,7 @@ void dataset_indexing_quality(util::json_t const& config){
 }
 
 
+
 void phrase_stats(util::json_t const& config){
     using util::io::h5read;
     fmt::print(std::cerr, "Read {}\n",
@@ -197,7 +199,7 @@ void phrase_stats(util::json_t const& config){
 
     auto sents = tokens.IndexSentences();
 
-    WordUsageInPhrase phrase_finder{sents, importance};
+    engine::WordUsageInPhrase phrase_finder{sents, importance};
 
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
@@ -211,16 +213,21 @@ void phrase_stats(util::json_t const& config){
     for(auto word : keywords){
         fmt::print("{} :\n", word);
         auto wuid = wordUIDs[word];
-        auto counts = phrase_finder.usages(wuid);
+        auto usage = phrase_finder.usages(wuid);
+        auto& counts = usage.first;
+        auto& reprs = usage.second;
+
         for(auto pair : counts){
             if(pair.second<2) continue;
 //        fmt::print("{:<10} {:<10} {:<10} : ",
 //                   score_phrase_count(pair), score_uids(pair.first), pair.second);
-            print_word_uids(pair.first);
+            fmt::print("{} : {}\n", pair.first.repr(wordUIDs), pair.second);
+            for(auto& repr : reprs[pair.first]){
+                fmt::print("  {} : {}\n", repr.first.repr(wordUIDs), repr.second);
+            }
         }
         fmt::print("------------------------------------\n");
     }
-
 
 }
 
