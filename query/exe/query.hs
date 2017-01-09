@@ -38,41 +38,60 @@ import           Broadcast
 import           Network
 import           Worker
 
-withHeartBeat :: ProcessId -> Process ProcessId -> Process ()
-withHeartBeat them action = do
+type LogLock = (TMVar (),Int)
+
+atomicLog lock str = liftIO $ do
+  let n = snd lock
+  atomically $ takeTMVar (fst lock)
+  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
+  atomically $ putTMVar (fst lock) ()
+
+getClientNum (l,n) = n
+incClientNum (l,n) = (l,n+1)
+
+withHeartBeat :: LogLock -> ProcessId -> Process ProcessId -> Process ()
+withHeartBeat lock them action = do
   pid <- action                                            -- main process launch
   whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
-    liftIO $ hPutStrLn stderr ("heartbeat: " ++ show n)
+    atomicLog lock ("heartbeat: " ++ show n)
     send them (HB n)
       
-  liftIO $ hPutStrLn stderr "heartbeat failed: reload"     -- when fail, it prints messages  
+  atomicLog lock "heartbeat failed: reload"     -- when fail, it prints messages  
   kill pid "connection closed"                             -- and start over the whole process.
 
   
 server :: String -> EngineWrapper -> Process ()
 server port engine = do
-  pid <- getSelfPid
-  liftIO $ hPutStrLn stderr (show pid)
-  
-  void . liftIO $ forkIO (broadcastProcessId pid port)
+  pidref <- liftIO newEmptyTMVarIO 
+  void . liftIO $ forkIO (broadcastProcessId pidref port)
   liftIO $ putStrLn "server started"
-  let go = do
-        mthem <- expectTimeout 10000000
-        case mthem of
-          Nothing -> liftIO $ hPutStrLn stderr "cannot get client pid"
-          Just them -> do
-            liftIO $ hPutStrLn stderr ("got client pid : " ++ show them)
-            withHeartBeat them $ spawnLocal $ do
-              (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
-              send them sc
-              liftIO $ hPutStrLn stderr "connected"  
-              ref <- liftIO $ newTVarIO HM.empty
-              forever $ do
-                (q,sc') <- receiveChan rc
-                liftIO $ hPutStrLn stderr (show q)
-                spawnLocal (queryWorker ref sc' engine q)
-  forever $ go
+  resultref <- liftIO $ newTMVarIO HM.empty
+  lock <- (,) <$> liftIO (newTMVarIO ()) <*> pure 0
+  
+  serve lock pidref (start engine resultref)
 
+
+
+serve lock pidref action = do
+  atomicLog lock ("waiting a new client")
+  pid <- spawnLocal (action lock)
+  atomicLog lock (show pid)
+  liftIO (atomically (putTMVar pidref pid))
+  serve (incClientNum lock) pidref action
+
+
+start engine resultref lock = do
+  them :: ProcessId <- expect
+  atomicLog lock ("got client pid : " ++ show them)
+  withHeartBeat lock them $ spawnLocal $ do
+    (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+    send them sc
+    liftIO $ hPutStrLn stderr "connected"  
+    forever $ do
+      (q,sc') <- receiveChan rc
+      liftIO $ hPutStrLn stderr (show q)
+      spawnLocal (queryWorker resultref sc' engine q)
+ 
   
 main :: IO ()
 main = do

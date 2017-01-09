@@ -40,10 +40,6 @@ registerText engine txt = do
         register_documents engine cstr_txt >>=
         serialize >>=
         unsafePackCString
-        {- json_create cstr_nlp >>=
-        register_documents cstr_txt >>=
-        json_serialize >>=
-        unsafePackCString -}
   (MaybeT . return . decodeStrict') bstr0
 
 
@@ -53,7 +49,6 @@ queryRegisteredSentences engine r = do
   let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })  
   bstr' <- B.useAsCString bstr $
      json_tparse >=> query engine >=> serialize >=> unsafePackCString
-    -- json_create >=> query >=> json_serialize >=> unsafePackCString
   return (BL.fromStrict bstr')
 
 type ResultBstr = BL.ByteString
@@ -62,38 +57,40 @@ failed :: BL.ByteString
 failed = encode Null
 
 
-queryWorker :: TVar (HM.HashMap Text ([Int],[Text])) -> SendPort ResultBstr
+queryWorker :: TMVar (HM.HashMap Text ([Int],[Text])) -> SendPort ResultBstr
             -> EngineWrapper
             -> Query
             -> Process ()
-queryWorker ref sc engine QueryText {..} = do
-  m <- liftIO $ readTVarIO ref
+queryWorker resultref sc engine QueryText {..} = do
+  m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_text m of
-    Just (ids,countries) ->
-      liftIO (queryRegisteredSentences engine RS { rs_sent_uids = ids
+    Just (ids,countries) -> do
+      r <- liftIO (queryRegisteredSentences engine RS { rs_sent_uids = ids
                                                  , rs_Countries = countries
                                                  , rs_max_clip_len = Nothing })
-      >>= sendChan sc
+      liftIO $ atomically $ putTMVar resultref m
+      sendChan sc r
     Nothing -> do
       r <- runMaybeT $ do
         r <- registerText engine query_text 
         resultbstr <- liftIO (queryRegisteredSentences engine r)
-        liftIO $ atomically (modifyTVar' ref (HM.insert query_text (rs_sent_uids r,rs_Countries r)))
+        liftIO $ atomically $ putTMVar resultref (HM.insert query_text (rs_sent_uids r,rs_Countries r) m)
         return resultbstr
       case r of
         Just resultbstr -> sendChan sc resultbstr
         Nothing         -> sendChan sc failed 
-queryWorker ref sc engine QueryRegister {..} = do
-  m <- liftIO $ readTVarIO ref
+queryWorker resultref sc engine QueryRegister {..} = do
+  m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_register m of
-    Just (ids,countries) ->
+    Just (ids,countries) -> do
+      liftIO $ atomically $ putTMVar resultref m
       sendChan sc . encode $ RS { rs_sent_uids = ids
                                 , rs_Countries = countries
                                 , rs_max_clip_len = Nothing}
     Nothing -> do
       r <- runMaybeT $ do
         r <- registerText engine query_register
-        liftIO $ atomically (modifyTVar' ref (HM.insert query_register (rs_sent_uids r,rs_Countries r)))
+        liftIO $ atomically $ putTMVar resultref (HM.insert query_register (rs_sent_uids r,rs_Countries r) m)
         let resultbstr = encode r
         return resultbstr
       case r of
