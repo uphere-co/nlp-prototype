@@ -106,7 +106,7 @@ main = do
     Right transport -> do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
-        engine <- newEngineWrapper configfile
+        engine <- newEngineWrapper 0 configfile
         runProcess node (server port engine)
         deleteEngineWrapper engine
 
