@@ -265,8 +265,8 @@ void phrase_stats(util::json_t const& config){
     });
     for(auto pair : counts){
         if(pair.second<2) continue;
-        fmt::print("{:<10} {:<10} {:<10} : ",
-                   score_phrase_count(pair), score_uids(pair.first), pair.second);
+//        fmt::print("{:<10} {:<10} {:<10} : ",
+//                   score_phrase_count(pair), score_uids(pair.first), pair.second);
         print_word_uids(pair.first);
     }
 }
@@ -296,8 +296,8 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    wordrep::test::phrase_stats(config);
-    return 0;
+    //wordrep::test::phrase_stats(config);
+    //return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);

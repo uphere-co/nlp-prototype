@@ -1,5 +1,4 @@
 #include <fmt/printf.h>
-#include <utils/random.h>
 
 #include "word2vec/word2vec.h"
 
@@ -8,8 +7,9 @@
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
 #include "wordrep/indexes.h"
+#include "wordrep/indexed_text.h"
 
-#include "utils/persistent_vector.h"
+#include "utils/random.h"
 #include "utils/string.h"
 #include "utils/json.h"
 #include "utils/profiling.h"
@@ -19,23 +19,10 @@ using wordrep::ChunkIndex;
 using wordrep::SentUID;
 using wordrep::WordUID;
 using wordrep::VocaIndex;
+using wordrep::IndexedTexts;
 using word2vec::UnigramDist;
 
-struct IndexedTexts{
-    IndexedTexts(util::io::H5file const &file, std::string prefix)
-            : chunks_idx{file,prefix+".chunk_idx"},
-              sents_uid {file,prefix+".sent_uid"},
-              words_uid {file,prefix+".word_uid"},
-              words {file,prefix+".word"}
-    {}
-    wordrep::WordUID   word_uid(size_t n) const {return words_uid[n];}
-    wordrep::VocaIndex word(size_t n) const {return words[n];}
 
-    util::TypedPersistentVector<wordrep::ChunkIndex> chunks_idx;
-    util::TypedPersistentVector<wordrep::SentUID> sents_uid;
-    util::TypedPersistentVector<wordrep::WordUID> words_uid;
-    util::TypedPersistentVector<wordrep::VocaIndex> words;
-};
 
 void check_word_uid(int argc, char** argv){
     assert(argc>1);

@@ -56,4 +56,5 @@ struct WordContext{
     idx_t self;
     std::vector<idx_t> contexts;
 };
+
 }//namespace word2vec
