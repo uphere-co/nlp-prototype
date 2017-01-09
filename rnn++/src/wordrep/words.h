@@ -8,6 +8,7 @@
 namespace wordrep {
 
 struct Words;
+//TODO: remove duplicated logic of *Repr.
 struct WordsRepr{
     WordsRepr(Words const& words, WordUIDindex const& wordUIDs);
     friend std::ostream& operator<<(std::ostream& os, WordsRepr const& self);

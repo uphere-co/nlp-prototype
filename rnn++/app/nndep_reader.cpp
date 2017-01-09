@@ -261,17 +261,17 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    YGPQueryEngine engine{config};
-//    RSSQueryEngine engine{config};
+//    YGPQueryEngine engine{config};
+    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
 
     util::json_t suggestion_query{};
-    auto ideas = {"China", "air", "fire", "metal"};
+    auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
     suggestion_query["ideas"]=ideas;
     fmt::print("{}\n", suggestion_query.dump(4));
     auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
     fmt::print("{}\n", suggestion_output.dump(4));
-    return 0;
+//    return 0;
 
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
@@ -286,14 +286,13 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");
-//    auto dumpfile_hashes = util::get_str(config,"row_hashes");
-//    data::rss::annotation_on_result(config, chain_answers, dumpfile_hashes);
-    data::ygp::annotation_on_result(config, chain_answers);
+    data::rss::annotation_on_result(config, chain_answers);
+//    data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
 
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
-//    data::rss::annotation_on_result(config, stat_answer["results"], dumpfile_hashes);
+    data::rss::annotation_on_result(config, stat_answer["results"]);
     fmt::print("{}\n", stat_answer.dump(4));
     util::json_t tmp;
     std::vector<int64_t> sents;

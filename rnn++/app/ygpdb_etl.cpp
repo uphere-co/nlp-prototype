@@ -331,11 +331,20 @@ namespace test {
 
 void rss_corenlp_path(){
     std::cerr<<"Run rss::test::rss_corenlp_path " <<std::endl;
-    auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
-    RSSRowFilePath path{fullpath};
-    assert(path.table =="nyt");
-    assert(path.column=="maintext");
-    assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
+    {
+        auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
+        RSSRowFilePath path{fullpath};
+        assert(path.table =="nyt");
+        assert(path.column=="maintext");
+        assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
+    }
+    {
+        auto fullpath = "/home/jihuni/word2vec/NYT.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
+        RSSRowFilePath path{fullpath};
+        assert(path.table =="NYT");
+        assert(path.column=="maintext");
+        assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
+    }
 }
 
 void IndexUIDs(util::json_t const& config){
@@ -350,13 +359,14 @@ void IndexUIDs(util::json_t const& config){
     assert(rssdb.col_uid("maintext") == data::ColumnUID{2});
 }
 
-void rss_indexing(util::json_t const &config, std::string hashes) {
+void rss_indexing(util::json_t const &config) {
+    std::string hashes = util::get_str(config,"row_hashes");
     wordrep::DepParsedTokens tokens{
             util::get_latest_version(util::get_str(config, "dep_parsed_store")),
             config["dep_parsed_prefix"]};
     wordrep::WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     auto sents = tokens.IndexSentences();
-    auto sent = sents[513911];
+    auto sent = sents[563];
     auto chunk_idx = tokens.chunk_idx(sent.beg);
 
     data::DBIndexer const db_indexer{
@@ -370,7 +380,8 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     uid2col[1] = "summary";
     uid2col[2] = "maintext";
     data::rss::HashIndexer hash2idx{hashes};
-    auto filename = fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash2idx.hash(row_idx.val), uid2col[col_uid]);
+    //TODO: remove hard-coded path.
+    auto filename = fmt::format("/home/jihuni/word2vec/NYT.text/{}.{}", hash2idx.hash(row_idx.val), uid2col[col_uid]);
     auto row_str = util::string::read_whole(filename);
     std::cerr << filename << std::endl;
     auto offset_beg = sent.beg_offset();
@@ -378,10 +389,7 @@ void rss_indexing(util::json_t const &config, std::string hashes) {
     std::cerr << fmt::format("{}:{}", offset_beg.val, offset_end.val) << std::endl;
     auto    substr = util::string::substring_unicode_offset(row_str, offset_beg.val, offset_end.val);
     std::cerr << substr << std::endl;
-    for (auto idx = sent.beg; idx != sent.end; ++idx) {
-        auto uid = tokens.word_uid(idx);
-        std::cerr << wordUIDs[uid] << " ";
-    }
+    std::cerr << sent.repr(wordUIDs) << std::endl;
     std::cerr << std::endl;
 }
 
@@ -609,12 +617,9 @@ int process_ygp_dump(int argc, char** argv){
 void test_rss(int argc, char** argv){
     assert(argc > 1);
     auto config = util::load_json(argv[1]);
-    auto row_files = argv[2];
-    auto hashes = argv[3];
     data::rss::test::rss_corenlp_path();
     data::rss::test::IndexUIDs(config);
-    //TODO: update following test.
-//    data::rss::test::rss_indexing(config, hashes);
+    data::rss::test::rss_indexing(config);
 }
 void test_ygp(int argc, char** argv) {
     assert(argc > 1);
@@ -642,9 +647,9 @@ int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
 //    test_ygp(argc, argv);
-//    test_rss(argc, argv);cat
-//    test_common(argc, argv);
-//    return 0;
+    test_rss(argc, argv);
+    test_common(argc, argv);
+    return 0;
 
 //    parse_textfile(dump_files);
 //    pruning_voca();
