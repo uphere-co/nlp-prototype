@@ -586,11 +586,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
             fmt::print(std::cerr, "\n: --- Original sentence. {} phrases --- :\n", phrases.size());
 
             for (auto phrase : phrases) {
-                for (auto idx : phrase.idxs) {
-                    fmt::print(std::cerr, "{} ",
-                               db.token2uid.word[db.tokens.word_uid(idx)]);
-                }
-                fmt::print(std::cerr, "\n");
+                fmt::print(std::cerr, "{}\n", phrase.repr(db.token2uid.word));
             }
             fmt::print(std::cerr, "-------------------\n");
         }

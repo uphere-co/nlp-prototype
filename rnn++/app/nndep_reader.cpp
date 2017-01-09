@@ -101,10 +101,7 @@ void phrases_in_sentence() {
     for (auto sent : sents) {
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         for (auto phrase : phrases) {
-            for (auto idx : phrase.idxs) {
-                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-            }
-            fmt::print(std::cerr, "\n");
+            fmt::print(std::cerr, "{}\n", phrase.repr(wordUIDs));
         }
     }
 }
@@ -123,24 +120,19 @@ void phrases_in_sentence(util::json_t const& config) {
     auto sents = tokens.IndexSentences();
 
     PhraseSegmenter phrase_segmenter{importance};
-    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    fmt::print(std::cerr, "{} tokens and {} sentences.\n", tokens.n_tokens(), sents.size());
     auto i=0;
     for (auto sent : sents) {
         if(util::diff(sent.end,sent.beg) > 30) continue;
-        for(auto idx=sent.beg; idx!=sent.end; ++idx){
-            fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-        }
         if(++i>100) break;
+        fmt::print("{}\n", sent.repr(wordUIDs));
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        fmt::print(std::cerr, "\n: --- Original sentence of {} words. {} phrases --- :\n",
+        fmt::print(": --- Original sentence of {} words. {} phrases --- :\n",
                    util::diff(sent.end,sent.beg), phrases.size());
         for (auto phrase : phrases) {
-            for (auto idx : phrase.idxs) {
-                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-            }
-            fmt::print(std::cerr, "\n");
+            fmt::print("{}\n", phrase.repr(wordUIDs));
         }
-        fmt::print(std::cerr, "---------------------------------------\n\n");
+        fmt::print("---------------------------------------\n\n");
     }
 }
 
@@ -209,19 +201,9 @@ void phrase_stats(util::json_t const& config){
     auto word = wordUIDs["air"];
     auto word2 = wordUIDs["China"];
 
-    auto print_sent = [&wordUIDs](Sentence const& sent){
-        for(auto idx=sent.beg; idx!=sent.end; ++idx)
-            fmt::print("{} ", wordUIDs[sent.tokens->word_uid(idx)]);
-        fmt::print("\n");
-    };
     auto print_word_uids = [&wordUIDs](auto const& uids){
         for(auto uid : uids)
             fmt::print("{} ", wordUIDs[uid]);
-        fmt::print("\n");
-    };
-    auto print_phrase = [&wordUIDs](Phrase const& phrase){
-        for(auto idx : phrase.idxs)
-            fmt::print("{} ", wordUIDs[phrase.sent.tokens->word_uid(idx)]);
         fmt::print("\n");
     };
     auto score_uids = [&importance](auto const& uids){
@@ -235,7 +217,7 @@ void phrase_stats(util::json_t const& config){
         if(!sent.isin(word) && !sent.isin(word2)) continue;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         for(auto phrase : phrases){
-            if(phrase.idxs.size()>10 || phrase.idxs.size()==1) continue;
+            if(phrase.size()>10 || phrase.size()==1) continue;
             if(phrase.isin(word) || phrase.isin(word2))
                 phrase_count[phrase.to_word_uids()] += 1;
         }
@@ -282,8 +264,9 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    //wordrep::test::phrase_stats(config);
-    //return 0;
+    wordrep::test::phrases_in_sentence(config);
+    wordrep::test::phrase_stats(config);
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
