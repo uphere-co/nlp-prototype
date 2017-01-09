@@ -6,6 +6,7 @@
 #include "wordrep/word_prob.h"
 #include "wordrep/indexes.h"
 #include "wordrep/sentence.h"
+#include "wordrep/phrase.h"
 
 #include "utils/span.h"
 #include "utils/optional.h"
@@ -84,15 +85,7 @@ private:
     wordrep::WordImportance const &importance;
 };
 
-struct Phrase{
-    Phrase(Sentence const& sent, std::vector<DPTokenIndex> &&tokens)
-            : idxs{std::move(tokens)}, sent{sent} {
-        std::sort(idxs.begin(), idxs.end());
-    }
 
-    std::vector<DPTokenIndex> idxs;
-    Sentence const& sent;
-};
 struct PhraseSegmenter{
     using val_t = ConnectionFragility::val_t;
 

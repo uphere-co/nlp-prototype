@@ -3,7 +3,8 @@
 
 #include "wordrep/dep_graph.h"
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
+#include "similarity/phrase_suggestion.h"
 #include "similarity/similarity_measure.h"
 
 #include "data_source/ygp_db.h"
@@ -101,10 +102,7 @@ void phrases_in_sentence() {
     for (auto sent : sents) {
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         for (auto phrase : phrases) {
-            for (auto idx : phrase.idxs) {
-                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-            }
-            fmt::print(std::cerr, "\n");
+            fmt::print(std::cerr, "{}\n", phrase.repr(wordUIDs));
         }
     }
 }
@@ -123,24 +121,19 @@ void phrases_in_sentence(util::json_t const& config) {
     auto sents = tokens.IndexSentences();
 
     PhraseSegmenter phrase_segmenter{importance};
-    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    fmt::print(std::cerr, "{} tokens and {} sentences.\n", tokens.n_tokens(), sents.size());
     auto i=0;
     for (auto sent : sents) {
         if(util::diff(sent.end,sent.beg) > 30) continue;
-        for(auto idx=sent.beg; idx!=sent.end; ++idx){
-            fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-        }
         if(++i>100) break;
+        fmt::print("{}\n", sent.repr(wordUIDs));
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        fmt::print(std::cerr, "\n: --- Original sentence of {} words. {} phrases --- :\n",
+        fmt::print(": --- Original sentence of {} words. {} phrases --- :\n",
                    util::diff(sent.end,sent.beg), phrases.size());
         for (auto phrase : phrases) {
-            for (auto idx : phrase.idxs) {
-                fmt::print(std::cerr, "{} ", wordUIDs[tokens.word_uid(idx)]);
-            }
-            fmt::print(std::cerr, "\n");
+            fmt::print("{}\n", phrase.repr(wordUIDs));
         }
-        fmt::print(std::cerr, "---------------------------------------\n\n");
+        fmt::print("---------------------------------------\n\n");
     }
 }
 
@@ -190,6 +183,8 @@ void dataset_indexing_quality(util::json_t const& config){
     }
 }
 
+
+
 void phrase_stats(util::json_t const& config){
     using util::io::h5read;
     fmt::print(std::cerr, "Read {}\n",
@@ -201,74 +196,33 @@ void phrase_stats(util::json_t const& config){
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
                   config["w2vmodel_name"], config["w2v_float_t"]};
     WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
-    PhraseSegmenter phrase_segmenter{importance};
+
     auto sents = tokens.IndexSentences();
+
+    engine::WordUsageInPhrase phrase_finder{sents, importance};
 
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
-    auto word = wordUIDs["air"];
-    auto word2 = wordUIDs["China"];
-    auto isin = [](WordUID uid, Sentence const& sent){
-        for(auto idx=sent.beg; idx!=sent.end; ++idx)
-            if(sent.tokens->word_uid(idx)==uid) return true;
-        return false;
-    };
-    auto isin2 = [](WordUID uid, Phrase const& phrase){
-        for(auto idx : phrase.idxs)
-            if(phrase.sent.tokens->word_uid(idx)==uid) return true;
-        return false;
-    };
-    auto to_word_uids = [](Phrase const&phrase){
-        return util::map(phrase.idxs, [&phrase](auto idx){
-            return phrase.sent.tokens->word_uid(idx);
-        });
-    };
-    auto print_phrase = [&wordUIDs](Phrase const& phrase){
-        for(auto idx : phrase.idxs)
-            fmt::print("{} ", wordUIDs[phrase.sent.tokens->word_uid(idx)]);
-        fmt::print("\n");
-    };
-    auto print_sent = [&wordUIDs](Sentence const& sent){
-        for(auto idx=sent.beg; idx!=sent.end; ++idx)
-            fmt::print("{} ", wordUIDs[sent.tokens->word_uid(idx)]);
-        fmt::print("\n");
-    };
-    auto print_word_uids = [&wordUIDs](auto const& uids){
-        for(auto uid : uids)
-            fmt::print("{} ", wordUIDs[uid]);
-        fmt::print("\n");
-    };
-    auto score_uids = [&importance](auto const& uids){
-        auto score_sum = util::math::sum(util::map(uids, [&importance](auto uid){
-            return importance.score(uid);
-        }));
-        return score_sum / uids.size();
-    };
-    std::map<std::vector<WordUID>,int> phrase_count;
-    for(auto sent : sents){
-        if(!isin(word, sent) && !isin(word2, sent)) continue;
-        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
-        for(auto phrase : phrases){
-            if(phrase.idxs.size()>10 || phrase.idxs.size()==1) continue;
-            if(isin2(word, phrase) || isin2(word2, phrase))
-                phrase_count[to_word_uids(phrase)] += 1;
-        }
-    }
-    auto counts = util::to_pairs(phrase_count);
-    auto score_phrase_count = [score_uids](auto const& pair){
-        auto uids=pair.first;
-        auto count=pair.second;
-        return score_uids(uids)*std::sqrt(count)/std::sqrt(uids.size());
-    };
-    std::sort(counts.begin(), counts.end(), [score_phrase_count](auto x, auto y){
-        return score_phrase_count(x)>score_phrase_count(y);
-    });
-    for(auto pair : counts){
-        if(pair.second<2) continue;
+    auto keywords = {"air", "China", "fire"};
+    for(auto word : keywords){
+        fmt::print("{} :\n", word);
+        auto wuid = wordUIDs[word];
+        auto usage = phrase_finder.usages(wuid);
+        auto& counts = usage.first;
+        auto& reprs = usage.second;
+
+        for(auto pair : counts){
+            if(pair.second<2) continue;
 //        fmt::print("{:<10} {:<10} {:<10} : ",
 //                   score_phrase_count(pair), score_uids(pair.first), pair.second);
-        print_word_uids(pair.first);
+            fmt::print("{} : {}\n", pair.first.repr(wordUIDs), pair.second);
+            for(auto& repr : reprs[pair.first]){
+                fmt::print("  {} : {}\n", repr.first.repr(wordUIDs), repr.second);
+            }
+        }
+        fmt::print("------------------------------------\n");
     }
+
 }
 
 
@@ -296,8 +250,9 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
-    //wordrep::test::phrase_stats(config);
-    //return 0;
+    //wordrep::test::phrases_in_sentence(config);
+//    wordrep::test::phrase_stats(config);
+//    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -309,6 +264,15 @@ int main(int argc, char** argv){
     YGPQueryEngine engine{config};
 //    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
+
+    util::json_t suggestion_query{};
+    auto ideas = {"China", "air", "fire", "metal"};
+    suggestion_query["ideas"]=ideas;
+    fmt::print("{}\n", suggestion_query.dump(4));
+    auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
+    fmt::print("{}\n", suggestion_output.dump(4));
+    return 0;
+
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     //fmt::print("{}\n", uids.dump(4));

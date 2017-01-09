@@ -4,6 +4,13 @@
 
 namespace wordrep {
 
+struct DummyWordUID{};
+using WordUID = util::IntegerLike<DummyWordUID,-1>; //UID -1 for unknown words.
+struct DummyPOSUID{};
+using POSUID = util::IntegerLike<DummyPOSUID,-1>; //UID -1 for unknown words.
+struct DummyArcLabelUID{};
+using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
+
 struct WordPosIndexDummy {};
 using WordPosition = util::IntegerLike<WordPosIndexDummy>;
 struct SentPositionDummy {};

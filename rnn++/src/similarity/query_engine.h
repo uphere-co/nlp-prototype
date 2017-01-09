@@ -77,6 +77,7 @@ public:
     json_t ask_chain_query(json_t const &ask) const;
     json_t ask_query_stats(json_t const &ask) const;
     json_t ask_sents_content(json_t const &ask) const;
+    json_t ask_query_suggestion(json_t const &ask) const;
 
 private:
     wordrep::WordImportance const word_importance;

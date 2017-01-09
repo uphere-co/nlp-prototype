@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+
 #include "wordrep/word_uid.h"
 
 namespace util{
