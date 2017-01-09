@@ -8,6 +8,7 @@ namespace util{
 int64_t uuid_gen();
 std::string get_uuid_str();
 
+
 template<typename KEY, typename WEIGHT>
 struct Sampler{
     Sampler(std::vector<std::pair<KEY,WEIGHT>> const &counts)
@@ -15,7 +16,7 @@ struct Sampler{
     Sampler(std::vector<std::pair<KEY,WEIGHT>> &&counts)
             : cdf{std::move(counts)} { init(); }
 
-    KEY sample(WEIGHT ran) {
+    KEY sample(WEIGHT ran) const {
         //10~20 % speed up. Check if no bias.
 //        if(ran<n_low) return binary_find_cell(beg,it_low, [ran](auto x){return ran<x.second;}).value()->first;
         return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;

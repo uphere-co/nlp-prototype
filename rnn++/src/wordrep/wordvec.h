@@ -15,6 +15,7 @@ public:
     using raw_span_t = util::span_dyn<val_t>;
     using span_t     = util::span_1d<val_t,dim>;
     using idx_t      = VocaIndex;
+
 //    WordBlock_base()
 //    : _val{},span{_val} {}
 //    WordBlock_base(idx_t voca_size)

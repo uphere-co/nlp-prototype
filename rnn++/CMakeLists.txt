@@ -100,6 +100,9 @@ target_link_libraries(word_count_collect stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt p
 add_executable(word2vec_train app/word2vec_train
         ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(word2vec_train stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+add_executable(word2vec_eval app/word2vec_eval
+        ${util_files} ${wordrep_files} ${word2vec_files})
+target_link_libraries(word2vec_eval stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(index_words app/index_words
                ${util_files} ${wordrep_files} ${word2vec_files})

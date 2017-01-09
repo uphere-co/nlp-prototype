@@ -1,5 +1,4 @@
 #include <fmt/printf.h>
-#include <utils/random.h>
 
 #include "word2vec/word2vec.h"
 
@@ -8,8 +7,9 @@
 #include "wordrep/word_iter.h"
 #include "wordrep/word_count.h"
 #include "wordrep/indexes.h"
+#include "wordrep/indexed_text.h"
 
-#include "utils/persistent_vector.h"
+#include "utils/random.h"
 #include "utils/string.h"
 #include "utils/json.h"
 #include "utils/profiling.h"
@@ -19,23 +19,10 @@ using wordrep::ChunkIndex;
 using wordrep::SentUID;
 using wordrep::WordUID;
 using wordrep::VocaIndex;
+using wordrep::IndexedTexts;
 using word2vec::UnigramDist;
 
-struct IndexedTexts{
-    IndexedTexts(util::io::H5file const &file, std::string prefix)
-            : chunks_idx{file,prefix+".chunk_idx"},
-              sents_uid {file,prefix+".sent_uid"},
-              words_uid {file,prefix+".word_uid"},
-              words {file,prefix+".word"}
-    {}
-    wordrep::WordUID   word_uid(size_t n) const {return words_uid[n];}
-    wordrep::VocaIndex word(size_t n) const {return words[n];}
 
-    util::TypedPersistentVector<wordrep::ChunkIndex> chunks_idx;
-    util::TypedPersistentVector<wordrep::SentUID> sents_uid;
-    util::TypedPersistentVector<wordrep::WordUID> words_uid;
-    util::TypedPersistentVector<wordrep::VocaIndex> words;
-};
 
 void check_word_uid(int argc, char** argv){
     assert(argc>1);
@@ -115,48 +102,6 @@ void iter_sentences(int argc, char** argv){
         fmt::print("\n");
     }
 }
-
-//T is RandomNumberDistribution
-template<typename T>
-std::vector<typename T::result_type> random_vector(size_t len, T dist){
-    std::random_device rd{};
-    auto seed = rd();
-    std::vector<typename T::result_type> vec(len);
-    auto n=vec.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n),
-                      [dist,seed,&vec] (tbb::blocked_range<decltype(n)> const &r)  {
-                          std::mt19937 gen{seed+r.begin()};
-                          auto d=dist;
-                          for(auto i=r.begin(); i!=r.end(); ++i)
-                              vec[i]= d(gen);
-                      });
-    return vec;
-}
-template<typename T>
-std::vector<typename T::result_type> random_vector_serial(size_t len, T dist){
-    std::random_device rd{};
-    auto seed = rd();
-    std::vector<typename T::result_type> vec(len);
-    std::mt19937 gen{seed};
-    for(auto& x : vec) x = dist(gen);
-    return vec;
-}
-
-auto symm_fma_vec = [](int64_t i,auto x, auto const &vec1, auto const &vec2){
-    auto tmp = vec2[i];
-    vec2[i] += x*vec1[i];
-    vec1[i] += x*tmp;
-};
-auto sigmoid=[](auto const &x, auto const &y){
-    using util::math::dot;
-    auto xy = dot(x,y);
-    return  1/(1+std::exp(-xy));
-};
-auto sigmoid_plus=[](auto const &x, auto const &y){
-    using util::math::dot;
-    auto xy = dot(x,y);
-    return  1/(1+std::exp(xy));
-};
 
 
 void training(int argc, char** argv){
