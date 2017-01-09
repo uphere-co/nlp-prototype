@@ -7,7 +7,7 @@
 #include "data_source/db.h"
 #include "data_source/rss.h"
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
 #include "similarity/similarity_measure.h"
 
 #include "utils/parallel.h"

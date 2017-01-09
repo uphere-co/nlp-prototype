@@ -1,6 +1,6 @@
 #pragma once
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
 #include "utils/json.h"
 #include "utils/profiling.h"
 

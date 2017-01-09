@@ -7,7 +7,7 @@
 #include <pqxx/pqxx>
 #include <fmt/printf.h>
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
 #include "data_source/rss.h"
 #include "data_source/ygp_db.h"
 #include "data_source/ygp_etl.h"
