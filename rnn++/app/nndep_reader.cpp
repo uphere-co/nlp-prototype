@@ -203,12 +203,6 @@ void phrase_stats(util::json_t const& config){
 
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
-    auto print_word_uids = [&wordUIDs](auto const& uids){
-        for(auto uid : uids)
-            fmt::print("{} ", wordUIDs[uid]);
-        fmt::print("\n");
-    };
-
     auto keywords = {"air", "China", "fire"};
     for(auto word : keywords){
         fmt::print("{} :\n", word);
@@ -257,8 +251,8 @@ int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
     //wordrep::test::phrases_in_sentence(config);
-    wordrep::test::phrase_stats(config);
-    return 0;
+//    wordrep::test::phrase_stats(config);
+//    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -270,6 +264,15 @@ int main(int argc, char** argv){
     YGPQueryEngine engine{config};
 //    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
+
+    util::json_t suggestion_query{};
+    auto ideas = {"China", "air", "fire", "metal"};
+    suggestion_query["ideas"]=ideas;
+    fmt::print("{}\n", suggestion_query.dump(4));
+    auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
+    fmt::print("{}\n", suggestion_output.dump(4));
+    return 0;
+
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
     //fmt::print("{}\n", uids.dump(4));

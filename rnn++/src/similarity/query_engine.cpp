@@ -8,6 +8,7 @@
 #include "data_source/rss.h"
 
 #include "similarity/query_engine.h"
+#include "similarity/phrase_suggestion.h"
 #include "similarity/similarity_measure.h"
 
 #include "utils/parallel.h"
@@ -711,6 +712,28 @@ json_t QueryEngine<T>::ask_sents_content(json_t const &ask) const{
     };
     return output;
 
+}
+
+template<typename T>
+json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
+    json_t output{};
+    WordUsageInPhrase phrase_finder{db.sents, word_importance};
+    for(std::string word : ask["ideas"]) {
+        auto wuid = db.token2uid.word[word];
+        auto usage = phrase_finder.usages(wuid);
+        auto& counts = usage.first;
+        //auto& reprs = usage.second;
+
+        for(auto pair : counts){
+            auto& phrase = pair.first;
+            auto count = pair.second;
+            if(count <2) continue;
+            std::ostringstream ss;
+            ss << phrase.repr(db.token2uid.word);
+            output[word].push_back(std::make_pair(util::string::strip(ss.str()), count));
+        }
+    }
+    return output;
 }
 
 
