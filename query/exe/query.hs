@@ -40,6 +40,15 @@ import           Worker
 
 type LogLock = (TMVar (),Int)
 
+atomicLog lock str = liftIO $ do
+  let n = snd lock
+  atomically $ takeTMVar (fst lock)
+  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
+  atomically $ putTMVar (fst lock) ()
+
+getClientNum (l,n) = n
+incClientNum (l,n) = (l,n+1)
+
 withHeartBeat :: LogLock -> ProcessId -> Process ProcessId -> Process ()
 withHeartBeat lock them action = do
   pid <- action                                            -- main process launch
@@ -56,21 +65,14 @@ server port engine = do
   pidref <- liftIO newEmptyTMVarIO 
   void . liftIO $ forkIO (broadcastProcessId pidref port)
   liftIO $ putStrLn "server started"
+  resultref <- liftIO $ newTMVarIO HM.empty
   lock <- (,) <$> liftIO (newTMVarIO ()) <*> pure 0
-  serve lock pidref (start engine)
+  
+  serve lock pidref (start engine resultref)
 
 
-atomicLog lock str = liftIO $ do
-  let n = snd lock
-  atomically $ takeTMVar (fst lock)
-  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
-  atomically $ putTMVar (fst lock) ()
-
-getClientNum (l,n) = n
-incClientNum (l,n) = (l,n+1)
 
 serve lock pidref action = do
-  -- n <- getClientNum
   atomicLog lock ("waiting a new client")
   pid <- spawnLocal (action lock)
   atomicLog lock (show pid)
@@ -78,21 +80,18 @@ serve lock pidref action = do
   serve (incClientNum lock) pidref action
 
 
-start engine lock = do
+start engine resultref lock = do
   them :: ProcessId <- expect
   atomicLog lock ("got client pid : " ++ show them)
   withHeartBeat lock them $ spawnLocal $ do
     (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
     liftIO $ hPutStrLn stderr "connected"  
-    ref <- liftIO $ newTVarIO HM.empty
     forever $ do
       (q,sc') <- receiveChan rc
       liftIO $ hPutStrLn stderr (show q)
-      spawnLocal (queryWorker ref sc' engine q)
+      spawnLocal (queryWorker resultref sc' engine q)
  
-
-
   
 main :: IO ()
 main = do
@@ -107,8 +106,8 @@ main = do
     Right transport -> do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
-        -- engine <- newEngineWrapper configfile
-        runProcess node (server port undefined) -- engine)
-        -- deleteEngineWrapper engine
+        engine <- newEngineWrapper configfile
+        runProcess node (server port engine)
+        deleteEngineWrapper engine
 
 
