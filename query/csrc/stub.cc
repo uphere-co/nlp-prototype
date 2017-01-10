@@ -43,11 +43,14 @@ const char* serialize( util::json_t* j )
 
 util::json_t* EngineWrapper::query( util::json_t* input )
 {
+    std::cout << (*input).dump(4) << std::endl;
+    
     if( engine_type == YGPType ) { 
         // auto e = ygp_engine.value();                          // using c++17 optional
         // return (new util::json_t(e.ask_query_stats(*input)));
         return (new util::json_t(ygp_engine->ask_query_stats(*input)));        
     } else {
+        std::cout << "inside EngineWrapper::query" << std::endl;
         // auto e = rss_engine.value();                          // using c++17 optional
         // return (new util::json_t(e.ask_query_stats(*input)));
         return (new util::json_t(rss_engine->ask_query_stats(*input)));        
@@ -63,9 +66,13 @@ util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* 
         // return (new util::json_t(e.register_documents(*input)));
         return (new util::json_t(ygp_engine->register_documents(*input)));        
     } else {
+        std::cout << "inside EngineWrapper::register_documents" << std::endl;
+        std::cout << (*input).dump(4) << std::endl;
         // auto e = rss_engine.value();
         // return (new util::json_t(engine0.register_documents(*input)));
-        return (new util::json_t(rss_engine->register_documents(*input)));
+        util::json_t* r = new util::json_t(rss_engine->register_documents(*input));
+        std::cout << "after rss_engine->register_documents" << std::endl;
+        return (r);
     }
 }
 
