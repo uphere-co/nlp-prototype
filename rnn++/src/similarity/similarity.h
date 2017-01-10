@@ -31,7 +31,7 @@ public:
     EngineWrapper(int typ, const char* configfile);
     util::json_t* register_documents( const char* str, util::json_t* input ); 
     util::json_t* query( util::json_t* input );
-    util::json_t* suggest( util::json_t* input );
+    // util::json_t* suggest( util::json_t* input );
     ~EngineWrapper() {
         if( ygp_engine ) delete ygp_engine;
         if( rss_engine ) delete rss_engine;
