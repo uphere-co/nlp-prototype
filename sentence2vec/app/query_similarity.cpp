@@ -1,6 +1,7 @@
-#include "zmq.hpp"
+#include <fmt/printf.h>
+#include <zmq.hpp>
 
-#include "similarity/dep_similarity.h"
+#include "similarity/query_engine.h"
 #include "data_source/corenlp_helper.h"
 #include "data_source/rss.h"
 
@@ -16,16 +17,17 @@ int main(int /*argc*/, char** argv){
     auto config = load_json(argv[1]);
     std::cerr << config.dump(4) << std::endl;
 
-    auto dumpfile_hashes = argv[2];
+    auto port = argv[2];
 
 //    SimilaritySearch engine{config};
 //    timer.here_then_reset("SimilaritySearch engine loaded.");
 //    BoWVSimilaritySearch engine{config};
 
-    const char * protocol = "tcp://*:5555";
+    std::string protocol = fmt::format("tcp://*:{}", port);
+    fmt::print(std::cerr, "Listen to {}\n", protocol);
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
-    socket.bind(protocol);
+    socket.bind(protocol.c_str());
     while(0) {
         zmq::message_t request;
         socket.recv(&request);
@@ -38,8 +40,10 @@ int main(int /*argc*/, char** argv){
         std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
         socket.send(reply);
     }
-//    engine::DepSimilaritySearch engine{config};
+//    engine::YGPQueryEngine engine{config};
+//    using data::ygp::annotation_on_result;
     engine::RSSQueryEngine engine{config};
+    using data::rss::annotation_on_result;
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){
@@ -65,9 +69,8 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("chain_query")!=input_json.end()){
             std::cerr << "Ask chain query"<<std::endl;
             auto answer = engine.ask_chain_query(input_json);
-            data::rss::annotation_on_result(config, answer, dumpfile_hashes);
-//            data::ygp::annotation_on_result(config, answer);
-            //std::cerr << answer.dump(4) << std::endl;
+            annotation_on_result(config, answer);
+            std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
@@ -76,7 +79,16 @@ int main(int /*argc*/, char** argv){
             std::cerr << "Ask stats query"<<std::endl;
             auto answer = engine.ask_query_stats(input_json);
             std::cerr << "Got stats query"<<std::endl;
-            data::rss::annotation_on_result(config, answer["results"], dumpfile_hashes);
+            data::rss::annotation_on_result(config, answer["results"]);
+            std::string aa{answer.dump(4)};
+            zmq::message_t reply(aa.size());
+            std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
+            socket.send(reply);
+        } else if (input_json.find("query_suggestion")!=input_json.end()){
+            std::cerr << "Ask query suggestion"<<std::endl;
+            auto answer = engine.ask_query_suggestion(input_json);
+            std::cerr << "Got query suggestions"<<std::endl;
+            std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
@@ -84,6 +96,7 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("sents")!=input_json.end()){
             std::cerr << "Getting sentences from UIDs"<<std::endl;
             auto answer = engine.ask_sents_content(input_json);
+            std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
