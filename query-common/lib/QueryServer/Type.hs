@@ -37,7 +37,7 @@ data RegisteredSentences = RS { rs_sent_uids :: [ Int ]
 
 instance FromJSON RegisteredSentences where
   parseJSON (Object o) = do suids <- o .: "sent_uids"
-                            countries <- o .: "Countries"
+                            countries <- (o .: "Countries" <|> return [])
                             ((o .: "max_clip_len" >>= \n -> return (RS suids countries (Just n)))
                              <|> return (RS suids countries Nothing))  
   parseJSON invalid    = typeMismatch "RegisteredSentences" invalid

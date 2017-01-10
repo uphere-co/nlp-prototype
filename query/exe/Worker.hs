@@ -35,11 +35,12 @@ registerText engine txt = do
   let bstr_txt = TE.encodeUtf8 txt
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp $ \cstr_nlp -> 
-      B.useAsCString bstr_txt $ \cstr_txt ->
-        json_tparse cstr_nlp >>=
-        register_documents engine cstr_txt >>=
-        serialize >>=
-        unsafePackCString
+      B.useAsCString bstr_txt $ \cstr_txt -> do
+        r <- json_tparse cstr_nlp >>= register_documents engine cstr_txt
+        
+        serialize r >>= unsafePackCString
+  liftIO $ putStrLn "inside registerText"
+  liftIO $ print bstr0
   (MaybeT . return . decodeStrict') bstr0
 
 
@@ -72,7 +73,10 @@ queryWorker resultref sc engine QueryText {..} = do
       sendChan sc r
     Nothing -> do
       r <- runMaybeT $ do
-        r <- registerText engine query_text 
+        liftIO $ putStrLn "before registerText"
+        r <- registerText engine query_text
+        liftIO $ print r 
+        liftIO $ putStrLn "after registerText"
         resultbstr <- liftIO (queryRegisteredSentences engine r)
         liftIO $ atomically $ putTMVar resultref (HM.insert query_text (rs_sent_uids r,rs_Countries r) m)
         return resultbstr
