@@ -45,8 +45,16 @@ struct DBInfo{
     PerSentQueryResult build_result(wordrep::Sentence const &query_sent,
                                     engine::ScoredSentence const &matched_sentence,
                                     int64_t max_clip_len) const {
-        return build_query_result_POD(query_sent, matched_sentence, indexer, max_clip_len);
+        auto result = build_query_result_POD(query_sent, matched_sentence, indexer, max_clip_len);
 
+        auto sent = matched_sentence.sent;
+        auto chunk_idx = sent.tokens->chunk_idx(sent.beg);
+        auto col_uid = indexer.column_uid(chunk_idx);
+        result.table_name = db.table(col_uid);
+        result.column_name= db.column(col_uid);
+        result.index_col_name = db.index_col(col_uid);
+
+        return result;
     }
 
     Columns const db;
