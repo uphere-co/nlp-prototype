@@ -5,9 +5,10 @@ import           Control.Concurrent.STM.TMVar      (TMVar,newTMVarIO,putTMVar,ta
 import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.Binary                 as Bi
 import qualified Data.ByteString             as B
+import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
 import qualified Network.Simple.TCP          as NS
-import           System.IO                         (hPutStrLn, stderr)
+import           System.IO                         (hFlush, hPutStrLn, stderr)
 
 recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
@@ -43,7 +44,9 @@ newLogLock n = liftIO $ (,) <$> newTMVarIO () <*> pure n
 atomicLog lock str = liftIO $ do
   let n = snd lock
   atomically $ takeTMVar (fst lock)
-  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
+  let result = BC.pack ("[" ++ show n ++ "]: " ++ str)
+  result `seq` B.hPutStrLn stderr result
+  hFlush stderr
   atomically $ putTMVar (fst lock) ()
 
 getClientNum (l,n) = n
