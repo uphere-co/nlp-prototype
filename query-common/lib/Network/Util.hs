@@ -1,9 +1,13 @@
 module Network.Util where
 
+import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent.STM.TMVar      (TMVar,newTMVarIO,putTMVar,takeTMVar)
+import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.Binary                 as Bi
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Lazy        as BL
 import qualified Network.Simple.TCP          as NS
+import           System.IO                         (hPutStrLn, stderr)
 
 recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
@@ -29,3 +33,18 @@ packAndSend sock x = do
       sizebstr = packNumBytes msg
   NS.send sock sizebstr
   NS.send sock msg
+
+
+
+type LogLock = (TMVar (),Int)
+
+newLogLock n = liftIO $ (,) <$> newTMVarIO () <*> pure n
+
+atomicLog lock str = liftIO $ do
+  let n = snd lock
+  atomically $ takeTMVar (fst lock)
+  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
+  atomically $ putTMVar (fst lock) ()
+
+getClientNum (l,n) = n
+incClientNum (l,n) = (l,n+1)

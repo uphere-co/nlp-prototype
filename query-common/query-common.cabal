@@ -33,6 +33,7 @@ Library
                         bytestring,
                         hashable,
                         network-simple,
+                        stm,
                         text
 
   Exposed-modules:
