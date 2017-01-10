@@ -32,10 +32,13 @@ Library
                         binary,
                         bytestring,
                         hashable,
+                        network-simple,
+                        stm,
                         text
 
   Exposed-modules:
                         QueryServer.Type
+                        Network.Util
                   
   Other-modules:        
 

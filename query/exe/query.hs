@@ -36,18 +36,8 @@ import           QueryServer.Type
 --
 import           Broadcast
 import           Network
+import           Network.Util
 import           Worker
-
-type LogLock = (TMVar (),Int)
-
-atomicLog lock str = liftIO $ do
-  let n = snd lock
-  atomically $ takeTMVar (fst lock)
-  hPutStrLn stderr ("[" ++ show n ++ "]: " ++ str)
-  atomically $ putTMVar (fst lock) ()
-
-getClientNum (l,n) = n
-incClientNum (l,n) = (l,n+1)
 
 withHeartBeat :: LogLock -> ProcessId -> Process ProcessId -> Process ()
 withHeartBeat lock them action = do
@@ -66,8 +56,7 @@ server port engine = do
   void . liftIO $ forkIO (broadcastProcessId pidref port)
   liftIO $ putStrLn "server started"
   resultref <- liftIO $ newTMVarIO HM.empty
-  lock <- (,) <$> liftIO (newTMVarIO ()) <*> pure 0
-  
+  lock <- newLogLock 0 
   serve lock pidref (start engine resultref)
 
 
