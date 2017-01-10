@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -52,6 +53,13 @@ queryRegisteredSentences engine r = do
      json_tparse >=> query engine >=> serialize >=> unsafePackCString
   return (BL.fromStrict bstr')
 
+querySuggestion :: EngineWrapper -> [Text] -> IO BL.ByteString
+querySuggestion engine ideas = do
+  let bstr = BL.toStrict $ encode (object [ "ideas" .= ideas ])
+  bstr' <- B.useAsCString bstr $
+     json_tparse >=> suggest engine >=> serialize >=> unsafePackCString
+  return (BL.fromStrict bstr')
+  
 type ResultBstr = BL.ByteString
 
 failed :: BL.ByteString
@@ -114,3 +122,8 @@ queryWorker ref sc QueryById {..} =
     Just resultbstr -> sendChan sc resultbstr
     Nothing         -> sendChan sc failed 
 -}
+queryWorker resultref sc engine QuerySuggest {..} = do
+  m <- liftIO $ atomically $ takeTMVar resultref
+  resultbstr <- liftIO (querySuggestion engine query_ideas)
+  liftIO $ atomically $ putTMVar resultref m
+  sendChan sc resultbstr
