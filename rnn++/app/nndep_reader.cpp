@@ -287,65 +287,66 @@ int main(int argc, char** argv){
     util::Timer timer{};
 
     YGPQueryEngine engine{config};
+    using data::ygp::annotation_on_result;
 //    RSSQueryEngine engine{config};
+//    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
-    util::json_t suggestion_query{};
-    auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
-    suggestion_query["ideas"]=ideas;
-    fmt::print("{}\n", suggestion_query.dump(4));
-    auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
-    fmt::print("{}\n", suggestion_output.dump(4));
-//    return 0;
+    if(false){
+        util::json_t suggestion_query{};
+        auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
+        suggestion_query["ideas"]=ideas;
+        fmt::print("{}\n", suggestion_query.dump(4));
+        auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
+        fmt::print("{}\n", suggestion_output.dump(4));
+    }
 
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
-    uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
-    uids["confine_ygp_table_columns"].push_back("regulation.enregsummary");
-    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
-    uids["confine_ygp_table_columns"].push_back("afasfdl14jh");
+    if(true){
+        uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
+//    uids["confine_ygp_table_columns"].push_back("regulation.enregsummary");
+//    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
+        uids["confine_ygp_table_columns"].push_back("afasfdl14jh");
+    }
     fmt::print("{}\n", uids.dump(4));
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
     timer.here_then_reset("Processed a query.");
-//    data::ygp::annotation_on_result(config, answers);
-    timer.here_then_reset("Query output annotation.");
     fmt::print("{}\n", answers.dump(4));
     fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
-//    timer.here_then_reset("Processed a chain query.");
-//    data::rss::annotation_on_result(config, chain_answers);
-    data::ygp::annotation_on_result(config, chain_answers);
+    timer.here_then_reset("Processed a chain query.");
+    annotation_on_result(config, chain_answers);
+    timer.here_then_reset("Annotate query output.");
     fmt::print("{}\n", chain_answers.dump(4));
-
-    auto stat_answer = engine.ask_query_stats(uids);
-    timer.here_then_reset("Processed a stats query.");
-//    data::rss::annotation_on_result(config, stat_answer["results"]);
-    fmt::print("{}\n", stat_answer.dump(4));
-    util::json_t tmp;
-    std::vector<int64_t> sents;
-    for(auto& per_sent: stat_answer["stats"])
-        for(auto& per_key : per_sent)
-            for(auto& matches : per_key)
-                for(auto uid : matches)
-                    sents.push_back(uid);
-    tmp["sents"]=sents;
+    if(false){
+        auto stat_answer = engine.ask_query_stats(uids);
+        timer.here_then_reset("Processed a stats query.");
+        fmt::print("{}\n", stat_answer.dump(4));
+        util::json_t tmp;
+        std::vector<int64_t> sents;
+        for(auto& per_sent: stat_answer["stats"])
+            for(auto& per_key : per_sent)
+                for(auto& matches : per_key)
+                    for(auto uid : matches)
+                        sents.push_back(uid);
+        tmp["sents"]=sents;
 //    fmt::print("{}\n", tmp.dump(4));
-    return 0;
-
-    auto custom_query = uids;
-    custom_query["sents"]=sents;
-    custom_query["n_cut"]=30;
-    fmt::print("{}\n", uids.dump(4));
-    fmt::print("{}\n", custom_query.dump(4));
-    auto chain_answers_custom = engine.ask_chain_query(custom_query);
-    data::ygp::annotation_on_result(config, chain_answers_custom);
-    fmt::print("{}\n", chain_answers_custom.dump(4));
-
-
+    }
+    if(false){
+        auto custom_query = uids;
+        custom_query["sents"]=sents;
+        custom_query["n_cut"]=30;
+        fmt::print("{}\n", uids.dump(4));
+        fmt::print("{}\n", custom_query.dump(4));
+        auto chain_answers_custom = engine.ask_chain_query(custom_query);
+        data::ygp::annotation_on_result(config, chain_answers_custom);
+        fmt::print("{}\n", chain_answers_custom.dump(4));
 //    auto content = engine.ask_sents_content(tmp);
-    //fmt::print("{}\n", content.dump(4));
+        //fmt::print("{}\n", content.dump(4));
+    }
     timer.here_then_reset("Queries are answered.");
 
     return 0;

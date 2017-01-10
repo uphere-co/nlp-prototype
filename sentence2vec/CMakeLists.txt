@@ -31,18 +31,18 @@ FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 FILE(GLOB etl_files ${RNNPP_PATH}/src/data_source/*cpp)
 
 
-add_executable(trainer app/trainer models/sentence2vec tests/test_sent2vec
-               ${parser_files} ${util_files} ${etl_files} ${wordrep_files})
-target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
+#add_executable(trainer app/trainer models/sentence2vec tests/test_sent2vec
+#               ${parser_files} ${util_files} ${etl_files} ${wordrep_files})
+#target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(query_similarity app/query_similarity
                ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
 target_link_libraries(query_similarity stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx dw)
-add_executable(model_evaluation app/model_evaluation models/sentence2vec
-               ${parser_files} ${util_files} ${wordrep_files})
-target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)
+#add_executable(model_evaluation app/model_evaluation models/sentence2vec
+#               ${parser_files} ${util_files} ${wordrep_files})
+#target_link_libraries(model_evaluation hdf5_cpp hdf5_hl_cpp tbb)
 
-add_executable(indexing_text app/indexing_text ${parser_files} ${util_files})
-target_link_libraries(indexing_text hdf5_cpp hdf5_hl_cpp tbb)
+#add_executable(indexing_text app/indexing_text ${parser_files} ${util_files})
+#target_link_libraries(indexing_text hdf5_cpp hdf5_hl_cpp tbb)
