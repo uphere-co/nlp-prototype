@@ -286,8 +286,8 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-//    YGPQueryEngine engine{config};
-    RSSQueryEngine engine{config};
+    YGPQueryEngine engine{config};
+//    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
 
     util::json_t suggestion_query{};
@@ -300,7 +300,11 @@ int main(int argc, char** argv){
 
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
-    //fmt::print("{}\n", uids.dump(4));
+    uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
+    uids["confine_ygp_table_columns"].push_back("regulation.enregsummary");
+    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
+    uids["confine_ygp_table_columns"].push_back("afasfdl14jh");
+    fmt::print("{}\n", uids.dump(4));
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
     timer.here_then_reset("Processed a query.");
@@ -311,13 +315,13 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
 //    timer.here_then_reset("Processed a chain query.");
-    data::rss::annotation_on_result(config, chain_answers);
-//    data::ygp::annotation_on_result(config, chain_answers);
+//    data::rss::annotation_on_result(config, chain_answers);
+    data::ygp::annotation_on_result(config, chain_answers);
     fmt::print("{}\n", chain_answers.dump(4));
 
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
-    data::rss::annotation_on_result(config, stat_answer["results"]);
+//    data::rss::annotation_on_result(config, stat_answer["results"]);
     fmt::print("{}\n", stat_answer.dump(4));
     util::json_t tmp;
     std::vector<int64_t> sents;
@@ -327,7 +331,7 @@ int main(int argc, char** argv){
                 for(auto uid : matches)
                     sents.push_back(uid);
     tmp["sents"]=sents;
-    fmt::print("{}\n", tmp.dump(4));
+//    fmt::print("{}\n", tmp.dump(4));
     return 0;
 
     auto custom_query = uids;

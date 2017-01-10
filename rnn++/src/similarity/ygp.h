@@ -26,9 +26,15 @@ std::vector<engine::ScoredSentence> rank_cut_per_row_index(
 
 struct Query{
     using json_t = util::json_t;
-    Query(json_t const &ask){
+    Query(json_t const &ask)
+    : table_columns{} {
         for(wordrep::SentUID::val_t uid : ask["sent_uids"] ) uids.push_back(wordrep::SentUID{uid});
         for(auto country : ask["Countries"]) countries.push_back(country);
+        if(ask.find("confine_ygp_table_columns")!=ask.end()){
+            std::vector<std::string> tmp;
+            for(std::string table_column : ask["confine_ygp_table_columns"]) tmp.push_back(table_column);
+            table_columns = tmp;
+        }
     }
     static bool is_valid(json_t const &query){
         return query.find("sent_uids")!=query.end() && query.find("max_clip_len")!=query.end()
@@ -36,6 +42,7 @@ struct Query{
     }
     std::vector<wordrep::SentUID> uids;
     std::vector<std::string> countries;
+    std::optional<std::vector<std::string>> table_columns;
 };
 
 struct DBInfo{

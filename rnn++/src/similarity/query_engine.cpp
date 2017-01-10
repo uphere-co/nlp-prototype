@@ -540,6 +540,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
+    fmt::print(std::cerr, "Find among {} sents\n", candidate_sents.size());
 
     ProcessQuerySents query_processor{db.token2uid.word, db.token2uid.pos, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
@@ -568,6 +569,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
+    fmt::print(std::cerr, "Find among {} sents\n", candidate_sents.size());
     auto maybe_sents = util::find<std::vector<int64_t>>(ask, "sents");
     if(maybe_sents) {
         auto uids = util::deserialize<SentUID>(maybe_sents.value());
@@ -593,24 +595,24 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         answer.query = query_sent_info;
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
-        Timer timer;
-        int i=0;
-        for(auto ssent : relevant_sents){
-            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
-            if(++i>20) break;
-            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
-
-            for(auto idx=ssent.sent.beg; idx!=ssent.sent.end; ++idx){
-                fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
-            }
-            fmt::print(std::cerr, "\n: --- Original sentence. {} phrases --- :\n", phrases.size());
-
-            for (auto phrase : phrases) {
-                fmt::print(std::cerr, "{}\n", phrase.repr(db.token2uid.word));
-            }
-            fmt::print(std::cerr, "-------------------\n");
-        }
-        timer.here_then_reset("Extract phrases.");
+//        Timer timer;
+//        int i=0;
+//        for(auto ssent : relevant_sents){
+//            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg))!=ColumnUID{3}) continue;
+//            if(++i>20) break;
+//            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
+//
+//            for(auto idx=ssent.sent.beg; idx!=ssent.sent.end; ++idx){
+//                fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
+//            }
+//            fmt::print(std::cerr, "\n: --- Original sentence. {} phrases --- :\n", phrases.size());
+//
+//            for (auto phrase : phrases) {
+//                fmt::print(std::cerr, "{}\n", phrase.repr(db.token2uid.word));
+//            }
+//            fmt::print(std::cerr, "-------------------\n");
+//        }
+//        timer.here_then_reset("Extract phrases.");
     };
 
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
