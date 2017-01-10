@@ -286,10 +286,10 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    YGPQueryEngine engine{config};
-    using data::ygp::annotation_on_result;
-//    RSSQueryEngine engine{config};
-//    using data::rss::annotation_on_result;
+//    YGPQueryEngine engine{config};
+//    using data::ygp::annotation_on_result;
+    RSSQueryEngine engine{config};
+    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
     if(false){
@@ -334,18 +334,18 @@ int main(int argc, char** argv){
                         sents.push_back(uid);
         tmp["sents"]=sents;
 //    fmt::print("{}\n", tmp.dump(4));
-    }
-    if(false){
-        auto custom_query = uids;
-        custom_query["sents"]=sents;
-        custom_query["n_cut"]=30;
-        fmt::print("{}\n", uids.dump(4));
-        fmt::print("{}\n", custom_query.dump(4));
-        auto chain_answers_custom = engine.ask_chain_query(custom_query);
-        data::ygp::annotation_on_result(config, chain_answers_custom);
-        fmt::print("{}\n", chain_answers_custom.dump(4));
-//    auto content = engine.ask_sents_content(tmp);
-        //fmt::print("{}\n", content.dump(4));
+
+
+//        auto custom_query = uids;
+//        custom_query["sents"]=sents;
+//        custom_query["n_cut"]=30;
+//        fmt::print("{}\n", uids.dump(4));
+//        fmt::print("{}\n", custom_query.dump(4));
+//        auto chain_answers_custom = engine.ask_chain_query(custom_query);
+//        data::ygp::annotation_on_result(config, chain_answers_custom);
+//        fmt::print("{}\n", chain_answers_custom.dump(4));
+////    auto content = engine.ask_sents_content(tmp);
+//        //fmt::print("{}\n", content.dump(4));
     }
     timer.here_then_reset("Queries are answered.");
 
