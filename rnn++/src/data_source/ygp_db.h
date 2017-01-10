@@ -14,6 +14,7 @@
 
 #include "utils/hdf5.h"
 #include "utils/json.h"
+#include "utils/optional.h"
 #include "utils/base_types.h"
 #include "utils/persistent_vector.h"
 
@@ -56,6 +57,15 @@ private:
 struct YGPdb{
     YGPdb(std::string column_uids);
     std::string table(ColumnUID idx) const {return tables[idx.val];}
+    std::optional<ColumnUID> table_column(std::string name) const {
+        auto n_col = full_names.size();
+        for(decltype(n_col)i=0; i!=n_col; ++i){
+            auto fullname = full_names[i];
+            if(fullname.find(name) !=std::string::npos)
+                return ColumnUID::from_unsigned(i);
+        }
+        return {};
+    }
     std::string index_col(ColumnUID idx) const {return index_cols[idx.val];}
     std::string column(ColumnUID idx) const {return columns[idx.val];}
     bool is_in(std::string name) const;

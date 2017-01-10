@@ -1,4 +1,7 @@
 #include "similarity/ygp.h"
+
+#include <fmt/printf.h>
+
 #include "similarity/dataset.h"
 
 #include "utils/versioned_name.h"
@@ -113,18 +116,38 @@ std::vector<wordrep::Sentence> DBInfo::get_query_sents(
     return query_sents;
 }
 std::vector<wordrep::Sentence> DBInfo::get_candidate_sents(
-        query_t const& query, engine::Dataset const& db) const{
-    std::cerr<<"Find for a query in DB of : ";
+        query_t const& query, engine::Dataset const& dataset) const{
+    std::cerr<<"Find for a query in country DB of : ";
     for(auto const &country : query.countries) std::cerr<<country << ", ";
     std::cerr<<std::endl;
     if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
 
+    std::vector<ColumnUID> interested_columns;
+    if(query.table_columns) {
+        for(auto table_name : query.table_columns.value()){
+            auto maybe_uid = db.table_column(table_name);
+            if(!maybe_uid) continue;
+            auto uid = maybe_uid.value();
+            interested_columns.push_back(uid);
+            fmt::print(std::cerr, "Table to search : {} {} \n", table_name, uid);
+
+        }
+    } else{
+        fmt::print(std::cerr, "Find in all table\n");
+    }
+
     auto uids = per_country.sents(query.countries);
     std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(db.uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=db.sents;
+    for(auto uid : uids) candidate_sents.push_back(dataset.uid2sent[uid]);
+    if(query.countries.size()==0) candidate_sents=dataset.sents;
 
-    return candidate_sents;
+    if(interested_columns.empty()) return candidate_sents;
+    auto tmp= util::filter(candidate_sents,
+                        [&interested_columns,this](auto& sent){
+        return util::isin(interested_columns, indexer.column_uid(sent.tokens->chunk_idx(sent.beg)));
+    });
+    fmt::print(std::cerr, "Select {} among {} sents\n", tmp.size(), candidate_sents.size());
+    return tmp;
 }
 
 }//data::ygp
