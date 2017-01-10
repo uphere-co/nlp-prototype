@@ -147,8 +147,12 @@ DepSearchScore::val_t DepSearchScore::score_sum() const {return util::math::sum(
 class DepParsedQuery{
 public:
     using val_t = WordSimCache::val_t;
-    DepParsedQuery(std::vector<val_t> const &cutoffs, Sentence query_sent, WordSimCache const &similarity)
-    : len{diff(query_sent.end,query_sent.beg)}, query_sent{query_sent}, cutoffs{cutoffs}, dists{} {
+    DepParsedQuery(std::vector<val_t> const &cutoffs,
+                   Sentence query_sent,
+                   WordSimCache const &similarity,
+                   wordrep::POSUIDindex const& posUIDs)
+    : len{diff(query_sent.end,query_sent.beg)}, query_sent{query_sent}, cutoffs{cutoffs}, dists{},
+      posUIDs{posUIDs}{
         for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx)
             sorted_idxs.push_back({cutoffs[diff(idx,query_sent.beg)],idx});
         std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
@@ -184,6 +188,14 @@ public:
         DepSearchScore scores(len);
         auto i_trial{0};
 
+        auto is_noun=[this](DepParsedTokens const& tokens, DPTokenIndex idx){
+            auto pos = tokens.pos(idx);
+            if(pos==posUIDs["NN"] || pos==posUIDs["NNP"]) return true;
+            return false;
+        };
+        auto noun_rescore=[](auto x){
+            return 1.5*x*x*x*x;
+        };
         for(auto pair: sorted_idxs){
             ++i_trial;
             DPTokenIndex tidx = pair.second;
@@ -194,6 +206,7 @@ public:
             for(auto i=beg; i!=end; ++i) {
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
+                if(is_noun(*query_sent.tokens, tidx)) dependent_score = noun_rescore(dependent_score);
                 auto head_word = sent.tokens->head_word(i);
                 auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
                 if(!maybe_qhead_pidx) {
@@ -208,6 +221,8 @@ public:
                     //CAUTION: this early stopping assumes tmp =  cutoffs[j] * dependent_score * governor_score*cutoffs[qhead_pidx];
                     // if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = (*dists[qhead_pidx])[head_word];
+                    //assert(query_sent.tokens->word_uid(tidx+qhead_pidx)==query_sent.tokens->head_uid(tidx));
+                    //if(is_noun(*query_sent.tokens, tidx+qhead_pidx)) governor_score = noun_rescore(governor_score);
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
                         score = tmp;
@@ -217,16 +232,16 @@ public:
                 }
             }
 
-            total_score += score;
-            if(i_trial==n_cut){
-                if(total_score <cut) return scores;
-            }
-            else if(i_trial==n_cut2){
-                if(total_score < cut2) return scores;
-            }
-            else if(i_trial==n_cut3){
-                if(total_score < cut3) return scores;
-            }
+//            total_score += score;
+//            if(i_trial==n_cut){
+//                if(total_score <cut) return scores;
+//            }
+//            else if(i_trial==n_cut2){
+//                if(total_score < cut2) return scores;
+//            }
+//            else if(i_trial==n_cut3){
+//                if(total_score < cut3) return scores;
+//            }
         }
         return scores;
     }
@@ -244,6 +259,7 @@ private:
     val_t cut2;
     val_t cut3;
     std::vector<WordSimCache::dist_cache_t const*> dists;
+    wordrep::POSUIDindex const& posUIDs;
 };
 
 
@@ -368,14 +384,14 @@ void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
 
 struct ProcessQuerySent{
     using val_t = WordSimCache::val_t;
-    ProcessQuerySent(WordSimCache &dists_cache)
-            : dists_cache{dists_cache}
+    ProcessQuerySent(WordSimCache &dists_cache, wordrep::POSUIDindex const& posUIDs)
+            : dists_cache{dists_cache}, posUIDs{posUIDs}
     {}
 
     std::vector<ScoredSentence> operator()(Sentence query_sent,
                                            std::vector<val_t> const &cutoffs,
                                            std::vector<Sentence> const &data_sents) {
-        DepParsedQuery query{cutoffs, query_sent, dists_cache};
+        DepParsedQuery query{cutoffs, query_sent, dists_cache, posUIDs};
 
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
@@ -390,16 +406,18 @@ struct ProcessQuerySent{
         return deduplicate_results(relevant_sents);
     }
     WordSimCache& dists_cache;
+    wordrep::POSUIDindex const& posUIDs;
 };
 
 
 struct ProcessQuerySents{
     ProcessQuerySents(wordrep::WordUIDindex const& wordUIDs,
+                      wordrep::POSUIDindex const& posUIDs,
                       wordrep::WordImportance const& word_importance,
                       WordSimCache& dists_cache)
             : wordUIDs{wordUIDs}, word_importance{word_importance},
               dists_cache{dists_cache},
-              processor{dists_cache}
+              processor{dists_cache, posUIDs}
     {}
 
     template<typename OP>
@@ -433,12 +451,13 @@ struct ProcessQuerySents{
 
 struct ProcessChainQuery{
     ProcessChainQuery(wordrep::WordUIDindex const& wordUIDs,
+                      wordrep::POSUIDindex const& posUIDs,
                       wordrep::WordImportance const& word_importance,
                       wordrep::Sentences const &uid2sent,
                       WordSimCache& dists_cache)
             : wordUIDs{wordUIDs}, word_importance{word_importance}, uid2sent{uid2sent},
               dists_cache{dists_cache},
-              processor{dists_cache}
+              processor{dists_cache, posUIDs}
     {}
 
     template<typename OP>
@@ -522,7 +541,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
-    ProcessQuerySents query_processor{db.token2uid.word, word_importance, dists_cache};
+    ProcessQuerySents query_processor{db.token2uid.word, db.token2uid.pos, word_importance, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
@@ -594,7 +613,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
         timer.here_then_reset("Extract phrases.");
     };
 
-    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
+    ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
     processor(query_sents, candidate_sents, per_sent);
 
     return to_json(answers);
@@ -652,7 +671,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
         collect_query_result(query_sent,query_sent_info, relevant_sents);
     };
 
-    ProcessChainQuery processor{db.token2uid.word, word_importance, db.uid2sent, dists_cache};
+    ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
     processor(query_sents, candidate_sents, op_per_sent);
 
     util::json_t stats_output;

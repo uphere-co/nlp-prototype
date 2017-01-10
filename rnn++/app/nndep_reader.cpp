@@ -168,6 +168,7 @@ void dataset_indexing_quality(util::json_t const& config){
         auto widx1 = tokens.word(idx1);
         auto uid1  = voca.indexmap[widx1];
         auto word1 = wordUIDs[uid1];
+        //0.6 is a cutoff for skip noisy words, words with low importance score.
         if(importance.score(uid1)<0.6) continue;
         for(auto idx2=sent2.beg; idx2!=sent2.end; ++idx2){
             auto widx2 = tokens.word(idx2);
@@ -225,6 +226,29 @@ void phrase_stats(util::json_t const& config){
 
 }
 
+void pos_info(util::json_t const& config){
+    using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
+    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
+                           config["dep_parsed_prefix"]};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    POSUIDindex posUIDs{util::get_str(config,"pos_uids_dump")};
+
+    auto sents = tokens.IndexSentences();
+    int i=0;
+    for(auto sent : sents){
+        if(++i>10) break;
+        fmt::print("{}\n", sent.repr(wordUIDs));
+        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+            fmt::print("{}.{} ", wordUIDs[sent.tokens->word_uid(idx)],
+                                 posUIDs[sent.tokens->pos(idx)]);
+        }
+        fmt::print("\n");
+    }
+}
+
+
 
 void test_all(int argc, char** argv){
     assert(argc>1);
@@ -234,6 +258,7 @@ void test_all(int argc, char** argv){
     phrases_in_sentence(config);
     dataset_indexing_quality(config);
     phrase_stats(config);
+    pos_info(config);
 }
 
 
