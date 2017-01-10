@@ -23,7 +23,7 @@ cabalattr =
 engineWrapper :: Class
 engineWrapper =
   Class cabal "EngineWrapper" [] mempty Nothing
-  [ Constructor [ cstring "configfile" ] Nothing
+  [ Constructor [ int "typ", cstring "configfile" ] Nothing
   , Virtual (cppclass_ json_t) "register_documents" [ cstring "str", cppclass json_t "input" ] Nothing    
   , Virtual (cppclass_ json_t) "query" [ cppclass json_t "input" ] Nothing
   , Destructor (Just "deleteEngineWrapper")
