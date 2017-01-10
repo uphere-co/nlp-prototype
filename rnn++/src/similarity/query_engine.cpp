@@ -743,16 +743,20 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
         auto wuid = db.token2uid.word[word];
         auto usage = phrase_finder.usages(wuid);
         auto& counts = usage.first;
-        //auto& reprs = usage.second;
+        auto& reprs = usage.second;
 
-        auto i=0;
+        auto rank=0;
         for(auto pair : counts){
             auto& phrase = pair.first;
+            auto phrase_usages = reprs[phrase];
+            auto max_usage_case = std::max_element(phrase_usages.cbegin(), phrase_usages.cend(),
+                                          [](auto x, auto y){return x.second<y.second;});
+            auto repr = max_usage_case->first;
             auto count = pair.second;
             if(count <2) continue;
             std::ostringstream ss;
-            ss << phrase.repr(db.token2uid.word);
-            output[word].push_back({util::string::strip(ss.str()), count, i++});
+            ss << repr.repr(db.token2uid.word);
+            output[word].push_back({util::string::strip(ss.str()), count, rank++});
         }
     }
     return output;
