@@ -745,13 +745,14 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
         auto& counts = usage.first;
         //auto& reprs = usage.second;
 
+        auto i=0;
         for(auto pair : counts){
             auto& phrase = pair.first;
             auto count = pair.second;
             if(count <2) continue;
             std::ostringstream ss;
             ss << phrase.repr(db.token2uid.word);
-            output[word].push_back(std::make_pair(util::string::strip(ss.str()), count));
+            output[word].push_back({util::string::strip(ss.str()), count, i++});
         }
     }
     return output;
