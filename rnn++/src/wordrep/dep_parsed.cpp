@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <codecvt>
 #include <locale>
+#include <exception>
 
 #include <fmt/printf.h>
 
@@ -19,6 +20,11 @@ RawTexts::RawTexts(std::string filename)
         :lines(util::string::readlines(filename))
 {}
 
+class VersionMismatchException: public std::exception {
+    virtual const char* what() const throw() {
+        return "Data version mismatches.";
+    }
+};
 
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
         : sents_uid {file,prefix+".sent_uid"},
@@ -37,9 +43,9 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 {}
 
 DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
-        : DepParsedTokens{h5read(file.fullname), prefix}
-{
-    assert(file.major==DepParsedTokens::major_version);
+        : DepParsedTokens{h5read(file.fullname), prefix} {
+    VersionMismatchException excep;
+    if(file.major!=DepParsedTokens::major_version) throw excep;
 }
 DepParsedTokens::DepParsedTokens(std::string prefix)
         : sents_uid {{},prefix+".sent_uid"},
