@@ -86,12 +86,11 @@ auto isin(T const &elms, typename T::value_type const &elm){
 
 template<typename T>
 auto unique_values(std::vector<T> elms){
+    std::sort(elms.begin(), elms.end());
     auto last = std::unique(elms.begin(), elms.end());
     elms.erase(last, elms.end());
     return elms;
 }
-
-
 
 template<typename TC, typename TO>
 TC filter(TC const &vs, TO op){

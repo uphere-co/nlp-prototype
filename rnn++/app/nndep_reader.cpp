@@ -247,11 +247,15 @@ void pos_info(util::json_t const& config){
 }
 
 struct CaseCount{
-    using float_t = float;
-    float_t both{0};
-    float_t summary{0};
-    float_t full{0};
-    float_t ratio{0};
+    int64_t both{0};
+    int64_t summary{0};
+    int64_t full{0};
+    float ratio{0};
+};
+
+struct ColumnPair{
+    data::ColumnUID summary;
+    data::ColumnUID full;
 };
 void build_word_importance(util::json_t const& config){
     using util::io::h5read;
@@ -285,6 +289,8 @@ void build_word_importance(util::json_t const& config){
         chunk_beg=chunk_end;
     }
 
+    std::vector<ColumnPair> column_pairs = {{1,0},{2,1},{2,0}, {3,4},{3,5}, {4,5}};//for YGP
+    //std::vector<ColumnPair> column_pairs = {{1,2}};//for RSS. 0 is title and all capital.
     using data::ColumnUID;
     using data::RowIndex;
     std::map<RowIndex, std::map<ColumnUID,ChunkIndex>> index_map;
@@ -294,6 +300,7 @@ void build_word_importance(util::json_t const& config){
         auto row_idx    = indexer.row_idx(chunk_idx);
         index_map[row_idx][column_uid]=chunk_idx;
     }
+
 
     auto is_title    = [](ColumnUID idx){return idx.val==0;};
     auto is_summary  = [](ColumnUID idx){return idx.val==1;};
@@ -319,7 +326,7 @@ void build_word_importance(util::json_t const& config){
         }
         for(auto idx : words_in_maintext) cases[idx].full +=1;
 
-        if(false){
+        if(true){
             fmt::print("RowIndex {}, {} item\n", i, elm.size());
             fmt::print("Title: {}\n", elm[title_col]);
             for(auto idx : words_in_title) fmt::print("{} ", wordUIDs[idx]);
@@ -336,13 +343,10 @@ void build_word_importance(util::json_t const& config){
     auto norm_factor = 1.0/index_map.size();
     for(auto& elm : ratio_per_uids) {
         auto& x = elm.second;
-        x.summary *= norm_factor;
-        x.full *= norm_factor;
-        x.both *= norm_factor;
-        if(x.summary==0.0 || x.full==0.0)
+        if(x.summary==0 || x.full==0)
             x.ratio=0.0;
         else
-            x.ratio = x.both/(x.summary*x.full);
+            x.ratio = x.both/(norm_factor*x.summary*x.full);
     }
 //    auto ratio_per_uids = util::map(cases, [n_word](auto elm){
 //        WordUID uid = elm.first;
@@ -352,7 +356,7 @@ void build_word_importance(util::json_t const& config){
 //        return std::make_pair(uid, ratio);});
     util::sort(ratio_per_uids, [](auto x, auto y){return x.second.ratio>y.second.ratio;});
     for(auto x : ratio_per_uids){
-        fmt::print("{} : {} {} {} {}\n", wordUIDs[x.first], x.second.ratio,
+        fmt::print("{:<15}\t: {:<5}\t{}\t{}\t{}\n", wordUIDs[x.first], x.second.ratio,
                     x.second.full, x.second.summary, x.second.both);
     }
 //    util::TypedPersistentVector<WordUID> uids{"prob.word_uid", util::map(ratio_per_uids, [](auto x){return x.first;})};
@@ -362,14 +366,6 @@ void build_word_importance(util::json_t const& config){
 //    uids.write(output);
 //    ratios.write(output);
     return;
-    timer.here_then_reset("Finish data chunking.");
-    std::map<WordUID,int64_t> counts_map;
-    for(auto wuid : words_uid.get()) counts_map[wuid] +=1;
-    timer.here_then_reset("Finish word counts.");
-    auto counts = util::to_sorted_pairs(counts_map);
-    std::sort(counts.begin(),counts.end(), [](auto x, auto y){return x.second>y.second;});
-    for(int i=0; i<10; ++i) fmt::print("{} {}\n", wordUIDs[counts[i].first], counts[i].second);
-    timer.here_then_reset("Finish final process.");
 }
 
 void show_word_importance(util::json_t const& config){
