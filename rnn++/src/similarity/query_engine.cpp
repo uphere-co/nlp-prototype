@@ -183,7 +183,7 @@ public:
     DepSearchScore get_scores(Sentence const &sent) const {
         auto beg=sent.beg;
         auto end=sent.end;
-        val_t total_score{0.0};
+        //val_t total_score{0.0};
 //        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
         DepSearchScore scores(len);
         auto i_trial{0};
@@ -761,6 +761,8 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
             std::ostringstream ss;
             ss << repr.repr(db.token2uid.word);
             suggestion["suggestions"].push_back({util::string::strip(ss.str()), count, rank++});
+            //20 is a cutoff to limit number of suggestions per word.
+            if(rank>20) break;
         }
         output["query_suggestions"].push_back(suggestion);
     }
