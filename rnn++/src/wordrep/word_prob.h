@@ -15,9 +15,12 @@ namespace wordrep{
 
 struct WordImportance{
     using val_t = double;
+    //words with their score below low_cutoff are considered noisy words.
+    static constexpr val_t low_cutoff = 0.6;
     WordImportance(util::io::H5file const& stats);
     WordImportance(std::string probfile, std::string wordfile);
     val_t score(WordUID uid) const;
+    bool is_noisy_word(WordUID uid) const { return score(uid)<low_cutoff;}
 
 private:
     std::map<WordUID,val_t> uid2score;

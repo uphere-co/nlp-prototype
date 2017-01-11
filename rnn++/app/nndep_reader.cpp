@@ -429,8 +429,8 @@ void update_column(util::json_t const& config){
     ratios.write(file);
 }
 int main(int argc, char** argv){
-    wordrep::test::test_all(argc,argv);
-    return  0;
+//    wordrep::test::test_all(argc,argv);
+//    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
@@ -455,10 +455,11 @@ int main(int argc, char** argv){
     using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
-    if(false){
+    if(true){
         util::json_t suggestion_query{};
 //        auto ideas = {"China", "air", "fire","metal"};
-        auto ideas = {"Yahoo", "Google","China","AI"};
+        //auto ideas = {"Yahoo", "Google","China","AI"};
+        auto ideas = util::string::split(util::string::strip(util::string::read_whole(input)));
         suggestion_query["ideas"]=ideas;
         fmt::print("{}\n", suggestion_query.dump(4));
         auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
