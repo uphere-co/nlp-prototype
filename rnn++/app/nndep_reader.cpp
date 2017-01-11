@@ -290,64 +290,71 @@ void build_word_importance(util::json_t const& config){
     }
 
     std::vector<ColumnPair> column_pairs = {{1,0},{2,1},{2,0}, {3,4},{3,5}, {4,5}};//for YGP
-    //std::vector<ColumnPair> column_pairs = {{1,2}};//for RSS. 0 is title and all capital.
+//    std::vector<ColumnPair> column_pairs = {{1,2}};//for RSS. 0 is title and all capital.
+//    assert(column_pairs[0].summary==ColumnUID{1});
+//    assert(column_pairs[0].full==ColumnUID{2});
     using data::ColumnUID;
     using data::RowIndex;
-    std::map<RowIndex, std::map<ColumnUID,ChunkIndex>> index_map;
+    std::map<ColumnUID, std::map<RowIndex,ChunkIndex>> index_map;
     for(auto const& chunk : chunks){
         auto chunk_idx  = chunk.first;
         auto column_uid = indexer.column_uid(chunk_idx);
         auto row_idx    = indexer.row_idx(chunk_idx);
-        index_map[row_idx][column_uid]=chunk_idx;
+        index_map[column_uid][row_idx]=chunk_idx;
     }
-
-
-    auto is_title    = [](ColumnUID idx){return idx.val==0;};
-    auto is_summary  = [](ColumnUID idx){return idx.val==1;};
-    auto is_maintext = [](ColumnUID idx){return idx.val==2;};
-    ColumnUID const title_col{0};
-    ColumnUID const summary_col{1};
-    ColumnUID const maintext_col{2};
+    for(auto elm : index_map){
+        fmt::print(std::cerr, "{} : {} chunks.\n", elm.first, elm.second.size());
+    }
+    int n_case=0;
     std::map<WordUID,CaseCount> cases;
+    for(auto pair : column_pairs){
+        auto rows_full = index_map[pair.full];
+        auto rows_summary = index_map[pair.summary];
+        assert(index_map.find(pair.full)!=index_map.end());
+        assert(index_map.find(pair.summary)!=index_map.end());
 
-    for(auto pair : index_map){
-        auto i = pair.first;
-        auto& elm = pair.second;
-        if(elm.find(summary_col)==elm.cend()
-           || elm.find(maintext_col)==elm.cend()
-           || elm.find(title_col)==elm.cend()) continue;
+        for(auto elm : rows_summary){
+            auto row_idx = elm.first;
+            if(rows_full.find(row_idx)==rows_full.end()) continue;
+            ++n_case;
+            auto summary_chunk = rows_summary[row_idx];
+            auto full_chunk = rows_full[row_idx];
+            assert(rows_summary.find(row_idx)!=rows_summary.end());
+            assert(rows_full.find(row_idx)!=rows_full.end());
 
-        auto words_in_title    = util::unique_values(chunks[elm[title_col]]);
-        auto words_in_summary  = util::unique_values(chunks[elm[summary_col]]);
-        auto words_in_maintext = util::unique_values(chunks[elm[maintext_col]]);
-        for(auto idx : words_in_summary){
-            cases[idx].summary +=1;
-            if(util::isin(words_in_maintext, idx)) cases[idx].both +=1;
-        }
-        for(auto idx : words_in_maintext) cases[idx].full +=1;
+            auto words_in_summary = util::unique_values(chunks[summary_chunk]);
+            auto words_in_full    = util::unique_values(chunks[full_chunk]);
 
-        if(true){
-            fmt::print("RowIndex {}, {} item\n", i, elm.size());
-            fmt::print("Title: {}\n", elm[title_col]);
-            for(auto idx : words_in_title) fmt::print("{} ", wordUIDs[idx]);
-            fmt::print("\n");
-            fmt::print("Summary: {}\n", elm[summary_col]);
-            for(auto idx : words_in_summary) fmt::print("{} ", wordUIDs[idx]);
-            fmt::print("\n");
-            fmt::print("Maintext: {}\n", elm[maintext_col]);
-            for(auto idx : words_in_maintext) fmt::print("{} ", wordUIDs[idx]);
-            fmt::print("\n");
+            for(auto idx : words_in_summary){
+                cases[idx].summary +=1;
+                if(util::isin(words_in_full, idx)) cases[idx].both +=1;
+            }
+            for(auto idx : words_in_full) cases[idx].full +=1;
+
+            if(false){
+                if(n_case>10) continue;
+                fmt::print("RowIndex {}:\n", row_idx);
+                fmt::print("summary: {}\n", summary_chunk);
+                assert(chunks.find(summary_chunk)!=chunks.end());
+                assert(chunks.find(full_chunk)!=chunks.end());
+                for(auto idx : chunks[summary_chunk]) fmt::print("{} ", wordUIDs[idx]);
+                fmt::print("\n");
+                fmt::print("full: {}\n", full_chunk);
+                for(auto idx : chunks[full_chunk]) fmt::print("{} ", wordUIDs[idx]);
+                fmt::print("\n");
+            }
         }
     }
     auto ratio_per_uids = util::to_pairs(cases);
-    auto norm_factor = 1.0/index_map.size();
+    auto norm_factor = 1.0/n_case;
     for(auto& elm : ratio_per_uids) {
         auto& x = elm.second;
-        if(x.summary==0 || x.full==0)
+        if(x.summary<5 || x.full<5)
             x.ratio=0.0;
         else
             x.ratio = x.both/(norm_factor*x.summary*x.full);
     }
+
 //    auto ratio_per_uids = util::map(cases, [n_word](auto elm){
 //        WordUID uid = elm.first;
 //        CaseCount x = elm.second;
