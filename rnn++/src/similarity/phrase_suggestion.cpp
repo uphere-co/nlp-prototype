@@ -9,7 +9,7 @@
 namespace engine{
 
 std::pair<WordUsageInPhrase::counts_t,WordUsageInPhrase::reprs_t>
-WordUsageInPhrase::usages(wordrep::WordUID word) const {
+WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
     using wordrep::Words;
 
     tbb::concurrent_vector<Words> phrase_usages;
@@ -21,7 +21,7 @@ WordUsageInPhrase::usages(wordrep::WordUID word) const {
 //    for(auto sent : sents){
         auto sent = sents[i];
         if(!sent.isin(word)) return;    
-        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
+        auto phrases = phrase_segmenter.broke_into_phrases(sent, cutoff);
         for(auto phrase : phrases){
             if(phrase.size()>10 || phrase.size()==1) continue;
             if(phrase.isin(word)) {

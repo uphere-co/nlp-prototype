@@ -737,12 +737,14 @@ json_t QueryEngine<T>::ask_sents_content(json_t const &ask) const{
 
 template<typename T>
 json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
+    auto cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
+    fmt::print(std::cerr, "{} cutoff phrase.\n", cutoff);
     json_t output{};
     WordUsageInPhrase phrase_finder{db.sents, word_importance};
     for(std::string word : ask["ideas"]) {
         auto wuid = db.token2uid.word[word];
         if(word_importance.is_noisy_word(wuid)) continue;
-        auto usage = phrase_finder.usages(wuid);
+        auto usage = phrase_finder.usages(wuid, cutoff);
         auto& counts = usage.first;
         auto& reprs = usage.second;
 

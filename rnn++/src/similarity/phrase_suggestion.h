@@ -20,13 +20,14 @@ struct PhraseUsage{
 };
 
 struct WordUsageInPhrase{
+    using float_t = float;
     using counts_t = std::vector<std::pair<wordrep::Words,int64_t>>;
     using reprs_t  = std::map<wordrep::Words,std::map<wordrep::Words,int64_t>>;
     WordUsageInPhrase(std::vector<wordrep::Sentence> const& sents,
                       wordrep::WordImportance const& importance_)
             : sents{sents}, importance{importance_}, phrase_segmenter{importance}
     {}
-    std::pair<counts_t,reprs_t> usages(wordrep::WordUID word) const;
+    std::pair<counts_t,reprs_t> usages(wordrep::WordUID word, float_t cutoff) const;
 
 private:
     std::vector<wordrep::Sentence> const& sents;
