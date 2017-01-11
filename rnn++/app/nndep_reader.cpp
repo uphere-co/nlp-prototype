@@ -116,8 +116,6 @@ void phrases_in_sentence(util::json_t const& config) {
                            config["dep_parsed_prefix"]};
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
     WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
-    data::DBIndexer indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                            config["dep_parsed_prefix"].get<std::string>()};
     auto sents = tokens.IndexSentences();
 
     PhraseSegmenter phrase_segmenter{importance};
@@ -248,7 +246,149 @@ void pos_info(util::json_t const& config){
     }
 }
 
+struct CaseCount{
+    using float_t = float;
+    float_t both{0};
+    float_t summary{0};
+    float_t full{0};
+    float_t ratio{0};
+};
+void build_word_importance(util::json_t const& config){
+    using util::io::h5read;
+    fmt::print(std::cerr, "Read {}\n",
+               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
 
+    util::Timer timer;
+    auto file = h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
+    std::string prefix = config["dep_parsed_prefix"];
+
+    util::TypedPersistentVector<ChunkIndex> chunks_idx{file,prefix+".chunk_idx"};
+    util::TypedPersistentVector<WordUID>    words_uid {file,prefix+".word_uid"};
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    data::DBIndexer indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                            config["dep_parsed_prefix"].get<std::string>()};
+    timer.here_then_reset("Data loaded.");
+
+
+    std::map<ChunkIndex, std::vector<WordUID>> chunks;
+
+    auto beg_idx = chunks_idx.cbegin();
+    auto end_idx = chunks_idx.end();
+    auto beg_word = words_uid.cbegin();
+    auto end_word = words_uid.cend();
+    auto chunk_beg = beg_idx;
+    while(chunk_beg!=end_idx){
+        auto chunk_end = std::find_if_not(chunk_beg, end_idx, [chunk_beg](auto x){return *chunk_beg==x;});
+        for(auto it=beg_word+std::distance(beg_idx, chunk_beg);
+            it!=beg_word+std::distance(beg_idx, chunk_end); ++it) chunks[*chunk_beg].push_back(*it);
+        chunk_beg=chunk_end;
+    }
+
+    using data::ColumnUID;
+    using data::RowIndex;
+    std::map<RowIndex, std::map<ColumnUID,ChunkIndex>> index_map;
+    for(auto const& chunk : chunks){
+        auto chunk_idx  = chunk.first;
+        auto column_uid = indexer.column_uid(chunk_idx);
+        auto row_idx    = indexer.row_idx(chunk_idx);
+        index_map[row_idx][column_uid]=chunk_idx;
+    }
+
+    auto is_title    = [](ColumnUID idx){return idx.val==0;};
+    auto is_summary  = [](ColumnUID idx){return idx.val==1;};
+    auto is_maintext = [](ColumnUID idx){return idx.val==2;};
+    ColumnUID const title_col{0};
+    ColumnUID const summary_col{1};
+    ColumnUID const maintext_col{2};
+    std::map<WordUID,CaseCount> cases;
+
+    for(auto pair : index_map){
+        auto i = pair.first;
+        auto& elm = pair.second;
+        if(elm.find(summary_col)==elm.cend()
+           || elm.find(maintext_col)==elm.cend()
+           || elm.find(title_col)==elm.cend()) continue;
+
+        auto words_in_title    = util::unique_values(chunks[elm[title_col]]);
+        auto words_in_summary  = util::unique_values(chunks[elm[summary_col]]);
+        auto words_in_maintext = util::unique_values(chunks[elm[maintext_col]]);
+        for(auto idx : words_in_summary){
+            cases[idx].summary +=1;
+            if(util::isin(words_in_maintext, idx)) cases[idx].both +=1;
+        }
+        for(auto idx : words_in_maintext) cases[idx].full +=1;
+
+        if(false){
+            fmt::print("RowIndex {}, {} item\n", i, elm.size());
+            fmt::print("Title: {}\n", elm[title_col]);
+            for(auto idx : words_in_title) fmt::print("{} ", wordUIDs[idx]);
+            fmt::print("\n");
+            fmt::print("Summary: {}\n", elm[summary_col]);
+            for(auto idx : words_in_summary) fmt::print("{} ", wordUIDs[idx]);
+            fmt::print("\n");
+            fmt::print("Maintext: {}\n", elm[maintext_col]);
+            for(auto idx : words_in_maintext) fmt::print("{} ", wordUIDs[idx]);
+            fmt::print("\n");
+        }
+    }
+    auto ratio_per_uids = util::to_pairs(cases);
+    auto norm_factor = 1.0/index_map.size();
+    for(auto& elm : ratio_per_uids) {
+        auto& x = elm.second;
+        x.summary *= norm_factor;
+        x.full *= norm_factor;
+        x.both *= norm_factor;
+        if(x.summary==0.0 || x.full==0.0)
+            x.ratio=0.0;
+        else
+            x.ratio = x.both/(x.summary*x.full);
+    }
+//    auto ratio_per_uids = util::map(cases, [n_word](auto elm){
+//        WordUID uid = elm.first;
+//        CaseCount x = elm.second;
+//        if(x.full==0 || x.summary ==0) return std::make_pair(uid, 0.0);
+//        auto ratio = 1.0*x.both*n_word/(x.full*x.summary);
+//        return std::make_pair(uid, ratio);});
+    util::sort(ratio_per_uids, [](auto x, auto y){return x.second.ratio>y.second.ratio;});
+    for(auto x : ratio_per_uids){
+        fmt::print("{} : {} {} {} {}\n", wordUIDs[x.first], x.second.ratio,
+                    x.second.full, x.second.summary, x.second.both);
+    }
+//    util::TypedPersistentVector<WordUID> uids{"prob.word_uid", util::map(ratio_per_uids, [](auto x){return x.first;})};
+//    util::PersistentVector<double,double> ratios{"prob.ratio", util::map(ratio_per_uids, [](auto x){return x.second;})};
+//
+//    auto output = util::io::h5replace("prob.h5");
+//    uids.write(output);
+//    ratios.write(output);
+    return;
+    timer.here_then_reset("Finish data chunking.");
+    std::map<WordUID,int64_t> counts_map;
+    for(auto wuid : words_uid.get()) counts_map[wuid] +=1;
+    timer.here_then_reset("Finish word counts.");
+    auto counts = util::to_sorted_pairs(counts_map);
+    std::sort(counts.begin(),counts.end(), [](auto x, auto y){return x.second>y.second;});
+    for(int i=0; i<10; ++i) fmt::print("{} {}\n", wordUIDs[counts[i].first], counts[i].second);
+    timer.here_then_reset("Finish final process.");
+}
+
+void show_word_importance(util::json_t const& config){
+    auto file = util::io::h5read(util::get_str(config, "word_prob_dump"));
+    util::TypedPersistentVector<WordUID> uids{file,"prob.word_uid"};
+    //util::PersistentVector<double,double> ratios{file,"prob.ratio"};
+    auto ratios = file.getRawData<double>({"prob.ratio"});
+    auto p_main = file.getRawData<double>({"prob.main"});
+    auto p_summary = file.getRawData<double>({"prob.summary"});
+    auto p_both = file.getRawData<double>({"prob.both"});
+
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto ratio_per_uids = util::zip(uids.get(),ratios);
+    util::sort(ratio_per_uids, [](auto x, auto y){return x.second>y.second;});
+    auto n= ratios.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        fmt::print("{} : {} {} {} {}\n", wordUIDs[uids[i]], ratios[i], p_main[i], p_summary[i],p_both[i]);
+    }
+}
 
 void test_all(int argc, char** argv){
     assert(argc>1);
@@ -259,6 +399,8 @@ void test_all(int argc, char** argv){
     dataset_indexing_quality(config);
     phrase_stats(config);
     pos_info(config);
+    build_word_importance(config);
+    show_word_importance(config);
 }
 
 
@@ -277,7 +419,9 @@ int main(int argc, char** argv){
     std::string input = argv[2];
     //wordrep::test::phrases_in_sentence(config);
 //    wordrep::test::phrase_stats(config);
-//    return 0;
+    wordrep::test::build_word_importance(config);
+//    wordrep::test::show_word_importance(config);
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -294,8 +438,8 @@ int main(int argc, char** argv){
 
     if(true){
         util::json_t suggestion_query{};
-        //auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
-        auto ideas = {"Yahoo", "Google","AI"};
+//        auto ideas = {"China", "air", "fire","metal"};
+        auto ideas = {"Yahoo", "Google","China","AI"};
         suggestion_query["ideas"]=ideas;
         fmt::print("{}\n", suggestion_query.dump(4));
         auto suggestion_output = engine.ask_query_suggestion(suggestion_query);

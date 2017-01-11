@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <tuple>
 #include <vector>
 #include <limits>
@@ -69,6 +70,10 @@ T to_signed_positive(size_t u){
     return s;
 }
 
+template<typename T, typename TO>
+auto sort(T &elms, TO const& op){
+    return std::sort(elms.begin(), elms.end(), op);
+}
 template<typename T>
 auto find(T const &elms, typename T::value_type const &elm){
     return std::find(elms.cbegin(), elms.cend(), elm);
@@ -77,6 +82,13 @@ auto find(T const &elms, typename T::value_type const &elm){
 template<typename T>
 auto isin(T const &elms, typename T::value_type const &elm){
     return find(elms, elm)!=elms.cend();
+}
+
+template<typename T>
+auto unique_values(std::vector<T> elms){
+    auto last = std::unique(elms.begin(), elms.end());
+    elms.erase(last, elms.end());
+    return elms;
 }
 
 
