@@ -247,6 +247,7 @@ void pos_info(util::json_t const& config){
 }
 
 struct CaseCount{
+    using float_t = float;
     int64_t both{0};
     int64_t summary{0};
     int64_t full{0};
@@ -257,7 +258,11 @@ struct ColumnPair{
     data::ColumnUID summary;
     data::ColumnUID full;
 };
-void build_word_importance(util::json_t const& config){
+
+void accum_word_importance_count(util::json_t const& config,
+                                 std::vector<ColumnPair> const& column_pairs,
+                                 std::map<WordUID,CaseCount>& cases,
+                                 int64_t& n_case){
     using util::io::h5read;
     fmt::print(std::cerr, "Read {}\n",
                util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
@@ -274,7 +279,6 @@ void build_word_importance(util::json_t const& config){
                             config["dep_parsed_prefix"].get<std::string>()};
     timer.here_then_reset("Data loaded.");
 
-
     std::map<ChunkIndex, std::vector<WordUID>> chunks;
 
     auto beg_idx = chunks_idx.cbegin();
@@ -289,10 +293,6 @@ void build_word_importance(util::json_t const& config){
         chunk_beg=chunk_end;
     }
 
-    std::vector<ColumnPair> column_pairs = {{1,0},{2,1},{2,0}, {3,4},{3,5}, {4,5}};//for YGP
-//    std::vector<ColumnPair> column_pairs = {{1,2}};//for RSS. 0 is title and all capital.
-//    assert(column_pairs[0].summary==ColumnUID{1});
-//    assert(column_pairs[0].full==ColumnUID{2});
     using data::ColumnUID;
     using data::RowIndex;
     std::map<ColumnUID, std::map<RowIndex,ChunkIndex>> index_map;
@@ -305,8 +305,7 @@ void build_word_importance(util::json_t const& config){
     for(auto elm : index_map){
         fmt::print(std::cerr, "{} : {} chunks.\n", elm.first, elm.second.size());
     }
-    int n_case=0;
-    std::map<WordUID,CaseCount> cases;
+
     for(auto pair : column_pairs){
         auto rows_full = index_map[pair.full];
         auto rows_summary = index_map[pair.summary];
@@ -345,6 +344,20 @@ void build_word_importance(util::json_t const& config){
             }
         }
     }
+}
+void build_word_importance(){
+    auto ygp_config = util::load_json("config.ygp.json");
+    std::vector<ColumnPair> ygp_column_pairs = {{1,0},{2,1},{2,0}, {3,4},{3,5}, {4,5}};//for YGP
+    auto rss_config = util::load_json("config.nyt.json");
+    std::vector<ColumnPair> rss_column_pairs = {{1,2}};//for RSS. 0 is title and all capital.
+
+    WordUIDindex wordUIDs{util::get_str(rss_config,"word_uids_dump")};
+
+    int64_t n_case=0;
+    std::map<WordUID,CaseCount> cases;
+    accum_word_importance_count(ygp_config, ygp_column_pairs, cases, n_case);
+    accum_word_importance_count(rss_config, rss_column_pairs, cases, n_case);
+
     auto ratio_per_uids = util::to_pairs(cases);
     auto norm_factor = 1.0/n_case;
     for(auto& elm : ratio_per_uids) {
@@ -354,24 +367,17 @@ void build_word_importance(util::json_t const& config){
         else
             x.ratio = x.both/(norm_factor*x.summary*x.full);
     }
-
-//    auto ratio_per_uids = util::map(cases, [n_word](auto elm){
-//        WordUID uid = elm.first;
-//        CaseCount x = elm.second;
-//        if(x.full==0 || x.summary ==0) return std::make_pair(uid, 0.0);
-//        auto ratio = 1.0*x.both*n_word/(x.full*x.summary);
-//        return std::make_pair(uid, ratio);});
     util::sort(ratio_per_uids, [](auto x, auto y){return x.second.ratio>y.second.ratio;});
     for(auto x : ratio_per_uids){
-        fmt::print("{:<15}\t: {:<5}\t{}\t{}\t{}\n", wordUIDs[x.first], x.second.ratio,
+        fmt::print("{:<15}\t{:<5}\t{}\t{}\t{}\n", wordUIDs[x.first], x.second.ratio,
                     x.second.full, x.second.summary, x.second.both);
     }
-//    util::TypedPersistentVector<WordUID> uids{"prob.word_uid", util::map(ratio_per_uids, [](auto x){return x.first;})};
-//    util::PersistentVector<double,double> ratios{"prob.ratio", util::map(ratio_per_uids, [](auto x){return x.second;})};
-//
-//    auto output = util::io::h5replace("prob.h5");
-//    uids.write(output);
-//    ratios.write(output);
+    util::TypedPersistentVector<WordUID> uids{"prob.word_uid", util::map(ratio_per_uids, [](auto x){return x.first;})};
+    util::PersistentVector<float,CaseCount::float_t> ratios{"prob.ratio", util::map(ratio_per_uids, [](auto x){return x.second.ratio;})};
+
+    auto output = util::io::h5replace("prob.h5");
+    uids.write(output);
+    ratios.write(output);
     return;
 }
 
@@ -402,8 +408,8 @@ void test_all(int argc, char** argv){
     dataset_indexing_quality(config);
     phrase_stats(config);
     pos_info(config);
-    build_word_importance(config);
-    show_word_importance(config);
+    //build_word_importance();
+    //show_word_importance(config);
 }
 
 
@@ -414,17 +420,27 @@ using namespace wordrep;
 using engine::YGPQueryEngine;
 using engine::RSSQueryEngine;
 
+void update_column(util::json_t const& config){
+    auto file = util::io::h5rw_exist(util::get_str(config, "word_prob_dump"));
+    auto dvals = file.getRawData<double>({"prob.ratio"});
+    std::vector<float> fvals;
+    for(auto x : dvals) fvals.push_back(x);
+    util::PersistentVector<float,float> ratios{"prob.ratio", std::move(fvals)};
+    ratios.write(file);
+}
 int main(int argc, char** argv){
-//    wordrep::test::test_all(argc,argv);
-//    return  0;
+    wordrep::test::test_all(argc,argv);
+    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
+//    update_column(config);
+//    return 0;
     //wordrep::test::phrases_in_sentence(config);
 //    wordrep::test::phrase_stats(config);
-    wordrep::test::build_word_importance(config);
+//    wordrep::test::build_word_importance();
 //    wordrep::test::show_word_importance(config);
-    return 0;
+//    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
@@ -439,7 +455,7 @@ int main(int argc, char** argv){
     using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
-    if(true){
+    if(false){
         util::json_t suggestion_query{};
 //        auto ideas = {"China", "air", "fire","metal"};
         auto ideas = {"Yahoo", "Google","China","AI"};

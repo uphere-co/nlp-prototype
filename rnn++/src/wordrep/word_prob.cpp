@@ -26,8 +26,9 @@ auto ratio_to_score = [](auto ratio){
 namespace wordrep{
 
 WordImportance::WordImportance(H5file const& stats) {
-    auto scores = map(stats.getRawData<double>(H5name{"prob.ratio"}), ratio_to_score);
     util::TypedPersistentVector<WordUID> uids{stats, "prob.word_uid"};
+    util::PersistentVector<float,float> ratio{stats, "prob.ratio"};
+    auto scores = util::map(ratio.get(), ratio_to_score);
     auto n = scores.size();
     for(decltype(n)i=0; i!=n; ++i) uid2score[uids[i]]=scores[i];
 }

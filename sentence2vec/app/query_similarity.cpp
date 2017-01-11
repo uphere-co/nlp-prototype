@@ -40,10 +40,10 @@ int main(int /*argc*/, char** argv){
         std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
         socket.send(reply);
     }
-    engine::YGPQueryEngine engine{config};
-    using data::ygp::annotation_on_result;
-//    engine::RSSQueryEngine engine{config};
-//    using data::rss::annotation_on_result;
+//    engine::YGPQueryEngine engine{config};
+//    using data::ygp::annotation_on_result;
+    engine::RSSQueryEngine engine{config};
+    using data::rss::annotation_on_result;
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){
