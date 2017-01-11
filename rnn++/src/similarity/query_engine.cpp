@@ -745,6 +745,9 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
         auto& counts = usage.first;
         auto& reprs = usage.second;
 
+        json_t suggestion{};
+        suggestion["idea"]=word;
+        suggestion["suggestions"] = util::json_t::array();
         auto rank=0;
         for(auto pair : counts){
             auto& phrase = pair.first;
@@ -756,8 +759,9 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
             if(count <2) continue;
             std::ostringstream ss;
             ss << repr.repr(db.token2uid.word);
-            output[word].push_back({util::string::strip(ss.str()), count, rank++});
+            suggestion["suggestions"].push_back({util::string::strip(ss.str()), count, rank++});
         }
+        output["query_suggestions"].push_back(suggestion);
     }
     return output;
 }
