@@ -74,23 +74,28 @@ queryWorker resultref sc engine QueryText {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_text m of
     Just (ids,countries) -> do
-      r <- liftIO (queryRegisteredSentences engine RS { rs_sent_uids = ids
-                                                 , rs_Countries = countries
-                                                 , rs_max_clip_len = Nothing })
+      r <- liftIO (queryRegisteredSentences engine
+                    RS { rs_sent_uids = ids
+                       , rs_Countries = countries
+                       , rs_confine_ygp_table_columns = query_tables
+                       , rs_max_clip_len = Nothing })
       liftIO $ atomically $ putTMVar resultref m
       sendChan sc r
     Nothing -> do
-      r <- runMaybeT $ do
+      r' <- runMaybeT $ do
         liftIO $ putStrLn "before registerText"
         r <- registerText engine query_text
         liftIO $ print r 
         liftIO $ putStrLn "after registerText"
         resultbstr <- liftIO (queryRegisteredSentences engine r)
-        liftIO $ atomically $ putTMVar resultref (HM.insert query_text (rs_sent_uids r,rs_Countries r) m)
-        return resultbstr
-      case r of
-        Just resultbstr -> sendChan sc resultbstr
-        Nothing         -> sendChan sc failed 
+        return (r,resultbstr)
+      case r' of
+        Just (r,resultbstr) -> do
+          liftIO $ atomically $ putTMVar resultref (HM.insert query_text (rs_sent_uids r,rs_Countries r) m)
+          sendChan sc resultbstr
+        Nothing         -> do
+          liftIO $ atomically $ putTMVar resultref m
+          sendChan sc failed
 queryWorker resultref sc engine QueryRegister {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_register m of
@@ -98,16 +103,20 @@ queryWorker resultref sc engine QueryRegister {..} = do
       liftIO $ atomically $ putTMVar resultref m
       sendChan sc . encode $ RS { rs_sent_uids = ids
                                 , rs_Countries = countries
+                                , rs_confine_ygp_table_columns = []
                                 , rs_max_clip_len = Nothing}
     Nothing -> do
-      r <- runMaybeT $ do
+      r' <- runMaybeT $ do
         r <- registerText engine query_register
-        liftIO $ atomically $ putTMVar resultref (HM.insert query_register (rs_sent_uids r,rs_Countries r) m)
         let resultbstr = encode r
-        return resultbstr
-      case r of
-        Just resultbstr -> sendChan sc resultbstr
-        Nothing         -> sendChan sc failed 
+        return (r,resultbstr)
+      case r' of
+        Just (r,resultbstr) -> do
+          liftIO $ atomically $ putTMVar resultref (HM.insert query_register (rs_sent_uids r,rs_Countries r) m)
+          sendChan sc resultbstr
+        Nothing         -> do
+          liftIO $ atomically $ putTMVar resultref m
+          sendChan sc failed 
 {-
 -- comment out for the time being
 queryWorker ref sc QueryById {..} = 
