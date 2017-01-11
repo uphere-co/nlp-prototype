@@ -460,8 +460,8 @@ void test_query_suggestion(int argc, char** argv){
 }
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
-    test_query_suggestion(argc,argv);
-    return  0;
+//    test_query_suggestion(argc,argv);
+//    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];

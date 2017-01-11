@@ -29,6 +29,10 @@ struct Words{
     std::vector<WordUID> uids;
 };
 
+inline bool operator==(wordrep::Words const &x, wordrep::Words const &y) {
+    return x.uids==y.uids;
+}
+
 }//namespace wordrep
 
 namespace std {
