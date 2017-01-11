@@ -292,9 +292,10 @@ int main(int argc, char** argv){
     using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
-    if(false){
+    if(true){
         util::json_t suggestion_query{};
-        auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
+        //auto ideas = {"China", "air", "fire", "metal", "start-up", "Google","AI"};
+        auto ideas = {"Yahoo", "Google","AI"};
         suggestion_query["ideas"]=ideas;
         fmt::print("{}\n", suggestion_query.dump(4));
         auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
@@ -303,7 +304,7 @@ int main(int argc, char** argv){
 
     auto uids = engine.register_documents(query_json);
     uids["max_clip_len"] = query_json["max_clip_len"];
-    if(true){
+    if(false){
         uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
 //    uids["confine_ygp_table_columns"].push_back("regulation.enregsummary");
 //    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
@@ -321,10 +322,11 @@ int main(int argc, char** argv){
     annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
     fmt::print("{}\n", chain_answers.dump(4));
+    auto stat_answer = engine.ask_query_stats(uids);
+    annotation_on_result(config, stat_answer["results"]);
+    timer.here_then_reset("Processed a stats query.");
+    fmt::print("{}\n", stat_answer.dump(4));
     if(false){
-        auto stat_answer = engine.ask_query_stats(uids);
-        timer.here_then_reset("Processed a stats query.");
-        fmt::print("{}\n", stat_answer.dump(4));
         util::json_t tmp;
         std::vector<int64_t> sents;
         for(auto& per_sent: stat_answer["stats"])
