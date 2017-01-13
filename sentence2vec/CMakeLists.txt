@@ -35,6 +35,13 @@ FILE(GLOB etl_files ${RNNPP_PATH}/src/data_source/*cpp)
 #               ${parser_files} ${util_files} ${etl_files} ${wordrep_files})
 #target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
 
+add_executable(query_rss app/query_rss
+               ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
+target_link_libraries(query_rss stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx dw)
+add_executable(query_ygp app/query_ygp
+               ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
+target_link_libraries(query_ygp stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx dw)
+
 add_executable(query_similarity app/query_similarity
                ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)

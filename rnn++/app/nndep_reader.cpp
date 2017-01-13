@@ -428,8 +428,39 @@ void update_column(util::json_t const& config){
     util::PersistentVector<float,float> ratios{"prob.ratio", std::move(fvals)};
     ratios.write(file);
 }
+
+void test_query_suggestion(int argc, char** argv){
+    auto config = util::load_json(argv[1]);
+    std::string input = argv[2];
+    data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
+    auto query_str = util::string::read_whole(input);
+    auto query_json = corenlp_client.from_query_content(query_str);
+    data::CoreNLPjson query{query_json};
+
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    POSUIDindex posUIDs{util::get_str(config,"pos_uids_dump")};
+    ArcLabelUIDindex arclabelUIDs{util::get_str(config,"arclabel_uids_dump")};
+    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+
+    DepParsedTokens tokens{};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, query);
+    tokens.build_sent_uid(0);
+    auto sents = tokens.IndexSentences();
+    PhraseSegmenter phrase_segmenter{importance};
+    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    for (auto sent : sents) {
+        fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
+        fmt::print(std::cerr, "-------------------------\n");
+        auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
+        for (auto phrase : phrases) {
+            fmt::print(std::cerr, "{}\n", phrase.repr(wordUIDs));
+        }
+        fmt::print(std::cerr, "==============================================\n");
+    }
+}
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
+//    test_query_suggestion(argc,argv);
 //    return  0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
