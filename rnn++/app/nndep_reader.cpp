@@ -470,6 +470,8 @@ void test_query_suggestion(int argc, char** argv){
         fmt::print(std::cerr, "==============================================\n");
     }
 }
+
+
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
 //    test_query_suggestion(argc,argv);
@@ -477,6 +479,7 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
+
 //    update_column(config);
 //    return 0;
     //wordrep::test::phrases_in_sentence(config);
@@ -492,11 +495,14 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    YGPQueryEngine engine{config};
+//    YGPQueryEngine engine1{config};
+//    YGPQueryEngine engine{std::move(engine1)};
+    engine::QueryEngine engine{config};
     using data::ygp::annotation_on_result;
 //    RSSQueryEngine engine{config};
-//    using data::rss::annotation_on_result;
+    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
+
 
     if(true){
         util::json_t suggestion_query{};

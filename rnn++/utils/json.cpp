@@ -1,6 +1,21 @@
 #include "utils/json.h"
 
+#include <exception>
 #include <fstream>
+
+namespace {
+
+struct UnknownKeyException: public std::exception {
+    UnknownKeyException(std::string key)
+            :mesg{key+" : non-existing JSON key"}
+    {}
+    virtual const char* what() const throw() {
+        return mesg.c_str();
+    }
+    std::string mesg;
+};
+
+}//
 
 namespace util{
 
@@ -14,6 +29,7 @@ json_t  load_json(std::string filename){
 }
 
 std::string get_str(json_t const &json, std::string key){
+    if(json.find(key)==json.end()) throw UnknownKeyException{key};
     return json[key].template get<std::string>();
 }
 int64_t get_int(json_t const &json, std::string key){
