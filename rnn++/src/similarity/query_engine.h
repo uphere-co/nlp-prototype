@@ -104,8 +104,7 @@ struct QueryEngine {
     QueryEngine(util::json_t& config);
 
     json_t register_documents(json_t const &ask) {
-        return engine.match([&ask] (YGPQueryEngine& e)  { return e.register_documents(ask);},
-                            [&ask] (RSSQueryEngine& e)  { return e.register_documents(ask);});
+        return engine.match([&ask] (auto& e)  { return e.register_documents(ask);});
     }
     json_t ask_query(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});

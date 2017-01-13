@@ -13,18 +13,9 @@ using namespace engine;
 
 Vector_instance_s(int)
 
-EngineWrapper::EngineWrapper(int typ, const char* configfile) : engine_type(typ), config(util::load_json(configfile))
+EngineWrapper::EngineWrapper(int /*typ*/, const char* configfile)
+        : config(util::load_json(configfile)), engine(new engine_t(config))
 {
-    if(engine_type == YGPType) {
-        //ygp_engine_t e(config);  // c++17
-        ygp_engine_t* e = new ygp_engine_t(config);
-        ygp_engine = e;
-    } else {
-        //rss_engine_t e(config); // c++17
-        rss_engine_t* e = new rss_engine_t(config);
-        rss_engine = e;
-    }
-    
     std::cout << config.dump(4) << std:: endl;
     timer.here_then_reset("Search engine loaded.");
 }
@@ -41,32 +32,15 @@ const char* serialize( util::json_t* j )
 
 
 
-
 util::json_t* EngineWrapper::query( util::json_t* input )
 {
-    if( engine_type == YGPType ) { 
-        // auto e = ygp_engine.value();                          // using c++17 optional
-        // return (new util::json_t(e.ask_query_stats(*input)));
-        return (new util::json_t(ygp_engine->ask_query_stats(*input)));        
-    } else {
-        // auto e = rss_engine.value();                          // using c++17 optional
-        // return (new util::json_t(e.ask_query_stats(*input)));
-        return (new util::json_t(rss_engine->ask_query_stats(*input)));        
-    }
+    return (new util::json_t(engine->ask_query_stats(*input)));
 }
 
 
 util::json_t* EngineWrapper::suggest( util::json_t* input )
 {
-    if( engine_type == YGPType ) { 
-        // auto e = ygp_engine.value();                          // using c++17 optional
-        // return (new util::json_t(e.ask_query_stats(*input)));
-        return (new util::json_t(ygp_engine->ask_query_suggestion(*input)));        
-    } else {
-        // auto e = rss_engine.value();                          // using c++17 optional
-        // return (new util::json_t(e.ask_query_stats(*input)));
-        return (new util::json_t(rss_engine->ask_query_suggestion(*input)));        
-    }
+    return (new util::json_t(engine->ask_query_suggestion(*input)));
 }
 
 
@@ -74,15 +48,7 @@ util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* 
 {
     std::string query_str(str);
     (*input)["query_str"] = query_str;
-    if( engine_type == YGPType ) { 
-        // auto e = ygp_engine.value();
-        // return (new util::json_t(e.register_documents(*input)));
-        return (new util::json_t(ygp_engine->register_documents(*input)));        
-    } else {
-        // auto e = rss_engine.value();
-        // return (new util::json_t(engine0.register_documents(*input)));
-        return (new util::json_t(rss_engine->register_documents(*input)));
-    }
+    return (new util::json_t(engine->register_documents(*input)));
 }
 
 
