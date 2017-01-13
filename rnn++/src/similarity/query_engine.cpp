@@ -359,12 +359,7 @@ data::QuerySentInfo construct_query_info(
         auto wuid = query_sent.tokens->word_uid(idx);
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
-        auto vidx = query_sent.tokens->word(idx);
         auto cutoff = word_importance.score(wuid);
-        auto importance = cutoff>1.0? 0.0:cutoff;
-        auto max_sim = dists_cache.max_similarity(vidx);
-        if(cutoff<0.0000001) {cutoff = max_sim;}
-        else {cutoff =  importance<max_sim? importance : max_sim;}
         info.cutoffs.push_back(cutoff);
     }
     info.sent_uid = query_sent.uid.val;
