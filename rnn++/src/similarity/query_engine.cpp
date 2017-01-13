@@ -322,7 +322,8 @@ void annotate_input_info(util::json_t &answer, data::QuerySentInfo const &info){
     answer["words"] = info.words;
 }
 util::json_t to_json(std::vector<data::QueryResult> const &answers){
-    util::json_t output{};
+    util::json_t output = util::json_t::array();
+
     for(auto &answer : answers){
         auto answer_json = to_json(answer.results);
         answer_json["n_relevant_matches"] = answer.n_relevant_matches;
@@ -704,7 +705,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
 
     util::json_t output{};
     util::json_t results = to_json(answers);
-    for(auto& result : results) output["results"].push_back(result);
+    output["results"] = results;
     output["stats"]=stats_output;
     output["stats_uid"] = stats_output_idxs;
     return output;
