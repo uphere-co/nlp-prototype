@@ -25,6 +25,8 @@ struct Dataset{
 
     Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
     Dataset(json_t const &config);
+    Dataset(Dataset&& data);
+    Dataset(Dataset const& data);
 
     std::vector<wordrep::SentUID> append_chunk(data::CoreNLPjson const &ask);
 

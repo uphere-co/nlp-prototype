@@ -71,6 +71,7 @@ public:
     using output_t = std::vector<data::QueryResult>;
 
     QueryEngine(json_t const& config);
+    QueryEngine(QueryEngine&& engine);
 
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
@@ -85,7 +86,7 @@ private:
     Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;
-    mutable WordSimCache dists_cache{db.voca};
+    mutable WordSimCache dists_cache;
     mutable QueryResultCache result_cache{};
 };
 

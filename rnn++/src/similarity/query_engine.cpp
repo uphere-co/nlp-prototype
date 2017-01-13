@@ -509,7 +509,18 @@ QueryEngine<T>::QueryEngine(json_t const &config)
   db{config},
   dbinfo{config},
   queries{{config["wordvec_store"], config["voca_name"],
-           config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
+           config["w2vmodel_name"], config["w2v_float_t"]}, {config}},
+  dists_cache{db.voca}
+{}
+
+template<typename T>
+QueryEngine<T>::QueryEngine(QueryEngine&& engine)
+: word_importance{std::move(engine.word_importance)},
+  phrase_segmenter{word_importance},
+  db{std::move(engine.db)},
+  dbinfo{std::move(engine.dbinfo)},
+  queries{std::move(engine.queries)},
+  dists_cache{db.voca}
 {}
 
 template<typename T>
@@ -740,7 +751,6 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
         auto usage = phrase_finder.usages(wuid, cutoff);
         auto& counts = usage.first;
         auto& reprs = usage.second;
-
         json_t suggestion{};
         suggestion["idea"]=word;
         suggestion["suggestions"] = util::json_t::array();

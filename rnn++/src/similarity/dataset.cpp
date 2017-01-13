@@ -23,6 +23,22 @@ Dataset::Dataset(json_t const &config)
           sents{tokens.IndexSentences()},
           uid2sent{sents}
 {}
+Dataset::Dataset(Dataset&& data)
+        : voca{std::move(data.voca)},
+          token2uid{std::move(data.token2uid)},
+          tokens{std::move(data.tokens)},
+          sents{tokens.IndexSentences()},
+          uid2sent{sents},
+          query_tokens_update{}
+{}
+Dataset::Dataset(Dataset const& data)
+        : voca{data.voca},
+          token2uid{data.token2uid},
+          tokens{data.tokens},
+          sents{tokens.IndexSentences()},
+          uid2sent{sents},
+          query_tokens_update{}
+{}
 
 std::vector<SentUID> Dataset::append_chunk(data::CoreNLPjson const &ask) {
     std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
