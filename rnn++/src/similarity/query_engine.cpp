@@ -518,11 +518,8 @@ json_t QueryEngine<T>::register_documents(json_t const &ask) {
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
     json_t answer{};
-    std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
-    answer["sent_uids"]=uid_vals;
-    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
-
+    answer["sent_uids"]=util::serialize(uids);
+    std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     dbinfo.tag_on_register_documents(ask, answer);
     return answer;
 }

@@ -35,4 +35,7 @@ std::vector<WordUID> load_voca(std::string h5name, std::string voca_name){
     return vec;
 }
 
+bool VocaIndexMap::is_known(VocaIndex idx) const{
+    return (*this)[idx] == wordrep::the_unknown_word_uid();
+}
 }//namespace wordrep

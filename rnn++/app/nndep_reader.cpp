@@ -206,7 +206,7 @@ void phrase_stats(util::json_t const& config){
     for(auto word : keywords){
         fmt::print("{} :\n", word);
         auto wuid = wordUIDs[word];
-        auto usage = phrase_finder.usages(wuid);
+        auto usage = phrase_finder.usages(wuid, 5.0);
         auto& counts = usage.first;
         auto& reprs = usage.second;
 
@@ -244,6 +244,16 @@ void pos_info(util::json_t const& config){
         }
         fmt::print("\n");
     }
+}
+
+void unknown_word_importance(util::json_t const& config){
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                  config["w2vmodel_name"], config["w2v_float_t"]};
+    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+
+    assert(importance.score(wordrep::the_unknown_word_uid())==0.0);
 }
 
 struct CaseCount{
@@ -399,6 +409,7 @@ void show_word_importance(util::json_t const& config){
     }
 }
 
+
 void test_all(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
@@ -408,6 +419,7 @@ void test_all(int argc, char** argv){
     dataset_indexing_quality(config);
     phrase_stats(config);
     pos_info(config);
+    unknown_word_importance(config);
     //build_word_importance();
     //show_word_importance(config);
 }
@@ -480,10 +492,10 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-//    YGPQueryEngine engine{config};
-//    using data::ygp::annotation_on_result;
-    RSSQueryEngine engine{config};
-    using data::rss::annotation_on_result;
+    YGPQueryEngine engine{config};
+    using data::ygp::annotation_on_result;
+//    RSSQueryEngine engine{config};
+//    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
     if(true){
@@ -516,11 +528,11 @@ int main(int argc, char** argv){
     timer.here_then_reset("Processed a chain query.");
     annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
-    fmt::print("{}\n", chain_answers.dump(4));
+    fmt::print("chain_snaswers:\n{}\n", chain_answers.dump(4));
     auto stat_answer = engine.ask_query_stats(uids);
     annotation_on_result(config, stat_answer["results"]);
     timer.here_then_reset("Processed a stats query.");
-    fmt::print("{}\n", stat_answer.dump(4));
+    fmt::print("stats_snaswers:\n{}\n", stat_answer.dump(4));
     if(false){
         util::json_t tmp;
         std::vector<int64_t> sents;
