@@ -322,7 +322,8 @@ void annotate_input_info(util::json_t &answer, data::QuerySentInfo const &info){
     answer["words"] = info.words;
 }
 util::json_t to_json(std::vector<data::QueryResult> const &answers){
-    util::json_t output{};
+    util::json_t output = util::json_t::array();
+
     for(auto &answer : answers){
         auto answer_json = to_json(answer.results);
         answer_json["n_relevant_matches"] = answer.n_relevant_matches;
@@ -358,12 +359,7 @@ data::QuerySentInfo construct_query_info(
         auto wuid = query_sent.tokens->word_uid(idx);
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
-        auto vidx = query_sent.tokens->word(idx);
         auto cutoff = word_importance.score(wuid);
-        auto importance = cutoff>1.0? 0.0:cutoff;
-        auto max_sim = dists_cache.max_similarity(vidx);
-        if(cutoff<0.0000001) {cutoff = max_sim;}
-        else {cutoff =  importance<max_sim? importance : max_sim;}
         info.cutoffs.push_back(cutoff);
     }
     info.sent_uid = query_sent.uid.val;
@@ -522,11 +518,8 @@ json_t QueryEngine<T>::register_documents(json_t const &ask) {
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
     json_t answer{};
-    std::vector<SentUID::val_t> uid_vals;
-    for(auto uid :uids ) if(queries.uid2sent[uid].chrlen()>5) uid_vals.push_back(uid.val);
-    answer["sent_uids"]=uid_vals;
-    std::cerr<<fmt::format("# of sents : {}\n", uid_vals.size()) << std::endl;
-
+    answer["sent_uids"]=util::serialize(uids);
+    std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     dbinfo.tag_on_register_documents(ask, answer);
     return answer;
 }
@@ -704,7 +697,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
 
     util::json_t output{};
     util::json_t results = to_json(answers);
-    for(auto& result : results) output["results"].push_back(result);
+    output["results"] = results;
     output["stats"]=stats_output;
     output["stats_uid"] = stats_output_idxs;
     return output;
