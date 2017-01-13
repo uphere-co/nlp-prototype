@@ -47,6 +47,10 @@ struct Query{
 
 struct DBInfo{
     using query_t = Query;
+    static void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        data::ygp::annotation_on_result(config, answers);
+    }
+
     DBInfo(util::json_t const& config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {

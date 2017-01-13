@@ -82,6 +82,10 @@ public:
     json_t ask_sents_content(json_t const &ask) const;
     json_t ask_query_suggestion(json_t const &ask) const;
 
+    static void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        T::annotation_on_result(config, answers);
+    }
+
 private:
     wordrep::WordImportance const word_importance;
     wordrep::PhraseSegmenter phrase_segmenter;
@@ -117,6 +121,9 @@ struct QueryEngine {
     }
     json_t ask_query_suggestion(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query_suggestion(ask);});
+    }
+    void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        engine.match([&config,&answers] (auto& e)  { return e.annotation_on_result(config, answers);});
     }
 private:
     mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> engine;

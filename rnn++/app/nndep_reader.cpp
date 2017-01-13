@@ -498,9 +498,7 @@ int main(int argc, char** argv){
 //    YGPQueryEngine engine1{config};
 //    YGPQueryEngine engine{std::move(engine1)};
     engine::QueryEngine engine{config};
-    using data::ygp::annotation_on_result;
 //    RSSQueryEngine engine{config};
-    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
 
 
@@ -532,11 +530,11 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    annotation_on_result(config, chain_answers);
+    engine.annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
     fmt::print("chain_snaswers:\n{}\n", chain_answers.dump(4));
     auto stat_answer = engine.ask_query_stats(uids);
-    annotation_on_result(config, stat_answer["results"]);
+    engine.annotation_on_result(config, stat_answer["results"]);
     timer.here_then_reset("Processed a stats query.");
     fmt::print("stats_snaswers:\n{}\n", stat_answer.dump(4));
     if(false){
