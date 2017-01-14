@@ -12,6 +12,7 @@ with pkgs;
   toolz_cpp.csv
   toolz_cpp.backwardcpp
   toolz_cpp.xxhashct
+  toolz_cpp.variant
   elfutils
   cppzmq
   postgresql

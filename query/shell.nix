@@ -59,6 +59,7 @@ in stdenv.mkDerivation {
                   toolz_cpp.spdlog
 		  toolz_cpp.xxhashct
                   toolz_cpp.backwardcpp
+                  toolz_cpp.variant
                 ];
   shellHook = ''
   '';
