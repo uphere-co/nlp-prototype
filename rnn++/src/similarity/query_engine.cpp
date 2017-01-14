@@ -632,6 +632,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
+    auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -671,10 +672,26 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
-    auto op_per_sent=[collect_result_stats,collect_query_result](
+    json_t query_suggestions = json_t::array();
+    auto get_query_suggestions = [this,&query_suggestions,phrase_cutoff](auto const &query_sent, auto const &relevant_sents){
+        auto sents = util::map(relevant_sents, [](auto const& r_sent){return r_sent.sent;});
+        WordUsageInPhrase phrase_finder{sents, word_importance};
+        std::vector<WordUID> wuids;
+        for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx) {
+            auto wuid = query_sent.tokens->word_uid(idx);
+            if (word_importance.is_noisy_word(wuid)) continue;
+            wuids.push_back(wuid);
+        }
+        json_t query_suggestion;
+        query_suggestion["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, db.token2uid.word, phrase_cutoff);
+        query_suggestion["sent_uid"] = query_sent.uid.val;
+        query_suggestions.push_back(query_suggestion);
+    };
+    auto op_per_sent=[collect_result_stats,collect_query_result,get_query_suggestions](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
         collect_result_stats(query_sent,query_sent_info, relevant_sents);
         collect_query_result(query_sent,query_sent_info, relevant_sents);
+        get_query_suggestions(query_sent, relevant_sents);
     };
 
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
@@ -711,6 +728,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     output["results"] = results;
     output["stats"]=stats_output;
     output["stats_uid"] = stats_output_idxs;
+    output["query_suggestions_per_sent"] = query_suggestions;
     return output;
 }
 
@@ -741,36 +759,18 @@ json_t QueryEngineT<T>::ask_sents_content(json_t const &ask) const{
 
 template<typename T>
 json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
-    auto cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
-    fmt::print(std::cerr, "{} cutoff phrase.\n", cutoff);
-    json_t output{};
+    auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
+    fmt::print(std::cerr, "{} cutoff phrase.\n", phrase_cutoff);
     WordUsageInPhrase phrase_finder{db.sents, word_importance};
+    std::vector<WordUID> wuids;
     for(std::string word : ask["ideas"]) {
         auto wuid = db.token2uid.word[word];
-        if(word_importance.is_noisy_word(wuid)) continue;
-        auto usage = phrase_finder.usages(wuid, cutoff);
-        auto& counts = usage.first;
-        auto& reprs = usage.second;
-        json_t suggestion{};
-        suggestion["idea"]=word;
-        suggestion["suggestions"] = util::json_t::array();
-        auto rank=0;
-        for(auto pair : counts){
-            auto& phrase = pair.first;
-            auto phrase_usages = reprs[phrase];
-            auto max_usage_case = std::max_element(phrase_usages.cbegin(), phrase_usages.cend(),
-                                          [](auto x, auto y){return x.second<y.second;});
-            auto repr = max_usage_case->first;
-            auto count = pair.second;
-            if(count <2) continue;
-            std::ostringstream ss;
-            ss << repr.repr(db.token2uid.word);
-            suggestion["suggestions"].push_back({util::string::strip(ss.str()), count, rank++});
-            //20 is a cutoff to limit number of suggestions per word.
-            if(rank>20) break;
-        }
-        output["query_suggestions"].push_back(suggestion);
+        if (word_importance.is_noisy_word(wuid)) continue;
+        wuids.push_back(wuid);
     }
+
+    json_t output;
+    output["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, db.token2uid.word, phrase_cutoff);
     return output;
 }
 

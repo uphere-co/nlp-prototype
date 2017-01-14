@@ -5,6 +5,7 @@
 #include "utils/algorithm.h"
 #include "utils/linear_algebra.h"
 #include "utils/parallel.h"
+#include "utils/string.h"
 
 namespace engine{
 
@@ -51,6 +52,40 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
         return score_phrase_count(x)>score_phrase_count(y);
     });
     return std::make_pair(counts, phrase_reprs);
+}
+
+util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
+                                  WordUsageInPhrase const& phrase_finder,
+                                  wordrep::WordUIDindex const& wordUIDs,
+                                  WordUsageInPhrase::float_t cutoff){
+    util::json_t output = util::json_t::array();
+    for(auto wuid : wuids){
+        auto usage = phrase_finder.usages(wuid, cutoff);
+        auto& counts = usage.first;
+        auto& reprs = usage.second;
+        util::json_t suggestion{};
+        suggestion["idea"]=wordUIDs[wuid];
+        suggestion["suggestions"] = util::json_t::array();
+        auto rank=0;
+        for(auto pair : counts){
+            auto& phrase = pair.first;
+            auto phrase_usages = reprs[phrase];
+            auto max_usage_case = std::max_element(phrase_usages.cbegin(), phrase_usages.cend(),
+                                                   [](auto x, auto y){return x.second<y.second;});
+            auto repr = max_usage_case->first;
+            //discard itself, a single word phrase.
+            if(repr.uids.size()==1) continue;
+            auto count = pair.second;
+            if(count <2) continue;
+            std::ostringstream ss;
+            ss << repr.repr(wordUIDs);
+            suggestion["suggestions"].push_back({util::string::strip(ss.str()), count, rank++});
+            //20 is a cutoff to limit number of suggestions per word.
+            if(rank>20) break;
+        }
+        output.push_back(suggestion);
+    }
+    return output;
 }
 
 } //namespace engine

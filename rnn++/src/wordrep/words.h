@@ -25,6 +25,7 @@ struct Words{
     WordsRepr repr(WordUIDindex const& wordUIDs) const{
         return WordsRepr{*this, wordUIDs};
     }
+    size_t size() const {return uids.size();}
 
     std::vector<WordUID> uids;
 };
