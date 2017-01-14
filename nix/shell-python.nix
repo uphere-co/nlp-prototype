@@ -48,6 +48,7 @@ stdenv.mkDerivation {
                    toolz_cpp.csv
                    toolz_cpp.backwardcpp
                    toolz_cpp.xxhashct
+                   toolz_cpp.variant
                    doxygen graphviz
                    libcgroup 
                    redis

@@ -503,17 +503,28 @@ struct ProcessChainQuery{
 
 ///////////////////////////////////////////////////////////////
 template<typename T>
-QueryEngine<T>::QueryEngine(json_t const &config)
+QueryEngineT<T>::QueryEngineT(json_t const &config)
 : word_importance{util::io::h5read(util::get_str(config,"word_prob_dump"))},
   phrase_segmenter{word_importance},
   db{config},
   dbinfo{config},
   queries{{config["wordvec_store"], config["voca_name"],
-           config["w2vmodel_name"], config["w2v_float_t"]}, {config}}
+           config["w2vmodel_name"], config["w2v_float_t"]}, {config}},
+  dists_cache{db.voca}
 {}
 
 template<typename T>
-json_t QueryEngine<T>::register_documents(json_t const &ask) {
+QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
+: word_importance{std::move(engine.word_importance)},
+  phrase_segmenter{word_importance},
+  db{std::move(engine.db)},
+  dbinfo{std::move(engine.dbinfo)},
+  queries{std::move(engine.queries)},
+  dists_cache{db.voca}
+{}
+
+template<typename T>
+json_t QueryEngineT<T>::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
 
@@ -525,7 +536,7 @@ json_t QueryEngine<T>::register_documents(json_t const &ask) {
 }
 
 template<typename T>
-json_t QueryEngine<T>::ask_query(json_t const &ask) const {
+json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
@@ -554,7 +565,7 @@ json_t QueryEngine<T>::ask_query(json_t const &ask) const {
 }
 
 template<typename T>
-json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
+json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
@@ -615,7 +626,7 @@ json_t QueryEngine<T>::ask_chain_query(json_t const &ask) const {
 }
 
 template<typename T>
-json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
+json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
@@ -704,7 +715,7 @@ json_t QueryEngine<T>::ask_query_stats(json_t const &ask) const {
 }
 
 template<typename T>
-json_t QueryEngine<T>::ask_sents_content(json_t const &ask) const{
+json_t QueryEngineT<T>::ask_sents_content(json_t const &ask) const{
     json_t output{};
     for(int64_t uid : ask["sents"]) {
         //TODO: do not assume uid is from db. It may come from queries.
@@ -729,7 +740,7 @@ json_t QueryEngine<T>::ask_sents_content(json_t const &ask) const{
 }
 
 template<typename T>
-json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
+json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
     auto cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
     fmt::print(std::cerr, "{} cutoff phrase.\n", cutoff);
     json_t output{};
@@ -740,7 +751,6 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
         auto usage = phrase_finder.usages(wuid, cutoff);
         auto& counts = usage.first;
         auto& reprs = usage.second;
-
         json_t suggestion{};
         suggestion["idea"]=word;
         suggestion["suggestions"] = util::json_t::array();
@@ -765,8 +775,25 @@ json_t QueryEngine<T>::ask_query_suggestion(json_t const &ask) const{
 }
 
 
+class UnknownQueryEngineException: public std::exception {
+    virtual const char* what() const throw() {
+        return "Missing or unknown query engine type.";
+    }
+};
+
+mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> load_query_engine(util::json_t config){
+    if(util::get_str(config,"engine_type")=="ygp")
+        return YGPQueryEngine{config};
+    if(util::get_str(config,"engine_type")!="rss") throw UnknownQueryEngineException{};
+    return RSSQueryEngine{config};
+};
+
 //Explicit instantiation of query engines.
-template class engine::QueryEngine<data::rss::DBInfo>;
-template class engine::QueryEngine<data::ygp::DBInfo>;
+template class engine::QueryEngineT<data::rss::DBInfo>;
+template class engine::QueryEngineT<data::ygp::DBInfo>;
+
+QueryEngine::QueryEngine(util::json_t& config)
+: engine{load_query_engine(config)}
+{}
 
 }//namespace engine

@@ -470,6 +470,8 @@ void test_query_suggestion(int argc, char** argv){
         fmt::print(std::cerr, "==============================================\n");
     }
 }
+
+
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
 //    test_query_suggestion(argc,argv);
@@ -477,6 +479,7 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
+
 //    update_column(config);
 //    return 0;
     //wordrep::test::phrases_in_sentence(config);
@@ -492,11 +495,12 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    YGPQueryEngine engine{config};
-    using data::ygp::annotation_on_result;
+//    YGPQueryEngine engine1{config};
+//    YGPQueryEngine engine{std::move(engine1)};
+    engine::QueryEngine engine{config};
 //    RSSQueryEngine engine{config};
-//    using data::rss::annotation_on_result;
     timer.here_then_reset("Data loaded.");
+
 
     if(true){
         util::json_t suggestion_query{};
@@ -526,11 +530,11 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    annotation_on_result(config, chain_answers);
+    engine.annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
     fmt::print("chain_snaswers:\n{}\n", chain_answers.dump(4));
     auto stat_answer = engine.ask_query_stats(uids);
-    annotation_on_result(config, stat_answer["results"]);
+    engine.annotation_on_result(config, stat_answer["results"]);
     timer.here_then_reset("Processed a stats query.");
     fmt::print("stats_snaswers:\n{}\n", stat_answer.dump(4));
     if(false){

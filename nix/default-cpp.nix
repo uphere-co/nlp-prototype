@@ -134,10 +134,6 @@ rec {
       };
       buildInputs = [ cmake ];
       patches = [ ];
-      #installPhase = ''
-      #  #mkdir -p $out/spdlog
-      #  #cp -a * $out/spdlog
-      #'';
     };
 
     fmt = stdenv.mkDerivation rec {
@@ -220,6 +216,25 @@ rec {
         cp -a *.hpp $out/include/xxhashct
       '';
     };
+    variant = stdenv.mkDerivation rec {
+      name = "variant";
+      version = "1.1.4";
+      src = fetchgit {
+        url = "https://github.com/mapbox/variant";
+        rev = "d2588a8f1d6b5d480d228e6d8a906ce634bdea9a";
+        sha256 = "1k103fqk9hk2l8bp27cy1bkgq7blmxdidsb6b5pdqd0xfy7xf52h";
+      };
+      dontBuild = true;
+      #buildPhase = ''
+      #'';
+      installPhase   = ''
+        mkdir -p $out
+        cp -a include/ $out/
+      '';
+
+
+    };
+
 
 
 

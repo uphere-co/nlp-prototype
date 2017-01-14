@@ -44,8 +44,7 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 
 DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
         : DepParsedTokens{h5read(file.fullname), prefix} {
-    VersionMismatchException excep;
-    if(file.major!=DepParsedTokens::major_version) throw excep;
+    if(file.major!=DepParsedTokens::major_version) throw VersionMismatchException{};
 }
 DepParsedTokens::DepParsedTokens(std::string prefix)
         : sents_uid {{},prefix+".sent_uid"},

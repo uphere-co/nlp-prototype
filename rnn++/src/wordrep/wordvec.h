@@ -30,8 +30,13 @@ public:
             : _val{std::move(raw_data)},span{_val}
     {}
 
-    WordBlock_base(WordBlock_base&& )= default;
-    WordBlock_base(const WordBlock_base& )= delete;
+    WordBlock_base(WordBlock_base&& wb)
+            : _val{std::move(wb._val)}, span{_val}
+    {}
+    WordBlock_base(const WordBlock_base& wb)
+            : _val{wb._val}, span{_val}
+    {}
+
     WordBlock_base& operator=(const WordBlock_base& )= delete;
     WordBlock_base copy() const {
         return WordBlock_base{_val};

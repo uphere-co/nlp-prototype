@@ -13,6 +13,8 @@
 #include "utils/parallel.h"
 #include "utils/json.h"
 
+#include "utils/variant.h"
+
 namespace engine {
 
 template<typename TV>
@@ -61,7 +63,7 @@ private:
 };
 
 template<typename T>
-class QueryEngine {
+class QueryEngineT {
 public:
     using dbinfo_t = T;
     using Sentence = wordrep::Sentence;
@@ -70,7 +72,8 @@ public:
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
 
-    QueryEngine(json_t const& config);
+    QueryEngineT(json_t const& config);
+    QueryEngineT(QueryEngineT&& engine);
 
     json_t register_documents(json_t const &ask) ;
     json_t ask_query(json_t const &ask) const;
@@ -79,17 +82,51 @@ public:
     json_t ask_sents_content(json_t const &ask) const;
     json_t ask_query_suggestion(json_t const &ask) const;
 
+    static void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        T::annotation_on_result(config, answers);
+    }
+
 private:
     wordrep::WordImportance const word_importance;
     wordrep::PhraseSegmenter phrase_segmenter;
     Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;
-    mutable WordSimCache dists_cache{db.voca};
+    mutable WordSimCache dists_cache;
     mutable QueryResultCache result_cache{};
 };
 
-using RSSQueryEngine = engine::QueryEngine<data::rss::DBInfo>;
-using YGPQueryEngine = engine::QueryEngine<data::ygp::DBInfo>;
+using RSSQueryEngine = engine::QueryEngineT<data::rss::DBInfo>;
+using YGPQueryEngine = engine::QueryEngineT<data::ygp::DBInfo>;
+
+struct QueryEngine {
+    using json_t = util::json_t;
+    QueryEngine(util::json_t& config);
+
+    json_t register_documents(json_t const &ask) {
+        return engine.match([&ask] (YGPQueryEngine& e)  { return e.register_documents(ask);},
+                            [&ask] (RSSQueryEngine& e)  { return e.register_documents(ask);});
+    }
+    json_t ask_query(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
+    }
+    json_t ask_chain_query(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.ask_chain_query(ask);});
+    }
+    json_t ask_query_stats(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.ask_query_stats(ask);});
+    }
+    json_t ask_sents_content(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.ask_sents_content(ask);});
+    }
+    json_t ask_query_suggestion(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.ask_query_suggestion(ask);});
+    }
+    void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        engine.match([&config,&answers] (auto& e)  { return e.annotation_on_result(config, answers);});
+    }
+private:
+    mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> engine;
+};
 
 }//namespace engine

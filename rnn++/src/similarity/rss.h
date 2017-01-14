@@ -26,6 +26,9 @@ struct Query{
 
 struct DBInfo{
     using query_t = Query;
+    static void annotation_on_result(util::json_t const& config, util::json_t &answers){
+        data::rss::annotation_on_result(config, answers);
+    }
 
     DBInfo(util::json_t config);
 
