@@ -87,7 +87,7 @@ main = do
   port <- getEnv "PORT"
   let portnum :: Int = read port
       port' = show (portnum+1)
-  [hostg,hostl,typ,config] <- getArgs
+  [hostg,hostl,config] <- getArgs
   let dhpp = DHPP (hostg,port') (hostl,port')
   etransport <- createTransport dhpp defaultTCPParameters
   case etransport of
@@ -95,9 +95,10 @@ main = do
     Right transport -> do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
-        engine <- case typ of
+        engine <- newEngineWrapper configfile
+             {- case typ of
                     "ygp" -> newEngineWrapper 0 configfile
-                    "rss" -> newEngineWrapper 1 configfile
+                    "rss" -> newEngineWrapper 1 configfile -}
         runProcess node (server port engine)
         deleteEngineWrapper engine
 

@@ -13,7 +13,7 @@ using namespace engine;
 
 Vector_instance_s(int)
 
-EngineWrapper::EngineWrapper(int /*typ*/, const char* configfile)
+EngineWrapper::EngineWrapper(const char* configfile)
         : config(util::load_json(configfile)), engine(new engine_t(config))
 {
     std::cout << config.dump(4) << std:: endl;

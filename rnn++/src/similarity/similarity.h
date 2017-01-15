@@ -20,7 +20,7 @@ class EngineWrapper {
     
     util::Timer timer;
 public:
-    EngineWrapper(int typ, const char* configfile);
+    EngineWrapper(const char* configfile);
     util::json_t* register_documents( const char* str, util::json_t* input ); 
     util::json_t* query( util::json_t* input );
     util::json_t* suggest( util::json_t* input );
