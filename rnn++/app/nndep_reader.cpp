@@ -495,10 +495,7 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-//    YGPQueryEngine engine1{config};
-//    YGPQueryEngine engine{std::move(engine1)};
     engine::QueryEngine engine{config};
-//    RSSQueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
 
 
