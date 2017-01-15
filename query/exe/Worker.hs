@@ -87,7 +87,9 @@ queryWorker resultref sc engine QueryText {..} = do
         r <- registerText engine query_text
         liftIO $ print r 
         liftIO $ putStrLn "after registerText"
-        resultbstr <- liftIO (queryRegisteredSentences engine r)
+        resultbstr <- liftIO (queryRegisteredSentences engine 
+                               r { rs_confine_ygp_table_columns = query_tables }
+                             )
         return (r,resultbstr)
       case r' of
         Just (r,resultbstr) -> do
@@ -108,7 +110,7 @@ queryWorker resultref sc engine QueryRegister {..} = do
     Nothing -> do
       r' <- runMaybeT $ do
         r <- registerText engine query_register
-        let resultbstr = encode r
+        let resultbstr = encode r -- { rs_confine_ygp_table_columns = query_tables }
         return (r,resultbstr)
       case r' of
         Just (r,resultbstr) -> do
