@@ -6,9 +6,9 @@
 #include "wordrep/sentence.h"
 #include "wordrep/words.h"
 #include "wordrep/word_prob.h"
-
 #include "wordrep/dep_graph.h"
 
+#include "utils/json.h"
 
 namespace engine{
 
@@ -35,4 +35,8 @@ private:
     wordrep::PhraseSegmenter phrase_segmenter;
 };
 
+util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
+                                  WordUsageInPhrase const& phrase_finder,
+                                  wordrep::WordUIDindex const& wordUIDs,
+                                  WordUsageInPhrase::float_t cutoff);
 } //namespace engine
