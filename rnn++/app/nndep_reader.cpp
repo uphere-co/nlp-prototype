@@ -122,12 +122,12 @@ void phrases_in_sentence(util::json_t const& config) {
     fmt::print(std::cerr, "{} tokens and {} sentences.\n", tokens.n_tokens(), sents.size());
     auto i=0;
     for (auto sent : sents) {
-        if(util::diff(sent.end_token,sent.beg_token) > 30) continue;
+        if(sent.size() > 30) continue;
         if(++i>100) break;
         fmt::print("{}\n", sent.repr(wordUIDs));
         auto phrases = phrase_segmenter.broke_into_phrases(sent, 5.0);
         fmt::print(": --- Original sentence of {} words. {} phrases --- :\n",
-                   util::diff(sent.end_token,sent.beg_token), phrases.size());
+                   sent.size(), phrases.size());
         for (auto phrase : phrases) {
             fmt::print("{}\n", phrase.repr(wordUIDs));
         }
@@ -162,13 +162,13 @@ void dataset_indexing_quality(util::json_t const& config){
     fmt::print(std::cerr, "{} {} : {}", word1, word2, similarity);
     auto sent1 = sents[0];
     auto sent2 = sents[1];
-    for(auto idx1=sent1.beg_token; idx1!=sent1.end_token; ++idx1){
+    for(auto idx1 : sent1){
         auto widx1 = tokens.word(idx1);
         auto uid1  = voca.indexmap[widx1];
         auto word1 = wordUIDs[uid1];
         //0.6 is a cutoff for skip noisy words, words with low importance score.
         if(importance.score(uid1)<0.6) continue;
-        for(auto idx2=sent2.beg_token; idx2!=sent2.end_token; ++idx2){
+        for(auto idx2 : sent2) {
             auto widx2 = tokens.word(idx2);
             auto uid2  = voca.indexmap[widx2];
             auto word2 = wordUIDs[uid2];
@@ -236,7 +236,7 @@ void pos_info(util::json_t const& config){
     for(auto sent : sents){
         if(++i>10) break;
         fmt::print("{}\n", sent.repr(wordUIDs));
-        for(auto idx=sent.beg_token; idx!=sent.end_token; ++idx){
+        for(auto idx : sent){
             fmt::print("{}.{} ", wordUIDs[sent.tokens->word_uid(idx)],
                                  posUIDs[sent.tokens->pos(idx)]);
         }

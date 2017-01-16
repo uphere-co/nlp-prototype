@@ -41,7 +41,7 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
     for(auto const &scored_sent : relevant_sents){
         auto sent = scored_sent.sent;
         hash_t hash(0);
-        for(auto idx=sent.beg_token; idx!=sent.end_token; ++idx){
+        for(auto idx : sent){
             hash += std::hash<VocaIndex>{}(sent.tokens->word(idx));
         }
         if(is_seen.find(hash)!=is_seen.cend()) continue;
@@ -151,10 +151,10 @@ public:
                    Sentence query_sent,
                    WordSimCache const &similarity,
                    wordrep::POSUIDindex const& posUIDs)
-    : len{diff(query_sent.end_token,query_sent.beg_token)}, query_sent{query_sent}, cutoffs{cutoffs}, dists{},
+    : len{query_sent.size()}, query_sent{query_sent}, cutoffs{cutoffs}, dists{},
       posUIDs{posUIDs}{
-        for(auto idx=query_sent.beg_token; idx!=query_sent.end_token; ++idx)
-            sorted_idxs.push_back({cutoffs[diff(idx,query_sent.beg_token)],idx});
+        for(auto idx : query_sent)
+            sorted_idxs.push_back({cutoffs[diff(idx,query_sent.front())],idx});
         std::sort(sorted_idxs.begin(),sorted_idxs.end(),[](auto x, auto y){return x.first>y.first;});
         val_t sum=0.0;
         std::vector<val_t> cutoff_cumsum;
@@ -176,13 +176,11 @@ public:
         cut3 = *it3 * 0.5;
         fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
 
-        for(auto idx=query_sent.beg_token; idx!=query_sent.end_token; ++idx)
+        for(auto idx : query_sent)
             dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
     }
 
     DepSearchScore get_scores(Sentence const &sent) const {
-        auto beg=sent.beg_token;
-        auto end=sent.end_token;
         //val_t total_score{0.0};
 //        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
         DepSearchScore scores(len);
@@ -199,11 +197,11 @@ public:
         for(auto pair: sorted_idxs){
             ++i_trial;
             DPTokenIndex tidx = pair.second;
-            auto j = diff(tidx, query_sent.beg_token);
+            auto j = diff(tidx, query_sent.front());
             val_t score{0.0};
             if(cutoffs[j]<0.4) continue;
             assert(query_sent.tokens->word_pos(tidx).val==j);
-            for(auto i=beg; i!=end; ++i) {
+            for(auto i : sent) {
                 auto word = sent.tokens->word(i);
                 auto dependent_score = (*dists[j])[word];
                 if(is_noun(*query_sent.tokens, tidx)) dependent_score = noun_rescore(dependent_score);
@@ -337,7 +335,7 @@ data::QuerySentInfo construct_query_info(
         Sentence query_sent, wordrep::WordUIDindex const& wordUIDs,
         wordrep::WordImportance const& word_importance) {
     data::QuerySentInfo info;
-    for(auto idx = query_sent.beg_token; idx!=query_sent.end_token; ++idx) {
+    for(auto idx : query_sent) {
         auto wuid = query_sent.tokens->word_uid(idx);
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
@@ -345,8 +343,8 @@ data::QuerySentInfo construct_query_info(
         info.cutoffs.push_back(cutoff>1.0?0.0:cutoff);
     }
     info.sent_uid = query_sent.uid.val;
-    info.offset.beg = query_sent.tokens->word_beg(query_sent.beg_token).val;
-    info.offset.end = query_sent.tokens->word_end(query_sent.end_token-1).val;
+    info.offset.beg = query_sent.tokens->word_beg(query_sent.front()).val;
+    info.offset.end = query_sent.tokens->word_end(query_sent.back()).val;
     return info;
 }
 
@@ -355,7 +353,7 @@ data::QuerySentInfo construct_query_info(
         wordrep::WordImportance const& word_importance,
         engine::WordSimCache const &dists_cache) {
     data::QuerySentInfo info;
-    for(auto idx = query_sent.beg_token; idx!=query_sent.end_token; ++idx) {
+    for(auto idx : query_sent) {
         auto wuid = query_sent.tokens->word_uid(idx);
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
@@ -363,14 +361,14 @@ data::QuerySentInfo construct_query_info(
         info.cutoffs.push_back(cutoff);
     }
     info.sent_uid = query_sent.uid.val;
-    info.offset.beg = query_sent.tokens->word_beg(query_sent.beg_token).val;
-    info.offset.end = query_sent.tokens->word_end(query_sent.end_token-1).val;
+    info.offset.beg = query_sent.tokens->word_beg(query_sent.front()).val;
+    info.offset.end = query_sent.tokens->word_end(query_sent.back()).val;
     return info;
 }
 
 void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
     std::vector<VocaIndex> vidxs;
-    for(auto idx = sent.beg_token; idx!=sent.end_token; ++idx) {
+    for(auto idx : sent) {
         auto vuid=sent.tokens->word(idx);
         vidxs.push_back(vuid);
     }
@@ -423,7 +421,7 @@ struct ProcessQuerySents{
         util::Timer timer{};
         tbb::task_group g;
         for(auto const &query_sent : query_sents){
-            if(query_sent.beg_token==query_sent.end_token) continue;
+            if(query_sent.empty()) continue;
             g.run([&timer,query_sent,&op_per_sent,&candidate_sents, this](){
                 data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
                 timer.here_then_reset("Get cutoffs");
@@ -462,7 +460,7 @@ struct ProcessChainQuery{
                     OP const &op_per_sent) {
         util::Timer timer{};
         for(auto const &query_sent : query_chain){
-            if(query_sent.beg_token==query_sent.end_token) continue;
+            if(query_sent.empty()) continue;
             cache_words(query_sent, dists_cache);
             data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
             timer.here_then_reset("Get cutoffs");
@@ -602,7 +600,7 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
 //        Timer timer;
 //        int i=0;
 //        for(auto ssent : relevant_sents){
-//            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.beg_token))!=ColumnUID{3}) continue;
+//            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.front()))!=ColumnUID{3}) continue;
 //            if(++i>20) break;
 //            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
 //
@@ -739,7 +737,7 @@ json_t QueryEngineT<T>::ask_sents_content(json_t const &ask) const{
     for(int64_t uid : ask["sents"]) {
         //TODO: do not assume uid is from db. It may come from queries.
         auto sent = db.uid2sent[SentUID{uid}];
-        auto chunk_idx = db.tokens.chunk_idx(sent.beg_token);
+        auto chunk_idx = db.tokens.chunk_idx(sent.front());
         auto col_uid = dbinfo.indexer.column_uid(chunk_idx);
         auto row_idx = dbinfo.indexer.row_idx(chunk_idx);
 

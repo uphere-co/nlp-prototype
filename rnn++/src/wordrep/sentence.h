@@ -34,6 +34,7 @@ struct Sentence{
     DPTokenIndex front() const {return beg_token;}
     DPTokenIndex back() const {return end_token-1;}
     auto size() const {return util::diff(end_token, beg_token);}
+    auto empty() const {return end_token==beg_token;}
     CharOffset beg_offset() const;
     CharOffset end_offset() const;
     SentUID::val_t chrlen() const;
@@ -45,9 +46,10 @@ struct Sentence{
     SentenceRepr repr(WordUIDindex const& wordUIDs) const;
 
     SentUID uid;
+    DepParsedTokens const *tokens;
+private:
     DPTokenIndex beg_token;
     DPTokenIndex end_token;
-    DepParsedTokens const *tokens;
 };
 
 }//namespace wordrep

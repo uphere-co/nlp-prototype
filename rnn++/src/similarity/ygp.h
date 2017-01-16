@@ -76,7 +76,7 @@ struct DBInfo{
         auto result = build_query_result_POD(query_sent, matched_sentence, indexer, max_clip_len);
 
         auto sent = matched_sentence.sent;
-        auto chunk_idx = sent.tokens->chunk_idx(sent.beg_token);
+        auto chunk_idx = sent.tokens->chunk_idx(sent.front());
         auto col_uid = indexer.column_uid(chunk_idx);
         result.table_name = db.table(col_uid);
         result.column_name= db.column(col_uid);

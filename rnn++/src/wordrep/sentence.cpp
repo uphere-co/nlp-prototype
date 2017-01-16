@@ -10,7 +10,7 @@ SentenceRepr::SentenceRepr(Sentence const& sent, WordUIDindex const& wordUIDs)
         : sent{sent}, wordUIDs{wordUIDs}
 {}
 std::ostream& operator<<(std::ostream& os, SentenceRepr const& self) {
-    for(auto idx=self.sent.beg_token; idx!=self.sent.end_token; ++idx){
+    for(auto idx : self.sent){
         os << self.wordUIDs[self.sent.tokens->word_uid(idx)]<< " ";
     }
     return os;
@@ -19,7 +19,7 @@ std::ostream& operator<<(std::ostream& os, SentenceRepr const& self) {
 
 Sentence::Sentence() : tokens{nullptr} {}
 Sentence::Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
-: uid{uid}, beg_token{beg}, end_token{end}, tokens{tokens}
+: uid{uid}, tokens{tokens}, beg_token{beg}, end_token{end}
 {}
 
 CharOffset Sentence::beg_offset() const {return tokens->word_beg(front());}
