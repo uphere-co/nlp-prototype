@@ -200,8 +200,6 @@ void phrase_stats(util::json_t const& config){
 
     engine::WordUsageInPhrase phrase_finder{sents, importance};
 
-    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
-
     auto keywords = {"air", "China", "fire"};
     for(auto word : keywords){
         fmt::print("{} :\n", word);
@@ -294,7 +292,6 @@ void accum_word_importance_count(util::json_t const& config,
     auto beg_idx = chunks_idx.cbegin();
     auto end_idx = chunks_idx.end();
     auto beg_word = words_uid.cbegin();
-    auto end_word = words_uid.cend();
     auto chunk_beg = beg_idx;
     while(chunk_beg!=end_idx){
         auto chunk_end = std::find_if_not(chunk_beg, end_idx, [chunk_beg](auto x){return *chunk_beg==x;});
@@ -391,7 +388,7 @@ void build_word_importance(){
     return;
 }
 
-void show_word_importance(util::json_t const& config){
+void show_old_foramt_word_importance(util::json_t const& config){
     auto file = util::io::h5read(util::get_str(config, "word_prob_dump"));
     util::TypedPersistentVector<WordUID> uids{file,"prob.word_uid"};
     //util::PersistentVector<double,double> ratios{file,"prob.ratio"};
@@ -409,39 +406,8 @@ void show_word_importance(util::json_t const& config){
     }
 }
 
-
-void test_all(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    dependency_graph();
-    phrases_in_sentence();
-    phrases_in_sentence(config);
-    dataset_indexing_quality(config);
-    phrase_stats(config);
-    pos_info(config);
-    unknown_word_importance(config);
-    //build_word_importance();
-    //show_word_importance(config);
-}
-
-
-}//namespace wordrep::test
-}//namespace wordrep
-
-using namespace wordrep;
-using engine::YGPQueryEngine;
-using engine::RSSQueryEngine;
-
-void update_column(util::json_t const& config){
-    auto file = util::io::h5rw_exist(util::get_str(config, "word_prob_dump"));
-    auto dvals = file.getRawData<double>({"prob.ratio"});
-    std::vector<float> fvals;
-    for(auto x : dvals) fvals.push_back(x);
-    util::PersistentVector<float,float> ratios{"prob.ratio", std::move(fvals)};
-    ratios.write(file);
-}
-
-void test_query_suggestion(int argc, char** argv){
+void show_query_suggestion(int argc, char** argv){
+    assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
@@ -471,21 +437,73 @@ void test_query_suggestion(int argc, char** argv){
     }
 }
 
+void test_all(int argc, char** argv){
+    assert(argc>1);
+    auto config = util::load_json(argv[1]);
+    dependency_graph();
+    phrases_in_sentence();
+    phrases_in_sentence(config);
+    dataset_indexing_quality(config);
+    phrase_stats(config);
+    pos_info(config);
+    unknown_word_importance(config);
+    build_word_importance();
+//    show_old_foramt_word_importance(config);
+    show_query_suggestion(argc, argv);
+}
+
+}//namespace wordrep::test
+}//namespace wordrep
+
+namespace engine{
+namespace test{
+
+void word_cache_thread_safety(util::json_t const& config) {
+    wordrep::VocaInfo voca{config["wordvec_store"], config["voca_name"],
+                           config["w2vmodel_name"], config["w2v_float_t"]};
+    wordrep::DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]};
+    auto sents = tokens.IndexSentences();
+    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    WordSimCache dists_cache{voca};
+    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+
+    for(int i=0; i!=10; ++i){
+        auto& sent=sents[i];
+        fmt::print("{}\n", sent.repr(wordUIDs));
+        //for(auto idx : sent) sent.tokens->word(idx);
+        for(auto it=begin(sent); it!=end(sent); ++it) sent.tokens->word(*it);
+    }
+}
+
+void test_all(int argc, char** argv) {
+    assert(argc > 1);
+    auto config = util::load_json(argv[1]);
+    word_cache_thread_safety(config);
+}
+
+}//namespace engine::test
+}//namespace engine
+
+void update_column(util::json_t const& config){
+    auto file = util::io::h5rw_exist(util::get_str(config, "word_prob_dump"));
+    auto dvals = file.getRawData<double>({"prob.ratio"});
+    std::vector<float> fvals;
+    for(auto x : dvals) fvals.push_back(x);
+    util::PersistentVector<float,float> ratios{"prob.ratio", std::move(fvals)};
+    ratios.write(file);
+}
+
 
 int main(int argc, char** argv){
-//    wordrep::test::test_all(argc,argv);
-//    test_query_suggestion(argc,argv);
-//    return  0;
+    //wordrep::test::test_all(argc,argv);
+    engine::test::test_all(argc,argv);
+    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
 
 //    update_column(config);
-//    return 0;
-    //wordrep::test::phrases_in_sentence(config);
-//    wordrep::test::phrase_stats(config);
-//    wordrep::test::build_word_importance();
-//    wordrep::test::show_word_importance(config);
 //    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
