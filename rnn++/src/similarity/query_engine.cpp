@@ -689,9 +689,9 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     };
     auto op_per_sent=[collect_result_stats,collect_query_result,get_query_suggestions](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
-        collect_result_stats(query_sent,query_sent_info, relevant_sents);
+//        collect_result_stats(query_sent,query_sent_info, relevant_sents);
         collect_query_result(query_sent,query_sent_info, relevant_sents);
-        get_query_suggestions(query_sent, relevant_sents);
+//        get_query_suggestions(query_sent, relevant_sents);
     };
 
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
@@ -699,10 +699,10 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
 
     util::json_t stats_output;
     util::json_t stats_output_idxs;
-    fmt::print(std::cerr, "Result stats\n");
+    util::Timer timer;
     for(auto per_sent_stats : stats) {
         auto sent_uid = per_sent_stats.first;
-        fmt::print(std::cerr, "For query sent {}:\n", sent_uid.val);
+//        fmt::print(std::cerr, "For query sent {}:\n", sent_uid.val);
 
         util::json_t stats_output_per_sent;
         stats_output_idxs.push_back(sent_uid.val);
@@ -712,16 +712,17 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
             for (auto elm : pair.second) {
                 auto muid = elm.first;
                 for (auto uid : results_by_match[sent_uid][quid][muid]) per_qword[db.token2uid.word[muid]].push_back(uid.val);
-                fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
-                           db.token2uid.word[quid], db.token2uid.word[muid], elm.second);
+//                fmt::print(std::cerr, "{:<15} {:<15} : {:<15}\n",
+//                           db.token2uid.word[quid], db.token2uid.word[muid], elm.second);
             }
             stats_output_per_sent[db.token2uid.word[quid]] = per_qword;
-            fmt::print(std::cerr, "------------------\n");
+//            fmt::print(std::cerr, "------------------\n");
         }
-        fmt::print(std::cerr, "==================\n");
+//        fmt::print(std::cerr, "==================\n");
         stats_output.push_back(stats_output_per_sent);
     }
-    fmt::print(std::cerr, "//////////////////////////////////////////////////\n");
+//    fmt::print(std::cerr, "//////////////////////////////////////////////////\n");
+    timer.here_then_reset("Result stats\n");
 
     util::json_t output{};
     util::json_t results = to_json(answers);
