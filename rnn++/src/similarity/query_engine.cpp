@@ -149,9 +149,8 @@ public:
     using val_t = WordSimCache::val_t;
     DepParsedQuery(std::vector<val_t> const &cutoffs,
                    Sentence query_sent,
-                   WordSimCache const &similarity,
                    wordrep::POSUIDindex const& posUIDs)
-    : len{query_sent.size()}, query_sent{query_sent}, cutoffs{cutoffs}, dists{},
+    : len{query_sent.size()}, query_sent{query_sent}, cutoffs{cutoffs},
       posUIDs{posUIDs}{
         for(auto idx : query_sent)
             sorted_idxs.push_back({cutoffs[diff(idx,query_sent.front())],idx});
@@ -175,12 +174,10 @@ public:
         cut2 = *it2 * 0.5;
         cut3 = *it3 * 0.5;
         fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
-
-        for(auto idx : query_sent)
-            dists.push_back(&similarity.distances(query_sent.tokens->word(idx)));
     }
 
-    DepSearchScore get_scores(Sentence const &sent) const {
+    template<typename Similarity>
+    DepSearchScore get_scores(Sentence const &sent, Similarity const& similarity) const {
         //val_t total_score{0.0};
 //        std::vector<std::pair<DPTokenIndex, val_t>>  scores(len);
         DepSearchScore scores(len);
@@ -201,11 +198,11 @@ public:
             val_t score{0.0};
             if(cutoffs[j]<0.4) continue;
             assert(query_sent.tokens->word_pos(tidx).val==j);
+            auto query_word = query_sent.tokens->word(tidx);
             for(auto i : sent) {
                 auto word = sent.tokens->word(i);
-                auto dependent_score = (*dists[j])[word];
+                auto dependent_score = similarity(query_word, word);
                 if(is_noun(*query_sent.tokens, tidx)) dependent_score = noun_rescore(dependent_score);
-                auto head_word = sent.tokens->head_word(i);
                 auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
                 if(!maybe_qhead_pidx) {
                     auto tmp = cutoffs[j] * dependent_score;
@@ -215,10 +212,11 @@ public:
                         scores.set(j, tidx, i, score);
                     }
                 } else {
+                    auto head_word = sent.tokens->head_word(i);
                     auto qhead_pidx = maybe_qhead_pidx.value().val;
                     //CAUTION: this early stopping assumes tmp =  cutoffs[j] * dependent_score * governor_score*cutoffs[qhead_pidx];
                     // if(cutoffs[qhead_pidx]<0.4) continue;
-                    auto governor_score = (*dists[qhead_pidx])[head_word];
+                    auto governor_score = similarity(query_word, head_word);
                     //assert(query_sent.tokens->word_uid(tidx+qhead_pidx)==query_sent.tokens->head_uid(tidx));
                     //if(is_noun(*query_sent.tokens, tidx+qhead_pidx)) governor_score = noun_rescore(governor_score);
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
@@ -256,7 +254,6 @@ private:
     val_t cut;
     val_t cut2;
     val_t cut3;
-    std::vector<WordSimCache::dist_cache_t const*> dists;
     wordrep::POSUIDindex const& posUIDs;
 };
 
@@ -367,13 +364,13 @@ struct ProcessQuerySent{
     std::vector<ScoredSentence> operator()(Sentence query_sent,
                                            std::vector<val_t> const &cutoffs,
                                            std::vector<Sentence> const &data_sents) {
-        DepParsedQuery query{cutoffs, query_sent, dists_cache, posUIDs};
+        DepParsedQuery query{cutoffs, query_sent, posUIDs};
 
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
             auto sent = data_sents[i];
-            auto scores = query.get_scores(sent);
+            auto scores = query.get_scores(sent, dists_cache.get_cached_operator());
             ScoredSentence scored_sent{sent, scores};
             if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
                 relevant_sents.push_back(scored_sent);

@@ -516,8 +516,8 @@ void update_column(util::json_t const& config){
 
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
-    engine::test::test_all(argc,argv);
-    return 0;
+//    engine::test::test_all(argc,argv);
+//    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
