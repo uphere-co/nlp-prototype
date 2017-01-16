@@ -392,7 +392,6 @@ struct ProcessQuerySents{
                       wordrep::WordImportance const& word_importance,
                       WordSimCache& dists_cache)
             : wordUIDs{wordUIDs}, word_importance{word_importance},
-              dists_cache{dists_cache},
               processor{dists_cache, posUIDs}
     {}
 
@@ -406,22 +405,17 @@ struct ProcessQuerySents{
             if(query_sent.empty()) continue;
             g.run([&timer,query_sent,&op_per_sent,&candidate_sents, this](){
                 data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
-                timer.here_then_reset("Get cutoffs");
-                cache_words(query_sent, dists_cache);
-                timer.here_then_reset("Built Similarity caches.");
                 std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
                 auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
                 op_per_sent(query_sent, info, relevant_sents);
-                timer.here("Query answered.");
             });
         }
-        timer.here_then_reset("All Queries are answered.");
+        timer.here_then_reset("All sentences in QuerySents are processed.");
         g.wait();
     }
 
     wordrep::WordUIDindex const& wordUIDs;
     wordrep::WordImportance const& word_importance;
-    WordSimCache& dists_cache;
     ProcessQuerySent processor;
 };
 
@@ -432,7 +426,6 @@ struct ProcessChainQuery{
                       wordrep::Sentences const &uid2sent,
                       WordSimCache& dists_cache)
             : wordUIDs{wordUIDs}, word_importance{word_importance}, uid2sent{uid2sent},
-              dists_cache{dists_cache},
               processor{dists_cache, posUIDs}
     {}
 
@@ -443,7 +436,6 @@ struct ProcessChainQuery{
         util::Timer timer{};
         for(auto const &query_sent : query_chain){
             if(query_sent.empty()) continue;
-            cache_words(query_sent, dists_cache);
             data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
             timer.here_then_reset("Get cutoffs");
 
@@ -472,12 +464,12 @@ struct ProcessChainQuery{
             }
             timer.here_then_reset("Prepared next pass in a query chain.");
         }
+        timer.here_then_reset("All sentences in ChainQuery are processed.");
     }
 
     wordrep::WordUIDindex const& wordUIDs;
     wordrep::WordImportance const& word_importance;
     wordrep::Sentences const& uid2sent;
-    WordSimCache& dists_cache;
     ProcessQuerySent processor;
 };
 
