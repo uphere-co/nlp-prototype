@@ -644,7 +644,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     };
     auto op_per_sent=[collect_result_stats,collect_query_result,get_query_suggestions](
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
-//        collect_result_stats(query_sent,query_sent_info, relevant_sents);
+        collect_result_stats(query_sent,query_sent_info, relevant_sents);
         collect_query_result(query_sent,query_sent_info, relevant_sents);
         get_query_suggestions(query_sent, relevant_sents);
     };
