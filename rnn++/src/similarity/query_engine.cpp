@@ -365,12 +365,15 @@ struct ProcessQuerySent{
                                            std::vector<val_t> const &cutoffs,
                                            std::vector<Sentence> const &data_sents) {
         DepParsedQuery query{cutoffs, query_sent, posUIDs};
+        auto op_similarity = dists_cache.get_cached_operator();
+        auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.tokens->word(idx);});
+        op_similarity.build_lookup_cache(vidxs);
 
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
             auto sent = data_sents[i];
-            auto scores = query.get_scores(sent, dists_cache.get_cached_operator());
+            auto scores = query.get_scores(sent, op_similarity);
             ScoredSentence scored_sent{sent, scores};
             if (scored_sent.score > util::math::sum(cutoffs) * 0.5){
                 relevant_sents.push_back(scored_sent);
