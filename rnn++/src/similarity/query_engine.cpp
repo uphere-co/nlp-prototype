@@ -162,13 +162,13 @@ public:
             sum += pair.first;
             cutoff_cumsum.push_back(sum);
         }
-        auto it = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
+        auto it  = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
                                    [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.3;});
         auto it2 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
                                    [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.5;});
         auto it3 = std::find_if_not(cutoff_cumsum.cbegin(),cutoff_cumsum.cend(),
                                    [&cutoff_cumsum](auto x){return x/cutoff_cumsum.back()<0.8;});
-        n_cut = it - cutoff_cumsum.cbegin();
+        n_cut  = it  - cutoff_cumsum.cbegin();
         n_cut2 = it2 - cutoff_cumsum.cbegin();
         n_cut3 = it3 - cutoff_cumsum.cbegin();
         cut = *it * 0.5;
@@ -340,24 +340,6 @@ data::QuerySentInfo construct_query_info(
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
         auto cutoff = word_importance.score(wuid);
-        info.cutoffs.push_back(cutoff>1.0?0.0:cutoff);
-    }
-    info.sent_uid = query_sent.uid.val;
-    info.offset.beg = query_sent.tokens->word_beg(query_sent.front()).val;
-    info.offset.end = query_sent.tokens->word_end(query_sent.back()).val;
-    return info;
-}
-
-data::QuerySentInfo construct_query_info(
-        Sentence query_sent, wordrep::WordUIDindex const& wordUIDs,
-        wordrep::WordImportance const& word_importance,
-        engine::WordSimCache const &dists_cache) {
-    data::QuerySentInfo info;
-    for(auto idx : query_sent) {
-        auto wuid = query_sent.tokens->word_uid(idx);
-        auto word = wordUIDs[wuid];
-        info.words.push_back(word);
-        auto cutoff = word_importance.score(wuid);
         info.cutoffs.push_back(cutoff);
     }
     info.sent_uid = query_sent.uid.val;
@@ -462,7 +444,7 @@ struct ProcessChainQuery{
         for(auto const &query_sent : query_chain){
             if(query_sent.empty()) continue;
             cache_words(query_sent, dists_cache);
-            data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance, dists_cache);
+            data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
             timer.here_then_reset("Get cutoffs");
 
             auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
