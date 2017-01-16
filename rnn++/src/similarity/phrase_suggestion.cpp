@@ -23,7 +23,8 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
     auto n=sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto sent = sents[i];
-        if(!sent.isin(word)) return;
+        //Ignore too long sentences. It matters for YGP DB.
+        if(!sent.isin(word) || sent.size()>100) return;
 //    for(auto sent : sents){
 //        if(!sent.isin(word)) continue;
         auto phrases = phrase_segmenter.broke_into_phrases(sent, cutoff);

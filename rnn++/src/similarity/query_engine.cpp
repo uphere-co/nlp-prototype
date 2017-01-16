@@ -571,24 +571,6 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
         answer.query = query_sent_info;
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
-//        Timer timer;
-//        int i=0;
-//        for(auto ssent : relevant_sents){
-//            //if(dbinfo.indexer.column_uid(ssent.sent.tokens->chunk_idx(ssent.sent.front()))!=ColumnUID{3}) continue;
-//            if(++i>20) break;
-//            auto phrases = phrase_segmenter.broke_into_phrases(ssent.sent, 5.0);
-//
-//            for(auto idx=ssent.sent.beg_token; idx!=ssent.sent.end_token; ++idx){
-//                fmt::print(std::cerr, "{} ", db.token2uid.word[db.tokens.word_uid(idx)]);
-//            }
-//            fmt::print(std::cerr, "\n: --- Original sentence. {} phrases --- :\n", phrases.size());
-//
-//            for (auto phrase : phrases) {
-//                fmt::print(std::cerr, "{}\n", phrase.repr(db.token2uid.word));
-//            }
-//            fmt::print(std::cerr, "-------------------\n");
-//        }
-//        timer.here_then_reset("Extract phrases.");
     };
 
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
@@ -647,9 +629,10 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     json_t query_suggestions = json_t::array();
     auto get_query_suggestions = [this,&query_suggestions,phrase_cutoff](auto const &query_sent, auto const &relevant_sents){
         auto sents = util::map(relevant_sents, [](auto const& r_sent){return r_sent.sent;});
+        fmt::print(std::cerr, "Find phrase suggestions in {} sentences.", sents.size());
         WordUsageInPhrase phrase_finder{sents, word_importance};
         std::vector<WordUID> wuids;
-        for(auto idx=query_sent.beg; idx!=query_sent.end; ++idx) {
+        for(auto idx : query_sent) {
             auto wuid = query_sent.tokens->word_uid(idx);
             if (word_importance.is_noisy_word(wuid)) continue;
             wuids.push_back(wuid);
@@ -663,7 +646,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
             auto const &query_sent, auto const &query_sent_info, auto const &relevant_sents){
 //        collect_result_stats(query_sent,query_sent_info, relevant_sents);
         collect_query_result(query_sent,query_sent_info, relevant_sents);
-//        get_query_suggestions(query_sent, relevant_sents);
+        get_query_suggestions(query_sent, relevant_sents);
     };
 
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
