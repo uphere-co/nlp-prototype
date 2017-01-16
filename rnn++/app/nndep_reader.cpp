@@ -467,11 +467,28 @@ void word_cache_thread_safety(util::json_t const& config) {
 
     WordSimCache dists_cache{voca};
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+    auto distance = [&dist_measure,&voca](auto vidx1, auto vidx2){
+        return dist_measure(voca.wvecs[vidx1], voca.wvecs[vidx2]);};
 
-    for(int i=0; i!=10; ++i){
+    util::Timer timer;
+    //for(auto sent : sents){
+    sents.resize(20000);
+    auto n = sents.size();
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto& sent=sents[i];
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        dists_cache.cache(vidxs);
+    });
+    timer.here_then_reset(fmt::format("Cache {} sents.", sents.size()));
+    for(auto sent: sents){
         wordrep::Words words = util::map(sent, [&sent](auto idx){return sent.tokens->word_uid(idx);});
-        fmt::print("{}\n", words.repr(wordUIDs));
+        //fmt::print("{}\n", words.repr(wordUIDs));;
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        for(int i=0; i!=vidxs.size()-1; ++i){
+            auto vidx1=vidxs[i];
+            auto vidx2=vidxs[i+1];
+            assert(dists_cache.distances(vidx1)[vidx2]==distance(vidx1,vidx2));
+        }
     }
 }
 
