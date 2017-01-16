@@ -151,7 +151,7 @@ void word_importance(util::json_t const &config){
     query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     auto sents = query_tokens.IndexSentences();
     for(auto sent : sents){
-        for(auto idx=sent.beg; idx!=sent.end; ++idx){
+        for(auto idx=sent.beg_token; idx!=sent.end_token; ++idx){
             auto wuid = sent.tokens->word_uid(idx);
             auto word = wordUIDs[wuid];
             auto cutoff = word_importance.score(wuid);
@@ -289,7 +289,7 @@ void country_code(util::json_t const &config) {
     int i = 0;
     for (auto sent : sents) {
         if (i++ > 1000) break;
-        auto chunk_idx = tokens.chunk_idx(sent.beg);
+        auto chunk_idx = tokens.chunk_idx(sent.beg_token);
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
         auto row_uid = ygp_indexer.row_uid(chunk_idx);
@@ -367,7 +367,7 @@ void rss_indexing(util::json_t const &config) {
     wordrep::WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
     auto sents = tokens.IndexSentences();
     auto sent = sents[563];
-    auto chunk_idx = tokens.chunk_idx(sent.beg);
+    auto chunk_idx = tokens.chunk_idx(sent.beg_token);
 
     data::DBIndexer const db_indexer{
             h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),

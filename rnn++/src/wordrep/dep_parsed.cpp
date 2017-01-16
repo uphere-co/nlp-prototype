@@ -108,24 +108,24 @@ std::vector<Sentence> DepParsedTokens::IndexSentences() const {
 std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) const{
     std::vector<SentUID> uids;
 
-    auto chk_idx = chunk_idx(sent.beg);
+    auto chk_idx = chunk_idx(sent.beg_token);
 //    auto chk_beg = std::find_if_not(chunks_idx.crbegin()+reversed_offset, chunks_idx.crend(),
 //                                [chk_idx](auto x) { return x == chk_idx; }).base();
 //    auto chk_end = std::find_if_not(chunks_idx.cbegin()+offset, chunks_idx.cend(),
 //                                [chk_idx](auto x) { return x == chk_idx; });
     auto first_elm=DPTokenIndex{DPTokenIndex::val_t{0}};
     auto last_elm =DPTokenIndex::from_unsigned(n_tokens());
-    auto chk_beg = sent.beg;
+    auto chk_beg = sent.beg_token;
     for(;chk_beg!=first_elm; --chk_beg)
         if(chunk_idx(chk_beg)!=chk_idx) {++chk_beg;break;}
-    auto chk_end = sent.end;
+    auto chk_end = sent.end_token;
     for(;chk_end!=last_elm; ++chk_end)
         if(chunk_idx(chk_end)!=chk_idx) break;
     //std::cerr<<fmt::format("Chunk : {} of {}", chk_beg.val, chk_end.val)<<std::endl;
     assert(chunk_idx(chk_beg)==chk_idx);
     auto beg = sents_uid.cbegin() + diff(chk_beg, first_elm);
     auto end = sents_uid.cbegin() + diff(chk_end, first_elm);
-    //std::cerr<<fmt::format("TokenIndex : {} of {}", beg->val, end->val)<<std::endl;
+    //std::cerr<<fmt::format("TokenIndex : {} of {}", beg_token->val, end->val)<<std::endl;
     auto it=beg;
     while(it!=end){
         auto uid=*it;

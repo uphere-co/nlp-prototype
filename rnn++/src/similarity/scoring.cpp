@@ -92,7 +92,7 @@ PerSentQueryResult build_query_result_POD(
     auto const &tokens = *(sent.tokens);
     auto const &query_tokens = *(query_sent.tokens);
 
-    auto chunk_idx = tokens.chunk_idx(sent.beg);
+    auto chunk_idx = tokens.chunk_idx(sent.beg_token);
     auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
     auto col_uid = db_indexer.column_uid(chunk_idx);
     auto row_idx = db_indexer.row_idx(chunk_idx);
