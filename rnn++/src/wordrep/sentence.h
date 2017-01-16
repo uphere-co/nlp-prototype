@@ -38,8 +38,8 @@ struct Sentence{
     CharOffset end_offset() const;
     SentUID::val_t chrlen() const;
 
-    //auto begin() const { return Iterator{sent.beg_token};}
-    //auto end_token() const { return Iterator{sent.end_token};}
+    auto begin() const { return Iterator{beg_token};}
+    auto end() const { return Iterator{end_token};}
 
     bool isin(WordUID idx) const;
     SentenceRepr repr(WordUIDindex const& wordUIDs) const;
@@ -51,23 +51,3 @@ struct Sentence{
 };
 
 }//namespace wordrep
-
-
-inline auto begin(wordrep::Sentence& sent) {
-    return wordrep::Sentence::Iterator{sent.beg_token};
-}
-inline auto end(wordrep::Sentence& sent) {
-    return wordrep::Sentence::Iterator{sent.end_token};
-}
-//namespace std{
-//
-//template<>
-//wordrep::Sentence::Iterator begin<wordrep::Sentence>(wordrep::Sentence const& sent) {
-//    return wordrep::Sentence::Iterator{sent.beg_token};
-//}
-//template<>
-//wordrep::Sentence::Iterator end_token<wordrep::Sentence>(wordrep::Sentence const& sent) {
-//    return wordrep::Sentence::Iterator{sent.end_token};
-//}
-//
-//}//namespace std

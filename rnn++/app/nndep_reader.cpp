@@ -470,9 +470,8 @@ void word_cache_thread_safety(util::json_t const& config) {
 
     for(int i=0; i!=10; ++i){
         auto& sent=sents[i];
-        fmt::print("{}\n", sent.repr(wordUIDs));
-        //for(auto idx : sent) sent.tokens->word(idx);
-        for(auto it=begin(sent); it!=end(sent); ++it) sent.tokens->word(*it);
+        wordrep::Words words = util::map(sent, [&sent](auto idx){return sent.tokens->word_uid(idx);});
+        fmt::print("{}\n", words.repr(wordUIDs));
     }
 }
 
@@ -496,9 +495,9 @@ void update_column(util::json_t const& config){
 
 
 int main(int argc, char** argv){
-    //wordrep::test::test_all(argc,argv);
-//    engine::test::test_all(argc,argv);
-//    return 0;
+//    wordrep::test::test_all(argc,argv);
+    engine::test::test_all(argc,argv);
+    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];

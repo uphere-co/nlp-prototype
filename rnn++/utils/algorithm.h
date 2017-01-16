@@ -43,8 +43,7 @@ auto zip(T1 const &x, T2 const &y, T3 const &z) {
 
 template<typename T, typename OP>
 auto map(T const &elms, OP const &op){
-    using TV = typename T::value_type;
-    using TM = typename std::result_of<OP(TV)>::type;
+    using TM = typename std::result_of<OP(decltype(*(elms.begin())))>::type;
     std::vector<TM> vals;
     vals.reserve(elms.size());
     for(auto const &elm : elms) vals.push_back(op(elm));
