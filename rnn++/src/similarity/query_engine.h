@@ -39,12 +39,29 @@ public:
     using dist_cache_t = Distances<val_t>;
     using data_t = tbb::concurrent_hash_map<wordrep::VocaIndex, dist_cache_t,util::TBBHashCompare<wordrep::VocaIndex>>;
 
+    struct WordSimOp{
+        WordSimOp(WordSimCache& cache)
+                : cache{&cache}
+        {}
+        WordSimCache::val_t operator()(wordrep::VocaIndex vidx1, wordrep::VocaIndex vidx2) const {
+            if(!cache->find(vidx1)) cache->cache({vidx1});
+            return cache->distances(vidx1)[vidx2];
+        }
+        mutable WordSimCache* cache;
+    };
+
     WordSimCache(voca_info_t const &voca);
     void cache(std::vector<wordrep::VocaIndex> const &words);
     const dist_cache_t& distances(wordrep::VocaIndex widx) const;
     val_t max_similarity(wordrep::VocaIndex widx) const;
-private:
+    auto size() const {return distance_caches.size();}
+
+
+    WordSimOp get_cached_operator() {
+        return WordSimOp(*this);
+    }
     bool find(wordrep::VocaIndex idx) const;
+private:
     bool insert(wordrep::VocaIndex idx, dist_cache_t const &dists);
     data_t distance_caches;
     voca_info_t const &voca;
