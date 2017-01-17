@@ -74,7 +74,7 @@ sort -R ygp.corenlp | head -n 10000 > aaa
 ```
 Launch word counter as a TCP server :
 ```
-
+```
 ## Indexing RSS data
 ### Adapt updated indexing scheme
 - cp ygp/all_words rss/
@@ -98,6 +98,7 @@ find ~/word2vec/NYT.corenlp/ -name '*.*.*' > article.corenlp
 - Index the test dataset with it
 - Test and use it!
 
+```
 #Standalone :
 tcpserver mark 22224 ./index_words config.nyt.json
 #With CoreNLP word tokenizer :
@@ -108,6 +109,16 @@ Example client usage :
 time cat news.2014.train  | nc mark 22224 > a
 ```
 
+## Run stress test of query engine:
+```
+# Get short sentences from YGP db
+./ygpdb_dump c | awk 'NF>2&&NF<10{print }' | head -n 1000 > queries.ygp.short
+# Get short sentences from news summaries
+find ~/word2vec/NYT.text/ -name '*.summary' | while read file; do cat $file; echo ""; done | awk 'NF>2&&NF<20{print }' | head -n 1000 > queries.rss.short
+#Run stress test
+./stress_query_engine config.rss.json queries.rss.short >a 2>b
+./stress_query_engine config.ygp.json queries.ygp.short >a 2>b
+```
 
 ## Build tests
 ```

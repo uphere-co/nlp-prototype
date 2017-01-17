@@ -81,8 +81,11 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
 add_executable(nndep_reader app/nndep_reader
-               ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(nndep_reader stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(stress_query_engine app/stress_query_engine
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(stress_query_engine stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(ygpdb_etl app/ygpdb_etl
                ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
