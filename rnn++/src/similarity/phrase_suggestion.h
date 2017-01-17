@@ -33,6 +33,7 @@ private:
     std::vector<wordrep::Sentence> const& sents;
     wordrep::WordImportance const& importance;
     wordrep::PhraseSegmenter phrase_segmenter;
+    int const sentence_lenth_limit{100};
 };
 
 util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
