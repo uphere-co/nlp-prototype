@@ -37,7 +37,7 @@ private:
 //        }
     }
     std::vector<std::pair<KEY,WEIGHT>> cdf;
-//    decltype(cdf.cbegin()) beg_token;
+//    decltype(cdf.cbegin()) beg;
 //    decltype(cdf.cbegin()) it_low;
 //    std::uniform_real_distribution<double> ran01{0.0,1.0};
 //    int64_t i_low;

@@ -173,7 +173,7 @@ void dataset_indexing_quality(util::json_t const& config){
             auto uid2  = voca.indexmap[widx2];
             auto word2 = wordUIDs[uid2];
             if(importance.score(uid2)<0.6) continue;
-            auto similarity = dist_measure(voca.wvecs[widx1], voca.wvecs[widx2]);
+            //auto similarity = dist_measure(voca.wvecs[widx1], voca.wvecs[widx2]);
 //            fmt::print(std::cerr, "{} {} {} vs {} {} {}",
 //                       word1, widx1, util::math::sum(voca.wvecs[widx1]),
 //                       word2, widx2, util::math::sum(voca.wvecs[widx2]));
@@ -467,12 +467,32 @@ void word_cache_thread_safety(util::json_t const& config) {
 
     WordSimCache dists_cache{voca};
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
+    auto distance = [&dist_measure,&voca](auto vidx1, auto vidx2){
+        return dist_measure(voca.wvecs[vidx1], voca.wvecs[vidx2]);};
 
-    for(int i=0; i!=10; ++i){
+    util::Timer timer;
+    sents.resize(20000);
+    auto n = sents.size();
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+        auto& sent=sents[i];
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        dists_cache.cache(vidxs);
+    });
+    timer.here_then_reset(fmt::format("Cache {} sents. Cache size : {}", sents.size(), dists_cache.size()));
+    auto cached_dist = dists_cache.get_cached_operator();
+    tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto& sent=sents[i];
         wordrep::Words words = util::map(sent, [&sent](auto idx){return sent.tokens->word_uid(idx);});
-        fmt::print("{}\n", words.repr(wordUIDs));
-    }
+        //fmt::print("{}\n", words.repr(wordUIDs));;
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        for(size_t i=0; i!=vidxs.size()-1; ++i){
+            auto vidx1=vidxs[i];
+            auto vidx2=vidxs[i+1];
+            //assert(dists_cache.distances(vidx1)[vidx2]==distance(vidx1,vidx2));
+            assert(cached_dist(vidx1,vidx2)==distance(vidx1,vidx2));
+        }
+    });
+    timer.here_then_reset(fmt::format("Multi-thread cache stress test : passed.", sents.size()));
 }
 
 void test_all(int argc, char** argv) {
@@ -496,8 +516,8 @@ void update_column(util::json_t const& config){
 
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
-    engine::test::test_all(argc,argv);
-    return 0;
+//    engine::test::test_all(argc,argv);
+//    return 0;
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
