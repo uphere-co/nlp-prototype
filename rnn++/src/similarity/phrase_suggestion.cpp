@@ -1,10 +1,12 @@
 #include "similarity/phrase_suggestion.h"
 
 #include <functional>
+#include <fmt/printf.h>
 
 #include "utils/algorithm.h"
 #include "utils/linear_algebra.h"
 #include "utils/parallel.h"
+#include "utils/profiling.h"
 #include "utils/string.h"
 
 namespace engine{
@@ -12,6 +14,7 @@ namespace engine{
 std::pair<WordUsageInPhrase::counts_t,WordUsageInPhrase::reprs_t>
 WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
     using wordrep::Words;
+    util::Timer timer;
 
     tbb::concurrent_vector<Words> phrase_usages;
     auto filter_noisy_word = [this](auto uids){
@@ -31,6 +34,8 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
             }
         }
     });
+    timer.here_then_reset(fmt::format("WordUsageInPhrase::usages found {} phrases among {} sents",
+                                      phrase_usages.size(), sents.size()));
     std::map<Words,int64_t> phrase_count;
     std::map<Words,std::map<Words,int64_t>> phrase_reprs;
     for(auto& words_in_phrase : phrase_usages){
@@ -39,6 +44,7 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
         phrase_reprs[repr][words_in_phrase] += 1;
 
     }
+    timer.here_then_reset("WordUsageInPhrase::usages serialize results.");
     auto counts = util::to_pairs(phrase_count);
     auto score_phrase_count = [this](std::pair<Words,int64_t> const& phrase_with_count){
         auto uids=phrase_with_count.first.uids;
@@ -51,6 +57,7 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
     std::sort(counts.begin(), counts.end(), [score_phrase_count](auto x, auto y){
         return score_phrase_count(x)>score_phrase_count(y);
     });
+    timer.here_then_reset("WordUsageInPhrase::usages sort results.");
     return std::make_pair(counts, phrase_reprs);
 }
 
@@ -59,6 +66,7 @@ util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
                                   wordrep::WordUIDindex const& wordUIDs,
                                   WordUsageInPhrase::float_t cutoff){
     util::json_t output = util::json_t::array();
+    util::Timer timer;
     for(auto wuid : wuids){
         auto usage = phrase_finder.usages(wuid, cutoff);
         auto& counts = usage.first;
@@ -84,6 +92,7 @@ util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
             if(rank>20) break;
         }
         output.push_back(suggestion);
+        timer.here_then_reset(fmt::format("Process query suggestion for a word : {}", wordUIDs[wuid]));
     }
     return output;
 }

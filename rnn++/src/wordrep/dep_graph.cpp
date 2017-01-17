@@ -34,7 +34,7 @@ DependencyGraph::DependencyGraph(Sentence const & sent)
           nodes(std::make_unique<Node[]>(sent.size())),
           span{nodes.get(), util::to_type<uint32_t>(sent.size())}, //span_dyn use uint32...
           cspan{span} {
-    for (auto idx = sent.beg; idx != sent.end; ++idx) {
+    for (auto idx : sent) {
         auto &node = nodes[sent.tokens->word_pos(idx).val];
         node.idx = idx;
         node.graph = this;
