@@ -45,13 +45,12 @@ public:
         {}
         WordSimCache::val_t operator()(wordrep::VocaIndex vidx1, wordrep::VocaIndex vidx2) const {
             assert(is_lookup_cache_set);
+            assert(lookup_cache.find(vidx1)!=lookup_cache.end());
             return (*lookup_cache.find(vidx1)->second)[vidx2];
         }
         void build_lookup_cache(std::vector<wordrep::VocaIndex> const& vidxs) {
-            for(auto vidx : vidxs){
-                if(!cache->find(vidx)) cache->cache({vidx});
-                if(lookup_cache.find(vidx)==lookup_cache.end()) lookup_cache[vidx]=&cache->distances(vidx);
-            }
+            for(auto vidx : vidxs)
+                lookup_cache[vidx]=&cache->try_find(vidx);
             is_lookup_cache_set=true;
         }
         WordSimCache* cache;
@@ -71,10 +70,12 @@ public:
         return WordSimOp(*this);
     }
     bool find(wordrep::VocaIndex idx) const;
+    const dist_cache_t& try_find(wordrep::VocaIndex idx);
+    voca_info_t const &voca;
 private:
     bool insert(wordrep::VocaIndex idx, dist_cache_t const &dists);
     data_t distance_caches;
-    voca_info_t const &voca;
+    std::mutex cache_update{};
 };
 
 class QueryResultCache{
