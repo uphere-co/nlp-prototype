@@ -65,7 +65,6 @@ public:
     val_t max_similarity(wordrep::VocaIndex widx) const;
     auto size() const {return distance_caches.size();}
 
-
     WordSimOp get_cached_operator() {
         return WordSimOp(*this);
     }
@@ -75,7 +74,6 @@ public:
 private:
     bool insert(wordrep::VocaIndex idx, dist_cache_t const &dists);
     data_t distance_caches;
-    std::mutex cache_update{};
 };
 
 class QueryResultCache{

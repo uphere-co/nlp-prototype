@@ -68,7 +68,6 @@ bool WordSimCache::find(wordrep::VocaIndex idx) const{
 }
 
 const WordSimCache::dist_cache_t& WordSimCache::try_find(wordrep::VocaIndex idx){
-    std::lock_guard<std::mutex> may_cache_update{cache_update};
     if(!find(idx)) cache({idx});
     return distances(idx);
 }
