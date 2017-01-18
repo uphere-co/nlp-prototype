@@ -42,8 +42,7 @@ int main(int /*argc*/, char** argv){
     }
 //    engine::YGPQueryEngine engine{config};
 //    using data::ygp::annotation_on_result;
-    engine::RSSQueryEngine engine{config};
-    using data::rss::annotation_on_result;
+    engine::QueryEngine engine{config};
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     timer.here_then_reset("Search engine loaded.");
     while(1){
@@ -69,7 +68,7 @@ int main(int /*argc*/, char** argv){
         } else if (input_json.find("chain_query")!=input_json.end()){
             std::cerr << "Ask chain query"<<std::endl;
             auto answer = engine.ask_chain_query(input_json);
-            annotation_on_result(config, answer);
+            engine.annotation_on_result(config, answer);
             std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
@@ -79,7 +78,7 @@ int main(int /*argc*/, char** argv){
             std::cerr << "Ask stats query"<<std::endl;
             auto answer = engine.ask_query_stats(input_json);
             std::cerr << "Got stats query"<<std::endl;
-            data::rss::annotation_on_result(config, answer["results"]);
+            engine.annotation_on_result(config, answer["results"]);
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());

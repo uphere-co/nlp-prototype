@@ -66,6 +66,11 @@ bool WordSimCache::find(wordrep::VocaIndex idx) const{
     data_t::const_accessor a;
     return distance_caches.find(a, idx);
 }
+
+const WordSimCache::dist_cache_t& WordSimCache::try_find(wordrep::VocaIndex idx){
+    if(!find(idx)) cache({idx});
+    return distances(idx);
+}
 bool WordSimCache::insert(wordrep::VocaIndex idx, dist_cache_t const &dist){
     data_t::accessor a;
     distance_caches.find(a, idx);
@@ -197,7 +202,6 @@ public:
             auto j = diff(tidx, query_sent.front());
             val_t score{0.0};
             if(cutoffs[j]<0.4) continue;
-            assert(query_sent.tokens->word_pos(tidx).val==j);
             auto query_word = query_sent.tokens->word(tidx);
             for(auto i : sent) {
                 auto word = sent.tokens->word(i);
