@@ -21,6 +21,7 @@ std::vector<std::pair<T,T>> zip(PersistentVector<T,TRAW> &orig, PersistentVector
 
 template<typename T, typename TRAW>
 struct PersistentVector{
+    using value_type = T;
     PersistentVector()
             : name{}, vals{}
     {}

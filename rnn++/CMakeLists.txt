@@ -99,6 +99,9 @@ target_link_libraries(word_count stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_count_collect app/word_count_collect
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(word_count_collect stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(show_words_in_voca app/show_words_in_voca
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(show_words_in_voca stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(word2vec_train app/word2vec_train
         ${util_files} ${wordrep_files} ${word2vec_files})
