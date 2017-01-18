@@ -117,17 +117,38 @@ void get_contexts(IndexedTexts const& texts,
     std::sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
     timer.here_then_reset("Sorting words by their UIDs.");
 
-    //std::map<WordUID, std::map<WordUID, size_t>> contexts_count;
+    std::map<WordUID, std::map<WordUID, size_t>> contexts_count;
     for(auto word :words){
         auto beg=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
         auto end=std::find_if_not(beg,indexed_words.cend(),[word](auto x){return x.first==word;});
+        auto& ccount = contexts_count[word];
+        timer.here_then_reset("Completed chunking phase.");
         for(auto it=beg; it!=end; ++it){
-            for(auto idx=it->second-5; idx!=it->second+5; ++idx){
-                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
+//            for(auto idx=it->second-5; idx!=it->second+5+1; ++idx)
+//                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
+//            fmt::print("\n");
+
+            for(auto idx=it->second-5; idx!=it->second; ++idx){
+                auto cword = texts.word_uid(idx);
+                ++ccount[cword];
             }
-            fmt::print("\n");
+            for(auto idx=it->second+1; idx!=it->second+1+5; ++idx){
+                auto cword = texts.word_uid(idx);
+                ++ccount[cword];
+            }
         }
+        timer.here_then_reset("Completed counting phase.");
         timer.here_then_reset(fmt::format("Get context words for : {}", wordUIDs[word]));
+    }
+    for(auto elm : contexts_count){
+        auto word = elm.first;
+        auto cs = util::to_pairs(elm.second);
+        std::sort(cs.begin(), cs.end(), [](auto x, auto y){return x.second>y.second;});
+        for(auto c : cs) {
+            auto cword = c.first;
+            auto count = c.second;
+            fmt::print("{:<15} {:<15} {}\n", wordUIDs[word], wordUIDs[cword], count);
+        }
     }
 }
 
