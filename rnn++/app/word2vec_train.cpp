@@ -12,6 +12,7 @@
 #include "utils/random.h"
 #include "utils/string.h"
 #include "utils/json.h"
+#include "utils/versioned_name.h"
 #include "utils/profiling.h"
 #include "utils/loop_gen.h"
 
@@ -100,6 +101,33 @@ void iter_sentences(int argc, char** argv){
             fmt::print("\n");
         }
         fmt::print("\n");
+    }
+}
+
+
+void get_contexts(IndexedTexts const& texts,
+                  wordrep::WordUIDindex const& wordUIDs,
+                  std::vector<WordUID> const& words){
+    util::Timer timer;
+    auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
+    auto n = IndexedTexts::Index::from_unsigned(texts.sents_uid.size());
+    timer.here_then_reset("Data loaded.");
+    auto indexed_words = util::zip(texts.words_uid.get(),
+                                   util::sequence(IndexedTexts::Index{0}, n));
+    std::sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
+    timer.here_then_reset("Sorting words by their UIDs.");
+
+    //std::map<WordUID, std::map<WordUID, size_t>> contexts_count;
+    for(auto word :words){
+        auto beg=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
+        auto end=std::find_if_not(beg,indexed_words.cend(),[word](auto x){return x.first==word;});
+        for(auto it=beg; it!=end; ++it){
+            for(auto idx=it->second-5; idx!=it->second+5; ++idx){
+                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
+            }
+            fmt::print("\n");
+        }
+        timer.here_then_reset(fmt::format("Get context words for : {}", wordUIDs[word]));
     }
 }
 
@@ -209,7 +237,15 @@ void test_random_vector_gen(){
 
 int main(int argc, char** argv){
 //    iter_sentences(argc,argv);
-    training(argc,argv);
+    //training(argc,argv);
+    auto config = util::load_json(argv[1]);
+    IndexedTexts texts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                       config["dep_parsed_prefix"]};
+    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+
+    std::vector<std::string> words={"environment", "dangerous"};
+    auto wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
+    get_contexts(texts, wordUIDs, wuids);
     return 0;
 }
 

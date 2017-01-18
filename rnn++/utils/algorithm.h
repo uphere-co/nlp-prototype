@@ -281,6 +281,13 @@ TX not_in_intersection(TX const& xs, TY const& ys, Eq const& eq, Comp const& com
     return xonly;
 }
 
+template<typename T>
+std::vector<T> sequence(T beg, T end){
+    std::vector<T> xs;
+    for(auto x=beg; x!=end; ++x) xs.push_back(x);
+    return xs;
+}
+
 }//namespace util
 
 //Algorithms with function objects.
