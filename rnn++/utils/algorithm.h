@@ -249,6 +249,38 @@ template<typename T, typename TO>
 auto max_element(T const& vals, TO op){
     return std::max_element(std::begin(vals),std::end(vals), op);
 };
+
+template<typename TX, typename TY, typename Eq, typename Comp>
+TX intersection(TX const& xs, TY const& ys, Eq const& eq, Comp const& comp){
+    auto xend = xs.cend();
+    auto yend = ys.cend();
+    TX commons{};
+    auto xit = xs.cbegin();
+    auto yit = ys.cbegin();
+    while(xit!=xend && yit!=yend){
+        if (eq(*xit,*yit)) commons.push_back(*(xit++));
+        else if(comp(*xit,*yit))  xit = std::find_if_not(xit, xend, [yit,&comp](auto x){return comp(x,*yit);});
+        else yit = std::find_if_not(yit, yend, [xit,&eq,&comp](auto y){return !comp(*xit,y) && !eq(*xit,y);});
+    }
+    return commons;
+}
+
+template<typename TX, typename TY, typename Eq, typename Comp>
+TX not_in_intersection(TX const& xs, TY const& ys, Eq const& eq, Comp const& comp){
+    auto xend = xs.cend();
+    auto yend = ys.cend();
+    TX xonly{};
+    auto xit = xs.cbegin();
+    auto yit = ys.cbegin();
+    while(xit!=xend && yit!=yend){
+        if (eq(*xit,*yit)) ++xit;
+        else if(comp(*xit,*yit)){
+            while(comp(*xit,*yit)&&xit!=xend) xonly.push_back(*(xit++));
+        }  else yit = std::find_if_not(yit, yend, [xit,&eq,&comp](auto y){return !comp(*xit,y) && !eq(*xit,y);});
+    }
+    return xonly;
+}
+
 }//namespace util
 
 //Algorithms with function objects.
