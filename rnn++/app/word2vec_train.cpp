@@ -117,18 +117,19 @@ void get_contexts(IndexedTexts const& texts,
     std::sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
     timer.here_then_reset("Sorting words by their UIDs.");
 
-    std::map<WordUID, std::map<WordUID, size_t>> contexts_count;
-    for(auto word :words){
-        auto tmp=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
+    tbb::concurrent_vector<std::pair<WordUID,std::map<WordUID, size_t>>> contexts_count;
+    auto n_word = words.size();
+    tbb::parallel_for(decltype(n_word){0}, n_word, [&](auto i){
+        auto word = words[i];
+        //auto beg=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
         auto it=util::binary_find(indexed_words, [word](auto x){return word==x.first;}, [word](auto x){return word<x.first;});
-        if(!it) continue;
+        if(!it) return;
         auto beg = it.value();
         std::reverse_iterator<decltype(beg)> rbeg{beg};
         rbeg=std::find_if_not(rbeg,indexed_words.crend(),[word](auto x){return x.first==word;});
         beg = rbeg.base();
         auto end=std::find_if_not(beg,indexed_words.cend(),[word](auto x){return x.first==word;});
-        auto& ccount = contexts_count[word];
-        timer.here_then_reset("Completed chunking phase.");
+        std::map<WordUID, size_t> ccount;
         for(auto it=beg; it!=end; ++it){
 //            for(auto idx=it->second-5; idx!=it->second+5+1; ++idx)
 //                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
@@ -142,9 +143,10 @@ void get_contexts(IndexedTexts const& texts,
                 ++ccount[cword];
             }
         }
-        timer.here_then_reset("Completed counting phase.");
+        contexts_count.push_back({word, ccount});
         timer.here_then_reset(fmt::format("Get context words for : {}", wordUIDs[word]));
-    }
+    });
+    timer.here_then_reset(fmt::format("Get context words"));
     for(auto elm : contexts_count){
         auto word = elm.first;
         auto cs = util::to_pairs(elm.second);
