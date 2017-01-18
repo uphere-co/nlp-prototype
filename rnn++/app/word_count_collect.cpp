@@ -77,7 +77,7 @@ int main(int /*argc*/, char** argv) {
     for(auto x : new_words) {
         auto uid = x.first;
         auto word = wordUIDs[uid];
-        fmt::print("{} {}\n", word, x.second);
+        fmt::print("{:<15}\t{}\n", word, x.second);
     }
     return 0;
     auto prefix = "unigram.";
