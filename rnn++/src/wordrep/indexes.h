@@ -26,4 +26,8 @@ using DPTokenIndex = util::IntegerLike<DPTokenIndexDummy>;
 struct ChunkIndexDummy;
 using ChunkIndex = util::IntegerLike<ChunkIndexDummy>;
 
+
+struct VocaIndexDummy{};
+using VocaIndex = util::IntegerLike<VocaIndexDummy,-1>; //UID -1 for unknown words.
+
 }//namespace wordrep

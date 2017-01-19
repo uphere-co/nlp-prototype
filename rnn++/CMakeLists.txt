@@ -103,6 +103,9 @@ add_executable(show_words_in_voca app/show_words_in_voca
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(show_words_in_voca stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
+add_executable(word_context app/word_context
+        ${wordrep_files} ${word2vec_files} ${util_files})
+target_link_libraries(word_context stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(word2vec_train app/word2vec_train
         ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(word2vec_train stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)

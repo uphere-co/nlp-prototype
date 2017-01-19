@@ -12,6 +12,7 @@
 #include "utils/random.h"
 #include "utils/string.h"
 #include "utils/json.h"
+#include "utils/versioned_name.h"
 #include "utils/profiling.h"
 #include "utils/loop_gen.h"
 
@@ -207,9 +208,10 @@ void test_random_vector_gen(){
     timer.here_then_reset("Check summation.");
 }
 
+
 int main(int argc, char** argv){
 //    iter_sentences(argc,argv);
-    training(argc,argv);
+//    training(argc,argv);
     return 0;
 }
 

@@ -12,9 +12,14 @@ int main(){
     wordrep::WordCounter<std::string> word_count;
 //    wordrep::WordCounter<wordrep::WordUID> word_count;
     auto word_counts = word_count.count(std::move(std::cin));
+    util::sort(word_counts, [](auto& x, auto& y){return x.second>y.second;});
     fmt::print(std::cerr, "{} words.\n", word_counts.size());
     timer.here_then_reset("Finish word count.");
-    for(auto elm : word_counts)
-        fmt::print(std::cout, "{} {}\n", elm.first, elm.second);
+    size_t sum{0};
+    for(auto elm : word_counts){
+        fmt::print(std::cout, "{:<15}\t{:<15}\n", elm.first, elm.second);
+        sum+= elm.second;
+    }
+    fmt::print(std::cerr, "Total count : {}\n", sum);
     return 0;
 }

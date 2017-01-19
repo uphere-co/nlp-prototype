@@ -121,8 +121,8 @@ find ~/word2vec/NYT.text/ -name '*.summary' | while read file; do cat $file; ech
 ```
 
 ## Incremental word2vec training
+### List words in existing voca
 ```
-#List words in existing voca
 ./show_words_in_voca config.ygp.json > known_words
 #List newly seen words in a dataset
 ## YGP case:
@@ -133,6 +133,10 @@ cat ygp.word_count | ./word_count_collect config.ygp.json > ygp.new_words
 find ~/word2vec/NYT.text/ -name '*.*' -not -path '/home/jihuni/word2vec/NYT.text/' | while read file; do cat $file; echo ""; done | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text
 cat rss.text | ./word_count > rss.word_count
 cat rss.word_count | ./word_count_collect config.rss.json > rss.new_words
+```
+### Getting count of context words 
+```
+cat ygp.new_words | cut -d' ' -f1 | ./word_context config.ygp.json > b
 ```
 
 ## Build tests

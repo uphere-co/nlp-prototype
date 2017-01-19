@@ -5,8 +5,6 @@
 #include "wordrep/word_uid.h"
 
 namespace wordrep{
-struct VocaIndexDummy{};
-using VocaIndex = util::IntegerLike<VocaIndexDummy,-1>; //UID -1 for unknown words.
 
 class VocaIndexMap{
 public:

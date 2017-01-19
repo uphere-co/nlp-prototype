@@ -503,7 +503,8 @@ void word_prob_check(int argc, char** argv){
     WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
     auto words = util::string::readlines("/home/jihuni/word2vec/ygp/words.uid");
-    for(int i=0; i!=words.size(); ++i){
+    auto n = words.size();
+    for(decltype(n)i=0; i!=n; ++i){
         auto word=words[i];
         assert(scores[i] == importance.score(wordUIDs[word]));
     }
