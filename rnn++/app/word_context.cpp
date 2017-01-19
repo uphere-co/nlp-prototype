@@ -2,6 +2,8 @@
 
 #include <fmt/printf.h>
 
+#include "word2vec/word2vec.h"
+
 #include "wordrep/indexed_text.h"
 #include "wordrep/word_uid.h"
 
@@ -9,10 +11,14 @@
 #include "utils/json.h"
 #include "utils/versioned_name.h"
 #include "utils/parallel.h"
+#include "utils/random.h"
 #include "utils/profiling.h"
 
 using wordrep::WordUID;
+using wordrep::VocaIndex;
 using wordrep::IndexedTexts;
+using word2vec::UnigramDist;
+using word2vec::SubSampler;
 
 void get_contexts(IndexedTexts const& texts,
                   wordrep::WordUIDindex const& wordUIDs,
@@ -20,10 +26,9 @@ void get_contexts(IndexedTexts const& texts,
     util::Timer timer;
 //    auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     auto n = IndexedTexts::Index::from_unsigned(texts.sents_uid.size());
-    timer.here_then_reset("Data loaded.");
     auto indexed_words = util::zip(texts.words_uid.get(),
                                    util::sequence(IndexedTexts::Index{0}, n));
-    std::sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
+    tbb::parallel_sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
     timer.here_then_reset("Sorting words by their UIDs.");
 
     tbb::concurrent_vector<std::pair<WordUID,std::map<WordUID, size_t>>> contexts_count;
@@ -80,6 +85,7 @@ auto getlines(std::istream&& is){
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
+    util::Timer timer;
 
     IndexedTexts texts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
                        config["dep_parsed_prefix"]};
@@ -87,6 +93,9 @@ int main(int argc, char** argv){
 
     std::vector<std::string> words=getlines(std::move(std::cin));
     auto wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
+    timer.here_then_reset("Data loaded.");
     get_contexts(texts, wordUIDs, wuids);
+    timer.here_then_reset("Finish.");
+
     return 0;
 }

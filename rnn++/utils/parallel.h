@@ -1,13 +1,13 @@
 #pragma once
 
-#include "tbb/concurrent_vector.h"
-#include "tbb/concurrent_hash_map.h"
-#include "tbb/task_group.h"
-#include "tbb/tbb.h"
-#include "tbb/parallel_reduce.h"
-#include "tbb/blocked_range.h"
-
-#include "tbb/task_group.h"
+#include <tbb/concurrent_vector.h>
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/task_group.h>
+#include <tbb/tbb.h>
+#include <tbb/parallel_reduce.h>
+#include <tbb/parallel_sort.h>
+#include <tbb/blocked_range.h>
+#include <tbb/task_group.h>
 
 namespace util {
 

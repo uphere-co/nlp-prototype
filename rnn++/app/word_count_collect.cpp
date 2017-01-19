@@ -62,11 +62,11 @@ void list_new_words(util::json_t const& config){
     PersistentVector<token_t,token_t::val_t> voca{util::io::h5read(config["wordvec_store"]),
                                                   config["voca_name"]};
 
-    std::vector<std::pair<wordrep::WordUID,count_t>> counts;
-    for(auto x : util::to_pairs(collect_count(std::move(std::cin)))) counts.push_back({wordUIDs[x.first],x.second});
+    auto counts = util::map(util::to_pairs(collect_count(std::move(std::cin))),
+                       [&wordUIDs](auto x){return std::make_pair(wordUIDs[x.first],x.second);});
     //util::filter_inplace(counts, [](auto v){return v.second>9;});
     fmt::print(std::cerr, "Total {} words after filtering.\n", counts.size());
-    std::sort(counts.begin(), counts.end(), [](auto& x, auto& y){return x.first<y.first;});
+    util::sort(counts, [](auto& x, auto& y){return x.first<y.first;});
 
     std::vector<wordrep::WordUID> known_words = voca.get();
     std::sort(known_words.begin(), known_words.end());
