@@ -2,11 +2,10 @@ import sys
 import json
 
 def foo(x):
-    with open('results','a') as f:
-        if type(x) is str:
-            sys.stdout.write(x+'\n')
-        else:
-            sys.stdout.write(x.encode('utf-8')+'\n')
+    if type(x) is str:
+        sys.stdout.write(x+'\n')
+    else:
+        sys.stdout.write(x.encode('utf-8')+'\n')
 
 
 for idx,output in enumerate(sys.stdin):
