@@ -327,6 +327,10 @@ util::json_t to_json(std::vector<data::QueryResult> const &answers){
         auto answer_json = to_json(answer.results);
         answer_json["n_relevant_matches"] = answer.n_relevant_matches;
         annotate_input_info(answer_json, answer.query);
+        auto cutoff = util::math::sum(answer_json["cutoffs"].get<std::vector<double>>());
+//        double cutoff{0.0};
+//        for(double x : answer_json["cutoffs"]) cutoff+=x;
+        for(double x : answer_json["score"]) answer_json["is_highly_meet"].push_back(x>cutoff);
         output.push_back(answer_json);
     }
     return output;
