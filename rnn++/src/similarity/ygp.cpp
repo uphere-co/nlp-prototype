@@ -17,6 +17,7 @@ using engine::plain_rank_cut;
 namespace data{
 namespace ygp{
 
+//It returns top N results per (col_uid) each.
 std::vector<ScoredSentence> rank_cut_per_column(
         std::vector<ScoredSentence> const &relevant_sents,
         size_t n_max_per_table,
@@ -59,6 +60,7 @@ std::vector<ScoredSentence> top_n_per_row_index(
     return top_n_results;
 }
 
+//It returns top N results per (col_uid, row_idx) each.
 std::vector<ScoredSentence> rank_cut_per_row_index(
         std::vector<ScoredSentence> const &relevant_sents,
         size_t n_max_per_table,
