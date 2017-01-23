@@ -566,13 +566,13 @@ int main(int argc, char** argv){
     timer.here_then_reset("Processed a chain query.");
     engine.annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
-    fmt::print("chain_snaswers:\n{}\n", chain_answers.dump(4));
+    fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
     timer.here_then_reset("Ready to process a new query.");
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
     engine.annotation_on_result(config, stat_answer["results"]);
     timer.here_then_reset("Annotate query output.");
-    fmt::print("stats_snaswers:\n{}\n", stat_answer.dump(4));
+    fmt::print("stats_aswers:\n{}\n", stat_answer.dump(4));
     if(false){
         util::json_t tmp;
         std::vector<int64_t> sents;

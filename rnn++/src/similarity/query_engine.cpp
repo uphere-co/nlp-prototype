@@ -290,7 +290,13 @@ std::vector<data::PerSentQueryResult> write_output(
 
 util::json_t to_json(std::vector<PerSentQueryResult> const &results){
     util::json_t answer{};
-
+    answer["score"]=util::json_t::array();
+    answer["result_sent_country"]=util::json_t::array();
+    answer["result_table_name"]=util::json_t::array();
+    answer["result_column_name"]=util::json_t::array();
+    answer["result_index_col_name"]=util::json_t::array();
+    answer["highlight_offset"]=util::json_t::array();
+    answer["clip_offset"]=util::json_t::array();
     for(auto const &result : results){
         answer["score"].push_back(result.score);
         answer["result_sent_country"].push_back(result.country);
@@ -451,11 +457,11 @@ struct ProcessChainQuery{
 
             candidate_sents.clear();
             assert(candidate_sents.size()==0);
-            if(!relevant_sents.size()) continue;
 
             op_per_sent(query_sent, info, relevant_sents);
             timer.here_then_reset("One pass in a query chain is finished.");
 
+            if(!relevant_sents.size()) continue;
             auto best_candidate = std::max_element(relevant_sents.cbegin(), relevant_sents.cend(),
                                                    [](auto x, auto y){return x.score<y.score;});
             auto score_cutoff = best_candidate->score * 0.5;
