@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <xxhashct/xxh64.hpp>
 
@@ -16,6 +17,15 @@ uint64_t hash(T* ptr, size_t len){
 
 inline uint64_t hash(std::string const& str){
     return xxh64::hash(str.data(), str.size(), xxh64_seed);
+};
+template<typename T>
+uint64_t hash(std::vector<T> const& vec){
+    return xxh64::hash(vec.data(), vec.size(), xxh64_seed);
+};
+
+template<typename T>
+uint64_t hash(T const& x){
+    return xxh64::hash(reinterpret_cast<const char*>(x), sizeof(x), xxh64_seed);
 };
 
 }//namespace wordrep

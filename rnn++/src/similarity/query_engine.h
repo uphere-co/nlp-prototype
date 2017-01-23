@@ -44,19 +44,19 @@ public:
                 : cache{&cache}
         {}
         WordSimCache::val_t operator()(wordrep::VocaIndex vidx1, wordrep::VocaIndex vidx2) const {
-            assert(is_lookup_cache_set);
-            assert(lookup_cache.find(vidx1)!=lookup_cache.end());
-            return (*lookup_cache.find(vidx1)->second)[vidx2];
+            if(lookup_cache.find(vidx1)!=lookup_cache.end())
+                return (*lookup_cache.find(vidx1)->second)[vidx2];
+            return cache->try_find(vidx1)[vidx2];
+        }
+        void build_lookup_cache(wordrep::VocaIndex const& vidx) {
+            lookup_cache[vidx]=&cache->try_find(vidx);
         }
         void build_lookup_cache(std::vector<wordrep::VocaIndex> const& vidxs) {
             for(auto vidx : vidxs)
-                lookup_cache[vidx]=&cache->try_find(vidx);
-            is_lookup_cache_set=true;
+                build_lookup_cache(vidx);
         }
         WordSimCache* cache;
         std::map<wordrep::VocaIndex,WordSimCache::dist_cache_t const*> lookup_cache;
-        //TODO: fix this with std::variant.
-        bool is_lookup_cache_set{false};
     };
 
     WordSimCache(voca_info_t const &voca);
