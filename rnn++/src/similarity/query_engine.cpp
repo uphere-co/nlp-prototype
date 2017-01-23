@@ -666,8 +666,8 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     ProcessChainQuery processor{db.token2uid.word, db.token2uid.pos, word_importance, db.uid2sent, dists_cache};
     processor(query_sents, candidate_sents, op_per_sent);
 
-    util::json_t stats_output;
-    util::json_t stats_output_idxs;
+    util::json_t stats_output = util::json_t::array();
+    util::json_t stats_output_idxs = util::json_t::array();
     util::Timer timer;
     for(auto per_sent_stats : stats) {
         auto sent_uid = per_sent_stats.first;
