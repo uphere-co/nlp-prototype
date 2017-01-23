@@ -447,8 +447,6 @@ void test_all(int argc, char** argv){
     phrase_stats(config);
     pos_info(config);
     unknown_word_importance(config);
-    build_word_importance();
-//    show_old_foramt_word_importance(config);
     show_query_suggestion(argc, argv);
 }
 
@@ -518,10 +516,13 @@ int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
 //    engine::test::test_all(argc,argv);
 //    return 0;
+
     assert(argc>2);
     auto config = util::load_json(argv[1]);
     std::string input = argv[2];
 
+//    build_word_importance();
+//    show_old_foramt_word_importance(config);
 //    update_column(config);
 //    return 0;
 
