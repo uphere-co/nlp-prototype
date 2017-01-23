@@ -48,6 +48,9 @@ struct ScoredSentence{
 
 std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
                                            size_t n_max_result);
+std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence> relevant_sents,
+                                                     size_t n_unique_chunk_idx);
+
 data::PerSentQueryResult build_query_result_POD(
         wordrep::Sentence const &query_sent, ScoredSentence const &matched_sentence,
         data::DBIndexer const &db_indexer, int64_t max_clip_len);

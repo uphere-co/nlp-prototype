@@ -6,6 +6,7 @@
 
 using wordrep::Sentence;
 using wordrep::CharOffset;
+using wordrep::ChunkIndex;
 using data::PerSentQueryResult;
 using data::DBIndexer;
 using data::ScoreWithOffset;
@@ -62,6 +63,7 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
 
 namespace engine{
 
+//Select top N results by sent_uid
 std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
                                            size_t n_max_result){
     auto n_found = relevant_sents.size();
@@ -74,6 +76,28 @@ std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_
     auto score_cutoff = 0.5*relevant_sents.front().score;
     rank_cut = std::find_if_not(beg, rank_cut,
                                 [score_cutoff](auto const &x){return x.score>score_cutoff;});
+    std::vector<ScoredSentence> top_n_results;
+    std::copy(beg, rank_cut, std::back_inserter(top_n_results));
+    return top_n_results;
+}
+//Select top N results by chunk_idx
+std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence> relevant_sents,
+                                           size_t n_unique_chunk_idx){
+    auto n_found = relevant_sents.size();
+    if(n_found<=n_unique_chunk_idx) return relevant_sents;
+
+    auto beg = relevant_sents.begin();
+    auto end = relevant_sents.end();
+    std::partial_sort(beg,end,end,
+                      [](auto const &x, auto const &y){return x.score > y.score;});
+    auto score_cutoff = 0.5*relevant_sents.front().score;
+    auto rank_cut = beg;
+    std::set<ChunkIndex> chunk_idxs;
+    while(rank_cut!=end && chunk_idxs.size()<n_unique_chunk_idx){
+        if(rank_cut->score<score_cutoff) break;
+        chunk_idxs.insert(rank_cut->sent.tokens->chunk_idx(rank_cut->sent.front()));
+        ++rank_cut;
+    }
     std::vector<ScoredSentence> top_n_results;
     std::copy(beg, rank_cut, std::back_inserter(top_n_results));
     return top_n_results;
