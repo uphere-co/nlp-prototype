@@ -231,7 +231,7 @@ void weighted_sampling_benchmark(){
     size_t n_cut = 2;
 //    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     WordCounter word_count;
-    auto word_counts = word_count.count(std::fstream{"news.2014.train"});
+    auto word_counts = word_count.count(std::fstream{"../rnn++/tests/data/queries.rss.short"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     auto counts = map(word_counts, [](auto x){return x.second;});
     auto uids = map(word_counts, [](auto x){return x.first;});
@@ -348,24 +348,26 @@ void voca_indexmap_spec(int argc, char** argv){
 
 }
 
-}//namespace test
 
 void test_all(int argc, char** argv){
-    test::word_uid_spec();
-    test::pos_uid_spec();
-    test::voca_indexmap_spec(argc,argv);
-    test::reverse_iterator();
-    test::string_iterator();
-    test::benchmark();
-    test::hash();
-    test::uint_to_int();
-    test::binary_find_check();
-    test::binary_find_benchmark();
-    test::container_filter();
-    test::binary_find_cell_for_cdf();
-    test::weighted_sampling_benchmark();
-    test::negative_sampling();
+    word_uid_spec();
+    pos_uid_spec();
+    voca_indexmap_spec(argc,argv);
+    reverse_iterator();
+    string_iterator();
+    benchmark();
+    hash();
+    uint_to_int();
+    binary_find_check();
+    binary_find_benchmark();
+    container_filter();
+    binary_find_cell_for_cdf();
+    weighted_sampling_benchmark();
+    negative_sampling();
 }
+
+}//namespace test
+
 
 auto serial_word_count(std::istream&& is){
     std::string line;
@@ -522,8 +524,8 @@ void word_prob_check(){
 }
 
 int main(int argc, char** argv){
-//    test_all(argc,argv);
-    word_prob_check(argc,argv);
+    test::test_all(argc,argv);
+//    word_prob_check(argc,argv);
     word_prob_check();
     return 0;
     //update_word_prob(argc,argv);
