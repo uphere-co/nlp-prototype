@@ -116,7 +116,7 @@ public:
 
 private:
     wordrep::WordImportance const word_importance;
-    //wordrep::WordCaseCorrector did_you_mean;
+    wordrep::WordCaseCorrector did_you_mean;
     wordrep::PhraseSegmenter phrase_segmenter;
     Dataset const db;
     dbinfo_t const dbinfo;

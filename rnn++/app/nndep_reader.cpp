@@ -450,8 +450,8 @@ void recover_wrong_case_query(util::json_t const& config){
 
     auto corrected_query = util::string::join(corrected_words, " ");
     assert(corrected_query==expected_did_you_mean);
-    fmt::print("Original query : {}\n", query_str);
-    fmt::print("Did you mean   : {}\n", corrected_query);
+    fmt::print(std::cerr, "Original query : {}\n", query_str);
+    fmt::print(std::cerr, "Did you mean   : {}\n", corrected_query);
 }
 
 void test_all(int argc, char** argv){
@@ -465,6 +465,7 @@ void test_all(int argc, char** argv){
     pos_info(config);
     unknown_word_importance(config);
     show_query_suggestion(argc, argv);
+    recover_wrong_case_query(config);
 }
 
 }//namespace wordrep::test
