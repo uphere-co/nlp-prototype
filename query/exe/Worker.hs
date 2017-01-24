@@ -32,14 +32,16 @@ import           CoreNLP
 registerText :: (MonadIO m) => EngineWrapper -> Text -> MaybeT m RegisteredSentences
 registerText engine txt = do
   guard ((not . T.null) txt)
-  bstr_nlp <- (liftIO . runCoreNLP . TE.encodeUtf8) txt
-  let bstr_txt = TE.encodeUtf8 txt
+  bstr_nlp0 <- (liftIO . runCoreNLP . TE.encodeUtf8) txt
   bstr0 <- liftIO $
-    B.useAsCString bstr_nlp $ \cstr_nlp -> 
-      B.useAsCString bstr_txt $ \cstr_txt -> do
-        r <- json_tparse cstr_nlp >>= register_documents engine cstr_txt
-        
-        serialize r >>= unsafePackCString
+    B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
+      withCString "did_you_mean" $ \did_you_mean -> do
+        cstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean
+        bstr_nlp1 <- unsafePackCString cstr_nlp1
+        bstr_nlp2 <- runCoreNLP bstr_nlp1
+        B.useAsCString bstr_nlp2 $ \cstr_nlp2 -> do
+          r <- json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 
+          serialize r >>= unsafePackCString
   liftIO $ putStrLn "inside registerText"
   liftIO $ print bstr0
   (MaybeT . return . decodeStrict') bstr0
@@ -66,7 +68,8 @@ failed :: BL.ByteString
 failed = encode Null
 
 
-queryWorker :: TMVar (HM.HashMap Text ([Int],[Text])) -> SendPort ResultBstr
+queryWorker :: TMVar (HM.HashMap Text ([Int],[Text]))
+            -> SendPort ResultBstr
             -> EngineWrapper
             -> Query
             -> Process ()
@@ -110,7 +113,7 @@ queryWorker resultref sc engine QueryRegister {..} = do
     Nothing -> do
       r' <- runMaybeT $ do
         r <- registerText engine query_register
-        let resultbstr = encode r -- { rs_confine_ygp_table_columns = query_tables }
+        let resultbstr = encode r
         return (r,resultbstr)
       case r' of
         Just (r,resultbstr) -> do
