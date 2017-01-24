@@ -23,6 +23,27 @@ const char* serialize( util::json_t* j )
     return n_str;
 }
 
+const char* find( util::json_t* j, const char* k )
+{
+    const std::string& str = (*j)[k];
+    char* n_str = new char[str.size()+1];
+    strcpy(n_str,str.c_str() );
+    return n_str;
+}
+
+
+util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* input )
+{
+    std::string query_str(str);
+    (*input)["query_str"] = query_str;
+    return (new util::json_t(engine->register_documents(*input)));
+}
+
+util::json_t* EngineWrapper::preprocess_query( util::json_t* input )
+{
+    return (new util::json_t(engine->preprocess_query(*input)));
+}
+
 util::json_t* EngineWrapper::query( util::json_t* input )
 {
     return (new util::json_t(engine->ask_query_stats(*input)));
@@ -34,13 +55,6 @@ util::json_t* EngineWrapper::suggest( util::json_t* input )
     return (new util::json_t(engine->ask_query_suggestion(*input)));
 }
 
-
-util::json_t* EngineWrapper::register_documents( const char* str, util::json_t* input )
-{
-    std::string query_str(str);
-    (*input)["query_str"] = query_str;
-    return (new util::json_t(engine->register_documents(*input)));
-}
 
 
 //void force_instantiation() {

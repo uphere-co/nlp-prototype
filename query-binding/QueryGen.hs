@@ -24,7 +24,8 @@ engineWrapper :: Class
 engineWrapper =
   Class cabal "EngineWrapper" [] mempty Nothing
   [ Constructor [ cstring "configfile" ] Nothing
-  , Virtual (cppclass_ json_t) "register_documents" [ cstring "str", cppclass json_t "input" ] Nothing    
+  , Virtual (cppclass_ json_t) "register_documents" [ cstring "str", cppclass json_t "input" ] Nothing
+  , Virtual (cppclass_ json_t) "preprocess_query" [ cppclass json_t "input" ] Nothing    
   , Virtual (cppclass_ json_t) "query" [ cppclass json_t "input" ] Nothing
   , Virtual (cppclass_ json_t) "suggest" [ cppclass json_t "input" ] Nothing    
   , Destructor (Just "deleteEngineWrapper")
@@ -40,7 +41,9 @@ json_t =
 
 classes = [ engineWrapper, json_t ] 
 
-toplevelfunctions = [ TopLevelFunction cstring_ "serialize" [cppclass json_t "j"] Nothing ]
+toplevelfunctions = [ TopLevelFunction cstring_ "serialize" [cppclass json_t "j"] Nothing
+                    , TopLevelFunction cstring_ "find" [cppclass json_t "j", cstring "k"] Nothing 
+                    ]
 
 t_vector = TmplCls cabal "Vector" "std::vector" "t"
              [ TFunNew [ ]
