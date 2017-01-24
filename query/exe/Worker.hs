@@ -33,17 +33,15 @@ registerText :: (MonadIO m) => EngineWrapper -> Text -> MaybeT m RegisteredSente
 registerText engine txt = do
   guard ((not . T.null) txt)
   bstr_nlp0 <- (liftIO . runCoreNLP . TE.encodeUtf8) txt
-  -- let bstr_txt = TE.encodeUtf8 txt
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
-      did_you_mean <- newCString "did_you_mean" 
-      cstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean
-      bstr_nlp1 <- unsafePackCString cstr_nlp1
-      bstr_nlp2 <- runCoreNLP bstr_nlp1
-      B.useAsCString bstr_nlp2 $ \cstr_nlp2 -> do
-        -- B.useAsCString bstr_txt $ \cstr_txt -> do
-        r <- json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 
-        serialize r >>= unsafePackCString
+      withCString "did_you_mean" $ \did_you_mean -> do
+        cstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean
+        bstr_nlp1 <- unsafePackCString cstr_nlp1
+        bstr_nlp2 <- runCoreNLP bstr_nlp1
+        B.useAsCString bstr_nlp2 $ \cstr_nlp2 -> do
+          r <- json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 
+          serialize r >>= unsafePackCString
   liftIO $ putStrLn "inside registerText"
   liftIO $ print bstr0
   (MaybeT . return . decodeStrict') bstr0
