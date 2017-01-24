@@ -16,6 +16,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
       "query-binding" = self.callPackage
         ({ mkDerivation, base, fficxx, fficxx-runtime, stdenv
          , template-haskell, rnnpp, json, hdf5-cpp, msgsl, tbb
+         , fmt, pqxx
          , variant
          }:
          mkDerivation {
@@ -26,13 +27,15 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	     base fficxx fficxx-runtime template-haskell
 	   ];
 	   librarySystemDepends = [
-	     rnnpp json hdf5-cpp msgsl tbb variant
+	     rnnpp json hdf5-cpp msgsl tbb variant fmt pqxx
 	   ];
 	   license = stdenv.lib.licenses.bsd3;
 	 }) { inherit rnnpp tbb hdf5-cpp;
               json  = toolz_cpp.json;
               msgsl = toolz_cpp.msgsl;
               variant = toolz_cpp.variant;
+              fmt = toolz_cpp.fmt;
+              pqxx = libpqxx;
             };
     };
     

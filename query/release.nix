@@ -25,13 +25,12 @@ let
 
     hsconfig2 = self: super: {
       "query-common" = self.callPackage ../query-common { };
-      "query" = self.callPackage (import ./default.nix) {
-        inherit hdf5_cpp tbb rnnpp json elfutils fmt msgsl spdlog xxhashct backwardcpp variant;
-	pqxx = libpqxx;
-      };
+      "query" = self.callPackage (import ./default.nix) { };
       "query-binding" = self.callPackage
         ({ mkDerivation, base, fficxx, fficxx-runtime, stdenv
-         , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb, variant
+         , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb
+         , fmt, pqxx
+         , variant
          }:
          mkDerivation {
            pname = "query-binding";
@@ -41,10 +40,12 @@ let
 	     base fficxx fficxx-runtime template-haskell
 	   ];
 	   librarySystemDepends = [
-	     rnnpp json hdf5_cpp msgsl tbb variant
+	     rnnpp json hdf5_cpp msgsl tbb variant fmt pqxx
 	   ];
 	   license = stdenv.lib.licenses.bsd3;
-	 }) { inherit rnnpp json hdf5_cpp msgsl tbb variant; };
+	 }) { inherit rnnpp json hdf5_cpp msgsl tbb variant fmt;
+              pqxx = libpqxx;
+            };
     };
     hsconfig = self: super: (hsconfig1 self super // hsconfig2 self super); 
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };

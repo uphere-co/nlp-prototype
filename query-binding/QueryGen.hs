@@ -56,11 +56,11 @@ templates = [ ( t_vector, HdrName "Vector.h" )
             ] 
 
 
-headerMap = [ ( "EngineWrapper", ([NS "util"], [HdrName "similarity/similarity.h"]))
-            , ( "json_t"         , ([NS "util"], [HdrName "utils/json.h", HdrName "similarity/similarity.h" ]))
+headerMap = [ ( "EngineWrapper", ([NS "util"], [HdrName "enginewrapper.h"]))
+            , ( "json_t"         , ([NS "util"], [HdrName "utils/json.h", HdrName "enginewrapper.h" ]))
             ]
 
 main :: IO ()
 main = do 
   simpleBuilder "Query.Binding" headerMap (cabal,cabalattr,classes,toplevelfunctions,templates)
-    [ ] extraDep
+    [ "enginewrapper", "similarity", "parser", "tbb", "fmt", "pqxx", "hdf5_cpp", "stdc++fs" ] extraDep

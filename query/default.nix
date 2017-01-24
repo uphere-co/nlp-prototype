@@ -7,7 +7,6 @@
 , unix, unordered-containers, uuid, vector
 , fficxx-runtime
 , query-binding
-, json, rnnpp, pqxx, elfutils, tbb, fmt, hdf5_cpp, msgsl, spdlog, xxhashct, backwardcpp, variant
 }:
 mkDerivation {
   pname = "query";
@@ -24,9 +23,7 @@ mkDerivation {
     fficxx-runtime
     query-binding
   ];
-  executableSystemDepends = [
-    fmt hdf5_cpp json msgsl pqxx elfutils rnnpp tbb spdlog xxhashct backwardcpp variant
-  ];
+  executableSystemDepends = [ ];
   homepage = "https://github.com/uphere-co/nlp-prototype";
   description = "querying result";
   license = "unknown";
