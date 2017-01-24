@@ -491,6 +491,7 @@ struct ProcessChainQuery{
 template<typename T>
 QueryEngineT<T>::QueryEngineT(json_t const &config)
 : word_importance{util::io::h5read(util::get_str(config,"word_prob_dump"))},
+  did_you_mean{util::get_str(config,"word_uids_dump"), word_importance},
   phrase_segmenter{word_importance},
   db{config},
   dbinfo{config},
@@ -502,6 +503,7 @@ QueryEngineT<T>::QueryEngineT(json_t const &config)
 template<typename T>
 QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
 : word_importance{std::move(engine.word_importance)},
+  did_you_mean{std::move(engine.did_you_mean)},
   phrase_segmenter{word_importance},
   db{std::move(engine.db)},
   dbinfo{std::move(engine.dbinfo)},
@@ -510,10 +512,35 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
 {}
 
 template<typename T>
+json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
+    if (ask.find("sentences") == ask.end()) return json_t{};
+    data::CoreNLPjson query{ask};
+
+    std::vector<std::string> original_words;
+    auto per_tokens = [&original_words](auto const &token){
+        original_words.push_back(util::get_str(token,"originalText"));
+    };
+    query.iter_tokens(per_tokens);
+    auto original_query = util::string::join(original_words, " ");
+    auto corrected_words = util::map(original_words, [this](auto word){return did_you_mean.try_correct(word);});
+    auto corrected_query = util::string::join(corrected_words, " ");
+
+    json_t answer{};
+    answer["received_query"]=original_query;
+    answer["did_you_mean"]=corrected_query;
+    answer["word_pair"] = util::json_t::array();
+    for(auto pair : util::zip(original_words, corrected_words)){
+        if(pair.first==pair.second) continue;
+        answer["word_pair"].push_back({pair.first, pair.second});
+    }
+    return answer;
+}
+
+template<typename T>
 json_t QueryEngineT<T>::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
+    ;
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
-
     json_t answer{};
     answer["sent_uids"]=util::serialize(uids);
     std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;

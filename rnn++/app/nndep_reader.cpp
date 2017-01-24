@@ -2,6 +2,7 @@
 #include <fmt/printf.h>
 
 #include "wordrep/dep_graph.h"
+#include "wordrep/word_case_corrector.h"
 
 #include "similarity/query_engine.h"
 #include "similarity/phrase_suggestion.h"
@@ -436,6 +437,22 @@ void show_query_suggestion(int argc, char** argv){
         fmt::print(std::cerr, "==============================================\n");
     }
 }
+void recover_wrong_case_query(util::json_t const& config){
+    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+
+    WordCaseCorrector did_you_mean{util::get_str(config,"word_uids_dump"), importance};
+
+    auto query_str = "china safety rohs afasrqwadfqf";
+    auto expected_did_you_mean = "China safety RoHS afasrqwadfqf";
+    auto query_words = util::string::split(query_str);
+    auto corrected_words = util::map(query_words, [&did_you_mean](auto word){return did_you_mean.try_correct(word);});
+
+    auto corrected_query = util::string::join(corrected_words, " ");
+    assert(corrected_query==expected_did_you_mean);
+    fmt::print(std::cerr, "Original query : {}\n", query_str);
+    fmt::print(std::cerr, "Did you mean   : {}\n", corrected_query);
+}
 
 void test_all(int argc, char** argv){
     assert(argc>1);
@@ -448,6 +465,7 @@ void test_all(int argc, char** argv){
     pos_info(config);
     unknown_word_importance(config);
     show_query_suggestion(argc, argv);
+    recover_wrong_case_query(config);
 }
 
 }//namespace wordrep::test
@@ -524,24 +542,29 @@ int main(int argc, char** argv){
 //    build_word_importance();
 //    show_old_foramt_word_importance(config);
 //    update_column(config);
+//    wordrep::test::recover_wrong_case_query(config);
 //    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
-    auto query_str = util::string::read_whole(input);
-    auto query_json = corenlp_client.from_query_content(query_str);
-    query_json["query_str"] = query_str;
+    auto raw_query_str = util::string::read_whole(input);
+    auto raw_query_json = corenlp_client.from_query_content(raw_query_str);
+    raw_query_json["query_str"] = raw_query_str;
 
     util::Timer timer{};
 
     engine::QueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
 
+    auto corrected_query = engine.preprocess_query(raw_query_json);
+    auto query_str = corrected_query["did_you_mean"];
+    auto query_json = corenlp_client.from_query_content(query_str);
+    fmt::print(std::cerr, "{}\n", corrected_query.dump(4));
 
     if(true){
         util::json_t suggestion_query{};
 //        auto ideas = {"China", "air", "fire","metal"};
         //auto ideas = {"Yahoo", "Google","China","AI"};
-        auto ideas = util::string::split(util::string::strip(util::string::read_whole(input)));
+        auto ideas = util::string::split(util::string::strip(query_str));
         suggestion_query["ideas"]=ideas;
         fmt::print("{}\n", suggestion_query.dump(4));
         auto suggestion_output = engine.ask_query_suggestion(suggestion_query);

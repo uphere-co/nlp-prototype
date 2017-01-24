@@ -9,6 +9,7 @@
 #include "wordrep/dep_graph.h"
 #include "wordrep/voca_info.h"
 #include "wordrep/word_prob.h"
+#include "wordrep/word_case_corrector.h"
 
 #include "utils/parallel.h"
 #include "utils/json.h"
@@ -101,7 +102,8 @@ public:
     QueryEngineT(json_t const& config);
     QueryEngineT(QueryEngineT&& engine);
 
-    json_t register_documents(json_t const &ask) ;
+    json_t preprocess_query(json_t const &ask) const;
+    json_t register_documents(json_t const &ask);
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
     json_t ask_query_stats(json_t const &ask) const;
@@ -114,6 +116,7 @@ public:
 
 private:
     wordrep::WordImportance const word_importance;
+    wordrep::WordCaseCorrector did_you_mean;
     wordrep::PhraseSegmenter phrase_segmenter;
     Dataset const db;
     dbinfo_t const dbinfo;
@@ -129,6 +132,9 @@ struct QueryEngine {
     using json_t = util::json_t;
     QueryEngine(util::json_t& config);
 
+    json_t preprocess_query(json_t const &ask) {
+        return engine.match([&ask] (auto& e)  { return e.preprocess_query(ask);});
+    }
     json_t register_documents(json_t const &ask) {
         return engine.match([&ask] (auto& e)  { return e.register_documents(ask);});
     }

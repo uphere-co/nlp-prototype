@@ -21,6 +21,7 @@ struct WordImportance{
     WordImportance(std::string probfile, std::string wordfile);
     val_t score(WordUID uid) const;
     bool is_noisy_word(WordUID uid) const { return score(uid)<low_cutoff;}
+    bool is_unknown(WordUID uid) const {return score(uid)==val_t{0.0};}
 
 private:
     std::map<WordUID,val_t> uid2score;
