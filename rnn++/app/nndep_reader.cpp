@@ -529,6 +529,9 @@ void update_column(util::json_t const& config){
     ratios.write(file);
 }
 
+void foo(){
+    //fmt::print(util::)
+}
 
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
@@ -542,8 +545,7 @@ int main(int argc, char** argv){
 //    build_word_importance();
 //    show_old_foramt_word_importance(config);
 //    update_column(config);
-//    wordrep::test::recover_wrong_case_query(config);
-//    return 0;
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto raw_query_str = util::string::read_whole(input);

@@ -115,10 +115,10 @@ void hash(){
     char cs[10] = "Hello";
     assert(sizeof(cs)==10);
 
-    uint64_t hash = xxh64::hash(reinterpret_cast<const char*> (cs), 10, wordrep::xxh64_seed);
-    fmt::print("With seed {}, hash of '{}' : {}\n", wordrep::xxh64_seed, cs, hash);
+    uint64_t hash = xxh64::hash(reinterpret_cast<const char*> (cs), 10, util::xxh64_seed);
+    fmt::print("With seed {}, hash of '{}' : {}\n", util::xxh64_seed, cs, hash);
     std::string str = "Hello";
-    assert(hash==wordrep::hash(cs, 10));
+    assert(hash==util::hash(cs, 10));
 //    assert(hash==wordrep::hash(str));
 }
 
