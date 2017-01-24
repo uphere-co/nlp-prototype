@@ -25,10 +25,7 @@ let
 
     hsconfig2 = self: super: {
       "query-common" = self.callPackage ../query-common { };
-      "query" = self.callPackage (import ./default.nix) {
-        inherit hdf5_cpp tbb rnnpp json elfutils fmt msgsl spdlog xxhashct backwardcpp variant;
-	pqxx = libpqxx;
-      };
+      "query" = self.callPackage (import ./default.nix) { };
       "query-binding" = self.callPackage
         ({ mkDerivation, base, fficxx, fficxx-runtime, stdenv
          , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb
