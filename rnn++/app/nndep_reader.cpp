@@ -493,6 +493,50 @@ void word_cache_thread_safety(util::json_t const& config) {
     timer.here_then_reset(fmt::format("Multi-thread cache stress test : passed.", sents.size()));
 }
 
+struct WordNormalizedForm{
+    WordNormalizedForm(std::string word)
+            : val{util::string::tolower(word)}
+    {}
+    bool operator<(WordNormalizedForm const& right) const{
+        return val<right.val;
+    }
+
+    std::string val;
+};
+
+void recover_wrong_case_query(util::json_t const& config){
+    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    wordrep::WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+
+
+    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
+//    std::vector<std::string> words = {"Google", "China", "RoHS"};
+    std::map<WordNormalizedForm,std::string> to_original_form;
+    for(auto word: words){
+        auto uid = wordUIDs[word];
+        if(importance.is_noisy_word(uid)) continue;
+        to_original_form[WordNormalizedForm{word}]=word;
+    }
+
+    auto query_str = "china safety rohs afasrqwadfqf";
+    auto expected_did_you_mean = "China safety RoHS afasrqwadfqf";
+    auto query_words = util::string::split(query_str);
+    std::vector<std::string> corrected_words;
+    for(auto word : query_words){
+        auto wuid = wordUIDs[word];
+        WordNormalizedForm nword{word};
+        auto it=to_original_form.find(nword);
+        if(importance.is_unknown(wuid)&&it!=to_original_form.cend()) {
+            corrected_words.push_back(it->second);
+        } else{
+            corrected_words.push_back(word);
+        }
+    }
+    auto corrected_query = util::string::join(corrected_words, " ");
+    assert(corrected_query==expected_did_you_mean);
+    fmt::print("Original query : {}\n", query_str);
+    fmt::print("Did you mean   : {}\n", corrected_query);
+}
 void test_all(int argc, char** argv) {
     assert(argc > 1);
     auto config = util::load_json(argv[1]);
@@ -524,7 +568,8 @@ int main(int argc, char** argv){
 //    build_word_importance();
 //    show_old_foramt_word_importance(config);
 //    update_column(config);
-//    return 0;
+    engine::test::recover_wrong_case_query(config);
+    return 0;
 
     data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
     auto query_str = util::string::read_whole(input);
