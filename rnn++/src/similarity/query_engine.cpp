@@ -528,6 +528,11 @@ json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
     json_t answer{};
     answer["received_query"]=original_query;
     answer["did_you_mean"]=corrected_query;
+    answer["word_pair"] = util::json_t::array();
+    for(auto pair : util::zip(original_words, corrected_words)){
+        if(pair.first==pair.second) continue;
+        answer["word_pair"].push_back({pair.first, pair.second});
+    }
     return answer;
 }
 
