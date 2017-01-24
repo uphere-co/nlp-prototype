@@ -549,6 +549,7 @@ int main(int argc, char** argv){
     }
 
     auto uids = engine.register_documents(query_json);
+    uids["n_cut"]=10;
     uids["max_clip_len"] = query_json["max_clip_len"];
     if(false){
         uids["confine_ygp_table_columns"].push_back("regulation.regtitle");

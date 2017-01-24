@@ -88,8 +88,10 @@ std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence>
 
     auto beg = relevant_sents.begin();
     auto end = relevant_sents.end();
-    std::partial_sort(beg,end,end,
-                      [](auto const &x, auto const &y){return x.score > y.score;});
+    std::partial_sort(beg,end,end, [](auto const &x, auto const &y){
+        if(x.score==y.score)
+            return x.sent.tokens->chunk_idx(x.sent.front())<y.sent.tokens->chunk_idx(y.sent.front());
+        return x.score > y.score;});
     auto score_cutoff = 0.5*relevant_sents.front().score;
     auto rank_cut = beg;
     std::set<ChunkIndex> chunk_idxs;
