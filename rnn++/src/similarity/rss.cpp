@@ -12,11 +12,21 @@ using engine::plain_rank_cut;
 namespace data{
 namespace rss{
 
+Columns Factory::db() const{
+    return {config.common.value("column_uids_dump")};
+};
+DBIndexer Factory::db_indexer() const{
+    return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
+            config.common.value("dep_parsed_prefix")};
+};
 
+
+DBInfo::DBInfo(Factory const& factory)
+        :db{factory.db()},
+         indexer{factory.db_indexer()}
+{}
 DBInfo::DBInfo(util::json_t config)
-        :db{config["column_uids_dump"].get<std::string>()},
-         indexer{h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                 config["dep_parsed_prefix"].get<std::string>()}
+        :DBInfo{Factory{Config{config}}}
 {}
 
 std::vector<wordrep::Sentence> DBInfo::get_query_sents(

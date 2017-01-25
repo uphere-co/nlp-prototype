@@ -20,8 +20,18 @@ struct ConfigKeys{
 };
 
 struct Config{
+    Config(util::json_t const& config)
+            : common{config}, rss{config}
+    {}
     engine::Config common;
-    util::ConfigT<ConfigKeys> data;
+    util::ConfigT<ConfigKeys> rss;
+};
+struct Factory{
+    Factory(Config const& config) : config{config} {}
+    Columns db() const;
+    DBIndexer  db_indexer() const;
+
+    Config config;
 };
 
 struct Query{
@@ -41,6 +51,7 @@ struct DBInfo{
         data::rss::annotation_on_result(config, answers);
     }
 
+    DBInfo(Factory const& factory);
     DBInfo(util::json_t config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
