@@ -17,6 +17,8 @@
 #include "wordrep/voca.h"
 #include "wordrep/indexes.h"
 
+#include "similarity/config.h"
+
 #include "utils/math.h"
 #include "utils/string.h"
 #include "utils/json.h"
@@ -119,7 +121,35 @@ void hash(){
     fmt::print("With seed {}, hash of '{}' : {}\n", util::xxh64_seed, cs, hash);
     std::string str = "Hello";
     assert(hash==util::hash(cs, 10));
-//    assert(hash==wordrep::hash(str));
+    {
+        std::string str{"Test string."};
+        std::string str2{"Test string!"};
+        assert(util::hash(str)!=util::hash(str2));
+    }
+}
+void hash_composite(){
+    struct Foo{
+        WordUID x;
+        WordUID y;
+    };
+
+    auto x = std::make_pair<WordUID::val_t,WordUID::val_t>(1,1);
+    auto y = std::make_pair<WordUID,WordUID>(1,1);
+    auto z = std::make_pair<WordUID,WordUID>(1,1);
+    assert(&y!=&z);
+    assert(util::hash(x)==util::hash(y));
+    assert(util::hash(y)==util::hash(z));
+    Foo xx{1,1};
+    assert(util::hash(x)==util::hash(xx));
+    fmt::print("{}\n", util::hash(x));
+
+    std::vector<WordUID> xs{1,2,3,4,5,6,7};
+    std::vector<WordUID::val_t> ys{1,2,3,4,5,6,7};
+    std::vector<WordUID> xs1{1,2,3,4,5,6,7,8};
+    std::vector<WordUID> xs2{1,2,3,4,5,6,6};
+    assert(util::hash(xs)==util::hash(ys));
+    assert(util::hash(xs)!=util::hash(xs1));
+    assert(util::hash(xs)!=util::hash(xs2));
 }
 
 void uint_to_int(){
@@ -357,6 +387,7 @@ void test_all(int argc, char** argv){
     string_iterator();
     benchmark();
     hash();
+    hash_composite();
     uint_to_int();
     binary_find_check();
     binary_find_benchmark();
@@ -523,10 +554,14 @@ void word_prob_check(){
     }
 }
 
+
+
 int main(int argc, char** argv){
-    test::test_all(argc,argv);
+    //test::test_all(argc,argv);
+    test::hash();
+    test::hash_composite();
 //    word_prob_check(argc,argv);
-    word_prob_check();
+//    word_prob_check();
     return 0;
     //update_word_prob(argc,argv);
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
@@ -546,3 +581,4 @@ int main(int argc, char** argv){
         fmt::print(std::cout, "{} {}\n", elm.first, elm.second);
     return 0;
 }
+

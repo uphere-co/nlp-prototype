@@ -20,12 +20,12 @@ inline uint64_t hash(std::string const& str){
 };
 template<typename T>
 uint64_t hash(std::vector<T> const& vec){
-    return xxh64::hash(vec.data(), sizeof(T)*vec.size(), xxh64_seed);
+    return xxh64::hash(reinterpret_cast<const char*>(vec.data()), sizeof(T)*vec.size(), xxh64_seed);
 };
 
 template<typename T>
 uint64_t hash(T const& x){
-    return xxh64::hash(reinterpret_cast<const char*>(x), sizeof(x), xxh64_seed);
+    return xxh64::hash(reinterpret_cast<const char*>(&x), sizeof(x), xxh64_seed);
 };
 
 }//namespace wordrep
