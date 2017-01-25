@@ -509,10 +509,10 @@ void update_column(util::json_t const& config){
 
 
 int main(int argc, char** argv){
-    wordrep::test::test_all(argc,argv);
+//    wordrep::test::test_all(argc,argv);
 //    engine::test::test_all(argc,argv);
 //    wordrep::test::foo();
-    return 0;
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -520,7 +520,7 @@ int main(int argc, char** argv){
 
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
-    fmt::print(std::cerr, "{}", factory.config);
+    for(auto key : factory.config.values) fmt::print(std::cerr, "{:<25} : {}\n",key.first.val, key.second);
 
 //    build_word_importance();
 //    show_old_foramt_word_importance(config);
@@ -540,6 +540,7 @@ int main(int argc, char** argv){
     auto corrected_query = engine.preprocess_query(raw_query_json);
     auto query_str = corrected_query["did_you_mean"];
     auto query_json = corenlp_client.from_query_content(query_str);
+    query_json["query_str"] = query_str;
     fmt::print(std::cerr, "{}\n", corrected_query.dump(4));
 
     if(true){

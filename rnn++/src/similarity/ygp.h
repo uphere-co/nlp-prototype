@@ -3,6 +3,7 @@
 #include "data_source/ygp_db.h"
 
 #include "similarity/scoring.h"
+#include "similarity/config.h"
 
 #include "utils/json.h"
 
@@ -13,6 +14,28 @@ struct Dataset;
 namespace data{
 namespace ygp{
 
+template<typename T>
+struct ConfigKeys{
+    std::vector<T> keys={{"country_uids_dump"}};
+};
+
+struct Config{
+    Config(util::json_t const& config)
+            : common{config}, ygp{config}
+    {}
+    engine::Config common;
+    util::ConfigT<ConfigKeys> ygp;
+};
+
+struct Factory{
+    Factory(Config const& config) : config{config} {}
+    YGPdb db() const;
+    DBIndexer db_indexer() const;
+    DBbyCountry db_by_country() const;
+    CountryCodeAnnotator country_code_annotator() const;
+
+    Config config;
+};
 std::vector<engine::ScoredSentence> rank_cut_per_column(
         std::vector<engine::ScoredSentence> const &relevant_sents,
         size_t n_max_per_table,
@@ -51,6 +74,7 @@ struct DBInfo{
         data::ygp::annotation_on_result(config, answers);
     }
 
+    DBInfo(Factory const& factory);
     DBInfo(util::json_t const& config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
@@ -93,7 +117,6 @@ struct DBInfo{
     DBbyCountry const per_country;
     CountryCodeAnnotator const country_tagger;
 };
-
 
 }//data::ygp
 }//data

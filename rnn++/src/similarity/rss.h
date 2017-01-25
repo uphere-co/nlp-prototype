@@ -3,6 +3,7 @@
 #include "data_source/rss.h"
 
 #include "similarity/scoring.h"
+#include "similarity/config.h"
 
 #include "utils/json.h"
 
@@ -12,6 +13,16 @@ struct Dataset;
 
 namespace data{
 namespace rss{
+
+template<typename T>
+struct ConfigKeys{
+    std::vector<T> keys={{"row_hashes"}};
+};
+
+struct Config{
+    engine::Config common;
+    util::ConfigT<ConfigKeys> data;
+};
 
 struct Query{
     using json_t = util::json_t;
