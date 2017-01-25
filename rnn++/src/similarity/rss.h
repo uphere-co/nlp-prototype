@@ -27,11 +27,12 @@ struct Config{
     util::ConfigT<ConfigKeys> rss;
 };
 struct Factory{
-    Factory(Config const& config) : config{config} {}
+    Factory(Config const& config) : config{config}, common{config.common} {}
     Columns db() const;
     DBIndexer  db_indexer() const;
 
     Config config;
+    engine::SubmoduleFactory common;
 };
 
 struct Query{
@@ -46,12 +47,13 @@ struct Query{
 };
 
 struct DBInfo{
+    using factory_t = Factory;
     using query_t = Query;
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
         data::rss::annotation_on_result(config, answers);
     }
 
-    DBInfo(Factory const& factory);
+    DBInfo(factory_t const& factory);
     DBInfo(util::json_t config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {

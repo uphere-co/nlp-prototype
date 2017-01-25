@@ -39,4 +39,13 @@ wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordIm
     return {config.value("word_uids_dump"), importance};
 }
 
+Dataset SubmoduleFactory::empty_dataset() const{
+    return {voca_info(),
+            {config.value("word_uids_dump"),config.value("pos_uids_dump"),config.value("arclabel_uids_dump")}};
+}
+Dataset SubmoduleFactory::load_dataset() const{
+    return {voca_info(),
+            {config.value("word_uids_dump"),config.value("pos_uids_dump"),config.value("arclabel_uids_dump")},
+            dep_parsed_tokens()};
+}
 }//namespace engine

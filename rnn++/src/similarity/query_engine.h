@@ -101,7 +101,7 @@ public:
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
 
-    QueryEngineT(engine::SubmoduleFactory const& factory);
+    QueryEngineT(typename T::factory_t const& factory);
     QueryEngineT(json_t const& config);
     QueryEngineT(QueryEngineT&& engine);
 

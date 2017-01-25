@@ -489,15 +489,19 @@ struct ProcessChainQuery{
 
 ///////////////////////////////////////////////////////////////
 template<typename T>
-QueryEngineT<T>::QueryEngineT(json_t const &config)
-: word_importance{util::io::h5read(util::get_str(config,"word_prob_dump"))},
-  did_you_mean{util::get_str(config,"word_uids_dump"), word_importance},
+QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
+: word_importance{factory.common.word_importance()},
+  did_you_mean{factory.common.word_case_corrector(word_importance)},
   phrase_segmenter{word_importance},
-  db{config},
-  dbinfo{config},
-  queries{{config["wordvec_store"], config["voca_name"],
-           config["w2vmodel_name"], config["w2v_float_t"]}, {config}},
+  db{factory.common.load_dataset()},
+  dbinfo{factory},
+  queries{factory.common.empty_dataset()},
   dists_cache{db.voca}
+{}
+
+template<typename T>
+QueryEngineT<T>::QueryEngineT(json_t const &config)
+        : QueryEngineT<T>{typename T::factory_t{{config}}}
 {}
 
 template<typename T>

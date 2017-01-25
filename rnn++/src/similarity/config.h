@@ -5,6 +5,8 @@
 
 #include "data_source/corenlp_helper.h"
 
+#include "similarity/dataset.h"
+
 #include "wordrep/dep_parsed.h"
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -46,6 +48,8 @@ struct SubmoduleFactory{
     wordrep::WordImportance word_importance() const;
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
+    Dataset empty_dataset() const;
+    Dataset load_dataset() const;
     Config config;
 };
 

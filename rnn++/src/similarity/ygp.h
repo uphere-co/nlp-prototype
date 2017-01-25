@@ -28,13 +28,14 @@ struct Config{
 };
 
 struct Factory{
-    Factory(Config const& config) : config{config} {}
+    Factory(Config const& config) : config{config}, common{config.common} {}
     YGPdb db() const;
     DBIndexer db_indexer() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;
 
     Config config;
+    engine::SubmoduleFactory common;
 };
 std::vector<engine::ScoredSentence> rank_cut_per_column(
         std::vector<engine::ScoredSentence> const &relevant_sents,
@@ -69,12 +70,13 @@ struct Query{
 };
 
 struct DBInfo{
+    using factory_t = Factory;
     using query_t = Query;
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
         data::ygp::annotation_on_result(config, answers);
     }
 
-    DBInfo(Factory const& factory);
+    DBInfo(factory_t const& factory);
     DBInfo(util::json_t const& config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
