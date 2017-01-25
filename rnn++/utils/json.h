@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cassert>
 
 #include <json/json.hpp>
 
@@ -32,7 +33,11 @@ struct ConfigT{
             : keys(TKEYS<Key>{}.keys){
         for(auto key : keys) values[key] = util::get_str(config, key.val);
     }
-    std::string value(std::string key) const {return values.find(Key{key})->second;}
+    std::string value(std::string key) const {
+        auto it = values.find(Key{key});
+        assert(it!=values.cend());
+        return it->second;
+    }
 
     std::vector<Key> keys;
     std::map<Key,std::string> values;

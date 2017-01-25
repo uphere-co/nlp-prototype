@@ -19,7 +19,9 @@ DBIndexer Factory::db_indexer() const{
     return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
             config.common.value("dep_parsed_prefix")};
 };
-
+HashIndexer Factory::hash_indexer() const{
+    return {config.rss.value("row_hashes")};
+}
 
 DBInfo::DBInfo(Factory const& factory)
         :db{factory.db()},

@@ -1,0 +1,112 @@
+{
+    "queries": [
+        "AVadsfasNdfAasdfKasfFJAKFJIA alkadfadsfasdfqfasffjaiojdfalk jfalkjfqijadfadfasfqADFADznvza"
+    ], 
+    "max_clip_len": 200, 
+    "sentences": [
+        {
+            "basicDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 3, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "jfalkjfqijadfadfasfqADFADznvza"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "AVadsfasNdfAasdfKasfFJAKFJIA"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "alkadfadsfasdfqfasffjaiojdfalk"
+                }
+            ], 
+            "index": 0, 
+            "tokens": [
+                {
+                    "index": 1, 
+                    "word": "AVadsfasNdfAasdfKasfFJAKFJIA", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 28, 
+                    "characterOffsetBegin": 0, 
+                    "originalText": "AVadsfasNdfAasdfKasfFJAKFJIA", 
+                    "before": ""
+                }, 
+                {
+                    "index": 2, 
+                    "word": "alkadfadsfasdfqfasffjaiojdfalk", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 59, 
+                    "characterOffsetBegin": 29, 
+                    "originalText": "alkadfadsfasdfqfasffjaiojdfalk", 
+                    "before": " "
+                }, 
+                {
+                    "index": 3, 
+                    "word": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "after": "", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 90, 
+                    "characterOffsetBegin": 60, 
+                    "originalText": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "before": " "
+                }
+            ], 
+            "enhancedPlusPlusDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 3, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "jfalkjfqijadfadfasfqADFADznvza"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "AVadsfasNdfAasdfKasfFJAKFJIA"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "alkadfadsfasdfqfasffjaiojdfalk"
+                }
+            ], 
+            "enhancedDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 3, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "jfalkjfqijadfadfasfqADFADznvza"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "AVadsfasNdfAasdfKasfFJAKFJIA"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "jfalkjfqijadfadfasfqADFADznvza", 
+                    "governor": 3, 
+                    "dependentGloss": "alkadfadsfasdfqfasffjaiojdfalk"
+                }
+            ]
+        }
+    ]
+}
