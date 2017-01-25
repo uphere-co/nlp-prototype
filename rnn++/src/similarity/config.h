@@ -5,6 +5,12 @@
 
 #include "data_source/corenlp_helper.h"
 
+#include "wordrep/dep_parsed.h"
+#include "wordrep/word_uid.h"
+#include "wordrep/word_prob.h"
+#include "wordrep/voca_info.h"
+#include "wordrep/word_case_corrector.h"
+
 namespace engine{
 
 struct Config{
@@ -38,9 +44,14 @@ struct Config{
 struct SubmoduleFactory{
     SubmoduleFactory(Config const& config) : config{config} {}
 
-    data::CoreNLPwebclient corenlp_client() const {
-        return {config.value("corenlp_client_script")};
-    }
+    data::CoreNLPwebclient corenlp_webclient() const;
+    wordrep::WordUIDindex word_uid_index() const;
+    wordrep::POSUIDindex pos_uid_index() const;
+    wordrep::ArcLabelUIDindex arclabel_uid_index() const;
+    wordrep::DepParsedTokens dep_parsed_tokens() const;
+    wordrep::WordImportance word_importance() const;
+    wordrep::VocaInfo voca_info() const;
+    wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
     Config config;
 };
 
