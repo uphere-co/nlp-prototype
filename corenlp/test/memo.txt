@@ -1,0 +1,25 @@
+on myparser
+> cabal init
+
+on test
+> cabal sandbox init
+> cabal sandbox add-source ../myparser
+> cabal install myparser
+
+to check ghc-pkg globally
+> ghc-pkg list
+
+to check ghc-pkg on sandbox
+> cabal sandbox hc-pkg list
+
+
+now to use sandbox-only environment
+> cabal exec ...
+or
+> cabal exec -- ...
+
+flags after -- are not related to cabal.
+
+
+recompile
+> cabal install myparser
