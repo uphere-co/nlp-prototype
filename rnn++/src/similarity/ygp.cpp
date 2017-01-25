@@ -115,9 +115,6 @@ DBInfo::DBInfo(Factory const& factory)
           per_country{factory.db_by_country()},
           country_tagger{factory.country_code_annotator()}
 {}
-DBInfo::DBInfo(util::json_t const& config)
-        : DBInfo{Factory{Config{config}}}
-{}
 
 std::vector<wordrep::Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,

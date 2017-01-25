@@ -77,7 +77,6 @@ struct DBInfo{
     }
 
     DBInfo(factory_t const& factory);
-    DBInfo(util::json_t const& config);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
         return engine::rank_cut_by_unique_chunk(relevant_sents, n_cut);

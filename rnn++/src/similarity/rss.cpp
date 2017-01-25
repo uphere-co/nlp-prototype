@@ -25,9 +25,6 @@ DBInfo::DBInfo(Factory const& factory)
         :db{factory.db()},
          indexer{factory.db_indexer()}
 {}
-DBInfo::DBInfo(util::json_t config)
-        :DBInfo{Factory{Config{config}}}
-{}
 
 std::vector<wordrep::Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,

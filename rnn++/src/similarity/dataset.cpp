@@ -12,11 +12,6 @@ UIDmaps::UIDmaps(std::string word_uids,
                  std::string arclabel_uids)
         : word{word_uids}, pos{pos_uids}, arclabel{arclabel_uids}
 {}
-UIDmaps::UIDmaps(util::json_t const& config)
-        : UIDmaps{get_str(config,"word_uids_dump"),
-                  get_str(config,"pos_uids_dump"),
-                  get_str(config,"arclabel_uids_dump")}
-{}
 
 Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid)
         : voca{std::move(voca)}, token2uid{std::move(token2uid)}
@@ -26,15 +21,6 @@ Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
         : voca{std::move(voca)},
           token2uid{std::move(token2uid)},
           tokens{std::move(tokens)},
-          sents{tokens.IndexSentences()},
-          uid2sent{sents}
-{}
-Dataset::Dataset(json_t const &config)
-        : voca{config["wordvec_store"], config["voca_name"],
-               config["w2vmodel_name"], config["w2v_float_t"]},
-          token2uid{config},
-          tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-                 config["dep_parsed_prefix"]},
           sents{tokens.IndexSentences()},
           uid2sent{sents}
 {}
