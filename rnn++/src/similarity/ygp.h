@@ -30,7 +30,6 @@ struct Config{
 struct Factory{
     Factory(Config const& config) : config{config}, common{config.common} {}
     YGPdb db() const;
-    DBIndexer db_indexer() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;
 

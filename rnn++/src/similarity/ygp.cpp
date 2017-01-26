@@ -20,10 +20,7 @@ namespace ygp{
 YGPdb Factory::db() const {
     return {config.common.value("column_uids_dump")};
 };
-DBIndexer Factory::db_indexer() const {
-    return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
-            config.common.value("dep_parsed_prefix")};
-};
+
 DBbyCountry Factory::db_by_country() const {
     return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
             util::get_latest_version(config.ygp.value("country_uids_dump")).fullname};
@@ -111,7 +108,7 @@ std::vector<ScoredSentence> rank_cut_per_row_index(
 }
 DBInfo::DBInfo(Factory const& factory)
         : db{factory.db()},
-          indexer{factory.db_indexer()},
+          indexer{factory.common.db_indexer()},
           per_country{factory.db_by_country()},
           country_tagger{factory.country_code_annotator()}
 {}

@@ -279,7 +279,7 @@ void country_code(util::json_t const &config){
     Factory factory{{config}};
     WordUIDindex wordUIDs = factory.common.word_uid_index();
     YGPdb db = factory.db();
-    DBIndexer ygp_indexer     = factory.db_indexer();
+    DBIndexer ygp_indexer     = factory.common.db_indexer();
     DBbyCountry ygpdb_country = factory.db_by_country();
     DepParsedTokens tokens    = factory.common.dep_parsed_tokens();
 
@@ -366,7 +366,7 @@ void rss_indexing(util::json_t const &config) {
     auto sent = sents[563];
     auto chunk_idx = tokens.chunk_idx(sent.front());
 
-    data::DBIndexer const db_indexer = factory.db_indexer();
+    data::DBIndexer const db_indexer = factory.common.db_indexer();
     //auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
     auto col_uid = db_indexer.column_uid(chunk_idx);
     auto row_idx = db_indexer.row_idx(chunk_idx);

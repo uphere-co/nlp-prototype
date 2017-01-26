@@ -48,4 +48,10 @@ Dataset SubmoduleFactory::load_dataset() const{
             {config.value("word_uids_dump"),config.value("pos_uids_dump"),config.value("arclabel_uids_dump")},
             dep_parsed_tokens()};
 }
+
+data::DBIndexer SubmoduleFactory::db_indexer() const {
+    return {util::io::h5read(util::get_latest_version(config.value("dep_parsed_store")).fullname),
+            config.value("dep_parsed_prefix")};
+};
+
 }//namespace engine
