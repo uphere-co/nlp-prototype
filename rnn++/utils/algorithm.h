@@ -69,6 +69,10 @@ T to_signed_positive(size_t u){
     return s;
 }
 
+template<typename T>
+auto sort(T &elms){
+    return std::sort(elms.begin(), elms.end());
+}
 template<typename T, typename TO>
 auto sort(T &elms, TO const& op){
     return std::sort(elms.begin(), elms.end(), op);

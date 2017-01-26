@@ -39,7 +39,9 @@ WordUsageInPhrase::usages(wordrep::WordUID word, float_t cutoff) const {
     std::map<Words,int64_t> phrase_count;
     std::map<Words,std::map<Words,int64_t>> phrase_reprs;
     for(auto& words_in_phrase : phrase_usages){
-        Words repr{filter_noisy_word(words_in_phrase.uids)};
+        auto keywords = filter_noisy_word(words_in_phrase.uids);
+        util::sort(keywords);//if bag-of-words matches, count with a same key.
+        Words repr{std::move(keywords)};
         phrase_count[repr] += 1;
         phrase_reprs[repr][words_in_phrase] += 1;
 
