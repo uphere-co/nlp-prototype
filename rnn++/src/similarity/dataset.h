@@ -12,7 +12,9 @@
 namespace engine{
 
 struct UIDmaps{
-    UIDmaps(util::json_t const& config);
+    UIDmaps(std::string word_uids,
+            std::string pos_uids,
+            std::string arclabel_uids);
 
     wordrep::WordUIDindex word;
     wordrep::POSUIDindex pos;
@@ -24,7 +26,8 @@ struct Dataset{
     using json_t = util::json_t;
 
     Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
-    Dataset(json_t const &config);
+    Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
+            wordrep::DepParsedTokens&& tokens);
     Dataset(Dataset&& data);
     Dataset(Dataset const& data);
 

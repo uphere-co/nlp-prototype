@@ -8,6 +8,8 @@
 #include <fmt/printf.h>
 
 #include "similarity/query_engine.h"
+#include "similarity/config.h"
+
 #include "data_source/rss.h"
 #include "data_source/ygp_db.h"
 #include "data_source/ygp_etl.h"
@@ -140,12 +142,13 @@ void unicode_conversion(){
 }
 
 void word_importance(util::json_t const &config){
-    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
-    POSUIDindex const posUIDs{config["pos_uids_dump"].get<std::string>()};
-    ArcLabelUIDindex const arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()};
-    WordImportance word_importance{H5file{H5name{config["word_prob_dump"].get<std::string>()},
-                                      hdf5::FileMode::read_exist}};
-    auto ask = util::load_json("query.unittest.inf_cutoff.corenlp");
+    engine::SubmoduleFactory factory{{config}};
+    WordUIDindex wordUIDs = factory.word_uid_index();
+    POSUIDindex   posUIDs = factory.pos_uid_index();
+    ArcLabelUIDindex arclabelUIDs = factory.arclabel_uid_index();
+    WordImportance word_importance = factory.word_importance();
+
+    auto ask = util::load_json("../rnn++/tests/data/query.unittest.inf_cutoff.corenlp");
     DepParsedTokens query_tokens{};
     query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
     query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
@@ -236,7 +239,7 @@ void ygpdb_indexing(util::json_t const &config){
     assert(row.index    == 12668);
     assert(row.full_column_name() == "autchklist2.guidenote.autchkid");
 
-    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
+    auto cols_to_exports = util::get_str(config,"column_uids_dump");
     YGPdb db{cols_to_exports};
     assert(db.col_uid("regulation.regtitle.regid")==ColumnUID{3});
     assert(db.col_uid("reach_reports.content.report_id")==ColumnUID{0});
@@ -248,8 +251,8 @@ void chunks() {
 }
 
 void country_annotator(util::json_t const &config) {
-    CountryCodeAnnotator country_tagger{
-            util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
+    Factory factory{{config}};
+    CountryCodeAnnotator country_tagger = factory.country_code_annotator();
     {
         auto tags = country_tagger.tag("Seoul is a capital city of South Korea.\n");
         assert(!util::isin(tags, "Japan"));
@@ -272,23 +275,18 @@ void country_annotator(util::json_t const &config) {
 }
 
 
-void country_code(util::json_t const &config) {
-    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
-    using idx_by_country_t = std::map<std::string, std::set<RowIndex>>;
-    std::map<ColumnUID, idx_by_country_t> country_indexer;
-    YGPdb db{config["column_uids_dump"].get<std::string>()};
-    H5file ygp_h5store{H5name{config["dep_parsed_store"].get<std::string>()},
-                       hdf5::FileMode::rw_exist};
-    std::string ygp_prefix = config["dep_parsed_prefix"];
-    DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
-    DBbyCountry ygpdb_country{ygp_h5store,
-                              util::get_latest_version(util::get_str(config, "country_uids_dump")).fullname};
-    DepParsedTokens tokens{ygp_h5store, ygp_prefix};
+void country_code(util::json_t const &config){
+    Factory factory{{config}};
+    WordUIDindex wordUIDs = factory.common.word_uid_index();
+    YGPdb db = factory.db();
+    DBIndexer ygp_indexer     = factory.db_indexer();
+    DBbyCountry ygpdb_country = factory.db_by_country();
+    DepParsedTokens tokens    = factory.common.dep_parsed_tokens();
 
     auto sents = tokens.IndexSentences();
     int i = 0;
     for (auto sent : sents) {
-        if (i++ > 1000) break;
+        if (i++ > 100) break;
         auto chunk_idx = tokens.chunk_idx(sent.front());
         auto col_uid = ygp_indexer.column_uid(chunk_idx);
         auto row_idx = ygp_indexer.row_idx(chunk_idx);
@@ -348,8 +346,9 @@ void rss_corenlp_path(){
 }
 
 void IndexUIDs(util::json_t const& config){
+    Factory factory{{config}};
     std::cerr<<"Run rss::test::IndexUIDs " <<std::endl;
-    Columns rssdb{config["column_uids_dump"].get<std::string>()};
+    Columns rssdb = factory.db();
     auto tmp = rssdb.col_uid("title");
     fmt::print(std::cerr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {}\n", tmp.val);
     for(int i=0; i<3; ++i)
@@ -360,18 +359,14 @@ void IndexUIDs(util::json_t const& config){
 }
 
 void rss_indexing(util::json_t const &config) {
-    std::string hashes = util::get_str(config,"row_hashes");
-    wordrep::DepParsedTokens tokens{
-            util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-            config["dep_parsed_prefix"]};
-    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    Factory factory{{config}};
+    wordrep::DepParsedTokens tokens = factory.common.dep_parsed_tokens();
+    wordrep::WordUIDindex wordUIDs  = factory.common.word_uid_index();
     auto sents = tokens.IndexSentences();
     auto sent = sents[563];
     auto chunk_idx = tokens.chunk_idx(sent.front());
 
-    data::DBIndexer const db_indexer{
-            h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-            util::get_str(config,"dep_parsed_prefix")};
+    data::DBIndexer const db_indexer = factory.db_indexer();
     //auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
     auto col_uid = db_indexer.column_uid(chunk_idx);
     auto row_idx = db_indexer.row_idx(chunk_idx);
@@ -379,11 +374,11 @@ void rss_indexing(util::json_t const &config) {
     uid2col[0] = "title";
     uid2col[1] = "summary";
     uid2col[2] = "maintext";
-    data::rss::HashIndexer hash2idx{hashes};
+    data::rss::HashIndexer hash2idx = factory.hash_indexer();
     //TODO: remove hard-coded path.
     auto filename = fmt::format("/home/jihuni/word2vec/NYT.text/{}.{}", hash2idx.hash(row_idx.val), uid2col[col_uid]);
-    auto row_str = util::string::read_whole(filename);
     std::cerr << filename << std::endl;
+    auto row_str = util::string::read_whole(filename);
     auto offset_beg = sent.beg_offset();
     auto offset_end = sent.end_offset();
     std::cerr << fmt::format("{}:{}", offset_beg.val, offset_end.val) << std::endl;
@@ -641,13 +636,13 @@ void test_common(int argc, char** argv){
 
     data::corenlp::test::parse_batch_output_line();
     data::corenlp::test::parse_batch_output();
-
 }
+
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-//    test_ygp(argc, argv);
-    test_rss(argc, argv);
+    test_ygp(argc, argv);
+//    test_rss(argc, argv);
     test_common(argc, argv);
     return 0;
 

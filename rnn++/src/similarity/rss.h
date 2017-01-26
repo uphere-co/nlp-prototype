@@ -3,6 +3,7 @@
 #include "data_source/rss.h"
 
 #include "similarity/scoring.h"
+#include "similarity/config.h"
 
 #include "utils/json.h"
 
@@ -12,6 +13,28 @@ struct Dataset;
 
 namespace data{
 namespace rss{
+
+template<typename T>
+struct ConfigKeys{
+    std::vector<T> keys={{"row_hashes"}};
+};
+
+struct Config{
+    Config(util::json_t const& config)
+            : common{config}, rss{config}
+    {}
+    engine::Config common;
+    util::ConfigT<ConfigKeys> rss;
+};
+struct Factory{
+    Factory(Config const& config) : config{config}, common{config.common} {}
+    Columns db() const;
+    DBIndexer  db_indexer() const;
+    HashIndexer hash_indexer() const;
+
+    Config config;
+    engine::SubmoduleFactory common;
+};
 
 struct Query{
     using json_t = util::json_t;
@@ -25,12 +48,13 @@ struct Query{
 };
 
 struct DBInfo{
+    using factory_t = Factory;
     using query_t = Query;
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
         data::rss::annotation_on_result(config, answers);
     }
 
-    DBInfo(util::json_t config);
+    DBInfo(factory_t const& factory);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
         return engine::rank_cut_by_unique_chunk(relevant_sents, n_cut);

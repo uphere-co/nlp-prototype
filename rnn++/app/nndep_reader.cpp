@@ -4,6 +4,7 @@
 #include "wordrep/dep_graph.h"
 #include "wordrep/word_case_corrector.h"
 
+#include "similarity/config.h"
 #include "similarity/query_engine.h"
 #include "similarity/phrase_suggestion.h"
 #include "similarity/similarity_measure.h"
@@ -109,14 +110,10 @@ void phrases_in_sentence() {
 }
 
 
-void phrases_in_sentence(util::json_t const& config) {
-    using util::io::h5read;
-    fmt::print(std::cerr, "Read {}\n",
-               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-                           config["dep_parsed_prefix"]};
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
+void phrases_in_sentence(engine::SubmoduleFactory const& factory) {
+    DepParsedTokens tokens = factory.dep_parsed_tokens();
+    WordUIDindex wordUIDs = factory.word_uid_index();
+    WordImportance importance = factory.word_importance();
     auto sents = tokens.IndexSentences();
 
     PhraseSegmenter phrase_segmenter{importance};
@@ -137,19 +134,12 @@ void phrases_in_sentence(util::json_t const& config) {
 }
 
 
-void dataset_indexing_quality(util::json_t const& config){
-    using util::io::h5read;
-    fmt::print(std::cerr, "Read {}\n",
-               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-                           config["dep_parsed_prefix"]};
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-         config["w2vmodel_name"], config["w2v_float_t"]};
-    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
+void dataset_indexing_quality(engine::SubmoduleFactory const& factory){
+    DepParsedTokens tokens = factory.dep_parsed_tokens();
+    WordUIDindex wordUIDs  = factory.word_uid_index();
+    VocaInfo voca          = factory.voca_info();
+    WordImportance importance = factory.word_importance();
     auto sents = tokens.IndexSentences();
-
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
 
     std::string word1 = "drink";
@@ -185,20 +175,12 @@ void dataset_indexing_quality(util::json_t const& config){
 
 
 
-void phrase_stats(util::json_t const& config){
-    using util::io::h5read;
-    fmt::print(std::cerr, "Read {}\n",
-               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-                           config["dep_parsed_prefix"]};
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                  config["w2vmodel_name"], config["w2v_float_t"]};
-    WordImportance importance{h5read(util::get_str(config,"word_prob_dump"))};
-
+void phrase_stats(engine::SubmoduleFactory const& factory){
+    DepParsedTokens tokens = factory.dep_parsed_tokens();
+    WordUIDindex wordUIDs  = factory.word_uid_index();
+    VocaInfo voca          = factory.voca_info();
+    WordImportance importance = factory.word_importance();
     auto sents = tokens.IndexSentences();
-
     engine::WordUsageInPhrase phrase_finder{sents, importance};
 
     auto keywords = {"air", "China", "fire"};
@@ -223,16 +205,12 @@ void phrase_stats(util::json_t const& config){
 
 }
 
-void pos_info(util::json_t const& config){
-    using util::io::h5read;
-    fmt::print(std::cerr, "Read {}\n",
-               util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-    DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")),
-                           config["dep_parsed_prefix"]};
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    POSUIDindex posUIDs{util::get_str(config,"pos_uids_dump")};
-
+void pos_info(engine::SubmoduleFactory const& factory){
+    DepParsedTokens tokens = factory.dep_parsed_tokens();
+    WordUIDindex wordUIDs  = factory.word_uid_index();
+    POSUIDindex posUIDs    = factory.pos_uid_index();
     auto sents = tokens.IndexSentences();
+
     int i=0;
     for(auto sent : sents){
         if(++i>10) break;
@@ -245,12 +223,10 @@ void pos_info(util::json_t const& config){
     }
 }
 
-void unknown_word_importance(util::json_t const& config){
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                  config["w2vmodel_name"], config["w2v_float_t"]};
-    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+void unknown_word_importance(engine::SubmoduleFactory const& factory){
+    WordUIDindex wordUIDs = factory.word_uid_index();
+    VocaInfo voca         = factory.voca_info();
+    WordImportance importance = factory.word_importance();
 
     assert(importance.score(wordrep::the_unknown_word_uid())==0.0);
 }
@@ -407,19 +383,19 @@ void show_old_foramt_word_importance(util::json_t const& config){
     }
 }
 
-void show_query_suggestion(int argc, char** argv){
-    assert(argc>2);
-    auto config = util::load_json(argv[1]);
-    std::string input = argv[2];
-    data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
+
+
+void show_query_suggestion(engine::SubmoduleFactory const& factory,
+                           std::string input){
+    data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
     auto query_str = util::string::read_whole(input);
     auto query_json = corenlp_client.from_query_content(query_str);
     data::CoreNLPjson query{query_json};
 
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    POSUIDindex posUIDs{util::get_str(config,"pos_uids_dump")};
-    ArcLabelUIDindex arclabelUIDs{util::get_str(config,"arclabel_uids_dump")};
-    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
+    WordUIDindex wordUIDs         = factory.word_uid_index();
+    POSUIDindex posUIDs           = factory.pos_uid_index();
+    ArcLabelUIDindex arclabelUIDs = factory.arclabel_uid_index();
+    WordImportance importance     = factory.word_importance();
 
     DepParsedTokens tokens{};
     tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, query);
@@ -437,11 +413,11 @@ void show_query_suggestion(int argc, char** argv){
         fmt::print(std::cerr, "==============================================\n");
     }
 }
-void recover_wrong_case_query(util::json_t const& config){
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    WordImportance importance{util::io::h5read(util::get_str(config,"word_prob_dump"))};
 
-    WordCaseCorrector did_you_mean{util::get_str(config,"word_uids_dump"), importance};
+void recover_wrong_case_query(engine::SubmoduleFactory const& factory){
+    WordUIDindex wordUIDs          = factory.word_uid_index();
+    WordImportance importance      = factory.word_importance();
+    WordCaseCorrector did_you_mean = factory.word_case_corrector(importance);
 
     auto query_str = "china safety rohs afasrqwadfqf";
     auto expected_did_you_mean = "China safety RoHS afasrqwadfqf";
@@ -455,16 +431,18 @@ void recover_wrong_case_query(util::json_t const& config){
 }
 
 void test_all(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
     dependency_graph();
     phrases_in_sentence();
-    phrases_in_sentence(config);
-    dataset_indexing_quality(config);
-    phrase_stats(config);
-    pos_info(config);
-    unknown_word_importance(config);
-    show_query_suggestion(argc, argv);
+    phrases_in_sentence(factory);
+    dataset_indexing_quality(factory);
+    phrase_stats(factory);
+    pos_info(factory);
+    unknown_word_importance(factory);
+    show_query_suggestion(factory, argv[2]);
     recover_wrong_case_query(config);
 }
 
@@ -533,31 +511,36 @@ void update_column(util::json_t const& config){
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
 //    engine::test::test_all(argc,argv);
+//    wordrep::test::foo();
 //    return 0;
 
     assert(argc>2);
-    auto config = util::load_json(argv[1]);
+    auto config_json = util::load_json(argv[1]);
     std::string input = argv[2];
+
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
+    for(auto key : factory.config.values) fmt::print(std::cerr, "{:<25} : {}\n",key.first.val, key.second);
 
 //    build_word_importance();
 //    show_old_foramt_word_importance(config);
 //    update_column(config);
-//    wordrep::test::recover_wrong_case_query(config);
 //    return 0;
 
-    data::CoreNLPwebclient corenlp_client{config["corenlp_client_script"].get<std::string>()};
+    data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
     auto raw_query_str = util::string::read_whole(input);
     auto raw_query_json = corenlp_client.from_query_content(raw_query_str);
     raw_query_json["query_str"] = raw_query_str;
 
     util::Timer timer{};
 
-    engine::QueryEngine engine{config};
+    engine::QueryEngine engine{config_json};
     timer.here_then_reset("Data loaded.");
 
     auto corrected_query = engine.preprocess_query(raw_query_json);
     auto query_str = corrected_query["did_you_mean"];
     auto query_json = corenlp_client.from_query_content(query_str);
+    query_json["query_str"] = query_str;
     fmt::print(std::cerr, "{}\n", corrected_query.dump(4));
 
     if(true){
@@ -589,13 +572,13 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    engine.annotation_on_result(config, chain_answers);
+    engine.annotation_on_result(config_json, chain_answers);
     timer.here_then_reset("Annotate query output.");
     fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
     timer.here_then_reset("Ready to process a new query.");
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
-    engine.annotation_on_result(config, stat_answer["results"]);
+    engine.annotation_on_result(config_json, stat_answer["results"]);
     timer.here_then_reset("Annotate query output.");
     fmt::print("stats_aswers:\n{}\n", stat_answer.dump(4));
     if(false){

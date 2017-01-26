@@ -17,6 +17,8 @@
 #include "wordrep/voca.h"
 #include "wordrep/indexes.h"
 
+#include "similarity/config.h"
+
 #include "utils/math.h"
 #include "utils/string.h"
 #include "utils/json.h"
@@ -115,11 +117,39 @@ void hash(){
     char cs[10] = "Hello";
     assert(sizeof(cs)==10);
 
-    uint64_t hash = xxh64::hash(reinterpret_cast<const char*> (cs), 10, wordrep::xxh64_seed);
-    fmt::print("With seed {}, hash of '{}' : {}\n", wordrep::xxh64_seed, cs, hash);
+    uint64_t hash = xxh64::hash(reinterpret_cast<const char*> (cs), 10, util::xxh64_seed);
+    fmt::print("With seed {}, hash of '{}' : {}\n", util::xxh64_seed, cs, hash);
     std::string str = "Hello";
-    assert(hash==wordrep::hash(cs, 10));
-//    assert(hash==wordrep::hash(str));
+    assert(hash==util::hash(cs, 10));
+    {
+        std::string str{"Test string."};
+        std::string str2{"Test string!"};
+        assert(util::hash(str)!=util::hash(str2));
+    }
+}
+void hash_composite(){
+    struct Foo{
+        WordUID x;
+        WordUID y;
+    };
+
+    auto x = std::make_pair<WordUID::val_t,WordUID::val_t>(1,1);
+    auto y = std::make_pair<WordUID,WordUID>(1,1);
+    auto z = std::make_pair<WordUID,WordUID>(1,1);
+    assert(&y!=&z);
+    assert(util::hash(x)==util::hash(y));
+    assert(util::hash(y)==util::hash(z));
+    Foo xx{1,1};
+    assert(util::hash(x)==util::hash(xx));
+    fmt::print("{}\n", util::hash(x));
+
+    std::vector<WordUID> xs{1,2,3,4,5,6,7};
+    std::vector<WordUID::val_t> ys{1,2,3,4,5,6,7};
+    std::vector<WordUID> xs1{1,2,3,4,5,6,7,8};
+    std::vector<WordUID> xs2{1,2,3,4,5,6,6};
+    assert(util::hash(xs)==util::hash(ys));
+    assert(util::hash(xs)!=util::hash(xs1));
+    assert(util::hash(xs)!=util::hash(xs2));
 }
 
 void uint_to_int(){
@@ -231,7 +261,7 @@ void weighted_sampling_benchmark(){
     size_t n_cut = 2;
 //    auto word_counts = word_count(std::fstream{"../rnn++/tests/data/sentence.2.corenlp"});
     WordCounter word_count;
-    auto word_counts = word_count.count(std::fstream{"news.2014.train"});
+    auto word_counts = word_count.count(std::fstream{"../rnn++/tests/data/queries.rss.short"});
     filter_inplace(word_counts, [n_cut](auto v){return v.second>n_cut;});
     auto counts = map(word_counts, [](auto x){return x.second;});
     auto uids = map(word_counts, [](auto x){return x.first;});
@@ -348,24 +378,27 @@ void voca_indexmap_spec(int argc, char** argv){
 
 }
 
-}//namespace test
 
 void test_all(int argc, char** argv){
-    test::word_uid_spec();
-    test::pos_uid_spec();
-    test::voca_indexmap_spec(argc,argv);
-    test::reverse_iterator();
-    test::string_iterator();
-    test::benchmark();
-    test::hash();
-    test::uint_to_int();
-    test::binary_find_check();
-    test::binary_find_benchmark();
-    test::container_filter();
-    test::binary_find_cell_for_cdf();
-    test::weighted_sampling_benchmark();
-    test::negative_sampling();
+    word_uid_spec();
+    pos_uid_spec();
+    voca_indexmap_spec(argc,argv);
+    reverse_iterator();
+    string_iterator();
+    benchmark();
+    hash();
+    hash_composite();
+    uint_to_int();
+    binary_find_check();
+    binary_find_benchmark();
+    container_filter();
+    binary_find_cell_for_cdf();
+    weighted_sampling_benchmark();
+    negative_sampling();
 }
+
+}//namespace test
+
 
 auto serial_word_count(std::istream&& is){
     std::string line;
@@ -521,10 +554,14 @@ void word_prob_check(){
     }
 }
 
+
+
 int main(int argc, char** argv){
-//    test_all(argc,argv);
-    word_prob_check(argc,argv);
-    word_prob_check();
+    //test::test_all(argc,argv);
+    test::hash();
+    test::hash_composite();
+//    word_prob_check(argc,argv);
+//    word_prob_check();
     return 0;
     //update_word_prob(argc,argv);
     //translate_ordered_worduid_to_hashed_worduid(argc,argv);
@@ -544,3 +581,4 @@ int main(int argc, char** argv){
         fmt::print(std::cout, "{} {}\n", elm.first, elm.second);
     return 0;
 }
+

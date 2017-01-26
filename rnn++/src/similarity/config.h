@@ -1,0 +1,59 @@
+#pragma once
+
+#include <map>
+#include <string>
+
+#include "data_source/corenlp_helper.h"
+
+#include "similarity/dataset.h"
+
+#include "wordrep/dep_parsed.h"
+#include "wordrep/word_uid.h"
+#include "wordrep/word_prob.h"
+#include "wordrep/voca_info.h"
+#include "wordrep/word_case_corrector.h"
+
+#include "utils/json.h"
+
+namespace engine{
+
+template<typename T>
+struct ConfigKeys{
+    std::vector<T> keys={{"engine_type"},
+                         {"corenlp_client_script"},
+                         {"word_uids_dump"},
+                         {"pos_uids_dump"},
+                         {"arclabel_uids_dump"},
+                         {"column_uids_dump"},
+                         {"word_prob_dump"},
+                         {"corenlp_dumps"},
+                         {"dep_parsed_store"},
+                         {"dep_parsed_prefix"},
+                         {"wordvec_store"},
+                         {"voca_name"},
+                         {"w2vmodel_name"},
+                         {"w2v_float_t"}};
+};
+
+using Config = util::ConfigT<ConfigKeys>;
+
+struct SubmoduleFactory{
+    SubmoduleFactory(Config const& config) : config{config} {}
+
+    data::CoreNLPwebclient corenlp_webclient() const;
+    wordrep::WordUIDindex word_uid_index() const;
+    wordrep::POSUIDindex pos_uid_index() const;
+    wordrep::ArcLabelUIDindex arclabel_uid_index() const;
+    wordrep::DepParsedTokens dep_parsed_tokens() const;
+    wordrep::WordImportance word_importance() const;
+    wordrep::VocaInfo voca_info() const;
+    wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
+    Dataset empty_dataset() const;
+    Dataset load_dataset() const;
+    Config config;
+};
+
+
+
+
+}//namespace engine

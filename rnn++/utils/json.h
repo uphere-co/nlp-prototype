@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <map>
+#include <cassert>
 
 #include <json/json.hpp>
 
@@ -19,5 +22,25 @@ std::optional<T> find(json_t const &json, std::string key){
 
 std::string get_str(json_t const &json, std::string key);
 int64_t get_int(json_t const &json, std::string key);
+
+template<template<class> class TKEYS>
+struct ConfigT{
+    struct Key{
+        std::string val;
+        bool operator< (Key const& rhs) const {return val < rhs.val;}
+    };
+    ConfigT(util::json_t const& config)
+            : keys(TKEYS<Key>{}.keys){
+        for(auto key : keys) values[key] = util::get_str(config, key.val);
+    }
+    std::string value(std::string key) const {
+        auto it = values.find(Key{key});
+        assert(it!=values.cend());
+        return it->second;
+    }
+
+    std::vector<Key> keys;
+    std::map<Key,std::string> values;
+};
 
 }//namespace util

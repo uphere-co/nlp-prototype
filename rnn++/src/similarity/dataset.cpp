@@ -3,23 +3,24 @@
 #include "utils/versioned_name.h"
 
 using wordrep::SentUID;
+using util::get_str;
 
 namespace engine {
 
-UIDmaps::UIDmaps(util::json_t const& config)
-        : word{config["word_uids_dump"].get<std::string>()},
-          pos{config["pos_uids_dump"].get<std::string>()},
-          arclabel{config["arclabel_uids_dump"].get<std::string>()}
+UIDmaps::UIDmaps(std::string word_uids,
+                 std::string pos_uids,
+                 std::string arclabel_uids)
+        : word{word_uids}, pos{pos_uids}, arclabel{arclabel_uids}
 {}
 
 Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid)
         : voca{std::move(voca)}, token2uid{std::move(token2uid)}
 {}
-Dataset::Dataset(json_t const &config)
-        : voca{config["wordvec_store"], config["voca_name"],
-               config["w2vmodel_name"], config["w2v_float_t"]},
-          token2uid{config},
-          tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]},
+Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
+                 wordrep::DepParsedTokens&& tokens)
+        : voca{std::move(voca)},
+          token2uid{std::move(token2uid)},
+          tokens{std::move(tokens)},
           sents{tokens.IndexSentences()},
           uid2sent{sents}
 {}

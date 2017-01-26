@@ -3,6 +3,7 @@
 #include "data_source/ygp_db.h"
 
 #include "similarity/scoring.h"
+#include "similarity/config.h"
 
 #include "utils/json.h"
 
@@ -13,6 +14,29 @@ struct Dataset;
 namespace data{
 namespace ygp{
 
+template<typename T>
+struct ConfigKeys{
+    std::vector<T> keys={{"country_uids_dump"}};
+};
+
+struct Config{
+    Config(util::json_t const& config)
+            : common{config}, ygp{config}
+    {}
+    engine::Config common;
+    util::ConfigT<ConfigKeys> ygp;
+};
+
+struct Factory{
+    Factory(Config const& config) : config{config}, common{config.common} {}
+    YGPdb db() const;
+    DBIndexer db_indexer() const;
+    DBbyCountry db_by_country() const;
+    CountryCodeAnnotator country_code_annotator() const;
+
+    Config config;
+    engine::SubmoduleFactory common;
+};
 std::vector<engine::ScoredSentence> rank_cut_per_column(
         std::vector<engine::ScoredSentence> const &relevant_sents,
         size_t n_max_per_table,
@@ -46,12 +70,13 @@ struct Query{
 };
 
 struct DBInfo{
+    using factory_t = Factory;
     using query_t = Query;
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
         data::ygp::annotation_on_result(config, answers);
     }
 
-    DBInfo(util::json_t const& config);
+    DBInfo(factory_t const& factory);
 
     auto rank_cut(std::vector<engine::ScoredSentence> const &relevant_sents, int64_t n_cut) const {
         return engine::rank_cut_by_unique_chunk(relevant_sents, n_cut);
@@ -93,7 +118,6 @@ struct DBInfo{
     DBbyCountry const per_country;
     CountryCodeAnnotator const country_tagger;
 };
-
 
 }//data::ygp
 }//data

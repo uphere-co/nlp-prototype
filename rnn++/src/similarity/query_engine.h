@@ -4,6 +4,7 @@
 #include "similarity/scoring.h"
 #include "similarity/ygp.h"
 #include "similarity/rss.h"
+#include "similarity/config.h"
 
 #include "wordrep/dep_parsed.h"
 #include "wordrep/dep_graph.h"
@@ -15,6 +16,7 @@
 #include "utils/json.h"
 
 #include "utils/variant.h"
+#include "config.h"
 
 namespace engine {
 
@@ -99,6 +101,7 @@ public:
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
 
+    QueryEngineT(typename T::factory_t const& factory);
     QueryEngineT(json_t const& config);
     QueryEngineT(QueryEngineT&& engine);
 
