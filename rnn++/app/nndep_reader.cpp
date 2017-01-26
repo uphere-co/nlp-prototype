@@ -511,7 +511,6 @@ void update_column(util::json_t const& config){
 int main(int argc, char** argv){
 //    wordrep::test::test_all(argc,argv);
 //    engine::test::test_all(argc,argv);
-//    wordrep::test::foo();
 //    return 0;
 
     assert(argc>2);

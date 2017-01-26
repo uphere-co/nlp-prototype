@@ -78,9 +78,11 @@ util::json_t get_query_suggestion(std::vector<wordrep::WordUID> const& wuids,
         for(auto pair : counts){
             auto& phrase = pair.first;
             auto phrase_usages = reprs[phrase];
-            auto max_usage_case = std::max_element(phrase_usages.cbegin(), phrase_usages.cend(),
-                                                   [](auto x, auto y){return x.second<y.second;});
-            auto repr = max_usage_case->first;
+//            auto max_usage_case = std::max_element(phrase_usages.cbegin(), phrase_usages.cend(),
+//                                                   [](auto x, auto y){return x.second<y.second;});
+            auto most_concise_usage_case = std::min_element(phrase_usages.cbegin(), phrase_usages.cend(),
+                                                   [](auto x, auto y){return x.first.size()<y.first.size();});
+            auto repr = most_concise_usage_case->first;
             //discard itself, a single word phrase.
             if(repr.uids.size()==1) continue;
             auto count = pair.second;
