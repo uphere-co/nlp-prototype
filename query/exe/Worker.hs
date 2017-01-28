@@ -41,7 +41,8 @@ registerText engine txt = do
         bstr_nlp2 <- runCoreNLP bstr_nlp1
         B.useAsCString bstr_nlp2 $ \cstr_nlp2 -> do
           r <- json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 
-          serialize r >>= unsafePackCString
+          r' <- serialize r >>= unsafePackCString
+          return $! r' 
   liftIO $ putStrLn "inside registerText"
   liftIO $ print bstr0
   (MaybeT . return . decodeStrict') bstr0
