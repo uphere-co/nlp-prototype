@@ -22,6 +22,7 @@ import qualified Data.Text.Encoding                  as TE
 import qualified Data.Text.IO                        as TIO
 import           Foreign.C.String
 import           Foreign.ForeignPtr
+import           System.IO
 --
 import           Query.Binding
 import           Query.Binding.EngineWrapper
@@ -33,10 +34,13 @@ registerText :: (MonadIO m) => EngineWrapper -> Text -> MaybeT m RegisteredSente
 registerText engine txt = do
   guard ((not . T.null) txt)
   bstr_nlp0 <- (liftIO . runCoreNLP . TE.encodeUtf8) txt
+  guard ((not . B.null) bstr_nlp0)
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
       withCString "did_you_mean" $ \did_you_mean -> do
+        B.hPutStrLn stderr "step1"
         bstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean >>= B.packCString
+        B.hPutStrLn stderr "step2"
         bstr_nlp2 <- runCoreNLP bstr_nlp1        
         B.useAsCString bstr_nlp1 $ \cstr_nlp1 -> do
           -- bstr_nlp1 <- packCString cstr_nlp1
