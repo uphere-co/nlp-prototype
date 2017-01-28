@@ -36,12 +36,12 @@ registerText engine txt = do
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
       withCString "did_you_mean" $ \did_you_mean -> do
-        cstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean
-        bstr_nlp1 <- unsafePackCString cstr_nlp1
-        bstr_nlp2 <- runCoreNLP bstr_nlp1
-        B.useAsCString bstr_nlp2 $ \cstr_nlp2 -> do
-          r <- json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 
-          serialize r >>= unsafePackCString
+        bstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean >>= B.packCString
+        bstr_nlp2 <- runCoreNLP bstr_nlp1        
+        B.useAsCString bstr_nlp1 $ \cstr_nlp1 -> do
+          -- bstr_nlp1 <- packCString cstr_nlp1
+          B.useAsCString bstr_nlp2 $ \cstr_nlp2 ->
+            json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 >>= serialize >>= B.packCString
   liftIO $ putStrLn "inside registerText"
   liftIO $ print bstr0
   (MaybeT . return . decodeStrict') bstr0
