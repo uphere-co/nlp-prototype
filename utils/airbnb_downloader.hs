@@ -6,6 +6,7 @@ import qualified Data.ByteString      as B
 import qualified Data.ByteString.Lazy as BL
 import           Data.List                   (isInfixOf,isPrefixOf)
 import           Data.List.Split             (splitOn)
+import           Data.Monoid                 (mconcat)
 import           Network.Curl
 import           Network.HTTP
 import           Network.HTTP.Client
@@ -38,5 +39,5 @@ main = do
         initReq <- parseRequest f'
         let req = initReq { method = "GET" }
         response <- httpLbs req man
-        let filename = last $ splitOn "/" f'
+        let filename = mconcat $ reverse $(take 6) $ reverse $ splitOn "/" f'
         BL.writeFile filename (responseBody response)
