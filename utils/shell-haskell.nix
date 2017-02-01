@@ -11,7 +11,10 @@ let
     hsenv = newhaskellPackages.ghcWithPackages (p: with p; [
               cabal-install
               curl
+              download
               HTTP
+              http-client
+              split
               tagsoup
               ]);
 
