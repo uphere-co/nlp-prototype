@@ -7,6 +7,7 @@
 #include "data_source/db.h"
 #include "data_source/rss.h"
 
+#include "similarity/query_types.h"
 #include "similarity/query_engine.h"
 #include "similarity/phrase_suggestion.h"
 #include "similarity/similarity_measure.h"
@@ -433,10 +434,6 @@ struct ProcessQuerySents{
     ProcessQuerySent processor;
 };
 
-struct SentenceQuery{
-    wordrep::Sentence sent;
-    data::QuerySentInfo info;
-};
 
 struct ProcessChainQuery{
     ProcessChainQuery(wordrep::POSUIDindex const& posUIDs,
@@ -585,6 +582,10 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
+        return {sent, construct_query_info(sent, db.token2uid.word, word_importance)};
+    });
+
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
     fmt::print(std::cerr, "Find among {} sents\n", candidate_sents.size());
     auto maybe_sents = util::find<std::vector<int64_t>>(ask, "sents");
@@ -614,12 +615,6 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
         answers.push_back(answer);
     };
 
-    std::vector<SentenceQuery> queries;
-    for(auto sent: query_sents) {
-        data::QuerySentInfo info = construct_query_info(sent, db.token2uid.word, word_importance);
-        queries.push_back(SentenceQuery{sent, info});
-    }
-
     ProcessChainQuery processor{db.token2uid.pos, db.uid2sent, dists_cache};
     processor(queries, candidate_sents, per_sent);
 
@@ -636,6 +631,9 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
+        return {sent, construct_query_info(sent, db.token2uid.word, word_importance)};
+    });
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
 
     std::map<SentUID, std::map<WordUID,std::map<WordUID,std::vector<SentUID>>>> results_by_match;
@@ -695,12 +693,6 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         collect_query_result(query_sent,query_sent_info, relevant_sents);
         get_query_suggestions(query_sent, relevant_sents);
     };
-
-    std::vector<SentenceQuery> queries;
-    for(auto sent: query_sents) {
-        data::QuerySentInfo info = construct_query_info(sent, db.token2uid.word, word_importance);
-        queries.push_back(SentenceQuery{sent, info});
-    }
 
     ProcessChainQuery processor{db.token2uid.pos, db.uid2sent, dists_cache};
     processor(queries, candidate_sents, op_per_sent);

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "data_source/ygp_db.h"
-
 #include "similarity/scoring.h"
 #include "similarity/config.h"
+
+#include "data_source/ygp_db.h"
 
 #include "utils/json.h"
 
@@ -46,6 +46,7 @@ std::vector<engine::ScoredSentence> rank_cut_per_row_index(
         size_t n_max_per_table,
         DBIndexer const &ygp_indexer,
         ygp::YGPdb const &ygpdb);
+
 
 struct Query{
     using json_t = util::json_t;
