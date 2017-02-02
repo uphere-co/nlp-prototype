@@ -32,6 +32,7 @@ struct Factory{
     YGPdb db() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;
+    std::vector<std::string> country_list() const;
 
     Config config;
     engine::SubmoduleFactory common;

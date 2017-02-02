@@ -262,11 +262,10 @@ void recover_wrong_case_query(engine::SubmoduleFactory const& factory){
     auto expected_did_you_mean = "China safety RoHS afasrqwadfqf";
     auto query_words = util::string::split(query_str);
     auto corrected_words = util::map(query_words, [&did_you_mean](auto word){return did_you_mean.try_correct(word);});
-
     auto corrected_query = util::string::join(corrected_words, " ");
-    assert(corrected_query==expected_did_you_mean);
     fmt::print(std::cerr, "Original query : {}\n", query_str);
     fmt::print(std::cerr, "Did you mean   : {}\n", corrected_query);
+    assert(corrected_query==expected_did_you_mean);
 }
 
 void test_all(int argc, char** argv){
@@ -281,7 +280,7 @@ void test_all(int argc, char** argv){
     phrase_stats(factory);
     pos_info(factory);
     show_query_suggestion(factory, argv[2]);
-    recover_wrong_case_query(config);
+    recover_wrong_case_query(factory);
 }
 
 }//namespace wordrep::test
@@ -354,6 +353,7 @@ int main(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
     std::string input = argv[2];
+
 
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};

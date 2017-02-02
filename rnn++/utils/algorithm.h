@@ -77,6 +77,15 @@ template<typename T, typename TO>
 auto sort(T &elms, TO const& op){
     return std::sort(elms.begin(), elms.end(), op);
 }
+
+template<typename T, typename OP>
+auto find_if(T const &elms, OP const &op){
+    return std::find_if(elms.cbegin(), elms.cend(), op);
+}
+template<typename T, typename OP>
+auto find_if(T &elms, OP const &op){
+    return std::find_if(elms.begin(), elms.end(), op);
+}
 template<typename T>
 auto find(T const &elms, typename T::value_type const &elm){
     return std::find(elms.cbegin(), elms.cend(), elm);
@@ -244,6 +253,20 @@ auto get_keys(std::map<TK,TV> const& vs){
 template<typename TK, typename TV>
 auto get_values(std::map<TK,TV> const& vs){
     std::vector<TV> values;
+    values.reserve(vs.size());
+    for(auto const &elm : vs) values.push_back(elm.second);
+    return values;
+}
+template<typename T>
+auto get_keys(T const& vs){
+    std::vector<typename T::value_type::first_type> keys;
+    keys.reserve(vs.size());
+    for(auto const &elm : vs) keys.push_back(elm.first);
+    return keys;
+}
+template<typename T>
+auto get_values(T const& vs){
+    std::vector<typename T::value_type::second_type> values;
     values.reserve(vs.size());
     for(auto const &elm : vs) values.push_back(elm.second);
     return values;
