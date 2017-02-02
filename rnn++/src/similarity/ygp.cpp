@@ -11,6 +11,7 @@
 
 using util::io::h5read;
 using wordrep::Sentence;
+using wordrep::Sentences;
 using engine::ScoredSentence;
 using engine::plain_rank_cut;
 
@@ -113,10 +114,10 @@ DBInfo::DBInfo(Factory const& factory)
           country_tagger{factory.country_code_annotator()}
 {}
 
-std::vector<wordrep::Sentence> DBInfo::get_query_sents(
+std::vector<Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,
-        wordrep::Sentences const &query_sent_uids,
-        wordrep::Sentences const &db_sent_uids) const{
+        Sentences const &query_sent_uids,
+        Sentences const &db_sent_uids) const{
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = query_sent_uids.find(uid);
@@ -126,7 +127,7 @@ std::vector<wordrep::Sentence> DBInfo::get_query_sents(
     }
     return query_sents;
 }
-std::vector<wordrep::Sentence> DBInfo::get_candidate_sents(
+std::vector<Sentence> DBInfo::get_candidate_sents(
         query_t const& query, engine::Dataset const& dataset) const{
     std::cerr<<"Find for a query in country DB of : ";
     for(auto const &country : query.countries) std::cerr<<country << ", ";

@@ -148,7 +148,6 @@ void build_word_importance(){
                    x.second.full, x.second.summary, x.second.both, score(x),
                    std::log(x.second.ratio), std::log(x.second.both));
     }
-    return ;
     util::TypedPersistentVector<WordUID> uids{"prob.word_uid", util::map(ratio_per_uids, [](auto x){return x.first;})};
     util::PersistentVector<float,CaseCount::float_t> ratios{"prob.ratio", util::map(ratio_per_uids, [](auto x){return x.second.ratio;})};
 
