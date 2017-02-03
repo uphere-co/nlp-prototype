@@ -91,4 +91,5 @@ template<typename T, typename TRAW>
 std::vector<std::pair<T,T>> zip(PersistentVector<T,TRAW> &orig, PersistentVector<T,TRAW> const &elms){
     return util::zip(orig.vals, elms.vals);
 }
+
 }//namespace util

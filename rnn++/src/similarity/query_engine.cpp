@@ -402,35 +402,29 @@ struct ProcessQuerySent{
 
 
 struct ProcessQuerySents{
-    ProcessQuerySents(wordrep::WordUIDindex const& wordUIDs,
-                      wordrep::POSUIDindex const& posUIDs,
-                      wordrep::WordImportance const& word_importance,
+    ProcessQuerySents(wordrep::POSUIDindex const& posUIDs,
                       WordSimCache& dists_cache)
-            : wordUIDs{wordUIDs}, word_importance{word_importance},
-              processor{dists_cache, posUIDs}
+            : processor{dists_cache, posUIDs}
     {}
 
     template<typename OP>
-    void operator()(std::vector<wordrep::Sentence> const &query_sents,
+    void operator()(std::vector<SentenceQuery> const &query_sents,
                     std::vector<wordrep::Sentence> const &candidate_sents,
                     OP const &op_per_sent) {
         util::Timer timer{};
         tbb::task_group g;
-        for(auto const &query_sent : query_sents){
-            if(query_sent.empty()) continue;
-            g.run([&timer,query_sent,&op_per_sent,&candidate_sents, this](){
-                data::QuerySentInfo info = construct_query_info(query_sent, wordUIDs, word_importance);
+        for(auto const &query : query_sents){
+            if(query.sent.empty()) continue;
+            g.run([&timer,query,&op_per_sent,&candidate_sents, this](){
                 std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
-                auto relevant_sents = processor(query_sent, info.cutoffs, candidate_sents);
-                op_per_sent(query_sent, info, relevant_sents);
+                auto relevant_sents = processor(query.sent, query.info.cutoffs, candidate_sents);
+                op_per_sent(query.sent, query.info, relevant_sents);
             });
         }
         timer.here_then_reset("All sentences in QuerySents are processed.");
         g.wait();
     }
 
-    wordrep::WordUIDindex const& wordUIDs;
-    wordrep::WordImportance const& word_importance;
     ProcessQuerySent processor;
 };
 
@@ -553,10 +547,14 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
+    auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
+        return {sent, construct_query_info(sent, db.token2uid.word, word_importance)};
+    });
+
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
     fmt::print(std::cerr, "Find among {} sents\n", candidate_sents.size());
 
-    ProcessQuerySents query_processor{db.token2uid.word, db.token2uid.pos, word_importance, dists_cache};
+    ProcessQuerySents query_processor{db.token2uid.pos, dists_cache};
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
@@ -570,7 +568,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
-    query_processor(query_sents, candidate_sents, per_sent);
+    query_processor(queries, candidate_sents, per_sent);
     return to_json(answers.to_vector());
 }
 

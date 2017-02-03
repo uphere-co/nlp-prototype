@@ -29,6 +29,9 @@ DBbyCountry Factory::db_by_country() const {
 CountryCodeAnnotator Factory::country_code_annotator() const {
     return {util::get_latest_version(config.ygp.value("country_uids_dump")).fullname};
 }
+std::vector<std::string> Factory::country_list() const{
+    return util::string::readlines(util::get_latest_version(config.ygp.value("country_uids_dump")).fullname);
+}
 
 //It returns top N results per (col_uid) each.
 std::vector<ScoredSentence> rank_cut_per_column(
