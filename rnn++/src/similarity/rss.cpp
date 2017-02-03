@@ -15,17 +15,14 @@ namespace rss{
 Columns Factory::db() const{
     return {config.common.value("column_uids_dump")};
 };
-DBIndexer Factory::db_indexer() const{
-    return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
-            config.common.value("dep_parsed_prefix")};
-};
+
 HashIndexer Factory::hash_indexer() const{
     return {config.rss.value("row_hashes")};
 }
 
 DBInfo::DBInfo(Factory const& factory)
         :db{factory.db()},
-         indexer{factory.db_indexer()}
+         indexer{factory.common.db_indexer()}
 {}
 
 std::vector<wordrep::Sentence> DBInfo::get_query_sents(

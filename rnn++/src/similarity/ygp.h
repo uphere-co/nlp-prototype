@@ -1,9 +1,9 @@
 #pragma once
 
-#include "data_source/ygp_db.h"
-
 #include "similarity/scoring.h"
 #include "similarity/config.h"
+
+#include "data_source/ygp_db.h"
 
 #include "utils/json.h"
 
@@ -30,7 +30,6 @@ struct Config{
 struct Factory{
     Factory(Config const& config) : config{config}, common{config.common} {}
     YGPdb db() const;
-    DBIndexer db_indexer() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;
 
@@ -47,6 +46,7 @@ std::vector<engine::ScoredSentence> rank_cut_per_row_index(
         size_t n_max_per_table,
         DBIndexer const &ygp_indexer,
         ygp::YGPdb const &ygpdb);
+
 
 struct Query{
     using json_t = util::json_t;

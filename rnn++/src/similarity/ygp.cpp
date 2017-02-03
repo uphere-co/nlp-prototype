@@ -11,6 +11,7 @@
 
 using util::io::h5read;
 using wordrep::Sentence;
+using wordrep::Sentences;
 using engine::ScoredSentence;
 using engine::plain_rank_cut;
 
@@ -20,10 +21,7 @@ namespace ygp{
 YGPdb Factory::db() const {
     return {config.common.value("column_uids_dump")};
 };
-DBIndexer Factory::db_indexer() const {
-    return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
-            config.common.value("dep_parsed_prefix")};
-};
+
 DBbyCountry Factory::db_by_country() const {
     return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
             util::get_latest_version(config.ygp.value("country_uids_dump")).fullname};
@@ -111,15 +109,15 @@ std::vector<ScoredSentence> rank_cut_per_row_index(
 }
 DBInfo::DBInfo(Factory const& factory)
         : db{factory.db()},
-          indexer{factory.db_indexer()},
+          indexer{factory.common.db_indexer()},
           per_country{factory.db_by_country()},
           country_tagger{factory.country_code_annotator()}
 {}
 
-std::vector<wordrep::Sentence> DBInfo::get_query_sents(
+std::vector<Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,
-        wordrep::Sentences const &query_sent_uids,
-        wordrep::Sentences const &db_sent_uids) const{
+        Sentences const &query_sent_uids,
+        Sentences const &db_sent_uids) const{
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
         auto sent = query_sent_uids.find(uid);
@@ -129,7 +127,7 @@ std::vector<wordrep::Sentence> DBInfo::get_query_sents(
     }
     return query_sents;
 }
-std::vector<wordrep::Sentence> DBInfo::get_candidate_sents(
+std::vector<Sentence> DBInfo::get_candidate_sents(
         query_t const& query, engine::Dataset const& dataset) const{
     std::cerr<<"Find for a query in country DB of : ";
     for(auto const &country : query.countries) std::cerr<<country << ", ";

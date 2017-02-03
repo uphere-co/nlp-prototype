@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include <fmt/printf.h>
 
@@ -17,6 +18,7 @@ using util::map;
 
 namespace{
 auto ratio_to_score = [](auto ratio){
+//    return ratio>0.0? std::log(ratio):0.0;
     auto factor = ratio+0.001;
     factor = factor<1.0? 1.0: factor;
     return 0.9*(1- 1/(factor));
