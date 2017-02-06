@@ -292,12 +292,20 @@ std::vector<data::PerSentQueryResult> write_output(
 util::json_t to_json(std::vector<PerSentQueryResult> const &results){
     util::json_t answer{};
     answer["score"]=util::json_t::array();
-    answer["result_sent_country"]=util::json_t::array();
-    answer["result_table_name"]=util::json_t::array();
-    answer["result_column_name"]=util::json_t::array();
+    answer["result_sent_country"]= util::json_t::array();
+    answer["result_table_name"]  = util::json_t::array();
+    answer["result_column_name"] = util::json_t::array();
     answer["result_index_col_name"]=util::json_t::array();
-    answer["highlight_offset"]=util::json_t::array();
-    answer["clip_offset"]=util::json_t::array();
+    answer["highlight_offset"]   = util::json_t::array();
+    answer["clip_offset"]        = util::json_t::array();
+    answer["score_with_offset"]  = util::json_t::array();
+
+    answer["result_sent_uid"]    = util::json_t::array();
+    answer["result_row_uid"]     = util::json_t::array();
+    answer["result_row_idx"]     = util::json_t::array();
+    answer["result_column_uid"]  = util::json_t::array();
+    answer["result_offset"]      = util::json_t::array();
+
     for(auto const &result : results){
         answer["score"].push_back(result.score);
         answer["result_sent_country"].push_back(result.country);
