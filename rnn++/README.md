@@ -114,7 +114,7 @@ time cat news.2014.train  | nc mark 22224 > a
 # Get short sentences from YGP db
 ./ygpdb_dump c | awk 'NF>2&&NF<10{print }' | head -n 1000 > queries.ygp.short
 # Get short sentences from news summaries
-find ~/word2vec/NYT.text/ -name '*.summary' | while read file; do cat $file; echo ""; done | awk 'NF>2&&NF<20{print }' | head -n 1000 > queries.rss.short
+find ~/word2vec/NYT.text/ -name '*.summary' | xargs awk '{print }' | awk 'NF>2&&NF<20{print }' | head -n 1000 > queries.rss.short
 # Run stress test
 ./stress_query_engine config.rss.json queries.rss.short >a 2>b
 ./stress_query_engine config.ygp.json queries.ygp.short >a 2>b
@@ -133,7 +133,7 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 cat ygp.text | ./word_count > ygp.word_count
 cat ygp.word_count | ./word_count_collect config.ygp.json > ygp.new_words
 ## RSS case:
-find ~/word2vec/NYT.text/ -name '*.*' -not -path '/home/jihuni/word2vec/NYT.text/' | while read file; do cat $file; echo ""; done | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text
+find ~/word2vec/NYT.text/ -name '*.*' -not -path '/home/jihuni/word2vec/NYT.text/' | xargs awk '{print }' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text
 cat rss.text | ./word_count > rss.word_count
 cat rss.word_count | ./word_count_collect config.rss.json > rss.new_words
 ```
@@ -141,6 +141,14 @@ cat rss.word_count | ./word_count_collect config.rss.json > rss.new_words
 ```
 cat ygp.new_words | cut -d' ' -f1 | ./word_context config.ygp.json > b
 ```
+
+### Parsing large number of HTML dump of news articless
+```
+#Split files into chunks
+ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
+```
+
+
 
 ## Build tests
 ```
