@@ -202,10 +202,14 @@ public:
             DPTokenIndex tidx = pair.second;
             auto j = diff(tidx, query_sent.front());
             val_t score{0.0};
-            if(cutoffs[j]<0.4) continue;
             auto query_word = query_sent.tokens->word(tidx);
             for(auto i : sent) {
                 auto word = sent.tokens->word(i);
+                if(word==query_word) {
+                    //Even if the word is unknown for query engine, it assigns a small score for exact matches.
+                    score += wordrep::WordImportance::low_cutoff * 0.1;
+                    scores.set(j, tidx, i, score);
+                }
                 auto dependent_score = similarity(query_word, word);
                 if(is_noun(*query_sent.tokens, tidx)) dependent_score = noun_rescore(dependent_score);
                 auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
@@ -213,7 +217,6 @@ public:
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
                         score = tmp;
-//                        scores[j] = {i, score};
                         scores.set(j, tidx, i, score);
                     }
                 } else {
@@ -228,7 +231,6 @@ public:
                     if(tmp>score){
                         score = tmp;
                         scores.set(j, tidx, i, score);
-//                        scores[j] = {i, score};
                     }
                 }
             }
