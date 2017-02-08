@@ -125,6 +125,8 @@ main = do
     Left str -> print str
     Right ys -> do
       let lst = do y <- ys
+                   let t = toplevel_type y
+                   -- guard (t /= "item")
                    let ml = englishLabel y
                    l <- maybeToList ml
                    c <- fmap listToMaybe $ HM.elems (toplevel_claims y)
@@ -133,8 +135,8 @@ main = do
                      Just x -> do
                        let s = claim_mainsnak x
                            p = snak_property s
-                       return (l,p)
-      mapM_ (\(l,p) -> TF.print "{} {}\n" (l,p)) lst
+                       return (l,t,p)
+      mapM_ (TF.print "{},{},{}\n") lst
 
 englishLabel :: TopLevel -> Maybe Text
 englishLabel = fmap lv_value . listToMaybe . filter (\l -> lv_language l == "en") . HM.elems . toplevel_labels 
