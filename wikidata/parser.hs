@@ -25,12 +25,29 @@ instance FromJSON LangValue where
                             <*> (o .: "value")
   parseJSON invalid = AT.typeMismatch "LangValue" invalid
 
+data Claim = Claim { claim_id :: Text
+                   , claim_mainsnak :: Value
+                   , claim_type :: Text
+                   , claim_rank :: Text
+                   , claim_qualifiers :: Maybe Value
+                   , claim_references :: Maybe [Value]
+                   } deriving (Show, Eq)
+
+instance FromJSON Claim where
+  parseJSON (Object o) = Claim <$> (o .: "id")
+                               <*> (o .: "mainsnak")
+                               <*> (o .: "type")
+                               <*> (o .: "rank")
+                               <*> ((Just <$> (o .: "qualifiers")) <|> return Nothing)
+                               <*> ((Just <$> (o .: "references")) <|> return Nothing)
+  parseJSON invalid = AT.typeMismatch "Claim" invalid
+
 data TopLevel = TopLevel { toplevel_id :: Text
                          , toplevel_type :: Text
                          , toplevel_labels :: HM.HashMap Text LangValue
                          , toplevel_descriptions :: HM.HashMap Text LangValue
                          , toplevel_aliases :: HM.HashMap Text [LangValue]
-                         , toplevel_claims :: Value
+                         , toplevel_claims :: HM.HashMap Text [Claim]
                          , toplevel_sitelinks :: Value
                          , toplevel_lastrevid :: Maybe Int
                          , toplevel_modified :: Maybe Text
@@ -40,9 +57,9 @@ instance FromJSON TopLevel where
   parseJSON (Object o) =
     TopLevel <$> (o .: "id")
              <*> (o .: "type")
-             <*> (o .: "labels" >>= \(Object l) -> traverse parseJSON l)
-             <*> (o .: "descriptions" >>= \(Object d) -> traverse parseJSON d)
-             <*> (o .: "aliases")
+             <*> (o .: "labels") 
+             <*> (o .: "descriptions") 
+             <*> (o .: "aliases") 
              <*> (o .: "claims")
              <*> (o .: "sitelinks")
              <*> ((Just <$> (o .: "lastrevid")) <|> return Nothing )
@@ -77,11 +94,11 @@ main = do
   putStrLn "wikidata analysis"
   lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
 
-  let x = evalState (runEitherT (listChunk 1)) lbstr
+  let x = evalState (runEitherT (listChunk 100)) lbstr
   case x of
     Left str -> print str
     Right ys -> do
-      let y = head ys
-      print (toplevel_labels y)
+      let y = ys !! 99
+      print (toplevel_claims y)
       -- mapM_ print xs -- (length xs)
 
