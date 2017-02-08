@@ -7,7 +7,7 @@ let hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inher
     newHaskellPackages = haskellPackages.override { overrides = self: super: hsconfig self super; };
 
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
-              aeson either
+              aeson either text-format
             ]);
 in stdenv.mkDerivation {
   name = "wikidata-dev";

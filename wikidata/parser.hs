@@ -14,9 +14,11 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Char                        (isSpace)
 import qualified Data.HashMap.Strict        as HM
 import           Data.Maybe                       (maybeToList, listToMaybe)
+import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
+import qualified Data.Text.Format           as TF
+import qualified Data.Text.Lazy.IO          as TLIO
 
 data LangValue = LV { lv_language :: Text
                     , lv_value :: Text
@@ -123,13 +125,18 @@ main = do
     Left str -> print str
     Right ys -> do
       let lst = do y <- ys
-                   -- l <- HM.elems (toplevel_labels y)
                    let ml = englishLabel y
                    l <- maybeToList ml
-                   -- qguard (lv_language l == "en")
-                   let cs = (toplevel_claims y)
-                   return (l, cs)
-      mapM_ (\x -> putStrLn "=========" >> print x) lst
+                   c <- fmap listToMaybe $ HM.elems (toplevel_claims y)
+                   case c of
+                     Nothing -> []
+                     Just x -> do
+                       let s = claim_mainsnak x
+                           p = snak_property s
+                       return (l,p)
+      mapM_ (\(l,p) -> TF.print "{} {}\n" (l,p)) lst
 
 englishLabel :: TopLevel -> Maybe Text
 englishLabel = fmap lv_value . listToMaybe . filter (\l -> lv_language l == "en") . HM.elems . toplevel_labels 
+
+
