@@ -8,29 +8,47 @@
 
 using util::get_str;
 using util::find;
+using util::has_key;
 
 void count(std::istream&& is){
     tbb::task_group g;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
         auto& chars =  buffer.value();
-        g.run([chars{std::move(chars)}](){
+//        g.run([chars{std::move(chars)}](){
             std::stringstream ss;
             ss.str(chars.data());
             auto lines = util::string::readlines(std::move(ss));
+
+            std::stringstream items;
             for(auto& line : lines){
                 if(line.back()!=',') continue;
                 line.back() = ' ';
                 auto elm = util::json_t::parse(line);
-                std::stringstream ss;
-                fmt::print(ss, "{}\t{}", get_str(elm,"id"), get_str(elm,"type"));
+                auto id = get_str(elm,"id");
+                auto type = get_str(elm,"type");
                 auto maybe_label = util::find<std::string>(elm["labels"]["en"], "value");
-                if(maybe_label) {
-                    fmt::print(ss, "\t{}", maybe_label.value());
-                    for(auto& x : elm["aliases"]["en"]) fmt::print(ss, "\t{}", get_str(x,"value"));
+
+                std::stringstream head;
+                fmt::print(head, "{}\t{}\t", id, type);
+                if(has_key(elm["claims"], "P31")){
+                    fmt::print(head, "P31");
+                    for(auto& x : elm["claims"]["P31"])
+                        fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
                 }
-                fmt::print("{}\n", ss.str());
+                if (has_key(elm["claims"], "P279")){
+                    fmt::print(head, "P279");
+                    for(auto& x : elm["claims"]["P279"])
+                        fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
+                }
+
+                if(maybe_label) {
+                    fmt::print(items, "{}\t{}\n", head.str(), maybe_label.value());
+                    for(auto& x : elm["aliases"]["en"])
+                        fmt::print(items, "{}\t{}\n", id, get_str(x,"value"));
+                }
             }
-        });
+            fmt::print("{}", items.str());
+//        });
     }
     g.wait();
 }
