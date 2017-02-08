@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <istream>
 
 #include "utils/span.h"
 #include "utils/optional.h"
@@ -14,6 +15,8 @@ std::string strip(std::string const& str);
 std::string tolower(std::string str);
 
 std::vector<std::string> readlines(std::string file);
+std::vector<std::string> readlines(std::istream &&is);
+
 std::string read_whole(std::string file);
 template<typename T>
 std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){

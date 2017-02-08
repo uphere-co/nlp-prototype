@@ -15,9 +15,13 @@ using json_t = nlohmann::json;
 json_t  load_json(std::string filename);
 
 template<typename T>
-std::optional<T> find(json_t const &json, std::string key){
+std::optional<T> find(json_t const &json, std::string const& key){
     if(json.find(key) != json.end()) return json[key].get<T>();
     return {};
+}
+
+inline bool has_key(json_t const& json, std::string const& key){
+    return json.find(key) != json.end();
 }
 
 std::string get_str(json_t const &json, std::string key);
