@@ -2,7 +2,7 @@
 
 module WikiData.Type where
 
-import           Control.Applicative              ((<|>))
+import           Control.Applicative              ((<|>),optional)
 import           Data.Aeson
 import qualified Data.Aeson.Types           as AT
 import qualified Data.HashMap.Strict        as HM
@@ -25,10 +25,10 @@ data Snak = Snak { snak_snaktype :: Text
                  } deriving (Show, Eq)
 
 instance FromJSON Snak where
-  parseJSON (Object o) = Snak <$> (o .: "snaktype")
-                              <*> (o .: "property")
-                              <*> ((Just <$> (o .: "datatype")) <|> return Nothing)
-                              <*> ((Just <$> (o .: "datavalue")) <|> return Nothing)
+  parseJSON (Object o) = Snak <$> o .: "snaktype"
+                              <*> o .: "property"
+                              <*> optional (o .: "datatype")
+                              <*> optional (o .: "datavalue")
   parseJSON invalid = AT.typeMismatch "Snak" invalid
 
 data Reference = Ref { ref_hash :: Text
@@ -36,8 +36,8 @@ data Reference = Ref { ref_hash :: Text
                      } deriving (Show, Eq)
 
 instance FromJSON Reference where
-  parseJSON (Object o) = Ref <$> (o .: "hash")
-                              <*> (o .: "snaks")
+  parseJSON (Object o) = Ref <$> o .: "hash"
+                             <*> o .: "snaks"
   parseJSON invalid = AT.typeMismatch "Reference" invalid
 
 data Claim = Claim { claim_id :: Text
@@ -49,12 +49,12 @@ data Claim = Claim { claim_id :: Text
                    } deriving (Show, Eq)
 
 instance FromJSON Claim where
-  parseJSON (Object o) = Claim <$> (o .: "id")
-                               <*> (o .: "mainsnak")
-                               <*> (o .: "type")
-                               <*> (o .: "rank")
-                               <*> ((Just <$> (o .: "qualifiers")) <|> return Nothing)
-                               <*> ((Just <$> (o .: "references")) <|> return Nothing)
+  parseJSON (Object o) = Claim <$> o .: "id"
+                               <*> o .: "mainsnak"
+                               <*> o .: "type"
+                               <*> o .: "rank"
+                               <*> optional (o .: "qualifiers")
+                               <*> optional (o .: "references")
   parseJSON invalid = AT.typeMismatch "Claim" invalid
 
 data TopLevel = TopLevel { toplevel_id :: Text
@@ -70,14 +70,14 @@ data TopLevel = TopLevel { toplevel_id :: Text
 
 instance FromJSON TopLevel where
   parseJSON (Object o) =
-    TopLevel <$> (o .: "id")
-             <*> (o .: "type")
-             <*> (o .: "labels") 
-             <*> (o .: "descriptions") 
-             <*> (o .: "aliases") 
-             <*> (o .: "claims")
-             <*> (o .: "sitelinks")
-             <*> ((Just <$> (o .: "lastrevid")) <|> return Nothing )
-             <*> ((Just <$> (o .: "modified")) <|> return Nothing)
+    TopLevel <$> o .: "id"
+             <*> o .: "type"
+             <*> o .: "labels" 
+             <*> o .: "descriptions"
+             <*> o .: "aliases" 
+             <*> o .: "claims"
+             <*> o .: "sitelinks"
+             <*> optional (o .: "lastrevid")
+             <*> optional (o .: "modified")
   parseJSON invalid = AT.typeMismatch "TopLevel" invalid
    
