@@ -120,6 +120,10 @@ add_executable(index_words app/index_words
                ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
+add_executable(wikidata_etl app/wikidata_etl
+        ${util_files} ${wordrep_files})
+target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param  ${util_files} ${wordrep_files})
 target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)

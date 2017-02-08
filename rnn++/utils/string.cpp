@@ -39,12 +39,14 @@ std::string tolower(std::string str){
     return str;
 }
 
-
 std::vector<std::string> readlines(std::string file){
-    std::ifstream val{file};
+    std::ifstream is{file};
+    return readlines(std::move(is));
+}
+std::vector<std::string> readlines(std::istream &&is){
     std::vector<std::string> lines;
     std::string line;
-    while(std::getline(val, line)) lines.push_back(line);
+    while(std::getline(is, line)) lines.push_back(line);
     return lines;
 }
 
