@@ -6,6 +6,7 @@ import           Control.Applicative              ((<|>),optional)
 import           Data.Aeson
 import qualified Data.Aeson.Types           as AT
 import qualified Data.HashMap.Strict        as HM
+import           Data.Maybe                       (listToMaybe)
 import           Data.Text                        (Text)
 
 
@@ -80,4 +81,8 @@ instance FromJSON TopLevel where
              <*> optional (o .: "lastrevid")
              <*> optional (o .: "modified")
   parseJSON invalid = AT.typeMismatch "TopLevel" invalid
-   
+
+
+englishLabel :: TopLevel -> Maybe Text
+englishLabel = fmap lv_value . listToMaybe . filter (\l -> lv_language l == "en") . HM.elems . toplevel_labels 
+

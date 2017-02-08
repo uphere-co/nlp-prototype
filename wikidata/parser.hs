@@ -1,26 +1,36 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           Control.Monad                    (guard,join,replicateM)
+import           Control.Monad                    (forever,guard,join,replicateM,when)
+import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Trans.Either
+import           Control.Monad.Trans.Resource     (MonadResource,runResourceT)
 import           Control.Monad.Trans.State        (State,runState,evalState,execState)
 import           Control.Monad.State.Class
 import           Data.Aeson
 import qualified Data.Aeson.Types           as AT
 import qualified Data.Attoparsec.Lazy       as A
 import           Data.Attoparsec.Types
+import           Data.ByteString.Char8            (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Char                        (isSpace)
+import           Data.Conduit
+import qualified Data.Conduit.Binary        as CB (lines,sourceFile)
+import qualified Data.Conduit.List          as CL (consume,isolate,take)
+import           Data.Foldable                    (forM_)
 import qualified Data.HashMap.Strict        as HM
 import           Data.Maybe                       (maybeToList, listToMaybe)
 import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Format           as TF
 import qualified Data.Text.Lazy.IO          as TLIO
+import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
 
+
+{- 
 extractTopN :: Int -> EitherT String (State BL.ByteString) [TopLevel]
 extractTopN n = do
   str <- get
@@ -42,12 +52,56 @@ extractTopN n = do
         case x of
           AT.Error msg -> left msg
           AT.Success v -> put str' >> return v
-    
+-} 
+
+count :: (MonadIO m) => Int -> Sink a m ()
+count !n =
+  (await >>=) $ mapM_ $ \_ -> do
+    when (n `mod` 1000 == 0) $ liftIO $ print n
+    count (n+1)
+
+extract1TL :: MonadResource m => Conduit ByteString m (Either String TopLevel)
+extract1TL = do
+  mstr <- await
+  case mstr of
+    Nothing -> yield (Left "not correct json")
+    Just str -> do 
+      case A.parse json (BL.fromStrict str) of
+        A.Fail _ _ msg -> yield (Left msg)
+        A.Done str' v -> do
+          let x :: AT.Result TopLevel = AT.parse parseJSON v
+          case x of
+            AT.Error msg -> yield (Left msg)
+            AT.Success v -> yield (Right v)
+
+record1TL :: (MonadResource m, MonadIO m) => Handle -> Sink (Either String TopLevel) m ()
+record1TL h = do
+  metl <- await
+  forM_ metl $ \etl -> 
+    case etl of
+      Left err -> liftIO $ putStrLn err
+      Right y -> do
+        let lst = do
+              let t = toplevel_type y
+              -- guard (t /= "item")
+              let ml = englishLabel y
+              l <- maybeToList ml
+              c <- concatMap (take 1) (HM.elems (toplevel_claims y))
+              let s = claim_mainsnak c
+                  p = snak_property s
+              return (l,t,p)
+        forM_ lst $ \x -> liftIO (TLIO.hPutStrLn h (TF.format "{},{},{}\n" x))
 
 main = do
-  putStrLn "wikidata analysis"
-  lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
-
+  -- lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
+  withFile "test.txt" WriteMode $ \h -> do
+    r <- runResourceT $ 
+      CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
+        CB.lines =$= -- CL.isolate 3 =$= 
+          -- getZipSink ((,) <$> ZipSink (count 0) <*> ZipSink (
+          forever extract1TL =$= CL.take 3 -- CL.consume -- )) -- forever (record1TL h)))
+    print r
+  {- 
   let x = evalState (runEitherT (extractTopN 1000)) lbstr
   case x of
     Left str -> print str
@@ -62,8 +116,6 @@ main = do
                        p = snak_property s
                    return (l,t,p)
       mapM_ (TF.print "{},{},{}\n") lst
-
-englishLabel :: TopLevel -> Maybe Text
-englishLabel = fmap lv_value . listToMaybe . filter (\l -> lv_language l == "en") . HM.elems . toplevel_labels 
+-}
 
 
