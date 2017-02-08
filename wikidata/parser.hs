@@ -38,13 +38,21 @@ instance FromJSON Snak where
                               <*> ((Just <$> (o .: "datavalue")) <|> return Nothing)
   parseJSON invalid = AT.typeMismatch "Snak" invalid
 
+data Reference = Ref { ref_hash :: Text
+                     , ref_snaks :: HM.HashMap Text [Snak]
+                     } deriving (Show, Eq)
+
+instance FromJSON Reference where
+  parseJSON (Object o) = Ref <$> (o .: "hash")
+                              <*> (o .: "snaks")
+  parseJSON invalid = AT.typeMismatch "Reference" invalid
 
 data Claim = Claim { claim_id :: Text
                    , claim_mainsnak :: Snak
                    , claim_type :: Text
                    , claim_rank :: Text
                    , claim_qualifiers :: Maybe [Snak]
-                   , claim_references :: Maybe [Value]
+                   , claim_references :: Maybe [Reference]
                    } deriving (Show, Eq)
 
 instance FromJSON Claim where
@@ -108,11 +116,11 @@ main = do
   putStrLn "wikidata analysis"
   lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
 
-  let x = evalState (runEitherT (listChunk 100)) lbstr
+  let x = evalState (runEitherT (listChunk 1000)) lbstr
   case x of
     Left str -> print str
     Right ys -> do
-      let y = ys !! 99
+      let y = ys !! 999
       print (toplevel_claims y)
       -- mapM_ print xs -- (length xs)
 
