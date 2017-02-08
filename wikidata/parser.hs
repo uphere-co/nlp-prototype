@@ -25,11 +25,25 @@ instance FromJSON LangValue where
                             <*> (o .: "value")
   parseJSON invalid = AT.typeMismatch "LangValue" invalid
 
+data Snak = Snak { snak_snaktype :: Text
+                 , snak_property :: Text
+                 , snak_datatype :: Maybe Text
+                 , snak_datavalue :: Maybe Value
+                 } deriving (Show, Eq)
+
+instance FromJSON Snak where
+  parseJSON (Object o) = Snak <$> (o .: "snaktype")
+                              <*> (o .: "property")
+                              <*> ((Just <$> (o .: "datatype")) <|> return Nothing)
+                              <*> ((Just <$> (o .: "datavalue")) <|> return Nothing)
+  parseJSON invalid = AT.typeMismatch "Snak" invalid
+
+
 data Claim = Claim { claim_id :: Text
-                   , claim_mainsnak :: Value
+                   , claim_mainsnak :: Snak
                    , claim_type :: Text
                    , claim_rank :: Text
-                   , claim_qualifiers :: Maybe Value
+                   , claim_qualifiers :: Maybe [Snak]
                    , claim_references :: Maybe [Value]
                    } deriving (Show, Eq)
 
