@@ -14,7 +14,7 @@ void count(std::istream&& is){
     tbb::task_group g;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
         auto& chars =  buffer.value();
-//        g.run([chars{std::move(chars)}](){
+        g.run([chars{std::move(chars)}](){
             std::stringstream ss;
             ss.str(chars.data());
             auto lines = util::string::readlines(std::move(ss));
@@ -24,19 +24,21 @@ void count(std::istream&& is){
                 if(line.back()!=',') continue;
                 line.back() = ' ';
                 auto elm = util::json_t::parse(line);
-                auto id = get_str(elm,"id");
+                auto maybe_id = util::find<std::string>(elm, "id");
+                if(!maybe_id) fmt::print(std::cerr, "{}\n", line);
+                auto id = maybe_id.value();
                 auto type = get_str(elm,"type");
                 auto maybe_label = util::find<std::string>(elm["labels"]["en"], "value");
 
                 std::stringstream head;
-                fmt::print(head, "{}\t{}\t", id, type);
+                fmt::print(head, "{}\t{}", id, type);
                 if(has_key(elm["claims"], "P31")){
-                    fmt::print(head, "P31");
+                    fmt::print(head, "\tP31");
                     for(auto& x : elm["claims"]["P31"])
                         fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
                 }
                 if (has_key(elm["claims"], "P279")){
-                    fmt::print(head, "P279");
+                    fmt::print(head, "\tP279");
                     for(auto& x : elm["claims"]["P279"])
                         fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
                 }
@@ -48,7 +50,7 @@ void count(std::istream&& is){
                 }
             }
             fmt::print("{}", items.str());
-//        });
+        });
     }
     g.wait();
 }
