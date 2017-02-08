@@ -1,4 +1,5 @@
 #include <sstream>
+#include <iostream>
 
 #include <fmt/printf.h>
 
@@ -24,9 +25,7 @@ void count(std::istream&& is){
                 if(line.back()!=',') continue;
                 line.back() = ' ';
                 auto elm = util::json_t::parse(line);
-                auto maybe_id = util::find<std::string>(elm, "id");
-                if(!maybe_id) fmt::print(std::cerr, "{}\n", line);
-                auto id = maybe_id.value();
+                auto id = get_str(elm,"id");
                 auto type = get_str(elm,"type");
                 auto maybe_label = util::find<std::string>(elm["labels"]["en"], "value");
 
@@ -34,13 +33,27 @@ void count(std::istream&& is){
                 fmt::print(head, "{}\t{}", id, type);
                 if(has_key(elm["claims"], "P31")){
                     fmt::print(head, "\tP31");
-                    for(auto& x : elm["claims"]["P31"])
-                        fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
+                    for(auto& x : elm["claims"]["P31"]){
+                        auto maybe_id = util::find<std::string>(x["mainsnak"]["datavalue"]["value"],"id");
+                        if(!maybe_id) {
+                            fmt::print(std::cerr, "{}\n", line);
+                            continue;
+                        }
+                        auto id = maybe_id.value();
+                        fmt::print(head, " {}", id);
+                    }
                 }
                 if (has_key(elm["claims"], "P279")){
                     fmt::print(head, "\tP279");
-                    for(auto& x : elm["claims"]["P279"])
-                        fmt::print(head, " {}", get_str(x["mainsnak"]["datavalue"]["value"],"id"));
+                    for(auto& x : elm["claims"]["P279"]){
+                        auto maybe_id = util::find<std::string>(x["mainsnak"]["datavalue"]["value"],"id");
+                        if(!maybe_id) {
+                            fmt::print(std::cerr, "{}\n", line);
+                            continue;
+                        }
+                        auto id = maybe_id.value();
+                        fmt::print(head, " {}", id);
+                    }
                 }
 
                 if(maybe_label) {
