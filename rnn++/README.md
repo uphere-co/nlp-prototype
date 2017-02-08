@@ -149,6 +149,13 @@ ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
 ```
 
 
+## Wikidata ETL
+- `app/word_count` : Extract item from JSON dump.
+
+Usages:
+```
+cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items 
+```
 
 ## Build tests
 ```
