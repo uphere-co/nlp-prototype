@@ -64,7 +64,7 @@ data TopLevel = TopLevel { toplevel_id :: Text
                          , toplevel_descriptions :: HM.HashMap Text LangValue
                          , toplevel_aliases :: HM.HashMap Text [LangValue]
                          , toplevel_claims :: HM.HashMap Text [Claim]
-                         , toplevel_sitelinks :: Value
+                         , toplevel_sitelinks :: Maybe Value
                          , toplevel_lastrevid :: Maybe Int
                          , toplevel_modified :: Maybe Text
                          } deriving (Show,Eq)
@@ -77,7 +77,7 @@ instance FromJSON TopLevel where
              <*> o .: "descriptions"
              <*> o .: "aliases" 
              <*> o .: "claims"
-             <*> o .: "sitelinks"
+             <*> optional (o .: "sitelinks")
              <*> optional (o .: "lastrevid")
              <*> optional (o .: "modified")
   parseJSON invalid = AT.typeMismatch "TopLevel" invalid

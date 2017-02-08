@@ -93,7 +93,7 @@ main = do
   withFile "test.txt" WriteMode $ \h -> do
     runResourceT $ 
       CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
-        CB.lines =$= CL.isolate 100000 =$ 
+        CB.lines =$= -- CL.isolate 100000 =$ 
           getZipSink ((,) <$> ZipSink (count 0) <*> ZipSink (extract1TL =$= record1TL h))
           -- CL.sinkNull
 
