@@ -129,13 +129,10 @@ main = do
                    -- guard (t /= "item")
                    let ml = englishLabel y
                    l <- maybeToList ml
-                   c <- fmap listToMaybe $ HM.elems (toplevel_claims y)
-                   case c of
-                     Nothing -> []
-                     Just x -> do
-                       let s = claim_mainsnak x
-                           p = snak_property s
-                       return (l,t,p)
+                   c <- concatMap (take 1) (HM.elems (toplevel_claims y))
+                   let s = claim_mainsnak c
+                       p = snak_property s
+                   return (l,t,p)
       mapM_ (TF.print "{},{},{}\n") lst
 
 englishLabel :: TopLevel -> Maybe Text
