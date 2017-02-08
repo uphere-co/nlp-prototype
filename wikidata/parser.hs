@@ -16,11 +16,20 @@ import qualified Data.HashMap.Strict        as HM
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 
+data LangValue = LV { lv_language :: Text
+                    , lv_value :: Text
+                    } deriving (Show, Eq)
+
+instance FromJSON LangValue where
+  parseJSON (Object o) = LV <$> (o .: "language")
+                            <*> (o .: "value")
+  parseJSON invalid = AT.typeMismatch "LangValue" invalid
+
 data TopLevel = TopLevel { toplevel_id :: Text
                          , toplevel_type :: Text
-                         , toplevel_labels :: Value
-                         , toplevel_descriptions :: Value
-                         , toplevel_aliases :: Value
+                         , toplevel_labels :: HM.HashMap Text LangValue
+                         , toplevel_descriptions :: HM.HashMap Text LangValue
+                         , toplevel_aliases :: HM.HashMap Text [LangValue]
                          , toplevel_claims :: Value
                          , toplevel_sitelinks :: Value
                          , toplevel_lastrevid :: Maybe Int
@@ -28,15 +37,16 @@ data TopLevel = TopLevel { toplevel_id :: Text
                          } deriving (Show,Eq)
 
 instance FromJSON TopLevel where
-  parseJSON (Object o) = TopLevel <$> (o .: "id")
-                                  <*> (o .: "type")
-                                  <*> (o .: "labels")
-                                  <*> (o .: "descriptions")
-                                  <*> (o .: "aliases")
-                                  <*> (o .: "claims")
-                                  <*> (o .: "sitelinks")
-                                  <*> ((Just <$> (o .: "lastrevid")) <|> return Nothing )
-                                  <*> ((Just <$> (o .: "modified")) <|> return Nothing)
+  parseJSON (Object o) =
+    TopLevel <$> (o .: "id")
+             <*> (o .: "type")
+             <*> (o .: "labels" >>= \(Object l) -> traverse parseJSON l)
+             <*> (o .: "descriptions" >>= \(Object d) -> traverse parseJSON d)
+             <*> (o .: "aliases")
+             <*> (o .: "claims")
+             <*> (o .: "sitelinks")
+             <*> ((Just <$> (o .: "lastrevid")) <|> return Nothing )
+             <*> ((Just <$> (o .: "modified")) <|> return Nothing)
   parseJSON invalid = AT.typeMismatch "TopLevel" invalid
    
 
@@ -67,47 +77,11 @@ main = do
   putStrLn "wikidata analysis"
   lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
 
-  let x = evalState (runEitherT (listChunk 10000)) lbstr
+  let x = evalState (runEitherT (listChunk 1)) lbstr
   case x of
     Left str -> print str
-    Right xs -> print (length xs)
+    Right ys -> do
+      let y = head ys
+      print (toplevel_labels y)
+      -- mapM_ print xs -- (length xs)
 
-  {- 
-  let lbstr = BL.drop 1 lbstr0 
-
-  -- let lbstr  = " { \"a\" : \"b\" }, "
-
-  let r = A.parse json lbstr
-  -- print r
-  case r of
-    A.Fail _ _ _ -> print "fail"
-    A.Done _ v -> do
-      let x :: AT.Result TopLevel = AT.parse parseJSON v
-      print x
-      {- 
-      case v of
-        Object o -> do
-          print "object"
-          
-          print (HM.size o)
-          print (HM.keys o)
-        _ -> print "other"
-      -}
- -}
-{- 
-  let mv :: Either String Value = eitherDecode lbstr
-
-  case mv of
-    Left err -> putStrLn err -- return ()
-    Right v -> print v -- (head v) -- (head vs)
-
--}
-  {- 
-    let lbstr' = BL.filter (\x -> x == '{' || x ==  '}') lbstr
-
-      sleft = BL.filter (== '{') lbstr'
-      sright = BL.filter (== '}') lbstr'
-  print (BL.length sleft)
-  print (BL.length sright)
-  
-  -}
