@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import           Control.Applicative              ((<|>))
-import           Control.Monad                    (replicateM)
+import           Control.Monad                    (guard,join,replicateM)
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.State        (State,runState,evalState,execState)
 import           Control.Monad.State.Class
@@ -15,6 +15,7 @@ import           Data.Char                        (isSpace)
 import qualified Data.HashMap.Strict        as HM
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.IO               as TIO
 
 data LangValue = LV { lv_language :: Text
                     , lv_value :: Text
@@ -120,7 +121,9 @@ main = do
   case x of
     Left str -> print str
     Right ys -> do
-      let y = ys !! 999
-      print (toplevel_claims y)
-      -- mapM_ print xs -- (length xs)
+      let lst = do y <- ys
+                   l <- HM.elems (toplevel_labels y)
+                   guard (lv_language l == "en")
+                   return (lv_value l)
+      mapM_ TIO.putStrLn qlst
 
