@@ -29,7 +29,6 @@ struct Config{
 struct Factory{
     Factory(Config const& config) : config{config}, common{config.common} {}
     Columns db() const;
-    DBIndexer  db_indexer() const;
     HashIndexer hash_indexer() const;
 
     Config config;

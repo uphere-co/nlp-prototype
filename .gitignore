@@ -11,6 +11,8 @@ python/parse_arxiv_meta.py
 .cache
 .vscode
 
+#Emacs
+\#*\#
 #Haskell:
 *.hi
 *.o

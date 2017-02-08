@@ -2,6 +2,7 @@
 
 #include "utils/string.h"
 
+
 namespace wordrep{
 
 WordNormalizedForm::WordNormalizedForm(std::string word)

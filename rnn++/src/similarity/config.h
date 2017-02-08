@@ -4,6 +4,7 @@
 #include <string>
 
 #include "data_source/corenlp_helper.h"
+#include "data_source/db.h"
 
 #include "similarity/dataset.h"
 
@@ -50,6 +51,7 @@ struct SubmoduleFactory{
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
     Dataset empty_dataset() const;
     Dataset load_dataset() const;
+    data::DBIndexer db_indexer() const;
     Config config;
 };
 
