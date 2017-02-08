@@ -13,6 +13,7 @@ import           Data.Attoparsec.Types
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Char                        (isSpace)
 import qualified Data.HashMap.Strict        as HM
+import           Data.Maybe                       (maybeToList, listToMaybe)
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
@@ -90,8 +91,8 @@ instance FromJSON TopLevel where
   parseJSON invalid = AT.typeMismatch "TopLevel" invalid
    
 
-listChunk :: Int -> EitherT String (State BL.ByteString) [TopLevel]
-listChunk n = do
+extractTopN :: Int -> EitherT String (State BL.ByteString) [TopLevel]
+extractTopN n = do
   str <- get
   put (BL.tail str)
   replicateM n (parse1 <* skipSpc <* skipComma)
@@ -117,13 +118,18 @@ main = do
   putStrLn "wikidata analysis"
   lbstr <- BL.readFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json"
 
-  let x = evalState (runEitherT (listChunk 1000)) lbstr
+  let x = evalState (runEitherT (extractTopN 1000)) lbstr
   case x of
     Left str -> print str
     Right ys -> do
       let lst = do y <- ys
-                   l <- HM.elems (toplevel_labels y)
-                   guard (lv_language l == "en")
-                   return (lv_value l)
-      mapM_ TIO.putStrLn qlst
+                   -- l <- HM.elems (toplevel_labels y)
+                   let ml = englishLabel y
+                   l <- maybeToList ml
+                   -- qguard (lv_language l == "en")
+                   let cs = (toplevel_claims y)
+                   return (l, cs)
+      mapM_ (\x -> putStrLn "=========" >> print x) lst
 
+englishLabel :: TopLevel -> Maybe Text
+englishLabel = fmap lv_value . listToMaybe . filter (\l -> lv_language l == "en") . HM.elems . toplevel_labels 
