@@ -30,31 +30,6 @@ import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
 
-
-{- 
-extractTopN :: Int -> EitherT String (State BL.ByteString) [TopLevel]
-extractTopN n = do
-  str <- get
-  put (BL.tail str)
-  replicateM n (parse1 <* skipSpc <* skipComma)
- where
-  skipSpc = do
-    str <- get
-    put (BL.dropWhile isSpace str)
-  skipComma = do
-    str <- get
-    put (BL.tail str)
-  parse1 = do
-    str <- get
-    case A.parse json str of
-      A.Fail _ _ msg -> left msg
-      A.Done str' v -> do
-        let x :: AT.Result TopLevel = AT.parse parseJSON v
-        case x of
-          AT.Error msg -> left msg
-          AT.Success v -> put str' >> return v
--} 
-
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n =
   (await >>=) $ mapM_ $ \_ -> do
