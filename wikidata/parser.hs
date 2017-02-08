@@ -2,7 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           Control.Concurrent               (forkIO)
+-- import           Control.Concurrent               (forkIO)
+import           Control.Concurrent.Async
 import           Control.Monad                    -- (forever,guard,join,replicateM,when)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Loops              (whileJust_,whileJust)
@@ -29,7 +30,7 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Format           as TF
 import qualified Data.Text.IO               as TIO
 import qualified Data.Text.Lazy             as TL
-import           Orc
+-- import qualified Orc
 
 import           System.IO                          (Handle,IOMode(..),withFile)
 --
@@ -90,15 +91,17 @@ main = do
   withFile "test.txt" WriteMode $ \h -> do
     runResourceT $ 
       CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
-        CB.lines =$= CL.isolate 10000 =$ withCounter (process h)
+        CB.lines {- =$= CL.isolate 10000 -} =$ withCounter (go h)
  where
-  process h = do
-    conduitChunksOf 1000 =$ do 
+  process chk = do
+    xss <- CL.sourceList chk $$
+             whileJust_ await (yield . parseItem) =$= whileJust await extractProp
+    return $! map T.concat xss
+   
+  go h = do
+    conduitChunksOf 20000 =$ do 
       whileJust_ await $ \bunch -> liftIO $ do
-        xss <- flip mapM (chunksOf 100 bunch) $ \chk -> do -- forkIO $ do
-          xss <- CL.sourceList chk $$ whileJust_ await (yield . parseItem) =$= whileJust await extractProp
-          return $! map T.concat xss
-         --    xss <- whileJust_ await (yield . parseItem) =$= whileJust await extractProp
+        xss <- forConcurrently (chunksOf 1000 bunch) process
         mapM_ (TIO.hPutStr h . T.concat) xss
 
 
