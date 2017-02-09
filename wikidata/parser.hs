@@ -2,9 +2,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- import           Control.Concurrent               (forkIO)
+import           Control.Concurrent.Async
 import           Control.Monad                    -- (forever,guard,join,replicateM,when)
 import           Control.Monad.IO.Class           (MonadIO(..))
-import           Control.Monad.Loops              (whileJust_)
+import           Control.Monad.Loops              (whileJust_,whileJust)
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Resource     (MonadResource,runResourceT)
 import           Control.Monad.Trans.State        (State,runState,evalState,execState)
@@ -21,11 +23,15 @@ import qualified Data.Conduit.Binary        as CB (lines,sourceFile)
 import qualified Data.Conduit.List          as CL 
 import           Data.Foldable                    (forM_)
 import qualified Data.HashMap.Strict        as HM
+import           Data.List.Split                  (chunksOf)
 import           Data.Maybe                       (maybeToList, listToMaybe)
 import           Data.Monoid                      ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.Format           as TF
-import qualified Data.Text.Lazy.IO          as TLIO
+import qualified Data.Text.IO               as TIO
+import qualified Data.Text.Lazy             as TL
+-- import qualified Orc
+
 import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
@@ -36,22 +42,24 @@ count !n =
     when (n `mod` 1000 == 0) $ liftIO $ print n
     count (n+1)
 
-extract1TL :: MonadResource m => Conduit ByteString m (Either String TopLevel)
-extract1TL = 
-  whileJust_ await $ \str -> 
+-- extract1TL :: MonadResource m => Conduit ByteString m (Either String TopLevel)
+parseItem :: ByteString -> Either String TopLevel
+parseItem str = 
+  -- whileJust_ await $ \str -> 
     case A.parse json (BL.fromStrict str) of
-      A.Fail _ _ msg -> yield (Left msg)
+      A.Fail _ _ msg -> Left msg
       A.Done str' v -> do
         let x :: AT.Result TopLevel = AT.parse parseJSON v
         case x of
-          AT.Error msg -> yield (Left msg)
-          AT.Success v -> yield (Right v)
+          AT.Error msg -> Left msg
+          AT.Success v -> Right v
 
-record1TL :: (MonadResource m, MonadIO m) => Handle -> Sink (Either String TopLevel) m ()
-record1TL h =
-  whileJust_ await $ \etl ->
+-- record1TL :: (MonadResource m, MonadIO m) => Sink (Either String TopLevel) m [[T.Text]]
+extractProp :: (MonadIO m) => Either String TopLevel -> m [T.Text]
+extractProp etl =
+  -- whileJust await $ \etl ->
     case etl of
-      Left err -> liftIO $ putStrLn err
+      Left err -> liftIO $ putStrLn err >> return []
       Right y -> do
         let lst = do
               let t = toplevel_type y
@@ -62,15 +70,41 @@ record1TL h =
               let s = claim_mainsnak c
                   p = snak_property s
               return (l,t,p)
-        forM_ lst $ \x -> liftIO (TLIO.hPutStr h (TF.format "{},{},{}\n" x))
+        return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
+
+
+--  this function is defined in conduit 1.2.9. 
+conduitChunksOf :: Monad m => Int -> Conduit a m [a]
+conduitChunksOf n =
+    start
+  where
+    start = await >>= maybe (return ()) (\x -> loop n (x:))
+
+    loop !count rest =
+        await >>= maybe (yield (rest [])) go
+      where
+        go y
+            | count > 1 = loop (count - 1) (rest . (y:))
+            | otherwise = yield (rest []) >> loop n (y:)
 
 main = do
   withFile "test.txt" WriteMode $ \h -> do
     runResourceT $ 
       CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
-        CB.lines =$= CL.isolate 100000 =$ 
-          getZipSink ((,) <$> ZipSink (count 0) <*> ZipSink (extract1TL =$= record1TL h))
-          -- CL.sinkNull
+        CB.lines {- =$= CL.isolate 10000 -} =$ withCounter (go h)
+ where
+  process chk = do
+    xss <- CL.sourceList chk $$
+             whileJust_ await (yield . parseItem) =$= whileJust await extractProp
+    return $! map T.concat xss
+   
+  go h = do
+    conduitChunksOf 20000 =$ do 
+      whileJust_ await $ \bunch -> liftIO $ do
+        xss <- forConcurrently (chunksOf 1000 bunch) process
+        mapM_ (TIO.hPutStr h . T.concat) xss
 
 
+
+withCounter action = getZipSink (ZipSink (count 0) *> ZipSink action)
 
