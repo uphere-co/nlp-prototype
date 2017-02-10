@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -36,62 +37,53 @@ import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
 
+{-
+count2 :: (MonadIO m) => Int -> Sink a m ()
+count2 !n = do
+  let m = 1000
+  liftIO $ print n
+  CL.drop m
+  CL.peek >>= \case Nothing -> return ()
+                    Just _ -> count (n+m)
+-}
+
 count :: (MonadIO m) => Int -> Sink a m ()
-count !n =
+count !n = 
   (await >>=) $ mapM_ $ \_ -> do
     when (n `mod` 1000 == 0) $ liftIO $ print n
     count (n+1)
 
--- extract1TL :: MonadResource m => Conduit ByteString m (Either String TopLevel)
 parseItem :: ByteString -> Either String TopLevel
 parseItem str = 
-  -- whileJust_ await $ \str -> 
-    case A.parse json (BL.fromStrict str) of
-      A.Fail _ _ msg -> Left msg
-      A.Done str' v -> do
-        let x :: AT.Result TopLevel = AT.parse parseJSON v
-        case x of
-          AT.Error msg -> Left msg
-          AT.Success v -> Right v
+  case A.parse json (BL.fromStrict str) of
+    A.Fail _ _ msg -> Left msg
+    A.Done str' v -> do
+      let x :: AT.Result TopLevel = AT.parse parseJSON v
+      case x of
+        AT.Error msg -> Left msg
+        AT.Success v -> Right v
 
--- record1TL :: (MonadResource m, MonadIO m) => Sink (Either String TopLevel) m [[T.Text]]
 extractProp :: (MonadIO m) => Either String TopLevel -> m [T.Text]
 extractProp etl =
-  -- whileJust await $ \etl ->
-    case etl of
-      Left err -> liftIO $ putStrLn err >> return []
-      Right y -> do
-        let lst = do
-              let t = toplevel_type y
-              -- guard (t /= "item")
-              let ml = englishLabel y
-              l <- maybeToList ml
-              c <- concatMap (take 1) (HM.elems (toplevel_claims y))
-              let s = claim_mainsnak c
-                  p = snak_property s
-              return (l,t,p)
-        return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
-
-
---  this function is defined in conduit 1.2.9. 
-conduitChunksOf :: Monad m => Int -> Conduit a m [a]
-conduitChunksOf n =
-    start
-  where
-    start = await >>= maybe (return ()) (\x -> loop n (x:))
-
-    loop !count rest =
-        await >>= maybe (yield (rest [])) go
-      where
-        go y
-            | count > 1 = loop (count - 1) (rest . (y:))
-            | otherwise = yield (rest []) >> loop n (y:)
+  case etl of
+    Left err -> liftIO $ putStrLn err >> return []
+    Right y -> do
+      let lst = do
+            let t = toplevel_type y
+            -- guard (t /= "item")
+            let ml = englishLabel y
+            l <- maybeToList ml
+            c <- concatMap (take 1) (HM.elems (toplevel_claims y))
+            let s = claim_mainsnak c
+                p = snak_property s
+            return (l,t,p)
+      return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
 
 main = do
   withFile "test.txt" WriteMode $ \h -> do
     runResourceT $ 
-      CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
-        CB.lines {- =$= CL.isolate 10000 -} =$ withCounter (go h)
+      CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
+        CB.lines =$= CL.isolate 100000 =$ withCounter (go h)
  where
   process chk = do
     xss <- CL.sourceList chk $$
@@ -99,12 +91,10 @@ main = do
     return $! map T.concat xss
    
   go h = do
-    conduitChunksOf 20000 =$ do 
+    CL.chunksOf 100000 =$ do 
       whileJust_ await $ \bunch -> liftIO $ do
-        xss <- forConcurrently (chunksOf 1000 bunch) process
+        xss <- forConcurrently (chunksOf 5000 bunch) process
         mapM_ (TIO.hPutStr h . T.concat) xss
-
-
 
 withCounter action = getZipSink (ZipSink (count 0) *> ZipSink action)
 
