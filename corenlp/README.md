@@ -6,6 +6,28 @@ cd tests
 ghc -Wall corenlp_json.hs
 ./corenlp_json
 ```
+## Wikidata ETL
+- `rnn++/app/word_count` : Extract item from JSON dump.
+
+Usages:
+```
+cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items
+
+#Entity count by their properties
+cat wikidata.items | awk -F $'\t' 'NF==5{print $3}' > wikidata.items.P31
+cat wikidata.items | awk -F $'\t' 'NF==5{print $4}' > wikidata.items.P279
+
+cat wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count
+cat wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count
+
+#Print aliase entities only:
+cat wikidata.items | awk 'BEGIN {FS="\t"};NF==2{print}' |head
+#Get single word name entities
+cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl > wikidata.items
+cat wikidata.items | awk 'BEGIN {FS="\t"};{print $1, $NF}' > wikidata.labels
+cat wikidata.labels | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > wikidata.labels.ptb
+cat wikidata.labels.ptb | awk 'NF==2{print}' > wikidata.single_word
+```
 
 ## Run CoreNLP Named Entity tagger
 1. Download a zip file from [official site](http://nlp.stanford.edu/software/CRF-NER.shtml)
