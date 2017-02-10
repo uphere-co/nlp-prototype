@@ -37,8 +37,8 @@ void extract_items(std::istream&& is){
 
                 std::stringstream head;
                 fmt::print(head, "{}\t{}", id, type);
+                fmt::print(head, "\tP31");
                 if(has_key(elm["claims"], "P31")){
-                    fmt::print(head, "\tP31");
                     for(auto& x : elm["claims"]["P31"]){
                         auto maybe_id = util::find<std::string>(x["mainsnak"]["datavalue"]["value"],"id");
                         if(!maybe_id) {
@@ -49,8 +49,8 @@ void extract_items(std::istream&& is){
                         fmt::print(head, " {}", id);
                     }
                 }
+                fmt::print(head, "\tP279");
                 if (has_key(elm["claims"], "P279")){
-                    fmt::print(head, "\tP279");
                     for(auto& x : elm["claims"]["P279"]){
                         auto maybe_id = util::find<std::string>(x["mainsnak"]["datavalue"]["value"],"id");
                         if(!maybe_id) {

@@ -154,7 +154,7 @@ ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
 
 Usages:
 ```
-cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items 
+cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl config.rss.json >wikidata.items 
 ```
 
 ## Build tests
