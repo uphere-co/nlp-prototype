@@ -6,3 +6,17 @@ cd tests
 ghc -Wall corenlp_json.hs
 ./corenlp_json
 ```
+
+## Run CoreNLP Named Entity tagger
+1. Download a zip file from [official site](http://nlp.stanford.edu/software/CRF-NER.shtml)
+- Unzip the zip to `$CORENLP`
+- Update `$CLASSPATH`
+- Run following:
+```
+#use nlp-prototype/rnn++/app/wikidata_etl
+cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items
+cat wikidata.items | awk 'BEGIN {FS="\t"};{print $NF}' > wikidata.names
+cat wikidata.names | awk 'NF==1{print}' > wikidata.names.single_word
+java -mx1g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.names.single_word > wikidata.names.single_word.ner
+```
+
