@@ -19,21 +19,21 @@ entityFile = "single_words"
 data Scoring = Scoring  { scores :: HM.HashMap Text Double}
                            deriving (Show)
 
-extractDouble (Right (d, _)) = d
+readDouble :: Text -> Double
+readDouble text = d where Right (d, _) = rational text
 
 parseScore :: [Text] -> (Text, Double)
-parseScore [x,y] = (x, extractDouble (rational y))
+parseScore [x,y] = (x, readDouble y)
 parseScore line = error (show line)
 
 getScore :: Scoring -> Text -> Double
 getScore (Scoring scores) word = fromMaybe 0.0 mscore
-                          where mscore = HM.lookup word scores
+                               where mscore = HM.lookup word scores
 
 readScores :: FilePath -> IO( Scoring )
 readScores scoreFile = do                  
   scoreStr <- T.IO.readFile scoreFile
   return $ Scoring (HM.fromList $ map (parseScore . (T.words)) (T.lines scoreStr))
-
 
 data Entity = Entity { uid  :: Text
                      , name :: Text }
