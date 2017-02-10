@@ -154,7 +154,7 @@ int main(int argc, char** argv){
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
-    index_items(wordUIDs, std::move(std::cin));
-    //extract_items(std::move(std::cin));
+    //index_items(wordUIDs, std::move(std::cin));
+    extract_items(std::move(std::cin));
     return 0;
 }
