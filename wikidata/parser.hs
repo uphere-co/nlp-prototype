@@ -93,8 +93,8 @@ remotable ['process]
 work h backend slaves = do
   runResourceT $ 
     CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
-      CB.lines =$= CL.isolate 1000000 =$ withCounter (go h slaves)
-  terminateAllSlaves  
+      CB.lines =$= {- CL.isolate 100000 =$ -} withCounter (go h slaves)
+  terminateAllSlaves backend
  where
    
   go h slaves = do
