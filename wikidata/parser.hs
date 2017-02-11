@@ -95,18 +95,20 @@ remotable ['process]
 work h backend slaves = do
   runResourceT $ 
     CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
-      CB.lines =$= {- CL.isolate 1000000 =$ -} withCounter (go h slaves)
+      CB.lines =$= {- CL.isolate 5000000 =$ -} withCounter (go h slaves)
   terminateAllSlaves backend
  where
    
   go h slaves = do
-    let n = length slaves
-    CL.chunksOf (n*5000) =$ do 
+    let chunksize = 10000
+        n = length slaves
+    
+    CL.chunksOf (n*chunksize) =$ do 
       whileJust_ await $ \bunch -> lift . lift $ do
         let tasks = map (\(s,c) ->
                            AsyncRemoteTask
                              $(functionTDict 'process) s ($(mkClosure 'process) c))
-                        (zip slaves (chunksOf 5000 bunch))
+                        (zip slaves (chunksOf chunksize bunch))
         as <- mapM async tasks
         xs <- mapM wait as
         liftIO $ mapM_ (\(AsyncDone x) -> TIO.hPutStr h x) xs -- xss
