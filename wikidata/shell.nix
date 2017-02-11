@@ -60,6 +60,7 @@ let
               aeson conduit conduit-extra distributed-process
               distributed-process-async
               distributed-process-simplelocalnet
+              distributed-process-monad-control
               either monad-loops orc split text-format
             ]);
 in stdenv.mkDerivation {

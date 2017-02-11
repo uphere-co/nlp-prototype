@@ -2,16 +2,26 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- import           Control.Concurrent               (forkIO)
-import           Control.Concurrent.Async
+-- import           Control.Concurrent.Async
+import Control.Distributed.Process
+import Control.Distributed.Process.Async
+import Control.Distributed.Process.Closure
+import Control.Distributed.Process.MonadBaseControl
+import Control.Distributed.Process.Node                   (initRemoteTable)
+import Control.Distributed.Process.Backend.SimpleLocalnet
+
+
 import           Control.Monad                    -- (forever,guard,join,replicateM,when)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Loops              (whileJust_,whileJust)
-import           Control.Monad.Trans.Either
+import           Control.Monad.Trans
+-- import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Resource     (MonadResource,runResourceT)
-import           Control.Monad.Trans.State        (State,runState,evalState,execState)
-import           Control.Monad.State.Class
+-- import           Control.Monad.Trans.State        (State,runState,evalState,execState)
+-- import           Control.Monad.State.Class
 import           Data.Aeson
 import qualified Data.Aeson.Types           as AT
 import qualified Data.Attoparsec.Lazy       as A
@@ -32,20 +42,12 @@ import qualified Data.Text.Format           as TF
 import qualified Data.Text.IO               as TIO
 import qualified Data.Text.Lazy             as TL
 -- import qualified Orc
+import System.Environment                                 (getArgs)
 
 import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
 
-{-
-count2 :: (MonadIO m) => Int -> Sink a m ()
-count2 !n = do
-  let m = 1000
-  liftIO $ print n
-  CL.drop m
-  CL.peek >>= \case Nothing -> return ()
-                    Just _ -> count (n+m)
--}
 
 count :: (MonadIO m) => Int -> Sink a m ()
 count !n = 
@@ -79,22 +81,45 @@ extractProp etl =
             return (l,t,p)
       return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
 
-main = do
-  withFile "test.txt" WriteMode $ \h -> do
-    runResourceT $ 
-      CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
-        CB.lines =$= CL.isolate 100000 =$ withCounter (go h)
+process :: [ByteString] -> Process [T.Text]
+process chk = do
+  xss <- CL.sourceList chk $$
+           whileJust_ await (yield . parseItem) =$= whileJust await extractProp
+  return $! map T.concat xss
+  
+remotable ['process]
+
+
+work h backend slaves = do
+  runResourceT $ 
+    CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
+      CB.lines =$= CL.isolate 1000000 =$ withCounter (go h slaves)
+  terminateAllSlaves  
  where
-  process chk = do
-    xss <- CL.sourceList chk $$
-             whileJust_ await (yield . parseItem) =$= whileJust await extractProp
-    return $! map T.concat xss
    
-  go h = do
+  go h slaves = do
     CL.chunksOf 100000 =$ do 
-      whileJust_ await $ \bunch -> liftIO $ do
-        xss <- forConcurrently (chunksOf 5000 bunch) process
-        mapM_ (TIO.hPutStr h . T.concat) xss
+      whileJust_ await $ \bunch -> lift . lift $ do
+        let tasks = map (\(s,c) ->
+                           AsyncRemoteTask
+                             $(functionTDict 'process) s ($(mkClosure 'process) c))
+                        (zip slaves (chunksOf 5000 bunch))
+        as <- mapM async tasks
+        xss <- mapM wait as
+        liftIO $ mapM_ (\(AsyncDone xs) -> TIO.hPutStr h (T.concat xs)) xss -- xss
 
 withCounter action = getZipSink (ZipSink (count 0) *> ZipSink action)
 
+
+
+main = do
+  args <- getArgs
+  case args of
+    ["master", host, port] -> do
+      backend <- initializeBackend host port (__remoteTable initRemoteTable)
+      withFile "test.txt" WriteMode $ \h -> do
+        startMaster backend (work h backend)
+    ["slave", host, port] -> do
+      backend <- initializeBackend host port (__remoteTable initRemoteTable)
+      startSlave backend
+    
