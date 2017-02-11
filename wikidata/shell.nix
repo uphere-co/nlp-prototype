@@ -48,6 +48,7 @@ let
            license = stdenv.lib.licenses.bsd3;
            hydraPlatforms = stdenv.lib.platforms.none;
          }) {};
+      "distributed-process-simplelocalnet" = haskell.lib.doJailbreak super.distributed-process-simplelocalnet; 
 
     };
 
@@ -58,7 +59,7 @@ let
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
               aeson conduit conduit-extra distributed-process
               distributed-process-async
-              #distributed-process-extras
+              distributed-process-simplelocalnet
               either monad-loops orc split text-format
             ]);
 in stdenv.mkDerivation {
