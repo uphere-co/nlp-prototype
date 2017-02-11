@@ -41,6 +41,9 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Format           as TF
 import qualified Data.Text.IO               as TIO
 import qualified Data.Text.Lazy             as TL
+import           Data.Text.Lazy.Builder
+import qualified Data.Vector.Storable       as VS
+
 -- import qualified Orc
 import System.Environment                                 (getArgs)
 
@@ -65,27 +68,26 @@ parseItem str =
         AT.Error msg -> Left msg
         AT.Success v -> Right v
 
-extractProp :: (MonadIO m) => Either String TopLevel -> m [T.Text]
+extractProp :: (MonadIO m) => Either String TopLevel -> m Builder
 extractProp etl =
   case etl of
-    Left err -> liftIO $ putStrLn err >> return []
+    Left err -> liftIO $ putStrLn err >> return mempty
     Right y -> do
       let lst = do
             let t = toplevel_type y
-            -- guard (t /= "item")
             let ml = englishLabel y
             l <- maybeToList ml
             c <- concatMap (take 1) (HM.elems (toplevel_claims y))
             let s = claim_mainsnak c
                 p = snak_property s
             return (l,t,p)
-      return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
+      return $! foldMap (\x -> fromLazyText (TF.format "{},{},{}\n" x)) lst
 
-process :: [ByteString] -> Process [T.Text]
+process :: [ByteString] -> Process T.Text
 process chk = do
   xss <- CL.sourceList chk $$
            whileJust_ await (yield . parseItem) =$= whileJust await extractProp
-  return $! map T.concat xss
+  return $! TL.toStrict (toLazyText (mconcat xss))
   
 remotable ['process]
 
@@ -93,20 +95,21 @@ remotable ['process]
 work h backend slaves = do
   runResourceT $ 
     CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
-      CB.lines =$= {- CL.isolate 100000 =$ -} withCounter (go h slaves)
+      CB.lines =$= {- CL.isolate 1000000 =$ -} withCounter (go h slaves)
   terminateAllSlaves backend
  where
    
   go h slaves = do
-    CL.chunksOf 100000 =$ do 
+    let n = length slaves
+    CL.chunksOf (n*5000) =$ do 
       whileJust_ await $ \bunch -> lift . lift $ do
         let tasks = map (\(s,c) ->
                            AsyncRemoteTask
                              $(functionTDict 'process) s ($(mkClosure 'process) c))
                         (zip slaves (chunksOf 5000 bunch))
         as <- mapM async tasks
-        xss <- mapM wait as
-        liftIO $ mapM_ (\(AsyncDone xs) -> TIO.hPutStr h (T.concat xs)) xss -- xss
+        xs <- mapM wait as
+        liftIO $ mapM_ (\(AsyncDone x) -> TIO.hPutStr h x) xs -- xss
 
 withCounter action = getZipSink (ZipSink (count 0) *> ZipSink action)
 
