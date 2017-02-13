@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 import           System.IO
 import qualified Data.HashMap.Strict as HM  (fromList, toList, lookup, map)
 import qualified Data.Map            as M   (Map, delete, alter, empty, fromList, toList, lookup, map)
@@ -14,24 +16,36 @@ import           Data.List                         (foldl')
 
 
 --itemFile = "items.all"
-itemFile = "items.uid"
+-- itemFile = "items.uid"
+itemFile = "items"
 neFile   = "nes.all"
 
+newtype Name = Name { unName :: Text}
+newtype P31  = P31  { unP31 :: Text}
+              deriving (Show, Eq, Ord)
 
-parseItem [property, word] = (word, property)
-parseItem _                = ("_ERROR_", "ERROR")
+data Item = Item { name :: Name
+                 , property :: P31 }
+
+parseItem [property, word] = Item (Name word) (P31 property)
+parseItem _                = Item (Name "_ERROR_") (P31 "ERROR")
 -- parseItem line             = error (show line)
+
+newtype ItemsByKey key val = ItemsByKey  { items :: M.Map key [val] }
+                           deriving (Show)
+
+groupByItems :: [Item] -> ItemsByKey P31 Name
+groupByItems items = ItemsByKey (foldl' update M.empty items) where 
+                       update acc (Item n p31) = let f Nothing   = Just [n]
+                                                     f (Just ns) = Just (n:ns)
+                                                 in M.alter f p31 acc
+--instance Functor ItemsByKey where
+--  fmap f (ItemsByKey items) = map f (M.toList items)
+
 
 parseNE   [word, tag] = (word, tag)
 parseNE   _           = ("_ERROR_", "ERROR")
 --parseNE   line        = error (show line)
-
-
-update acc (n, p31) = let f Nothing   = Just [n]
-                          f (Just ns) = Just (n:ns)
-                      in M.alter f p31 acc
-
-groupByItems = foldl' update M.empty
 
 main = do
   itemsStr <- T.IO.readFile itemFile
@@ -39,10 +53,9 @@ main = do
   
   let 
       items     = map (parseItem . T.split (== '\t')) (T.lines itemsStr)
-      itemByP31 = groupByItems items
+      ItemsByKey itemsByP31 = groupByItems items
+      toTexts   = map (\(Name name)-> name)
+      printable = map (\(P31 p31, names) -> p31 <> "\t" <> T.intercalate " " (toTexts names)) (M.toList itemsByP31)
       
-      itemsByP31 = M.toList itemByP31
-
-      printable = map (\(p31, names) -> p31 <> "\t" <> T.intercalate " " names) itemsByP31
   mapM_  T.IO.putStrLn  printable
   
