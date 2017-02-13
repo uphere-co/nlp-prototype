@@ -105,6 +105,9 @@ target_link_libraries(show_words_in_voca stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt p
 add_executable(word_importance_build app/word_importance_build
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(word_importance_build stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(word_importance_export app/word_importance_export
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(word_importance_export stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(word_context app/word_context
         ${wordrep_files} ${word2vec_files} ${util_files})
@@ -121,8 +124,8 @@ add_executable(index_words app/index_words
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(wikidata_etl app/wikidata_etl
-        ${util_files} ${wordrep_files})
-target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param  ${util_files} ${wordrep_files})
