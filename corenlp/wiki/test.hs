@@ -30,10 +30,10 @@ getScore :: Scoring -> Text -> Double
 getScore (Scoring scores) word = fromMaybe 0.0 mscore
                                where mscore = HM.lookup word scores
 
-readScores :: FilePath -> IO( Scoring )
+readScores :: FilePath -> IO Scoring 
 readScores scoreFile = do                  
   scoreStr <- T.IO.readFile scoreFile
-  return $ Scoring (HM.fromList $ map (parseScore . (T.words)) (T.lines scoreStr))
+  return $ Scoring (HM.fromList $ map (parseScore . T.words) (T.lines scoreStr))
 
 data Entity = Entity { uid  :: Text
                      , name :: Text }
@@ -50,4 +50,4 @@ main = do
   let scoring  = getScore scores
       outputs  =  map (\(Entity uid word) ->(uid, word, scoring word))  entities
       knownEntities = filter (\(_,_,score) -> score>0.0) outputs
-  mapM_ (\(uid,word,score) -> T.IO.putStrLn (uid <>" "<> word <>" "<> T.pack (show score))) $ knownEntities
+  mapM_ (\(uid,word,score) -> T.IO.putStrLn (uid <>" "<> word <>" "<> T.pack (show score)))  knownEntities

@@ -14,7 +14,7 @@ import           Data.List                         (foldl')
 
 
 --itemFile = "items.all"
-itemFile = "items.10k"
+itemFile = "items.uid"
 neFile   = "nes.all"
 
 
@@ -35,9 +35,7 @@ groupByItems = foldl' update M.empty
 
 main = do
   itemsStr <- T.IO.readFile itemFile
-  print "Items are loaded"
   nesStr <- T.IO.readFile neFile
-  print "NEs are loaded"
   
   let 
       items     = map (parseItem . T.split (== '\t')) (T.lines itemsStr)
