@@ -20,6 +20,10 @@ cat wikidata.items | awk -F $'\t' 'NF==5{print $4}' > wikidata.items.P279
 cat wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count
 cat wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count
 
+#Group items in the second column by the first column.
+cat wikidata.items | awk 'BEGIN {FS="\t"};NF==5{print $3 "\t" $1}'> items.uid
+./count > items.by_p31
+
 #Print aliase entities only:
 cat wikidata.items | awk 'BEGIN {FS="\t"};NF==2{print}' |head
 #Get single word name entities
