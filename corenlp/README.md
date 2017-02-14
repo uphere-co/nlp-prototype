@@ -52,3 +52,18 @@ java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classi
 #Use corenlp/wiki/corenlp_ner.hs
 ./corenlp_ner > wikidata.nes
 ```
+
+# Filter named entities from Wikidata entities
+```
+#Input : "wikidata.ner"
+./corenlp_ner  > is_ne
+cat is_ne | awk 'BEGIN {FS="\t"};{print $1 "\t" $NF}' > uid.is_ne
+
+#Input : "items.by_p31", "uid.is_ne"
+./ne_by_property > p31.is_ne
+
+cat wikidata.items | awk 'BEGIN {FS="\t"};NF==5{print $1 "\t" $3  "\t" $NF}' > wikidata.names
+#Input : "wikidata.names", "p31.is_ne"
+./wikidata_ner > wikidata.nes
+```
+
