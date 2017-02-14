@@ -45,4 +45,10 @@ cat wikidata.items | awk 'BEGIN {FS="\t"};{print $NF}' > wikidata.names
 cat wikidata.names | awk 'NF==1{print}' > wikidata.names.single_word
 java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.names.single_word > wikidata.names.single_word.ner
 ```
-
+### Parse output of CoreNLP NER
+```
+cat wikidata.items | awk 'BEGIN {FS="\t"};{print "WIKIDATAITEM_" $1 "\t" $NF}' > wikidata.ner_input 
+java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner
+#Use corenlp/wiki/corenlp_ner.hs
+./corenlp_ner > wikidata.nes
+```
