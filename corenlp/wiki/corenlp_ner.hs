@@ -32,6 +32,7 @@ newtype Tag  = Tag { unTag :: Text}
 newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
                      deriving (Show, Eq, Ord)
 
+newtype EntityStr = EntityStr { unEntityStr :: Text}
 data WikidataEntity = WikidataEntity { name :: Name
                                      , tag  :: Tag
                                      , uid  :: WikidataUID }
@@ -53,14 +54,15 @@ msergeSNETokens ts = foldl' mergeSNEToken x ys
 parseNERToken :: Text -> SNEToken
 parseNERToken tokenStr = (\(x,y)-> (SNEToken (WordToken (T.dropEnd 1 x)) (SNEtag y))) $ T.breakOnEnd (T.pack "/") tokenStr
 
-parseEntity :: Text -> WikidataEntity
-parseEntity entityStr = WikidataEntity (Name name) (Tag tag) (WikidataUID uid)
-                      where
-                        SNEToken (WordToken uid) _ : ts = map parseNERToken (T.words entityStr)
-                        SNEToken (WordToken name) (SNEtag tag) = msergeSNETokens ts
+parseEntity :: EntityStr -> WikidataEntity
+parseEntity (EntityStr entityStr) = WikidataEntity (Name name) (Tag tag) (WikidataUID uid)
+                                  where
+                                    SNEToken (WordToken uid) _ : ts = map parseNERToken (T.words entityStr)
+                                    SNEToken (WordToken name) (SNEtag tag) = msergeSNETokens ts
 
-splitTokens :: Text -> [Text]
-splitTokens str = tail (T.splitOn "WIKIDATAITEM_" str)
+
+splitTokens :: Text -> [EntityStr]
+splitTokens str = tail (map (\x -> EntityStr x) (T.splitOn "WIKIDATAITEM_" str))
 
 isNamedEntity :: WikidataEntity -> Text
 isNamedEntity (WikidataEntity _ (Tag tag) _) = f bool
