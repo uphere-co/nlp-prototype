@@ -11,6 +11,7 @@ import           Data.Text.Read                    (rational)
 import qualified Data.Text.Encoding         as T.E
 import qualified Data.Text.IO               as T.IO
 import           Data.Monoid
+import           Data.List                         (foldl')
 
 -- nerFile    = "wikidata.names.single_word.ner"
 nerFile    = "aa"
@@ -20,17 +21,43 @@ newtype WordToken    = WordToken   { unWord :: Text}
 newtype SNEtag  = SNEtag { unSNEtag :: Text}
                 deriving (Show, Eq, Ord)
 
-data SNETagged = SNETagged { word  :: WordToken
+data SNEToken = SNEToken { word  :: WordToken
                            , neTag :: SNEtag }
 
 
-parseNERToken token = (\(x,y)-> (SNETagged (WordToken (T.dropEnd 1 x)) (SNEtag y))) $ T.breakOnEnd (T.pack "/") token
+newtype Name = Name { unName :: Text}
+             deriving (Show, Eq, Ord)
+newtype Tag  = Tag { unTag :: Text}
+             deriving (Show, Eq, Ord)
+newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
+                     deriving (Show, Eq, Ord)
 
-parseTokensPerLine line = map parseNERToken (T.words line)
+data WikidataNE = WikidataNE { name :: Name
+                             , tag  :: Tag
+                             , uid  :: WikidataUID }
+                deriving (Show)
 
+mergeSNEToken :: SNEToken -> SNEToken -> SNEToken
+mergeSNEToken (SNEToken (WordToken word1) (SNEtag tag1)) (SNEToken (WordToken word2) (SNEtag tag2)) 
+  = SNEToken (WordToken (word1<>" "<>word2)) (SNEtag (tag1 <> "_" <> tag2 ))
+
+msergeSNETokens :: [SNEToken] -> SNEToken
+msergeSNETokens ts = foldl' mergeSNEToken x ys
+                   where x:ys = ts
+
+parseNERToken :: Text -> SNEToken
+parseNERToken tokenStr = (\(x,y)-> (SNEToken (WordToken (T.dropEnd 1 x)) (SNEtag y))) $ T.breakOnEnd (T.pack "/") tokenStr
+
+parseEntity :: Text -> WikidataNE
+parseEntity entityStr = WikidataNE (Name name) (Tag tag) (WikidataUID uid)
+                      where
+                        SNEToken (WordToken uid) _ : ts = map parseNERToken (T.words entityStr)
+                        SNEToken (WordToken name) (SNEtag tag) = msergeSNETokens ts
+
+splitTokens :: Text -> [Text]
 splitTokens str = tail (T.splitOn "WIKIDATAITEM_" str)
 
 main = do
   nerStr <- T.IO.readFile nerFile
-  let nes = concatMap parseTokensPerLine (splitTokens nerStr)
-  mapM_ (\(SNETagged token tag) -> print (token, tag) ) nes
+  let nes = map parseEntity (splitTokens nerStr)
+  mapM_ T.IO.putStrLn (map (\(WikidataNE (Name name) (Tag tag) (WikidataUID uid)) -> (uid <> "\t" <> name  <> "\t" <> tag)) nes)
