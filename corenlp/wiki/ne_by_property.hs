@@ -27,12 +27,13 @@ neFile   = "is_ne.test"
 
 newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
                      deriving (Show, Eq, Ord)
-newtype NEFlag  = Bool { unNEFlag :: Text}
-              deriving (Show)
-data IsNE = IsNE { unIsNE :: M.Map Text Text}
+newtype NEFlag  = NEFlag { unNEFlag :: Text}
+              deriving (Show, Eq, Ord)
+
+data IsNE = IsNE { unIsNE :: M.Map WikidataUID NEFlag}
           deriving (Show)
  
-parseIsNE [x,y] = (x, y)
+parseIsNE [x,y] = (WikidataUID x, NEFlag y)
 
 
 readIsNE :: FilePath -> IO IsNE 
@@ -40,44 +41,43 @@ readIsNE isNEFile = do
   neStr <- T.IO.readFile isNEFile
   return $ IsNE (M.fromList $ map (parseIsNE . T.split (=='\t')) (T.lines neStr))
 
-isNE (IsNE neDict) uid = fromMaybe "Unknown" flag
+isNE (IsNE neDict) uid = fromMaybe (NEFlag "Unknown") flag
                        where flag = M.lookup uid neDict
 
 
 parseGroupedItems line = (tag, items)
                        where 
                          [tag, itemsStr] = T.split (=='\t') line
-                         items = T.words itemsStr
+                         items = map WikidataUID (T.words itemsStr)
 
 
-flagCount :: [Text] -> M.Map Text Int
+flagCount :: [NEFlag] -> M.Map NEFlag Int
 flagCount = foldl' update M.empty
           where 
             update acc flag = let f Nothing  = Just 1
                                   f (Just n) = Just (n+1)
                               in M.alter f flag acc
 
-
-ratioCutoff :: M.Map Text Int -> Text
+ratioCutoff :: M.Map NEFlag Int -> NEFlag
 ratioCutoff counts = f flag
                    where 
-                     mTrue  = fromMaybe 0 $ M.lookup "True" counts
-                     mFalse = fromMaybe 0 $ M.lookup "False" counts
+                     mTrue  = fromMaybe 0 $ M.lookup (NEFlag "True") counts
+                     mFalse = fromMaybe 0 $ M.lookup (NEFlag "False") counts
                      flag = mTrue*5 > mFalse
-                     f True = "True"
-                     f False = "False"
+                     f True = NEFlag "True"
+                     f False = NEFlag "False"
 
-reduceNEFlags :: [Text] -> Text
+reduceNEFlags :: [NEFlag] -> NEFlag
 reduceNEFlags flags = let counts = flagCount flags 
                       in ratioCutoff counts
 
-isNEProperty :: IsNE -> [Text] -> Text
+isNEProperty :: IsNE -> [WikidataUID] -> NEFlag
 isNEProperty neDict items = f flag
                           where
                             flags = map (isNE neDict) items
-                            flag  = any (=="True") flags
-                            f True = "True"
-                            f False = "False"
+                            flag  = any (== NEFlag "True") flags
+                            f True = NEFlag "True"
+                            f False = NEFlag "False"
 
 main = do
   neDict <- readIsNE neFile
@@ -92,7 +92,7 @@ main = do
   let
       groups = map parseGroupedItems (T.lines groupedItemsStr)
       --ts = map (\(tag, items) -> tag <> "\t" <> isNEProperty neDict items) groups
-      tmps = map (\(tag, items) -> tag <> "\t" <> reduceNEFlags (map (isNE neDict) items)) groups
-  --mapM_ print tmps
-  mapM_ T.IO.putStrLn tmps
+      tmps = map (\(tag, items) -> (tag, reduceNEFlags (map (isNE neDict) items))) groups
+      ts = map(\(tag, NEFlag flag)-> tag <> "\t" <> flag) tmps
+  mapM_ T.IO.putStrLn ts
 
