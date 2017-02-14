@@ -1,16 +1,27 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- import           Control.Concurrent               (forkIO)
-import           Control.Concurrent.Async
+-- import           Control.Concurrent.Async
+import Control.Distributed.Process
+import Control.Distributed.Process.Async
+import Control.Distributed.Process.Closure
+import Control.Distributed.Process.MonadBaseControl
+import Control.Distributed.Process.Node                   (initRemoteTable)
+import Control.Distributed.Process.Backend.SimpleLocalnet
+
+
 import           Control.Monad                    -- (forever,guard,join,replicateM,when)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Loops              (whileJust_,whileJust)
-import           Control.Monad.Trans.Either
+import           Control.Monad.Trans
+-- import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Resource     (MonadResource,runResourceT)
-import           Control.Monad.Trans.State        (State,runState,evalState,execState)
-import           Control.Monad.State.Class
+-- import           Control.Monad.Trans.State        (State,runState,evalState,execState)
+-- import           Control.Monad.State.Class
 import           Data.Aeson
 import qualified Data.Aeson.Types           as AT
 import qualified Data.Attoparsec.Lazy       as A
@@ -30,81 +41,90 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Format           as TF
 import qualified Data.Text.IO               as TIO
 import qualified Data.Text.Lazy             as TL
+import           Data.Text.Lazy.Builder
+import qualified Data.Vector.Storable       as VS
+
 -- import qualified Orc
+import System.Environment                                 (getArgs)
 
 import           System.IO                          (Handle,IOMode(..),withFile)
 --
 import           WikiData.Type
 
+
 count :: (MonadIO m) => Int -> Sink a m ()
-count !n =
+count !n = 
   (await >>=) $ mapM_ $ \_ -> do
     when (n `mod` 1000 == 0) $ liftIO $ print n
     count (n+1)
 
--- extract1TL :: MonadResource m => Conduit ByteString m (Either String TopLevel)
 parseItem :: ByteString -> Either String TopLevel
 parseItem str = 
-  -- whileJust_ await $ \str -> 
-    case A.parse json (BL.fromStrict str) of
-      A.Fail _ _ msg -> Left msg
-      A.Done str' v -> do
-        let x :: AT.Result TopLevel = AT.parse parseJSON v
-        case x of
-          AT.Error msg -> Left msg
-          AT.Success v -> Right v
+  case A.parse json (BL.fromStrict str) of
+    A.Fail _ _ msg -> Left msg
+    A.Done str' v -> do
+      let x :: AT.Result TopLevel = AT.parse parseJSON v
+      case x of
+        AT.Error msg -> Left msg
+        AT.Success v -> Right v
 
--- record1TL :: (MonadResource m, MonadIO m) => Sink (Either String TopLevel) m [[T.Text]]
-extractProp :: (MonadIO m) => Either String TopLevel -> m [T.Text]
+extractProp :: (MonadIO m) => Either String TopLevel -> m Builder
 extractProp etl =
-  -- whileJust await $ \etl ->
-    case etl of
-      Left err -> liftIO $ putStrLn err >> return []
-      Right y -> do
-        let lst = do
-              let t = toplevel_type y
-              -- guard (t /= "item")
-              let ml = englishLabel y
-              l <- maybeToList ml
-              c <- concatMap (take 1) (HM.elems (toplevel_claims y))
-              let s = claim_mainsnak c
-                  p = snak_property s
-              return (l,t,p)
-        return $! map (\x -> TL.toStrict (TF.format "{},{},{}\n" x)) lst
+  case etl of
+    Left err -> liftIO $ putStrLn err >> return mempty
+    Right y -> do
+      let lst = do
+            let t = toplevel_type y
+            let ml = englishLabel y
+            l <- maybeToList ml
+            c <- concatMap (take 1) (HM.elems (toplevel_claims y))
+            let s = claim_mainsnak c
+                p = snak_property s
+            return (l,t,p)
+      return $! foldMap (\x -> fromLazyText (TF.format "{},{},{}\n" x)) lst
+
+process :: [ByteString] -> Process T.Text
+process chk = do
+  xss <- CL.sourceList chk $$
+           whileJust_ await (yield . parseItem) =$= whileJust await extractProp
+  return $! TL.toStrict (toLazyText (mconcat xss))
+  
+remotable ['process]
 
 
---  this function is defined in conduit 1.2.9. 
-conduitChunksOf :: Monad m => Int -> Conduit a m [a]
-conduitChunksOf n =
-    start
-  where
-    start = await >>= maybe (return ()) (\x -> loop n (x:))
-
-    loop !count rest =
-        await >>= maybe (yield (rest [])) go
-      where
-        go y
-            | count > 1 = loop (count - 1) (rest . (y:))
-            | otherwise = yield (rest []) >> loop n (y:)
-
-main = do
-  withFile "test.txt" WriteMode $ \h -> do
-    runResourceT $ 
-      CB.sourceFile "/data/groups/uphere/wikidata/wikidata-20170206-all.json" $$
-        CB.lines {- =$= CL.isolate 10000 -} =$ withCounter (go h)
+work h backend slaves = do
+  runResourceT $ 
+    CB.sourceFile "/data/groups/uphere/ontology/wikidata/wikidata-20170206-all.json" $$
+      CB.lines =$= {- CL.isolate 5000000 =$ -} withCounter (go h slaves)
+  terminateAllSlaves backend
  where
-  process chk = do
-    xss <- CL.sourceList chk $$
-             whileJust_ await (yield . parseItem) =$= whileJust await extractProp
-    return $! map T.concat xss
    
-  go h = do
-    conduitChunksOf 20000 =$ do 
-      whileJust_ await $ \bunch -> liftIO $ do
-        xss <- forConcurrently (chunksOf 1000 bunch) process
-        mapM_ (TIO.hPutStr h . T.concat) xss
-
-
+  go h slaves = do
+    let chunksize = 10000
+        n = length slaves
+    
+    CL.chunksOf (n*chunksize) =$ do 
+      whileJust_ await $ \bunch -> lift . lift $ do
+        let tasks = map (\(s,c) ->
+                           AsyncRemoteTask
+                             $(functionTDict 'process) s ($(mkClosure 'process) c))
+                        (zip slaves (chunksOf chunksize bunch))
+        as <- mapM async tasks
+        xs <- mapM wait as
+        liftIO $ mapM_ (\(AsyncDone x) -> TIO.hPutStr h x) xs -- xss
 
 withCounter action = getZipSink (ZipSink (count 0) *> ZipSink action)
 
+
+
+main = do
+  args <- getArgs
+  case args of
+    ["master", host, port] -> do
+      backend <- initializeBackend host port (__remoteTable initRemoteTable)
+      withFile "test.txt" WriteMode $ \h -> do
+        startMaster backend (work h backend)
+    ["slave", host, port] -> do
+      backend <- initializeBackend host port (__remoteTable initRemoteTable)
+      startSlave backend
+    
