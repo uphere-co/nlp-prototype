@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 import           System.IO
 import qualified Data.HashMap.Strict as HM
 import           Text.Printf
@@ -11,12 +13,24 @@ import qualified Data.Text.IO               as T.IO
 import           Data.Monoid
 
 -- nerFile    = "wikidata.names.single_word.ner"
-nerFile    = "ners"
+nerFile    = "aa"
 
-parseNERToken token = (\(x,y)-> (T.dropEnd 1 x, y))$ T.breakOnEnd (T.pack "/") token
+newtype WordToken    = WordToken   { unWord :: Text}
+                     deriving (Show, Eq, Ord)
+newtype SNEtag  = SNEtag { unSNEtag :: Text}
+                deriving (Show, Eq, Ord)
+
+data SNETagged = SNETagged { word  :: WordToken
+                           , neTag :: SNEtag }
+
+
+parseNERToken token = (\(x,y)-> (SNETagged (WordToken (T.dropEnd 1 x)) (SNEtag y))) $ T.breakOnEnd (T.pack "/") token
+
 parseTokensPerLine line = map parseNERToken (T.words line)
+
+splitTokens str = tail (T.splitOn "WIKIDATAITEM_" str)
 
 main = do
   nerStr <- T.IO.readFile nerFile
-  let nes = concatMap parseTokensPerLine (T.lines nerStr)
-  mapM_ (\(word, nerTag) -> T.IO.putStrLn (word <> " " <> nerTag) ) nes
+  let nes = concatMap parseTokensPerLine (splitTokens nerStr)
+  mapM_ (\(SNETagged token tag) -> print (token, tag) ) nes

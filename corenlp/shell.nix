@@ -6,8 +6,8 @@ let #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inhe
     newHaskellPackages = haskellPackages; # haskellPackages.override { overrides = hsconfig; };
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
               cabal-install
-	      aeson
-	      text
+              aeson
+              text
             ]);
 in stdenv.mkDerivation {
   name = "corenlp-aeson-dev";
