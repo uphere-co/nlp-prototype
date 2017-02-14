@@ -21,8 +21,8 @@ neFile   = "is_ne.test"
 uidFile = "items.by_p31"
 neFile   = "uid.is_ne"
 --}
-uidFile = "items.by_p31.test"
-neFile   = "is_ne.test"
+uidFile = "items.by_p31"
+neFile   = "uid.is_ne"
 
 
 newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
