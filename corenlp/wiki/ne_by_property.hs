@@ -21,12 +21,17 @@ neFile   = "is_ne.test"
 uidFile = "items.by_p31"
 neFile   = "uid.is_ne"
 --}
-uidFile = "items.by_p31"
-neFile   = "uid.is_ne"
+uidFile = "items.by_p31.test"
+neFile   = "is_ne.test"
 
+
+newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
+                     deriving (Show, Eq, Ord)
+newtype NEFlag  = Bool { unNEFlag :: Text}
+              deriving (Show)
 data IsNE = IsNE { unIsNE :: M.Map Text Text}
           deriving (Show)
-
+ 
 parseIsNE [x,y] = (x, y)
 
 
@@ -45,11 +50,13 @@ parseGroupedItems line = (tag, items)
                          items = T.words itemsStr
 
 
-flagCount flags = foldl' update M.empty flags
-                where 
-                  update acc flag = let f Nothing  = Just 1
-                                        f (Just n) = Just (n+1)
-                                    in M.alter f flag acc
+flagCount :: [Text] -> M.Map Text Int
+flagCount = foldl' update M.empty
+          where 
+            update acc flag = let f Nothing  = Just 1
+                                  f (Just n) = Just (n+1)
+                              in M.alter f flag acc
+
 
 ratioCutoff :: M.Map Text Int -> Text
 ratioCutoff counts = f flag
@@ -59,6 +66,10 @@ ratioCutoff counts = f flag
                      flag = mTrue*5 > mFalse
                      f True = "True"
                      f False = "False"
+
+reduceNEFlags :: [Text] -> Text
+reduceNEFlags flags = let counts = flagCount flags 
+                      in ratioCutoff counts
 
 isNEProperty :: IsNE -> [Text] -> Text
 isNEProperty neDict items = f flag
@@ -81,7 +92,7 @@ main = do
   let
       groups = map parseGroupedItems (T.lines groupedItemsStr)
       --ts = map (\(tag, items) -> tag <> "\t" <> isNEProperty neDict items) groups
-      tmps = map (\(tag, items) -> tag <> "\t" <> (ratioCutoff $ flagCount (map (isNE neDict) items))) groups
+      tmps = map (\(tag, items) -> tag <> "\t" <> reduceNEFlags (map (isNE neDict) items)) groups
   --mapM_ print tmps
   mapM_ T.IO.putStrLn tmps
 

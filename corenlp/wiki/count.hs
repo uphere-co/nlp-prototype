@@ -16,9 +16,9 @@ import           Data.List                         (foldl')
 
 
 --itemFile = "items.all"
--- itemFile = "items.uid"
-itemFile = "items"
-neFile   = "nes.all"
+itemFile = "items.uid"
+-- itemFile = "items"
+neFile   = "is_ne"
 
 newtype Name = Name { unName :: Text}
 newtype P31  = P31  { unP31 :: Text}

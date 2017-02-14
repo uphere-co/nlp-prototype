@@ -48,6 +48,7 @@ mergeSNEToken :: SNEToken -> SNEToken -> SNEToken
 mergeSNEToken (SNEToken word1 tag1) (SNEToken word2 tag2) = SNEToken (mergeWordToken word1 word2) (mergeSNEtag tag1 tag2)
 
 msergeSNETokens :: [SNEToken] -> SNEToken
+msergeSNETokens [] = SNEToken (WordToken "_ERROR_") (SNEtag "O")
 msergeSNETokens ts = foldl' mergeSNEToken x ys
                    where x:ys = ts
 
@@ -68,7 +69,7 @@ isNamedEntity :: WikidataEntity -> Text
 isNamedEntity (WikidataEntity _ (Tag tag) _) = f bool
                                            where
                                              ts = T.split (=='_') tag
-                                             bool = not $ all (== "O") ts
+                                             bool = not $ any (== "O") ts
                                              f False = "False"
                                              f True  = "True"
 
