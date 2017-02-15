@@ -23,7 +23,7 @@ uidFile = "wikidata.names"
 neFile   = "p31.is_ne"
 -}
 uidFile = "wikidata.names"
-neFile   = "p31.is_ne"
+neFile   = "wikidata.p31.is_ne"
 
 data IsNE = IsNE { unIsNE :: M.Map W.P31 W.NETag}
           deriving (Show)

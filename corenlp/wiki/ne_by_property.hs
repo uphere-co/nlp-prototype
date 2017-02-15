@@ -20,10 +20,10 @@ import qualified Wikidata                   as W
 uidFile = "items.by_p31.test"
 neFile   = "is_ne.test"
 uidFile = "items.by_p31"
-neFile   = "uid.is_ne"
+neFile   = "wikidata.uid.is_ne"
 --}
 uidFile = "items.by_p31"
-neFile   = "uid.is_ne"
+neFile   = "wikidata.uid.is_sfne"
 
 data IsNE = IsNE { unIsNE :: M.Map W.UID W.NETag}
           deriving (Show)
