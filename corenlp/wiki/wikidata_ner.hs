@@ -14,6 +14,8 @@ import qualified Data.Text.IO               as T.IO
 import           Data.Monoid
 import           Data.List                         (foldl')
 
+import qualified Wikidata                   as W
+
 {-
 uidFile = "aa"
 neFile   = "p31.is_ne"
@@ -23,17 +25,13 @@ neFile   = "p31.is_ne"
 uidFile = "wikidata.names"
 neFile   = "p31.is_ne"
 
-newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
-                     deriving (Show, Eq, Ord)
-newtype WikidataP31  = WikidataP31 { unWikidataP31 :: Text}
-                     deriving (Show, Eq, Ord)
 newtype NEFlag  = NEFlag { unNEFlag :: Text}
               deriving (Show, Eq, Ord)
 
-data IsNE = IsNE { unIsNE :: M.Map WikidataP31 NEFlag}
+data IsNE = IsNE { unIsNE :: M.Map W.P31 NEFlag}
           deriving (Show)
  
-parseIsNE [x,y] = (WikidataP31 x, NEFlag y)
+parseIsNE [x,y] = (W.P31 x, NEFlag y)
 
 
 readIsNE :: FilePath -> IO IsNE 
@@ -45,7 +43,7 @@ isNE (IsNE neDict) p31 = fromMaybe (NEFlag "Unknown") flag
                        where flag = M.lookup p31 neDict
 
 
-parseEntity [uid,p31,name] = (uid, WikidataP31 p31, name)
+parseEntity [uid,p31,name] = (uid, W.P31 p31, name)
 
 main = do
   neDict <- readIsNE neFile

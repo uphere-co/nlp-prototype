@@ -13,6 +13,7 @@ import qualified Data.Text.Encoding         as T.E
 import qualified Data.Text.IO               as T.IO
 import           Data.Monoid
 import           Data.List                         (foldl')
+import qualified Wikidata                   as W
 
 
 {--
@@ -25,15 +26,13 @@ uidFile = "items.by_p31"
 neFile   = "uid.is_ne"
 
 
-newtype WikidataUID  = WikidataUID { unWikidataUID :: Text}
-                     deriving (Show, Eq, Ord)
 newtype NEFlag  = NEFlag { unNEFlag :: Text}
               deriving (Show, Eq, Ord)
 
-data IsNE = IsNE { unIsNE :: M.Map WikidataUID NEFlag}
+data IsNE = IsNE { unIsNE :: M.Map W.UID NEFlag}
           deriving (Show)
  
-parseIsNE [x,y] = (WikidataUID x, NEFlag y)
+parseIsNE [x,y] = (W.UID x, NEFlag y)
 
 
 readIsNE :: FilePath -> IO IsNE 
@@ -48,7 +47,7 @@ isNE (IsNE neDict) uid = fromMaybe (NEFlag "Unknown") flag
 parseGroupedItems line = (tag, items)
                        where 
                          [tag, itemsStr] = T.split (=='\t') line
-                         items = map WikidataUID (T.words itemsStr)
+                         items = map W.UID (T.words itemsStr)
 
 
 flagCount :: [NEFlag] -> M.Map NEFlag Int
@@ -71,7 +70,7 @@ reduceNEFlags :: [NEFlag] -> NEFlag
 reduceNEFlags flags = let counts = flagCount flags 
                       in ratioCutoff counts
 
-isNEProperty :: IsNE -> [WikidataUID] -> NEFlag
+isNEProperty :: IsNE -> [W.UID] -> NEFlag
 isNEProperty neDict items = f flag
                           where
                             flags = map (isNE neDict) items
