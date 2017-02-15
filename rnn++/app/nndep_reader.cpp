@@ -384,13 +384,13 @@ int main(int argc, char** argv){
         //auto ideas = {"Yahoo", "Google","China","AI"};
         auto ideas = util::string::split(util::string::strip(query_str));
         suggestion_query["ideas"]=ideas;
-        fmt::print("{}\n", suggestion_query.dump(4));
+        //fmt::print("{}\n", suggestion_query.dump(4));
         auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
-        fmt::print("{}\n", suggestion_output.dump(4));
+        //fmt::print("{}\n", suggestion_output.dump(4));
     }
 
     auto uids = engine.register_documents(query_json);
-    uids["n_cut"]=10;
+    uids["n_cut"]=10000;
     uids["max_clip_len"] = query_json["max_clip_len"];
     if(false){
         uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
@@ -398,24 +398,25 @@ int main(int argc, char** argv){
 //    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
         uids["confine_ygp_table_columns"].push_back("afasfdl14jh");
     }
-    fmt::print("{}\n", uids.dump(4));
+    //fmt::print("{}\n", uids.dump(4));
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
     timer.here_then_reset("Processed a query.");
-    fmt::print("{}\n", answers.dump(4));
-    fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
+    //fmt::print("{}\n", answers.dump(4));
+    //fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
     engine.annotation_on_result(config_json, chain_answers);
     timer.here_then_reset("Annotate query output.");
-    fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
+    //fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
     timer.here_then_reset("Ready to process a new query.");
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
     engine.annotation_on_result(config_json, stat_answer["results"]);
     timer.here_then_reset("Annotate query output.");
-    fmt::print("stats_aswers:\n{}\n", stat_answer.dump(4));
+    //fmt::print("stats_answers:\n");
+    fmt::print("{}\n", stat_answer.dump(4));
     if(false){
         util::json_t tmp;
         std::vector<int64_t> sents;
@@ -425,7 +426,7 @@ int main(int argc, char** argv){
                     for(auto uid : matches)
                         sents.push_back(uid);
         tmp["sents"]=sents;
-//    fmt::print("{}\n", tmp.dump(4));
+	//fmt::print("{}\n", tmp.dump(4));
 
 
 //        auto custom_query = uids;

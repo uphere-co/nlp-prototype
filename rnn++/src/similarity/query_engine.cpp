@@ -179,7 +179,7 @@ public:
         cut = *it * 0.5;
         cut2 = *it2 * 0.5;
         cut3 = *it3 * 0.5;
-        fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
+        //fmt::print("n_cut = {}, {}, {}, cut ={}, {}, {}\n", n_cut, n_cut2, n_cut3, cut, cut2, cut3);
     }
 
     template<typename Similarity>
