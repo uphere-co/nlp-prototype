@@ -25,13 +25,10 @@ neFile   = "p31.is_ne"
 uidFile = "wikidata.names"
 neFile   = "p31.is_ne"
 
-newtype NEFlag  = NEFlag { unNEFlag :: Text}
-              deriving (Show, Eq, Ord)
-
-data IsNE = IsNE { unIsNE :: M.Map W.P31 NEFlag}
+data IsNE = IsNE { unIsNE :: M.Map W.P31 W.NETag}
           deriving (Show)
  
-parseIsNE [x,y] = (W.P31 x, NEFlag y)
+parseIsNE [x,y] = (W.P31 x, W.NETag y)
 
 
 readIsNE :: FilePath -> IO IsNE 
@@ -39,7 +36,7 @@ readIsNE isNEFile = do
   neStr <- T.IO.readFile isNEFile
   return $ IsNE (M.fromList $ map (parseIsNE . T.split (=='\t')) (T.lines neStr))
 
-isNE (IsNE neDict) p31 = fromMaybe (NEFlag "Unknown") flag
+isNE (IsNE neDict) p31 = fromMaybe ( W.NETag "Unknown") flag
                        where flag = M.lookup p31 neDict
 
 
@@ -50,6 +47,6 @@ main = do
   entitiesStr <- T.IO.readFile uidFile
   let
       entities = map (parseEntity . T.split (=='\t')) (T.lines entitiesStr)
-      ts = map(\(uid, p31, name)-> uid <>"\t"<> unNEFlag (isNE neDict p31) <>"\t"<> name) entities
+      ts = map(\(uid, p31, name)-> uid <>"\t"<> W.unTag (isNE neDict p31) <>"\t"<> name) entities
   mapM_ T.IO.putStrLn ts
 

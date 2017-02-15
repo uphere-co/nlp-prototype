@@ -21,30 +21,24 @@ nerFile    = "aa"
 -}
 nerFile    = "wikidata.ner"
 
-newtype Tag  = Tag { unTag :: Text}
-             deriving (Show, Eq, Ord)
 
 newtype EntityStr = EntityStr { unEntityStr :: Text}
-data WikidataEntity = WikidataEntity { name :: W.Name
-                                     , tag  :: Tag
-                                     , uid  :: W.UID }
-                    deriving (Show)
 
-toWikidataEntity :: W.UID -> C.EntityToken -> WikidataEntity
+toWikidataEntity :: W.UID -> C.EntityToken -> W.Entity
 toWikidataEntity uid (C.EntityToken (C.WordToken word) (C.NETag tag))
-  = WikidataEntity (W.Name word) (Tag tag) uid
+  = W.Entity (W.Name word) (W.NETag tag) uid
 
 mergeWordToken :: W.Name -> C.WordToken ->W.Name
 mergeWordToken (W.Name word1) (C.WordToken word2) = W.Name (word1<>" "<>word2)
 
-mergeSNEtag :: Tag -> C.NETag -> Tag
-mergeSNEtag (Tag tag1) (C.NETag tag2) = Tag (tag1 <> "_" <> tag2 )
+mergeSNEtag :: W.NETag -> C.NETag -> W.NETag
+mergeSNEtag (W.NETag tag1) (C.NETag tag2) = W.NETag (tag1 <> "_" <> tag2 )
 
-mergeSNEToken :: WikidataEntity -> C.EntityToken -> WikidataEntity
-mergeSNEToken (WikidataEntity word1 tag1 uid) (C.EntityToken word2 tag2) 
-  = WikidataEntity (mergeWordToken word1 word2) (mergeSNEtag tag1 tag2) uid
+mergeSNEToken :: W.Entity -> C.EntityToken -> W.Entity
+mergeSNEToken (W.Entity word1 tag1 uid) (C.EntityToken word2 tag2) 
+  = W.Entity (mergeWordToken word1 word2) (mergeSNEtag tag1 tag2) uid
 
-mergeSNETokens :: W.UID -> [C.EntityToken] -> WikidataEntity
+mergeSNETokens :: W.UID -> [C.EntityToken] -> W.Entity
 mergeSNETokens uid [] = toWikidataEntity uid (C.EntityToken (C.WordToken "_ERROR_") (C.NETag "O"))
 mergeSNETokens uid ts = foldl' mergeSNEToken (toWikidataEntity uid x) ys
                    where x:ys = ts
@@ -52,7 +46,7 @@ mergeSNETokens uid ts = foldl' mergeSNEToken (toWikidataEntity uid x) ys
 parseNERToken :: Text -> C.EntityToken
 parseNERToken tokenStr = (\(x,y)-> (C.EntityToken (C.WordToken (T.dropEnd 1 x)) (C.NETag y))) $ T.breakOnEnd (T.pack "/") tokenStr
 
-parseEntity :: EntityStr -> WikidataEntity
+parseEntity :: EntityStr -> W.Entity
 parseEntity (EntityStr entityStr) = mergeSNETokens uid ts
                                   where
                                     C.EntityToken (C.WordToken uidStr) _ : ts = map parseNERToken (T.words entityStr)
@@ -62,8 +56,8 @@ parseEntity (EntityStr entityStr) = mergeSNETokens uid ts
 splitTokens :: Text -> [EntityStr]
 splitTokens str = tail (map EntityStr (T.splitOn "WIKIDATAITEM_" str))
 
-isNamedEntity :: WikidataEntity -> Text
-isNamedEntity (WikidataEntity _ (Tag tag) _) = f bool
+isNamedEntity :: W.Entity -> Text
+isNamedEntity (W.Entity _ (W.NETag tag) _) = f bool
                                            where
                                              ts = T.split (=='_') tag
                                              bool = not $ any (== "O") ts
@@ -71,7 +65,7 @@ isNamedEntity (WikidataEntity _ (Tag tag) _) = f bool
                                              f True  = "True"
 
 
-serializeWE (WikidataEntity (W.Name name) (Tag tag) (W.UID uid)) =  uid <> "\t" <> name  <> "\t" <> tag
+serializeWE (W.Entity (W.Name name) (W.NETag tag) (W.UID uid)) =  uid <> "\t" <> name  <> "\t" <> tag
 main = do
   nerStr <- T.IO.readFile nerFile
   let wes = map parseEntity (splitTokens nerStr)
