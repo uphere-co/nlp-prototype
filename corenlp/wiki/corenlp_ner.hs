@@ -15,9 +15,11 @@ import           Data.List                         (foldl', all)
 import qualified Wikidata                   as W
 import qualified CoreNLP                    as C
 
+{-
 nerFile    = "wikidata.ner"
--- nerFile    = "aa"
-
+nerFile    = "aa"
+-}
+nerFile    = "wikidata.ner"
 
 newtype Tag  = Tag { unTag :: Text}
              deriving (Show, Eq, Ord)
@@ -28,28 +30,33 @@ data WikidataEntity = WikidataEntity { name :: W.Name
                                      , uid  :: W.UID }
                     deriving (Show)
 
-mergeWordToken :: C.WordToken -> C.WordToken -> C.WordToken
-mergeWordToken (C.WordToken word1) (C.WordToken word2) = C.WordToken (word1<>" "<>word2)
+toWikidataEntity :: W.UID -> C.EntityToken -> WikidataEntity
+toWikidataEntity uid (C.EntityToken (C.WordToken word) (C.NETag tag))
+  = WikidataEntity (W.Name word) (Tag tag) uid
 
-mergeSNEtag :: C.NETag -> C.NETag -> C.NETag
-mergeSNEtag (C.NETag tag1) (C.NETag tag2) = C.NETag (tag1 <> "_" <> tag2 )
+mergeWordToken :: W.Name -> C.WordToken ->W.Name
+mergeWordToken (W.Name word1) (C.WordToken word2) = W.Name (word1<>" "<>word2)
 
-mergeSNEToken :: C.EntityToken -> C.EntityToken -> C.EntityToken
-mergeSNEToken (C.EntityToken word1 tag1) (C.EntityToken word2 tag2) = C.EntityToken (mergeWordToken word1 word2) (mergeSNEtag tag1 tag2)
+mergeSNEtag :: Tag -> C.NETag -> Tag
+mergeSNEtag (Tag tag1) (C.NETag tag2) = Tag (tag1 <> "_" <> tag2 )
 
-mergeSNETokens :: [C.EntityToken] -> C.EntityToken
-mergeSNETokens [] = C.EntityToken (C.WordToken "_ERROR_") (C.NETag "O")
-mergeSNETokens ts = foldl' mergeSNEToken x ys
+mergeSNEToken :: WikidataEntity -> C.EntityToken -> WikidataEntity
+mergeSNEToken (WikidataEntity word1 tag1 uid) (C.EntityToken word2 tag2) 
+  = WikidataEntity (mergeWordToken word1 word2) (mergeSNEtag tag1 tag2) uid
+
+mergeSNETokens :: W.UID -> [C.EntityToken] -> WikidataEntity
+mergeSNETokens uid [] = toWikidataEntity uid (C.EntityToken (C.WordToken "_ERROR_") (C.NETag "O"))
+mergeSNETokens uid ts = foldl' mergeSNEToken (toWikidataEntity uid x) ys
                    where x:ys = ts
 
 parseNERToken :: Text -> C.EntityToken
 parseNERToken tokenStr = (\(x,y)-> (C.EntityToken (C.WordToken (T.dropEnd 1 x)) (C.NETag y))) $ T.breakOnEnd (T.pack "/") tokenStr
 
 parseEntity :: EntityStr -> WikidataEntity
-parseEntity (EntityStr entityStr) = WikidataEntity (W.Name name) (Tag tag) (W.UID uid)
+parseEntity (EntityStr entityStr) = mergeSNETokens uid ts
                                   where
-                                    C.EntityToken (C.WordToken uid) _ : ts = map parseNERToken (T.words entityStr)
-                                    C.EntityToken (C.WordToken name) (C.NETag tag) = mergeSNETokens ts
+                                    C.EntityToken (C.WordToken uidStr) _ : ts = map parseNERToken (T.words entityStr)
+                                    uid = W.UID uidStr
 
 
 splitTokens :: Text -> [EntityStr]
