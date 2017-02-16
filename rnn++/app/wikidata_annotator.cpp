@@ -1,5 +1,6 @@
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 #include <fmt/printf.h>
 
@@ -16,6 +17,9 @@ using util::find;
 using util::has_key;
 
 struct WikidataEntity{
+    WikidataEntity(std::string uid, std::vector<wordrep::WordUID> words)
+    : uid{uid}, words{words}
+    {}
     WikidataEntity(wordrep::WordUIDindex const& wordUIDs, std::string line)
             : orig{line}{
         auto tokens = util::string::split(line, "\t");
@@ -80,11 +84,83 @@ void test_ordering(){
     assert(vs[2]==b);
     assert(vs[3]==c);
     assert(vs[4]==d);
-
 }
+
+void test_greedy_matching(){
+    std::vector<WikidataEntity> items =
+            {{"A", {1,2}},{"AA", {1,2}},{"B",{1,3}}, {"C",{1,2,3}},{"CC",{1,2,3}},{"CCC",{1,2,3}},
+             {"D", {2,3,4}}, {"E",{5}}, {"EE",{5}}, {"EEE",{5}}, {"F",{6,7}},
+             {"G", {2,3}}};
+    tbb::parallel_sort(items.begin(), items.end());
+    for(auto& item : items)
+        fmt::print("{}\n", item);
+    std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
+
+    fmt::print("Text :");
+    for(auto t : text)
+        fmt::print(" {}", t);
+    fmt::print("\n");
+    auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
+    auto offset=0;
+    auto i = 0;
+    auto beg = items.cbegin();
+    auto end = items.cend();
+    auto pbeg = beg;
+    auto pend = end;
+    //fmt::print("Partition : {} {}\n", *beg, *end);
+    while(true){
+
+        auto t = text[offset+i];
+        auto eq   = [t,i,&items](WikidataEntity const& x){
+//            fmt::print("Equality compare : {} and {}\n", t, x);
+            if(x.words.size()<=i) return false;
+            return t==x.words[i];
+        };
+        auto less = [t,i](WikidataEntity const& x){
+//            fmt::print("Less compare : {} and {}\n", t, x);
+            if(x.words.size()<=i) return true;
+            return t>x.words[i];
+        };
+        auto mit = util::binary_find(pbeg, pend, eq, less);
+        if(!mit) {
+            if(i == 0) {
+                ++offset;
+            } else {
+                for(auto it=pbeg; it!=pend; ++it)
+                    if(it->words.size()==i) fmt::print("{} {} : {}\n", offset, i, *it);
+                offset += i;
+                i = 0;
+            }
+            if(offset>= text.size()) break;
+//            fmt::print("Next state to try : {} {}\n", offset, i);
+            pbeg = beg;
+            pend = end;
+            continue;
+        }
+        auto it = mit.value();
+        pbeg = std::find_if_not(to_reverse(it), to_reverse(pbeg), eq).base();
+        pend = std::find_if_not(it, pend, eq);
+//        if(offset==0 && i==0){
+//            assert(pbeg->uid == "B");
+//            assert(pend == end);
+//        } else if(offset==0 && i==1){
+//            assert(pbeg->uid == "C");
+//            assert(pend == end);
+//        } else if(offset==0 && i==2){
+//            assert(pbeg->uid == "C");
+//            assert(pend->uid == "A");
+//        } else if(offset==7 && i==0){
+//            assert(pbeg->uid == "D");
+//            assert(pend->uid == "B");
+//        }
+        ++i;
+    }
+}
+
 int main(int argc, char** argv){
 //    test_ordering();
-//    return 0;
+    test_greedy_matching();
+    return 0;
 
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
