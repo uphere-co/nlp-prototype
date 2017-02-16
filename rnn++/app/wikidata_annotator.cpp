@@ -18,25 +18,27 @@ using util::has_key;
 struct NamedEntity{
     NamedEntity(wordrep::WordUIDindex const& wordUIDs, std::string line)
             : orig{line}{
-        auto tokens = util::string::split(line);
-        tag = tokens[0];
-        auto n = tokens.size();
-        for(decltype(n)i=1; i!=n; ++i){
-            words.push_back(wordUIDs[tokens[i]]);
+        auto tokens = util::string::split(line, "\t");
+        if(tokens.size()!=2){
+            fmt::print("{}\n", line);
+            assert(0);
         }
+        uid = tokens[0];
+        for(auto w : util::string::split(tokens[1], " "))
+            words.push_back(wordUIDs[w]);
     }
 
     friend bool operator< (NamedEntity const& a, NamedEntity const& b){
         return a.words > b.words;
     }
     friend std::ostream& operator<< (std::ostream& os, NamedEntity const& a){
-        fmt::print(os, "{}", a.tag);
+        fmt::print(os, "{}\t", a.uid);
         for(auto word: a.words) fmt::print(os, " {}", word);
-        fmt::print(os, " {}", a.orig);
+        fmt::print(os, "\t{}", a.orig);
         return os;
     }
     std::string orig;
-    std::string tag;
+    std::string uid;
     std::vector<wordrep::WordUID> words;
 };
 
@@ -51,11 +53,8 @@ void index_items(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
             std::stringstream ss;
             ss.str(chars.data());
             auto lines = util::string::readlines(std::move(ss));
-
-            for(auto& line : lines) {
-                NamedEntity item{wordUIDs, line};
-                items.push_back(item);
-            }
+            for(auto& line : lines)
+                items.push_back({wordUIDs, line});
         });
     }
     g.wait();
@@ -66,7 +65,6 @@ void index_items(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
         fmt::print("{}\n", item);
     timer.here_then_reset("Print items.");
     fmt::print(std::cerr, "{} items.\n", items.size());
-
 }
 
 void test_ordering(){
