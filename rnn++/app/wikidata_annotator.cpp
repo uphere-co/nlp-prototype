@@ -15,8 +15,8 @@ using util::get_str;
 using util::find;
 using util::has_key;
 
-struct NamedEntity{
-    NamedEntity(wordrep::WordUIDindex const& wordUIDs, std::string line)
+struct WikidataEntity{
+    WikidataEntity(wordrep::WordUIDindex const& wordUIDs, std::string line)
             : orig{line}{
         auto tokens = util::string::split(line, "\t");
         if(tokens.size()!=2){
@@ -28,10 +28,10 @@ struct NamedEntity{
             words.push_back(wordUIDs[w]);
     }
 
-    friend bool operator< (NamedEntity const& a, NamedEntity const& b){
+    friend bool operator< (WikidataEntity const& a, WikidataEntity const& b){
         return a.words > b.words;
     }
-    friend std::ostream& operator<< (std::ostream& os, NamedEntity const& a){
+    friend std::ostream& operator<< (std::ostream& os, WikidataEntity const& a){
         fmt::print(os, "{}\t", a.uid);
         for(auto word: a.words) fmt::print(os, " {}", word);
         fmt::print(os, "\t{}", a.orig);
@@ -42,9 +42,9 @@ struct NamedEntity{
     std::vector<wordrep::WordUID> words;
 };
 
-void index_items(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
+void sort_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
     tbb::task_group g;
-    tbb::concurrent_vector<NamedEntity> items;
+    tbb::concurrent_vector<WikidataEntity> items;
 
     util::Timer timer;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
@@ -91,6 +91,6 @@ int main(int argc, char** argv){
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
-    index_items(wordUIDs, std::move(std::cin));
+    sort_wikidata_entities(wordUIDs, std::move(std::cin));
     return 0;
 }
