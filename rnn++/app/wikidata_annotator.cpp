@@ -150,7 +150,7 @@ void test_greedy_matching(){
     std::sort(items.begin(), items.end());
     std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
 
-    fmt::print("Entities :");
+    fmt::print("Entities :\n");
     for(auto& item : items)
         fmt::print("{}\n", item);
     fmt::print("Text :");
