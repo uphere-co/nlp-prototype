@@ -86,75 +86,79 @@ void test_ordering(){
     assert(vs[4]==d);
 }
 
+struct TaggedEntity{
+    int64_t offset;
+    WikidataEntity const& entity;
+};
+struct GreedyAnnotator{
+    GreedyAnnotator(std::vector<WikidataEntity> const& entities)
+    : entities{entities}
+    {}
+
+    std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const{
+        std::vector<TaggedEntity> tagged;
+        auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
+        auto offset=0;
+        auto i = 0;
+        auto beg = entities.cbegin();
+        auto end = entities.cend();
+        auto pbeg = beg;
+        auto pend = end;
+        while(true){
+            auto t = text[offset+i];
+            auto eq   = [t,i,this](WikidataEntity const& x){
+                if(x.words.size()<=i) return false;
+                return t==x.words[i];
+            };
+            auto less = [t,i](WikidataEntity const& x){
+                if(x.words.size()<=i) return true;
+                return t>x.words[i];
+            };
+            auto mit = util::binary_find(pbeg, pend, eq, less);
+            if(!mit) {
+                if(i == 0) {
+                    ++offset;
+                } else {
+                    for(auto it=pbeg; it!=pend; ++it)
+                        if(it->words.size()==i) tagged.push_back({offset, *it});
+                    offset += i;
+                    i = 0;
+                }
+                if(offset>= text.size()) break;
+                pbeg = beg;
+                pend = end;
+                continue;
+            }
+            auto it = mit.value();
+            pbeg = std::find_if_not(to_reverse(it), to_reverse(pbeg), eq).base();
+            pend = std::find_if_not(it, pend, eq);
+            ++i;
+        }
+        return tagged;
+    }
+
+    std::vector<WikidataEntity> const& entities;
+};
 void test_greedy_matching(){
     std::vector<WikidataEntity> items =
             {{"A", {1,2}},{"AA", {1,2}},{"B",{1,3}}, {"C",{1,2,3}},{"CC",{1,2,3}},{"CCC",{1,2,3}},
              {"D", {2,3,4}}, {"E",{5}}, {"EE",{5}}, {"EEE",{5}}, {"F",{6,7}},
              {"G", {2,3}}};
     tbb::parallel_sort(items.begin(), items.end());
-    for(auto& item : items)
-        fmt::print("{}\n", item);
     std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
 
+    fmt::print("Entities :");
+    for(auto& item : items)
+        fmt::print("{}\n", item);
     fmt::print("Text :");
     for(auto t : text)
         fmt::print(" {}", t);
     fmt::print("\n");
-    auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
-    auto offset=0;
-    auto i = 0;
-    auto beg = items.cbegin();
-    auto end = items.cend();
-    auto pbeg = beg;
-    auto pend = end;
-    //fmt::print("Partition : {} {}\n", *beg, *end);
-    while(true){
 
-        auto t = text[offset+i];
-        auto eq   = [t,i,&items](WikidataEntity const& x){
-//            fmt::print("Equality compare : {} and {}\n", t, x);
-            if(x.words.size()<=i) return false;
-            return t==x.words[i];
-        };
-        auto less = [t,i](WikidataEntity const& x){
-//            fmt::print("Less compare : {} and {}\n", t, x);
-            if(x.words.size()<=i) return true;
-            return t>x.words[i];
-        };
-        auto mit = util::binary_find(pbeg, pend, eq, less);
-        if(!mit) {
-            if(i == 0) {
-                ++offset;
-            } else {
-                for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) fmt::print("{} {} : {}\n", offset, i, *it);
-                offset += i;
-                i = 0;
-            }
-            if(offset>= text.size()) break;
-//            fmt::print("Next state to try : {} {}\n", offset, i);
-            pbeg = beg;
-            pend = end;
-            continue;
-        }
-        auto it = mit.value();
-        pbeg = std::find_if_not(to_reverse(it), to_reverse(pbeg), eq).base();
-        pend = std::find_if_not(it, pend, eq);
-//        if(offset==0 && i==0){
-//            assert(pbeg->uid == "B");
-//            assert(pend == end);
-//        } else if(offset==0 && i==1){
-//            assert(pbeg->uid == "C");
-//            assert(pend == end);
-//        } else if(offset==0 && i==2){
-//            assert(pbeg->uid == "C");
-//            assert(pend->uid == "A");
-//        } else if(offset==7 && i==0){
-//            assert(pbeg->uid == "D");
-//            assert(pend->uid == "B");
-//        }
-        ++i;
-    }
+    GreedyAnnotator annotator{items};
+    auto tags = annotator.annotate(text);
+    for(auto tag : tags)
+        fmt::print("{} : {}\n", tag.offset, tag.entity);
 }
 
 int main(int argc, char** argv){
