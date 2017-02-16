@@ -33,7 +33,8 @@ struct WikidataEntity{
 
     std::string repr(wordrep::WordUIDindex const& wordUIDs) const{
         std::stringstream ss;
-        for(auto word : words) ss << wordUIDs[word] << " ";
+        ss << uid;
+        for(auto word : words) ss << " " << wordUIDs[word];
         return ss.str();
     }
 
@@ -185,7 +186,7 @@ int main(int argc, char** argv){
     auto entities = read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
 
-    std::string query = "Google Voice is a product of Google . BASF vs BASF SE . DeepMind , deepmind , European Union . EU . eu";
+    std::string query = "Google Voice is a product of Google . BASF vs BASF SE . startup DeepMind , start-up deepmind , European Union . EU . eu";
     auto words = util::string::split(query, " ");
     std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
     GreedyAnnotator annotator{entities};
