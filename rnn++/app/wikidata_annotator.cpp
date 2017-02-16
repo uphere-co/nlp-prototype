@@ -36,9 +36,10 @@ struct WikidataEntity{
         return a.words > b.words;
     }
     friend std::ostream& operator<< (std::ostream& os, WikidataEntity const& a){
-        fmt::print(os, "{}\t", a.uid);
-        for(auto word: a.words) fmt::print(os, " {}", word);
-        fmt::print(os, "\t{}", a.orig);
+//        fmt::print(os, "{}\t", a.uid);
+//        for(auto word: a.words) fmt::print(os, " {}", word);
+//        fmt::print(os, "\t{}", a.orig);
+        fmt::print(os, "{}", a.orig);
         return os;
     }
     std::string orig;
@@ -46,7 +47,7 @@ struct WikidataEntity{
     std::vector<wordrep::WordUID> words;
 };
 
-void sort_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
+auto read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
     tbb::task_group g;
     tbb::concurrent_vector<WikidataEntity> items;
 
@@ -65,10 +66,9 @@ void sort_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&
     timer.here_then_reset("Read all items.");
     tbb::parallel_sort(items.begin(), items.end());
     timer.here_then_reset("Sorted items.");
-    for(auto& item : items)
-        fmt::print("{}\n", item);
-    timer.here_then_reset("Print items.");
-    fmt::print(std::cerr, "{} items.\n", items.size());
+    std::vector<WikidataEntity> output;
+    for(auto&& item : items) output.push_back(std::move(item));
+    return output;
 }
 
 void test_ordering(){
@@ -87,19 +87,22 @@ void test_ordering(){
 }
 
 struct TaggedEntity{
-    int64_t offset;
+    size_t offset;
     WikidataEntity const& entity;
 };
 struct GreedyAnnotator{
-    GreedyAnnotator(std::vector<WikidataEntity> const& entities)
-    : entities{entities}
-    {}
+    GreedyAnnotator(std::vector<WikidataEntity>&& entities_)
+            : entities{std::move(entities_)} {
+    }
+    GreedyAnnotator(std::vector<WikidataEntity> entities_)
+            : entities{std::move(entities_)} {
+    }
 
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const{
         std::vector<TaggedEntity> tagged;
         auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
-        auto offset=0;
-        auto i = 0;
+        size_t offset=0;
+        size_t i = 0;
         auto beg = entities.cbegin();
         auto end = entities.cend();
         auto pbeg = beg;
@@ -137,14 +140,14 @@ struct GreedyAnnotator{
         return tagged;
     }
 
-    std::vector<WikidataEntity> const& entities;
+    std::vector<WikidataEntity> entities;
 };
 void test_greedy_matching(){
     std::vector<WikidataEntity> items =
             {{"A", {1,2}},{"AA", {1,2}},{"B",{1,3}}, {"C",{1,2,3}},{"CC",{1,2,3}},{"CCC",{1,2,3}},
              {"D", {2,3,4}}, {"E",{5}}, {"EE",{5}}, {"EEE",{5}}, {"F",{6,7}},
              {"G", {2,3}}};
-    tbb::parallel_sort(items.begin(), items.end());
+    std::sort(items.begin(), items.end());
     std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
 
     fmt::print("Entities :");
@@ -163,14 +166,31 @@ void test_greedy_matching(){
 
 int main(int argc, char** argv){
 //    test_ordering();
-    test_greedy_matching();
-    return 0;
+//    test_greedy_matching();
+//    return 0;
 
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
-    sort_wikidata_entities(wordUIDs, std::move(std::cin));
+    util::Timer timer;
+    auto items = read_wikidata_entities(wordUIDs, std::move(std::cin));
+    timer.here_then_reset("Read items.");
+
+    std::string query = "Google Voice is a product of Google . BASF vs BASF SE . DeepMind , deepmind , European Union . EU . eu";
+    auto words = util::string::split(query, " ");
+    std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
+    GreedyAnnotator annotator{items};
+    timer.here_then_reset("Build data structures.");
+    auto tags = annotator.annotate(text);
+    timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
+    for(auto tag : tags)
+        fmt::print("{} : {}\n", tag.offset, tag.entity);
+
+//    for(auto& item : items)
+//        fmt::print("{}\n", item);
+//    timer.here_then_reset("Print items.");
+//    fmt::print(std::cerr, "{} items.\n", items.size());
     return 0;
 }
