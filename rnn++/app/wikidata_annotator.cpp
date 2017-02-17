@@ -142,6 +142,27 @@ struct GreedyAnnotator{
 
 namespace wikidata{
 
+struct EntityRepr{
+    struct OpExactMatch{
+        OpExactMatch(EntityRepr const& self) : dict{self} {}
+        bool operator() (wordrep::WikidataUID uid, std::vector<wordrep::WordUID> qwords) const {
+            auto it = dict.reprs.find(uid);
+            if(it==dict.reprs.cend()) return false;
+            for(auto words : it->second) if(words == qwords) return true;
+            return false;
+        }
+        EntityRepr const& dict;
+    };
+    EntityRepr(std::vector<WikidataEntity> const& entities){
+        for(auto& entity : entities)
+            reprs[entity.uid].push_back(entity.words);
+    }
+    OpExactMatch get_exact_match_operator() const{
+        return {*this};
+    }
+    std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> reprs;
+};
+
 }//namespace wikidata
 
 namespace wikidata{
@@ -215,6 +236,8 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     std::string query = util::string::read_whole(argv[2]);
 
 
+    using wordrep::WordUID;
+    using wordrep::WikidataUID;
 
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
@@ -226,7 +249,7 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     timer.here_then_reset("Read items.");
 
     auto words = util::string::split(query, " ");
-    std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
+    std::vector<WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
     GreedyAnnotator annotator{entities};
 
     timer.here_then_reset("Build data structures.");
@@ -235,17 +258,26 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     for(auto tag : tags)
         fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wikidataUIDs, wordUIDs));
 
-    std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> entity_reprs;
-    for(auto entity : entities.entities){
-        entity_reprs[entity.uid].push_back(entity.words);
-    }
-    for(auto entity : entity_reprs){
-        for(auto words : entity.second) {
-            fmt::print("{} : ", wikidataUIDs[entity.first]);
-            for (auto word : words) fmt::print(" {}", wordUIDs[word]);
-            fmt::print("\n");
-        }
-    }
+
+    EntityRepr entity_reprs{entities.entities};
+
+    auto exact_match= entity_reprs.get_exact_match_operator();
+    auto& ws = wordUIDs;
+    auto& ds = wikidataUIDs;
+    assert(exact_match(ds["Q1"], {ws["artificial"], ws["intelligence"]}));
+    assert(exact_match(ds["Q1"], {ws["AI"]}));
+    assert(!exact_match(ds["Q1"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(!exact_match(ds["Q1"], {ws["NLP"]}));
+
+    assert(!exact_match(ds["Q2"], {ws["artificial"], ws["intelligence"]}));
+    assert(!exact_match(ds["Q2"], {ws["AI"]}));
+    assert(exact_match(ds["Q2"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(exact_match(ds["Q2"], {ws["NLP"]}));
+
+    assert(!exact_match(ds["Q17948719427"], {ws["artificial"], ws["intelligence"]}));
+    assert(!exact_match(ds["Q17948719427"], {ws["AI"]}));
+    assert(!exact_match(ds["Q17948719427"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(!exact_match(ds["Q17948719427"], {ws["NLP"]}));
 }
 
 void test_all(int argc, char** argv) {
