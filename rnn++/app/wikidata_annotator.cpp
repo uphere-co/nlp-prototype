@@ -5,8 +5,10 @@
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/word_iter.h"
 #include "similarity/config.h"
 
+#include "utils/base_types.h"
 #include "utils/parallel.h"
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
@@ -27,8 +29,10 @@ struct WikidataEntity{
             assert(0);
         }
         uid = tokens[0];
-        for(auto w : util::string::split(tokens[1], " "))
-            words.push_back(wordUIDs[w]);
+        wordrep::WordIterBase<std::string> word_iter{tokens[1]};
+        word_iter.iter([this,&wordUIDs](auto w){words.push_back(wordUIDs[w]);});
+//        for(auto w : util::string::split(tokens[1], " "))
+
     }
 
     std::string repr(wordrep::WordUIDindex const& wordUIDs) const{
@@ -172,21 +176,42 @@ void test_greedy_matching(){
         fmt::print("{} : {}\n", tag.offset, tag.entity);
 }
 
+struct DummyWikidataUID{};
+using WikidataUID = util::IntegerLike<DummyWikidataUID,-1>;
+using WikidataUIDindex = wordrep::UIDIndex<WikidataUID>;
+
+
+void uid_lookup_benchmark(){
+    util::Timer timer;
+    wordrep::WordUIDindex wikidataUIDs{"wikidata.uid"};
+    fmt::print("{}\n",wikidataUIDs.size());
+    timer.here_then_reset("Read Wikidata UIDs.");
+
+    std::vector<std::string> uid_strs = {"Q1","Q256","Q102","Q105","Q109","Q10871621"};
+    auto uids = util::map(uid_strs, [&wikidataUIDs](auto uid){return wikidataUIDs[uid];});
+    for(int i=0; i!=3; ++i) assert(uid_strs[i]==wikidataUIDs[uids[i]]);
+    timer.here_then_reset("Finish comparisons.");
+}
+
 int main(int argc, char** argv){
+    util::Timer timer;
+    uid_lookup_benchmark();
+    return 0;
 //    test_ordering();
 //    test_greedy_matching();
 //    return 0;
 
-    assert(argc>1);
+    assert(argc>2);
     auto config_json = util::load_json(argv[1]);
+    std::string query = argv[2];
+
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
-    util::Timer timer;
+
     auto entities = read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
 
-    std::string query = "Google Voice is a product of Google . BASF vs BASF SE . startup DeepMind , start-up deepmind , European Union . EU . eu";
     auto words = util::string::split(query, " ");
     std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
     GreedyAnnotator annotator{entities};
