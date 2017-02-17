@@ -11,9 +11,7 @@ namespace wordrep{
 
 template<typename TUID>
 UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}} {
-    util::Timer timer;
     tbb::concurrent_vector<std::pair<TUID,std::string>> uids;
-    std::vector<std::pair<TUID,std::string>> suids;
     std::ifstream is{file};
     tbb::task_group g;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
@@ -24,19 +22,10 @@ UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}
         });
     }
     g.wait();
-    timer.here_then_reset("Finish reading.");
-    std::copy(uids.cbegin(), uids.cend(), std::back_inserter(suids));
-    uids.clear();
-    timer.here_then_reset("Finish copy.");
-    auto words = util::string::readlines(file);
-    auto n = words.size();
-    tbb::parallel_for(decltype(n){0}, n, [&words,&uids,this](auto i) {
-        auto const& word = words[i];
-        uids.push_back({get_uid(word),word});
-    });
-    timer.here_then_reset("Finish reading.");
-    for(auto elm : uids) uid2word[elm.first]=elm.second;
-    timer.here_then_reset("Finish indexing.");
+    tbb::parallel_sort(uids.begin(), uids.end());
+    std::copy(uids.cbegin(), uids.cend(), std::back_inserter(uid2word));
+//    auto words = util::string::readlines(file);
+//    for(auto& word : words) uid2word[get_uid(word)] = word;
 }
 
 template<typename TUID>
@@ -51,10 +40,15 @@ typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::operator[] (std::string const &wo
 }
 template<typename TUID>
 std::string UIDIndex<TUID>::operator[](uid_t uid) const {
-//    return uid2word[uid];
-    auto it=uid2word.find(uid.val);
-    if(it==uid2word.cend()) return the_unknown_word();
+    auto eq   = [uid](auto x){return x.first==uid;};
+    auto less = [uid](auto x){return x.first>uid;};
+    auto mit = util::binary_find(uid2word, eq, less);
+    if(!mit) return the_unknown_word();
+    auto it = mit.value();
     return it->second;
+//    auto it=uid2word.find(uid.val);
+//    if(it==uid2word.cend()) return the_unknown_word();
+//    return it->second;
 }
 template<typename TUID>
 void UIDIndex<TUID>::write_to_disk(std::string filename) const {

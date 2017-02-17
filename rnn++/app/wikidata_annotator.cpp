@@ -189,7 +189,10 @@ void uid_lookup_benchmark(){
 
     std::vector<std::string> uid_strs = {"Q1","Q256","Q102","Q105","Q109","Q10871621"};
     auto uids = util::map(uid_strs, [&wikidataUIDs](auto uid){return wikidataUIDs[uid];});
-    for(int i=0; i!=3; ++i) assert(uid_strs[i]==wikidataUIDs[uids[i]]);
+    for(size_t i=0; i!=uid_strs.size(); ++i) {
+        fmt::print("{} {}\n", uid_strs[i],wikidataUIDs[uids[i]]);
+        //assert(uid_strs[i]==wikidataUIDs[uids[i]]);
+    }
     timer.here_then_reset("Finish comparisons.");
 }
 

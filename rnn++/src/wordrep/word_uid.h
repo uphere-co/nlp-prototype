@@ -21,8 +21,8 @@ public:
 
 private:
     uid_t get_uid(std::string const &word) const;
-    uid_t insert(std::string const &word);
-    std::unordered_map<uid_t, std::string> uid2word;
+//    std::unordered_map<uid_t, std::string> uid2word;
+    std::vector<std::pair<uid_t,std::string>> uid2word;
     uid_t current_idx;
 };
 
