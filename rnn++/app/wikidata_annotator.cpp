@@ -83,21 +83,6 @@ SortedWikidataEntities read_wikidata_entities(wordrep::WordUIDindex const& wordU
     return SortedWikidataEntities{std::move(entities)};
 }
 
-void test_ordering(){
-    std::vector<int> a1{1,1};
-    std::vector<int> a2{1,2};
-    std::vector<int> b{1,2,3};
-    std::vector<int> c{2,2,3};
-    std::vector<int> d{2,3};
-    std::vector<std::vector<int>> vs{d,b,c,a2,a1};
-    util::sort(vs);
-    assert(vs[0]==a1);
-    assert(vs[1]==a2);
-    assert(vs[2]==b);
-    assert(vs[3]==c);
-    assert(vs[4]==d);
-}
-
 struct TaggedEntity{
     size_t offset;
     WikidataEntity const& entity;
@@ -154,54 +139,134 @@ struct GreedyAnnotator{
 
     std::vector<WikidataEntity> entities;
 };
-void test_greedy_matching(){
+
+namespace wikidata{
+
+}//namespace wikidata
+
+namespace wikidata{
+namespace test {
+
+void integer_list_ordering(){
+    std::vector<int> a1{1,1};
+    std::vector<int> a2{1,2};
+    std::vector<int> b{1,2,3};
+    std::vector<int> c{2,2,3};
+    std::vector<int> d{2,3};
+    std::vector<std::vector<int>> vs{d,b,c,a2,a1};
+    util::sort(vs);
+    assert(vs[0]==a1);
+    assert(vs[1]==a2);
+    assert(vs[2]==b);
+    assert(vs[3]==c);
+    assert(vs[4]==d);
+}
+
+void greedy_matching() {
     std::vector<WikidataEntity> items =
-        {{1, {1,2}},{11, {1,2}},{2,{1,3}}, {3,{1,2,3}},{33,{1,2,3}},{333,{1,2,3}},
-        {4, {2,3,4}}, {5,{5}}, {55,{5}}, {555,{5}}, {6,{6,7}},
-        {7, {2,3}}};
+            {{1,   {1, 2}},
+             {11,  {1, 2}},
+             {2,   {1, 3}},
+             {3,   {1, 2, 3}},
+             {33,  {1, 2, 3}},
+             {333, {1, 2, 3}},
+             {4,   {2, 3, 4}},
+             {5,   {5}},
+             {55,  {5}},
+             {555, {5}},
+             {6,   {6, 7}},
+             {7,   {2, 3}}};
     std::sort(items.begin(), items.end());
     SortedWikidataEntities entities{items};
-    std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
+    std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
 
     fmt::print("Entities :\n");
-    for(auto& item : entities.entities)
+    for (auto &item : entities.entities)
         fmt::print("{}\n", item);
     fmt::print("Text :");
-    for(auto t : text)
+    for (auto t : text)
         fmt::print(" {}", t);
     fmt::print("\n");
 
     GreedyAnnotator annotator{entities};
     auto tags = annotator.annotate(text);
-    for(auto tag : tags)
+    for (auto tag : tags)
         fmt::print("{} : {}\n", tag.offset, tag.entity);
 }
 
-void uid_lookup_benchmark(){
+void uid_lookup_benchmark() {
     util::Timer timer;
     wordrep::WikidataUIDindex wikidataUIDs{"wikidata.uid"};
-    fmt::print("{}\n",wikidataUIDs.size());
+    fmt::print("{}\n", wikidataUIDs.size());
     timer.here_then_reset("Read Wikidata UIDs.");
 
-    std::vector<std::string> uid_strs = {"Q1","Q256","Q102","Q105","Q109","Q10871621"};
-    auto uids = util::map(uid_strs, [&wikidataUIDs](auto uid){return wikidataUIDs[uid];});
-    for(size_t i=0; i!=uid_strs.size(); ++i) {
-        fmt::print("{} {}\n", uid_strs[i],wikidataUIDs[uids[i]]);
+    std::vector<std::string> uid_strs = {"Q1", "Q256", "Q102", "Q105", "Q109", "Q10871621"};
+    auto uids = util::map(uid_strs, [&wikidataUIDs](auto uid) { return wikidataUIDs[uid]; });
+    for (size_t i = 0; i != uid_strs.size(); ++i) {
+        fmt::print("{} {}\n", uid_strs[i], wikidataUIDs[uids[i]]);
         //assert(uid_strs[i]==wikidataUIDs[uids[i]]);
     }
     timer.here_then_reset("Finish comparisons.");
 }
 
+void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
+    util::Timer timer;
+    auto config_json = util::load_json(argv[1]);
+    std::string query = util::string::read_whole(argv[2]);
+
+
+
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
+    auto wordUIDs = factory.word_uid_index();
+    timer.here_then_reset("Load word UIDs.");
+    wordrep::WikidataUIDindex wikidataUIDs{"wikidata.test.uid"};
+    timer.here_then_reset("Load Wikidata UIDs.");
+    auto entities = read_wikidata_entities(wordUIDs, std::move(std::cin));
+    timer.here_then_reset("Read items.");
+
+    auto words = util::string::split(query, " ");
+    std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
+    GreedyAnnotator annotator{entities};
+
+    timer.here_then_reset("Build data structures.");
+    auto tags = annotator.annotate(text);
+    timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
+    for(auto tag : tags)
+        fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wikidataUIDs, wordUIDs));
+
+    std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> entity_reprs;
+    for(auto entity : entities.entities){
+        entity_reprs[entity.uid].push_back(entity.words);
+    }
+    for(auto entity : entity_reprs){
+        for(auto words : entity.second) {
+            fmt::print("{} : ", wikidataUIDs[entity.first]);
+            for (auto word : words) fmt::print(" {}", wordUIDs[word]);
+            fmt::print("\n");
+        }
+    }
+}
+
+void test_all(int argc, char** argv) {
+    integer_list_ordering();
+//    greedy_matching();
+//    uid_lookup_benchmark();
+    compare_wordUIDs_and_WikidataUID(argc, argv);
+}
+
+}//namespace wikidata::test
+}//namespace wikidata
+
 int main(int argc, char** argv){
     util::Timer timer;
-    uid_lookup_benchmark();
-//    test_ordering();
-//    test_greedy_matching();
+
+    wikidata::test::test_all(argc, argv);
     return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
-    std::string query = argv[2];
+    std::string query = util::string::read_whole(argv[2]);
 
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
