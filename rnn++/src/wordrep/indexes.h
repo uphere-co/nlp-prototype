@@ -10,6 +10,8 @@ struct DummyPOSUID{};
 using POSUID = util::IntegerLike<DummyPOSUID,-1>; //UID -1 for unknown words.
 struct DummyArcLabelUID{};
 using ArcLabelUID = util::IntegerLike<DummyArcLabelUID,-1>; //UID -1 for unknown words.
+struct DummyWikidataUID{};
+using WikidataUID = util::IntegerLike<DummyWikidataUID,-1>; //there should be no unknown UIDs, but just in the case...
 
 struct WordPosIndexDummy {};
 using WordPosition = util::IntegerLike<WordPosIndexDummy>;

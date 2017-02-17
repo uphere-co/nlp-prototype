@@ -29,7 +29,7 @@ UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}
 }
 
 template<typename TUID>
-typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::get_uid(std::string const &word) const {
+typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::get_uid(std::string const &word) {
     return uid_t::from_unsigned(hash(word));
 }
 
@@ -40,8 +40,8 @@ typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::operator[] (std::string const &wo
 }
 template<typename TUID>
 std::string UIDIndex<TUID>::operator[](uid_t uid) const {
-    auto eq   = [uid](auto x){return x.first==uid;};
-    auto less = [uid](auto x){return x.first>uid;};
+    auto eq   = [uid](auto x){return uid==x.first;};
+    auto less = [uid](auto x){return uid<x.first;};
     auto mit = util::binary_find(uid2word, eq, less);
     if(!mit) return the_unknown_word();
     auto it = mit.value();
@@ -77,5 +77,6 @@ WordUID the_unknown_word_uid(){
 template class UIDIndex<WordUID>;
 template class UIDIndex<POSUID>;
 template class UIDIndex<ArcLabelUID>;
+template class UIDIndex<WikidataUID>;
 
 }//namespace wordrep
