@@ -37,18 +37,18 @@ struct TaggedEntity{
     size_t offset;
     Entity const& entity;
 };
-struct EntityRepr{
+struct EntityReprs{
     struct OpExactMatch{
-        OpExactMatch(EntityRepr const& self) : dict{self} {}
+        OpExactMatch(EntityReprs const& self) : dict{self} {}
         bool operator() (wordrep::WikidataUID uid, std::vector<wordrep::WordUID> qwords) const {
             auto it = dict.reprs.find(uid);
             if(it==dict.reprs.cend()) return false;
             for(auto words : it->second) if(words == qwords) return true;
             return false;
         }
-        EntityRepr const& dict;
+        EntityReprs const& dict;
     };
-    EntityRepr(std::vector<Entity> const& entities){
+    EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
             reprs[entity.uid].push_back(entity.words);
     }

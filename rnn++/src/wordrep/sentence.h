@@ -28,6 +28,30 @@ struct Sentence{
     private:
         DPTokenIndex idx;
     };
+    struct WordIterator{
+        struct Iterator{
+            Iterator(DPTokenIndex idx, wordrep::DepParsedTokens const *tokens)
+                    : idx{idx}, tokens{tokens}
+            {}
+
+            WordUID operator*( void ) const;
+            void operator++(void)                {++idx;}
+            bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
+        private:
+            DPTokenIndex idx;
+            wordrep::DepParsedTokens const *tokens;
+        };
+        WordIterator(DepParsedTokens const *tokens, DPTokenIndex beg, DPTokenIndex end)
+        : tokens{tokens}, beg_token{beg}, end_token{end}
+        {}
+        Iterator begin() const { return {beg_token, tokens};}
+        Iterator end() const   { return {end_token, tokens};}
+    private:
+        DepParsedTokens const *tokens;
+        DPTokenIndex beg_token;
+        DPTokenIndex end_token;
+    };
+
     Sentence();
     Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens);
 
@@ -44,6 +68,7 @@ struct Sentence{
 
     bool isin(WordUID idx) const;
     SentenceRepr repr(WordUIDindex const& wordUIDs) const;
+    WordIterator iter_words() const{ return WordIterator{tokens, beg_token, end_token};}
 
     SentUID uid;
     DepParsedTokens const *tokens;
