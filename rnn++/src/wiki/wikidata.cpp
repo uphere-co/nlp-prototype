@@ -45,8 +45,7 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
                 AmbiguousEntity entity;
                 for(auto it=pbeg; it!=pend; ++it)
                     if(it->words.size()==i) entity.entities.push_back({offset,it->uid});
-                assert(!entity.entities.empty());
-                out.tokens.push_back({entity});
+                if(!entity.entities.empty()) out.tokens.push_back({entity});
                 offset += i;
                 i = 0;
             }

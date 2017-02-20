@@ -102,8 +102,8 @@ struct GreedyAnnotator{
     GreedyAnnotator(SortedEntities&& entities)
             : entities{std::move(entities.entities)} {
     }
-    GreedyAnnotator(SortedEntities entities)
-            : entities{std::move(entities.entities)} {
+    GreedyAnnotator(SortedEntities const& entities)
+            : entities{entities.entities} {
     }
 
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const;
