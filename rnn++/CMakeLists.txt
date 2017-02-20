@@ -123,6 +123,9 @@ add_executable(index_words app/index_words
                ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
+add_executable(wikidata_annotator app/wikidata_annotator
+        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+target_link_libraries(wikidata_annotator stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(wikidata_etl app/wikidata_etl
         ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
 target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
