@@ -150,9 +150,12 @@ ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
 
 ## Wikidata entity annotation
 ```
+# Preparing data
 cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items
 cat wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 cat wikidata.all_entities | ./wikidata_annotator config.rss.json
+# Test run
+cat ../build_corenlp/wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 ```
 
 ## Build tests
