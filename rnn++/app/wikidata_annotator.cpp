@@ -112,7 +112,7 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
         fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wikidataUIDs, wordUIDs));
 
 
-    EntityRepr entity_reprs{entities.entities};
+    EntityReprs entity_reprs{entities.entities};
 
     auto exact_match= entity_reprs.get_exact_match_operator();
     auto& ws = wordUIDs;
@@ -127,17 +127,75 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     assert(exact_match(ds["Q2"], {ws["natural"], ws["language"], ws["processing"]}));
     assert(exact_match(ds["Q2"], {ws["NLP"]}));
 
+    assert(exact_match(ds["Q3"], {ws["Google"]}));
+
     assert(!exact_match(ds["Q17948719427"], {ws["artificial"], ws["intelligence"]}));
     assert(!exact_match(ds["Q17948719427"], {ws["AI"]}));
     assert(!exact_match(ds["Q17948719427"], {ws["natural"], ws["language"], ws["processing"]}));
     assert(!exact_match(ds["Q17948719427"], {ws["NLP"]}));
 }
 
+void annotate_sentence(int argc, char** argv){
+    util::Timer timer;
+    auto config_json = util::load_json(argv[1]);
+    std::string query = util::string::read_whole(argv[2]);
+
+    using wordrep::WordUID;
+    using wordrep::WikidataUID;
+
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
+    auto wordUIDs = factory.word_uid_index();
+    timer.here_then_reset("Load word UIDs.");
+    wordrep::WikidataUIDindex wikidataUIDs{"wikidata.test.uid"};
+    timer.here_then_reset("Load Wikidata UIDs.");
+    auto entities = read_wikidata_entities(wordUIDs, std::move(std::cin));
+    timer.here_then_reset("Read items.");
+
+    GreedyAnnotator annotator{entities};
+    timer.here_then_reset("Build data structures.");
+
+    EntityReprs entity_reprs{entities.entities};
+    auto exact_match= entity_reprs.get_exact_match_operator();
+    auto& ws = wordUIDs;
+    auto& ds = wikidataUIDs;
+
+    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
+    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
+    auto posUIDs = factory.pos_uid_index();
+    auto arclabelUIDs = factory.arclabel_uid_index();
+
+    wordrep::DepParsedTokens tokens{};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.build_sent_uid(0);
+    auto sents = tokens.IndexSentences();
+
+    for(auto entity : entities.entities)
+        fmt::print("{}\n", entity.repr(wikidataUIDs, wordUIDs));
+    fmt::print(std::cerr, "{} {}\n", tokens.n_tokens(), sents.size());
+    for (auto sent : sents) {
+        fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
+        auto tagged_sent = annotator.annotate(sent);
+        for(auto token : tagged_sent.tokens){
+            token.token.match([&wordUIDs](WordUID w){fmt::print("{} ", wordUIDs[w]);},
+                              [&wikidataUIDs](AmbiguousEntity w){
+                                  fmt::print("(");
+                                  for(auto uid : w.uids) fmt::print("{} ", wikidataUIDs[uid]);
+                                  fmt::print(") ");
+                              });
+        }
+        fmt::print("\n");
+    }
+
+}
+
 void test_all(int argc, char** argv) {
     integer_list_ordering();
 //    greedy_matching();
 //    uid_lookup_benchmark();
-    compare_wordUIDs_and_WikidataUID(argc, argv);
+//    compare_wordUIDs_and_WikidataUID(argc, argv);
+    annotate_sentence(argc,argv);
 }
 
 }//namespace wikidata::test

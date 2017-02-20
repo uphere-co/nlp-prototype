@@ -80,6 +80,16 @@ struct EntityReprs{
     std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> reprs;
 };
 
+struct AmbiguousEntity{
+    std::vector<wordrep::WikidataUID> uids;
+};
+struct AnnotatedSentence{
+    struct Token{
+        mapbox::util::variant<wordrep::WordUID,AmbiguousEntity> token;
+    };
+    std::vector<Token> tokens;
+};
+
 struct GreedyAnnotator{
     GreedyAnnotator(SortedEntities&& entities)
             : entities{std::move(entities.entities)} {
@@ -89,6 +99,7 @@ struct GreedyAnnotator{
     }
 
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const;
+    AnnotatedSentence annotate(wordrep::Sentence const& sent) const;
 
     std::vector<Entity> entities;
 };

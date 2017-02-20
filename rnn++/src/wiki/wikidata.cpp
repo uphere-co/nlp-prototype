@@ -3,6 +3,7 @@
 #include <fmt/printf.h>
 
 #include "wordrep/word_iter.h"
+#include "wordrep/dep_parsed.h"
 
 #include "utils/base_types.h"
 #include "utils/parallel.h"
@@ -102,5 +103,51 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
         ++i;
     }
     return tagged;
+}
+
+AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
+    AnnotatedSentence out;
+    auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
+    size_t offset=0;
+    size_t i = 0;
+    auto beg = entities.cbegin();
+    auto end = entities.cend();
+    auto pbeg = beg;
+    auto pend = end;
+    while(true){
+        auto t = sent.tokens->word_uid(sent.front()+offset+i);
+        auto eq   = [t,i,this](Entity const& x){
+            if(x.words.size()<=i) return false;
+            return t==x.words[i];
+        };
+        auto less = [t,i](Entity const& x){
+            if(x.words.size()<=i) return true;
+            return t>x.words[i];
+        };
+        auto mit = util::binary_find(pbeg, pend, eq, less);
+        if(!mit) {
+            if(i == 0) {
+                out.tokens.push_back({t});
+                ++offset;
+            } else {
+                AmbiguousEntity entity;
+                for(auto it=pbeg; it!=pend; ++it)
+                    if(it->words.size()==i) entity.uids.push_back(it->uid);
+                assert(!entity.uids.empty());
+                out.tokens.push_back({entity});
+                offset += i;
+                i = 0;
+            }
+            if(offset>= sent.size()) break;
+            pbeg = beg;
+            pend = end;
+            continue;
+        }
+        auto it = mit.value();
+        pbeg = std::find_if_not(to_reverse(it), to_reverse(pbeg), eq).base();
+        pend = std::find_if_not(it, pend, eq);
+        ++i;
+    }
+    return out;
 }
 }//namespace wikidata
