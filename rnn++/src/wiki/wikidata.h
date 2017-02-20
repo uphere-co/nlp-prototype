@@ -36,6 +36,7 @@ struct SortedEntities{
 };
 
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
+SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
 
 struct TaggedEntity{
     size_t offset;

@@ -1,5 +1,7 @@
 #include "src/wiki/wikidata.h"
 
+#include <fstream>
+
 #include <fmt/printf.h>
 
 #include "wordrep/word_iter.h"
@@ -63,6 +65,9 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
     return SortedEntities{std::move(entities)};
 }
 
+SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file){
+    return read_wikidata_entities(wordUIDs, std::ifstream{entity_file});
+}
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
     std::vector<TaggedEntity> tagged;
     auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
