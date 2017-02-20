@@ -53,7 +53,7 @@ void greedy_matching() {
     std::sort(items.begin(), items.end());
     SortedEntities entities{items};
     std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
-
+    EntityReprs entity_reprs{entities.entities};
     fmt::print("Entities :\n");
     for (auto &item : entities.entities)
         fmt::print("{}\n", item);
@@ -65,7 +65,7 @@ void greedy_matching() {
     GreedyAnnotator annotator{entities};
     auto tags = annotator.annotate(text);
     for (auto tag : tags)
-        fmt::print("{} : {}\n", tag.offset, tag.entity);
+        fmt::print("{} : {}\n", tag.offset, tag.entity.uid);
 }
 
 void uid_lookup_benchmark() {
@@ -107,6 +107,7 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
 
     timer.here_then_reset("Build data structures.");
     auto tags = annotator.annotate(text);
+    fmt::print("query:\n{}", query);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
         fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wikidataUIDs, wordUIDs));
@@ -180,9 +181,11 @@ void annotate_sentence(int argc, char** argv){
         auto tagged_sent = annotator.annotate(sent);
         for(auto token : tagged_sent.tokens){
             token.token.match([&wordUIDs](WordUID w){fmt::print("{} ", wordUIDs[w]);},
-                              [&wikidataUIDs](AmbiguousEntity w){
+                              [&wikidataUIDs,&wordUIDs](AmbiguousEntity w){
                                   fmt::print("(");
-                                  for(auto uid : w.uids) fmt::print("{} ", wikidataUIDs[uid]);
+                                  for(auto entity : w.entities)
+                                      fmt::print("{} ", wikidataUIDs[entity.entity.uid]);
+//                                      fmt::print("{} ", entity.entity.repr(wikidataUIDs, wordUIDs));
                                   fmt::print(") ");
                               });
         }

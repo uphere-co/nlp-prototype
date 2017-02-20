@@ -68,49 +68,9 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file){
     return read_wikidata_entities(wordUIDs, std::ifstream{entity_file});
 }
-std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
-    std::vector<TaggedEntity> tagged;
-    auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
-    size_t offset=0;
-    size_t i = 0;
-    auto beg = entities.cbegin();
-    auto end = entities.cend();
-    auto pbeg = beg;
-    auto pend = end;
-    while(true){
-        auto t = text[offset+i];
-        auto eq   = [t,i,this](Entity const& x){
-            if(x.words.size()<=i) return false;
-            return t==x.words[i];
-        };
-        auto less = [t,i](Entity const& x){
-            if(x.words.size()<=i) return true;
-            return t>x.words[i];
-        };
-        auto mit = util::binary_find(pbeg, pend, eq, less);
-        if(!mit) {
-            if(i == 0) {
-                ++offset;
-            } else {
-                for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) tagged.push_back({offset, *it});
-                offset += i;
-                i = 0;
-            }
-            if(offset>= text.size()) break;
-            pbeg = beg;
-            pend = end;
-            continue;
-        }
-        auto it = mit.value();
-        pbeg = std::find_if_not(to_reverse(it), to_reverse(pbeg), eq).base();
-        pend = std::find_if_not(it, pend, eq);
-        ++i;
-    }
-    return tagged;
-}
 
-AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
+template<typename TI>
+AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_beg, TI sent_end) {
     AnnotatedSentence out;
     auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
     size_t offset=0;
@@ -119,9 +79,10 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
     auto end = entities.cend();
     auto pbeg = beg;
     auto pend = end;
+
     while(true){
-        auto t = sent.tokens->word_uid(sent.front()+offset+i);
-        auto eq   = [t,i,this](Entity const& x){
+        auto t = *(sent_beg+offset+i);
+        auto eq   = [t,i](Entity const& x){
             if(x.words.size()<=i) return false;
             return t==x.words[i];
         };
@@ -137,13 +98,13 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
             } else {
                 AmbiguousEntity entity;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) entity.uids.push_back(it->uid);
-                assert(!entity.uids.empty());
+                    if(it->words.size()==i) entity.entities.push_back({offset,*it});
+                assert(!entity.entities.empty());
                 out.tokens.push_back({entity});
                 offset += i;
                 i = 0;
             }
-            if(offset>= sent.size()) break;
+            if(!(sent_beg + offset<sent_end)) break;
             pbeg = beg;
             pend = end;
             continue;
@@ -154,5 +115,22 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
         ++i;
     }
     return out;
+}
+
+std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
+    auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
+    std::vector<TaggedEntity> tagged;
+    for(auto token : tagged_sent.tokens){
+        token.token.match([](wordrep::WordUID w){},
+                          [&tagged](AmbiguousEntity& w){
+                              for(auto& entity : w.entities)
+                                  tagged.push_back(entity);
+                          });
+    }
+    return tagged;
+}
+
+AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
+    return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
 }
 }//namespace wikidata

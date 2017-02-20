@@ -24,6 +24,8 @@ struct Sentence{
 
         DPTokenIndex operator*( void ) const {return idx;}
         void operator++(void)                {++idx;}
+        friend Iterator operator+(Iterator x, size_t i) {return {x.idx+i};}
+        friend bool operator<(Iterator x, Iterator y) {return x.idx < y.idx;}
         bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
     private:
         DPTokenIndex idx;
@@ -36,6 +38,8 @@ struct Sentence{
 
             WordUID operator*( void ) const;
             void operator++(void)                {++idx;}
+            friend Iterator operator+(Iterator x, size_t i) {return {x.idx+i,x.tokens};}
+            friend bool operator<(Iterator x, Iterator y) {return x.idx < y.idx;}
             bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
         private:
             DPTokenIndex idx;

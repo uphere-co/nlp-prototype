@@ -40,8 +40,9 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 
 struct TaggedEntity{
     size_t offset;
-    Entity const& entity;
+    Entity entity;
 };
+
 struct EntityReprs{
     struct OpExactMatch{
         OpExactMatch(EntityReprs const& self) : dict{self} {}
@@ -78,11 +79,12 @@ struct EntityReprs{
     OpExactMatch get_exact_match_operator() const{
         return {*this};
     }
+
     std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> reprs;
 };
 
 struct AmbiguousEntity{
-    std::vector<wordrep::WikidataUID> uids;
+    std::vector<TaggedEntity> entities;
 };
 struct AnnotatedSentence{
     struct Token{
