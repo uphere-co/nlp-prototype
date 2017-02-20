@@ -5,8 +5,10 @@
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/word_iter.h"
 #include "similarity/config.h"
 
+#include "utils/base_types.h"
 #include "utils/parallel.h"
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
@@ -17,7 +19,7 @@ using util::find;
 using util::has_key;
 
 struct WikidataEntity{
-    WikidataEntity(std::string uid, std::vector<wordrep::WordUID> words)
+    WikidataEntity(wordrep::WikidataUID uid, std::vector<wordrep::WordUID> words)
     : uid{uid}, words{words}
     {}
     WikidataEntity(wordrep::WordUIDindex const& wordUIDs, std::string line) {
@@ -26,14 +28,17 @@ struct WikidataEntity{
             fmt::print("{}\n", line);
             assert(0);
         }
-        uid = tokens[0];
-        for(auto w : util::string::split(tokens[1], " "))
-            words.push_back(wordUIDs[w]);
+        uid = wordrep::WikidataUIDindex::get_uid(tokens[0]);
+        wordrep::WordIterBase<std::string> word_iter{tokens[1]};
+        word_iter.iter([this,&wordUIDs](auto w){words.push_back(wordUIDs[w]);});
+//        for(auto w : util::string::split(tokens[1], " "))
+
     }
 
-    std::string repr(wordrep::WordUIDindex const& wordUIDs) const{
+    std::string repr(wordrep::WikidataUIDindex const& wikidataUIDs,
+                     wordrep::WordUIDindex const& wordUIDs) const{
         std::stringstream ss;
-        ss << uid;
+        ss << wikidataUIDs[uid];
         for(auto word : words) ss << " " << wordUIDs[word];
         return ss.str();
     }
@@ -46,7 +51,7 @@ struct WikidataEntity{
         for(auto word: a.words) fmt::print(os, " {}", word);
         return os;
     }
-    std::string uid;
+    wordrep::WikidataUID uid;
     std::vector<wordrep::WordUID> words;
 };
 
@@ -151,9 +156,9 @@ struct GreedyAnnotator{
 };
 void test_greedy_matching(){
     std::vector<WikidataEntity> items =
-            {{"A", {1,2}},{"AA", {1,2}},{"B",{1,3}}, {"C",{1,2,3}},{"CC",{1,2,3}},{"CCC",{1,2,3}},
-             {"D", {2,3,4}}, {"E",{5}}, {"EE",{5}}, {"EEE",{5}}, {"F",{6,7}},
-             {"G", {2,3}}};
+        {{1, {1,2}},{11, {1,2}},{2,{1,3}}, {3,{1,2,3}},{33,{1,2,3}},{333,{1,2,3}},
+        {4, {2,3,4}}, {5,{5}}, {55,{5}}, {555,{5}}, {6,{6,7}},
+        {7, {2,3}}};
     std::sort(items.begin(), items.end());
     SortedWikidataEntities entities{items};
     std::vector<wordrep::WordUID> text = {1,2,3,4,8,9,5,2,3,4,2,3,8,9,3,4,5,6,7};
@@ -172,21 +177,41 @@ void test_greedy_matching(){
         fmt::print("{} : {}\n", tag.offset, tag.entity);
 }
 
+void uid_lookup_benchmark(){
+    util::Timer timer;
+    wordrep::WikidataUIDindex wikidataUIDs{"wikidata.uid"};
+    fmt::print("{}\n",wikidataUIDs.size());
+    timer.here_then_reset("Read Wikidata UIDs.");
+
+    std::vector<std::string> uid_strs = {"Q1","Q256","Q102","Q105","Q109","Q10871621"};
+    auto uids = util::map(uid_strs, [&wikidataUIDs](auto uid){return wikidataUIDs[uid];});
+    for(size_t i=0; i!=uid_strs.size(); ++i) {
+        fmt::print("{} {}\n", uid_strs[i],wikidataUIDs[uids[i]]);
+        //assert(uid_strs[i]==wikidataUIDs[uids[i]]);
+    }
+    timer.here_then_reset("Finish comparisons.");
+}
+
 int main(int argc, char** argv){
+    util::Timer timer;
+    uid_lookup_benchmark();
 //    test_ordering();
 //    test_greedy_matching();
-//    return 0;
+    return 0;
 
-    assert(argc>1);
+    assert(argc>2);
     auto config_json = util::load_json(argv[1]);
+    std::string query = argv[2];
+
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
-    util::Timer timer;
+    timer.here_then_reset("Load word UIDs.");
+    wordrep::WikidataUIDindex wikidataUIDs{"wikidata.uid"};
+    timer.here_then_reset("Load Wikidata UIDs.");
     auto entities = read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
 
-    std::string query = "Google Voice is a product of Google . BASF vs BASF SE . startup DeepMind , start-up deepmind , European Union . EU . eu";
     auto words = util::string::split(query, " ");
     std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
     GreedyAnnotator annotator{entities};
@@ -194,7 +219,6 @@ int main(int argc, char** argv){
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-        fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wordUIDs));
-
+        fmt::print("{} : {}\n", tag.offset, tag.entity.repr(wikidataUIDs, wordUIDs));
     return 0;
 }

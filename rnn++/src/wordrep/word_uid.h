@@ -19,10 +19,10 @@ public:
     auto size() const {return uid2word.size();}
     std::vector<uid_t> get_uids() const;
 
+    static uid_t get_uid(std::string const &word);
 private:
-    uid_t get_uid(std::string const &word) const;
-    uid_t insert(std::string const &word);
-    std::unordered_map<uid_t, std::string> uid2word;
+//    std::unordered_map<uid_t, std::string> uid2word;
+    std::vector<std::pair<uid_t,std::string>> uid2word;
     uid_t current_idx;
 };
 
@@ -30,6 +30,7 @@ private:
 using WordUIDindex = UIDIndex<WordUID>;
 using POSUIDindex = UIDIndex<POSUID>;
 using ArcLabelUIDindex = UIDIndex<ArcLabelUID>;
+using WikidataUIDindex = UIDIndex<WikidataUID>;
 
 std::string the_unknown_word();
 WordUID the_unknown_word_uid();
