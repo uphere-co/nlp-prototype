@@ -46,6 +46,7 @@ struct Sentence{
         {}
         Iterator begin() const { return {beg_token, tokens};}
         Iterator end() const   { return {end_token, tokens};}
+        size_t size() const {return util::diff(end_token,beg_token);}
     private:
         DepParsedTokens const *tokens;
         DPTokenIndex beg_token;

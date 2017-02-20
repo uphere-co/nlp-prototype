@@ -5,6 +5,9 @@
 #include <vector>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/sentence.h"
+
+#include "utils/variant.h"
 
 namespace wikidata{
 
@@ -16,6 +19,7 @@ struct Entity{
 
     std::string repr(wordrep::WikidataUIDindex const& wikidataUIDs,
                      wordrep::WordUIDindex const& wordUIDs) const;
+    size_t size() const{return words.size();}
 
     friend bool operator< (Entity const& a, Entity const& b){
         return a.words > b.words;
@@ -46,6 +50,24 @@ struct EntityReprs{
             for(auto words : it->second) if(words == qwords) return true;
             return false;
         }
+        template<typename TI>
+        bool operator() (wordrep::WikidataUID uid, TI beg, TI end) const {
+            auto elm = dict.reprs.find(uid);
+            if(elm==dict.reprs.cend()) return false;
+            for(auto words : elm->second){
+                auto match=true;
+                auto q=beg;
+                for(auto it=words.begin(); it!=words.end(); ++it){
+                    if(*q != *it) {
+                        match=false;
+                        break;
+                    }
+                    ++q;
+                }
+                if(match) return true;
+            }
+            return false;
+        }
         EntityReprs const& dict;
     };
     EntityReprs(std::vector<Entity> const& entities){
@@ -57,7 +79,6 @@ struct EntityReprs{
     }
     std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> reprs;
 };
-
 
 struct GreedyAnnotator{
     GreedyAnnotator(SortedEntities&& entities)
