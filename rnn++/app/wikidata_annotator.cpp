@@ -187,13 +187,25 @@ void annotate_sentence(int argc, char** argv){
     }
 }
 
-struct MatchedWords{
+struct ConsecutiveTokens{
+    struct Iterator{
+        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
+        wordrep::DPTokenIndex operator*( void ) const {return idx;}
+        void operator++(void)                {++idx;}
+        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
+    private:
+        wordrep::DPTokenIndex idx;
+    };
+    Iterator begin() const { return {idx};}
+    Iterator end() const { return {idx+len};}
+    size_t size() const {return len;}
+
     wordrep::DPTokenIndex idx;
     size_t len;
 };
-std::vector<MatchedWords> is_contain(wordrep::Sentence const& sent,
+std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
                                      EntityReprs::OpEntityExactMatch const& op){
-    std::vector<MatchedWords> offsets;
+    std::vector<ConsecutiveTokens> offsets;
     auto iter_words = sent.iter_words();
     auto beg = iter_words.begin();
     auto end = iter_words.end();
@@ -206,7 +218,19 @@ std::vector<MatchedWords> is_contain(wordrep::Sentence const& sent,
     }
     return offsets;
 }
-
+auto head_word(wordrep::DepParsedTokens const& dict,
+               ConsecutiveTokens words){
+    auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
+    std::vector<wordrep::WordPosition> heads;
+    for(auto idx : words){
+        auto mh = dict.head_pos(idx);
+        if(!mh) continue;
+        auto head = mh.value();
+        if(util::isin(positions, head)) continue;
+        heads.push_back(head);
+    }
+    return heads;
+}
 void operation_wikiuid_on_sentence(int argc, char** argv){
     util::Timer timer;
     assert(argc>1);
@@ -275,6 +299,9 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
                 fmt::print(std::cerr, " ({} {} {})", wordUIDs[tokens.word_uid(x.idx+i)],
                            tokens.word_pos(x.idx+i), tokens.head_pos(x.idx+i).value());
             }
+            fmt::print(std::cerr, "\n");
+            auto heads = head_word(tokens, x);
+            for(auto head : heads) fmt::print(std::cerr, "{} ", head);
             fmt::print(std::cerr, "\n");
         }
         assert(is_contain(sent, op_contain_nlp).empty());
