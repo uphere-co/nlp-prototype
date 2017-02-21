@@ -131,10 +131,10 @@ PerSentQueryResult build_query_result_POD(
         if(score==0.0) continue;
         ScoreWithOffset tmp;
         tmp.score = score;
-        tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_word.end = query_tokens.word_end(lhs_idx).val;
-        tmp.matched_word.beg = tokens.word_beg(rhs_idx).val;
-        tmp.matched_word.end = tokens.word_end(rhs_idx).val;
+        tmp.query_token.beg = query_tokens.word_beg(lhs_idx).val;
+        tmp.query_token.end = query_tokens.word_end(lhs_idx).val;
+        tmp.matched_token.beg = tokens.word_beg(rhs_idx).val;
+        tmp.matched_token.end = tokens.word_end(rhs_idx).val;
         result.scores_with_offset.push_back(tmp);
     }
     result.score = scores.score_sum();

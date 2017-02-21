@@ -89,7 +89,6 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     auto config_json = util::load_json(argv[1]);
     std::string query = util::string::read_whole(argv[2]);
 
-
     using wordrep::WordUID;
     using wordrep::WikidataUID;
 
@@ -113,9 +112,6 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
         fmt::print("{} : {}\n", tag.offset, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
-
-
-
 
     auto exact_match= entity_reprs.get_exact_match_operator();
     auto& ws = wordUIDs;
@@ -157,7 +153,6 @@ void annotate_sentence(int argc, char** argv){
     timer.here_then_reset("Load Wikidata UIDs.");
     auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
     timer.here_then_reset("Read items.");
-
 
     EntityReprs entity_reprs{entities.entities};
     GreedyAnnotator annotator{entities};
@@ -206,8 +201,8 @@ void test_all(int argc, char** argv) {
 int main(int argc, char** argv){
     util::Timer timer;
 
-    wikidata::test::test_all(argc, argv);
-    return 0;
+//    wikidata::test::test_all(argc, argv);
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -219,11 +214,14 @@ int main(int argc, char** argv){
     timer.here_then_reset("Load word UIDs.");
     wordrep::WikidataUIDindex wikidataUIDs{"wikidata.uid"};
     timer.here_then_reset("Load Wikidata UIDs.");
+    wordrep::WikidataUIDindex is_ne{"wikidata.uid.ne"};
+    timer.here_then_reset("Load Wikidata UIDs.");
+
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
     //TODO: Constructing EntityReprs with 14M entities takes more than 20s!
-//    wikidata::EntityReprs entity_reprs{entities.entities};
-//    timer.here_then_reset("Build data structures.");
+    wikidata::EntityReprs entity_reprs{entities.entities};
+    timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
     auto words = util::string::split(query, " ");
@@ -231,7 +229,7 @@ int main(int argc, char** argv){
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-        fmt::print("{} : {}\n", tag.offset, wikidataUIDs[tag.uid]);
-        //fmt::print("{} : {}\n", tag.offset, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
+//        fmt::print("{} : {}\n", tag.offset, wikidataUIDs[tag.uid]);
+        fmt::print("{} : {}\n", tag.offset, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
     return 0;
 }
