@@ -40,37 +40,53 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 
 struct TaggedEntity{
     size_t offset;
+    size_t len;
     wordrep::WikidataUID uid;
 };
 
 struct EntityReprs{
+    using dict_type = std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>>;
+    using value_type = dict_type::value_type;
     struct OpExactMatch{
         OpExactMatch(EntityReprs const& self) : dict{self} {}
         bool operator() (wordrep::WikidataUID uid, std::vector<wordrep::WordUID> qwords) const {
             auto it = dict.reprs.find(uid);
             if(it==dict.reprs.cend()) return false;
-            for(auto words : it->second) if(words == qwords) return true;
+            OpEntityExactMatch op{*it};
+            return op(qwords);
+        }
+        template<typename TI>
+        size_t operator() (wordrep::WikidataUID uid, TI beg, TI end) const {
+            auto it = dict.reprs.find(uid);
+            if(it ==dict.reprs.cend()) return 0;
+            OpEntityExactMatch op{*it};
+            return op(beg,end);
+        }
+        EntityReprs const& dict;
+    };
+    struct OpEntityExactMatch{
+        OpEntityExactMatch(value_type const& reprs) : reprs{reprs} {}
+        bool operator() (std::vector<wordrep::WordUID> qwords) const {
+            for(auto words : reprs.second) if(words == qwords) return true;
             return false;
         }
         template<typename TI>
-        bool operator() (wordrep::WikidataUID uid, TI beg, TI end) const {
-            auto elm = dict.reprs.find(uid);
-            if(elm==dict.reprs.cend()) return false;
-            for(auto words : elm->second){
-                auto match=true;
+        size_t operator() (TI beg, TI end) const {
+            for(auto words : reprs.second){
+                auto match=words.size();
                 auto q=beg;
                 for(auto it=words.begin(); it!=words.end(); ++it){
-                    if(*q != *it) {
-                        match=false;
+                    if(*q != *it || q==end) {
+                        match=0;
                         break;
                     }
                     ++q;
                 }
-                if(match) return true;
+                if(match) return match;
             }
-            return false;
+            return 0;
         }
-        EntityReprs const& dict;
+        value_type const& reprs;
     };
     EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
@@ -79,9 +95,14 @@ struct EntityReprs{
     OpExactMatch get_exact_match_operator() const{
         return {*this};
     }
+    OpEntityExactMatch get_exact_match_operator(wordrep::WikidataUID uid) const{
+        auto it = reprs.find(uid);
+        if(it==reprs.cend()) assert(0);
+        return {*it};
+    }
     Entity operator[](wordrep::WikidataUID uid) const;
 
-    std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>> reprs;
+    dict_type reprs;
 };
 
 struct AmbiguousEntity{
@@ -89,6 +110,7 @@ struct AmbiguousEntity{
 };
 struct WordWithOffset{
     size_t offset;
+    size_t len;
     wordrep::WordUID uid;
 };
 struct AnnotatedSentence{

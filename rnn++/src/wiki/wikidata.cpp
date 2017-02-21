@@ -39,12 +39,12 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         auto mit = util::binary_find(pbeg, pend, eq, less);
         if(!mit) {
             if(i == 0) {
-                out.tokens.push_back({WordWithOffset{offset,t}});
+                out.tokens.push_back({WordWithOffset{offset,1,t}});
                 ++offset;
             } else {
                 AmbiguousEntity entity;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) entity.entities.push_back({offset,it->uid});
+                    if(it->words.size()==i) entity.entities.push_back({offset,i,it->uid});
                 if(!entity.entities.empty()) out.tokens.push_back({entity});
                 offset += i;
                 i = 0;

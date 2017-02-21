@@ -65,7 +65,7 @@ void greedy_matching() {
     GreedyAnnotator annotator{entities};
     auto tags = annotator.annotate(text);
     for (auto tag : tags)
-        fmt::print("{} : {}\n", tag.offset, tag.uid);
+        fmt::print("{} {} : {}\n", tag.offset, tag.len,  tag.uid);
 }
 
 void uid_lookup_benchmark() {
@@ -111,7 +111,7 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     fmt::print("query:\n{}", query);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-        fmt::print("{} : {}\n", tag.offset, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
+        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
 
     auto exact_match= entity_reprs.get_exact_match_operator();
     auto& ws = wordUIDs;
@@ -187,12 +187,69 @@ void annotate_sentence(int argc, char** argv){
     }
 }
 
+void operation_wikiuid_on_sentence(int argc, char** argv){
+    util::Timer timer;
+    assert(argc>1);
+    auto config_json = util::load_json(argv[1]);
+
+    using wordrep::WordUID;
+    using wordrep::WikidataUID;
+
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
+    auto wordUIDs = factory.word_uid_index();
+    auto posUIDs = factory.pos_uid_index();
+    auto arclabelUIDs = factory.arclabel_uid_index();
+    timer.here_then_reset("Load word UIDs.");
+
+    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
+    timer.here_then_reset("Load Wikidata UIDs.");
+    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
+    timer.here_then_reset("Read items.");
+
+    EntityReprs entity_reprs{entities.entities};
+    timer.here_then_reset("Build data structures.");
+
+    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
+    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
+    wordrep::DepParsedTokens tokens{};
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
+    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.build_sent_uid(0);
+    auto sents = tokens.IndexSentences();
+    timer.here_then_reset("Prepare test data.");
+
+    //chrome_os=Q79531, NLP=q2
+    auto chrome_os = wikidataUIDs["Q79531"];
+    auto nlp = wikidataUIDs["Q2"];
+    fmt::print(std::cerr, "List of Wikidata entities:\n");
+    for(auto entity : entities.entities)
+        fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
+
+    auto op=entity_reprs.get_exact_match_operator();
+    auto op_contain_nlp = entity_reprs.get_exact_match_operator(nlp);
+    auto op_contain_chrome_os = entity_reprs.get_exact_match_operator(chrome_os);
+    for (auto sent : sents) {
+        auto iter_words = sent.iter_words();
+        auto end = iter_words.end();
+        for(auto it=iter_words.begin(); it!=end; ++it){
+            fmt::print(std::cerr, "{}({}_{}_{}) ", wordUIDs[*it],
+                       op(chrome_os, it, end),
+                       op_contain_chrome_os(it, end),
+                       op_contain_nlp(it, end));
+        }
+        fmt::print(std::cerr, "\n");
+        //fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs), op_contain_nlp(sent), op_contain_ai(sent));
+    }
+}
+
 void test_all(int argc, char** argv) {
     integer_list_ordering();
     greedy_matching();
 //    uid_lookup_benchmark();
     compare_wordUIDs_and_WikidataUID(argc, argv);
     annotate_sentence(argc,argv);
+    operation_wikiuid_on_sentence(argc,argv);
 }
 
 }//namespace wikidata::test
@@ -201,8 +258,8 @@ void test_all(int argc, char** argv) {
 int main(int argc, char** argv){
     util::Timer timer;
 
-//    wikidata::test::test_all(argc, argv);
-//    return 0;
+    wikidata::test::test_all(argc, argv);
+    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -229,7 +286,7 @@ int main(int argc, char** argv){
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-//        fmt::print("{} : {}\n", tag.offset, wikidataUIDs[tag.uid]);
-        fmt::print("{} : {}\n", tag.offset, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
+//        fmt::print("{} {} : {}\n", tag.offset, tag.len, wikidataUIDs[tag.uid]);
+        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
     return 0;
 }
