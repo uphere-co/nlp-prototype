@@ -9,6 +9,9 @@
 
 #include "utils/variant.h"
 
+namespace wordrep{
+struct DepParsedTokens;
+}
 namespace wikidata{
 
 struct Entity{
@@ -133,5 +136,27 @@ struct GreedyAnnotator{
 
     std::vector<Entity> entities;
 };
+
+
+struct ConsecutiveTokens{
+    struct Iterator{
+        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
+        wordrep::DPTokenIndex operator*( void ) const {return idx;}
+        void operator++(void)                {++idx;}
+        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
+    private:
+        wordrep::DPTokenIndex idx;
+    };
+    Iterator begin() const { return {idx};}
+    Iterator end() const { return {idx+len};}
+    size_t size() const {return len;}
+
+    wordrep::DPTokenIndex idx;
+    size_t len;
+};
+
+std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
+                                          EntityReprs::OpEntityExactMatch const& op);
+std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words);
 
 }//namespace wikidata

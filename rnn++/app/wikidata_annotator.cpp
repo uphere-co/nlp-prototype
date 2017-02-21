@@ -187,50 +187,6 @@ void annotate_sentence(int argc, char** argv){
     }
 }
 
-struct ConsecutiveTokens{
-    struct Iterator{
-        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
-        wordrep::DPTokenIndex operator*( void ) const {return idx;}
-        void operator++(void)                {++idx;}
-        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
-    private:
-        wordrep::DPTokenIndex idx;
-    };
-    Iterator begin() const { return {idx};}
-    Iterator end() const { return {idx+len};}
-    size_t size() const {return len;}
-
-    wordrep::DPTokenIndex idx;
-    size_t len;
-};
-std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                     EntityReprs::OpEntityExactMatch const& op){
-    std::vector<ConsecutiveTokens> offsets;
-    auto iter_words = sent.iter_words();
-    auto beg = iter_words.begin();
-    auto end = iter_words.end();
-    auto idx_beg=sent.front();
-    for(auto it=beg; it!=end; ++it){
-        auto n = op(it,end);
-        if(n){
-            offsets.push_back({idx_beg+(it-beg),n});
-        }
-    }
-    return offsets;
-}
-auto head_word(wordrep::DepParsedTokens const& dict,
-               ConsecutiveTokens words){
-    auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
-    std::vector<wordrep::WordPosition> heads;
-    for(auto idx : words){
-        auto mh = dict.head_pos(idx);
-        if(!mh) continue;
-        auto head = mh.value();
-        if(util::isin(positions, head)) continue;
-        heads.push_back(head);
-    }
-    return heads;
-}
 void operation_wikiuid_on_sentence(int argc, char** argv){
     util::Timer timer;
     assert(argc>1);
