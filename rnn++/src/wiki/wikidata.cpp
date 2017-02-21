@@ -131,7 +131,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
     auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
     std::vector<TaggedEntity> tagged;
     for(auto token : tagged_sent.tokens){
-        token.token.match([](WordWithOffset w){},
+        token.token.match([](WordWithOffset){},
                           [&tagged](AmbiguousEntity& w){
                               for(auto& entity : w.entities)
                                   tagged.push_back(entity);
@@ -151,10 +151,13 @@ std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
     auto beg = iter_words.begin();
     auto end = iter_words.end();
     auto idx_beg=sent.front();
-    for(auto it=beg; it!=end; ++it){
+    for(auto it=beg; it!=end; ){
         auto n = op(it,end);
         if(n){
             offsets.push_back({idx_beg+(it-beg),n});
+            it = it + n;
+        } else{
+            ++it;
         }
     }
     return offsets;
