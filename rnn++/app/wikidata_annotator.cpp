@@ -187,6 +187,26 @@ void annotate_sentence(int argc, char** argv){
     }
 }
 
+struct MatchedWords{
+    wordrep::DPTokenIndex idx;
+    size_t len;
+};
+std::vector<MatchedWords> is_contain(wordrep::Sentence const& sent,
+                                     EntityReprs::OpEntityExactMatch const& op){
+    std::vector<MatchedWords> offsets;
+    auto iter_words = sent.iter_words();
+    auto beg = iter_words.begin();
+    auto end = iter_words.end();
+    auto idx_beg=sent.front();
+    for(auto it=beg; it!=end; ++it){
+        auto n = op(it,end);
+        if(n){
+            offsets.push_back({idx_beg+(it-beg),n});
+        }
+    }
+    return offsets;
+}
+
 void operation_wikiuid_on_sentence(int argc, char** argv){
     util::Timer timer;
     assert(argc>1);
@@ -222,13 +242,19 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     //chrome_os=Q79531, NLP=q2
     auto chrome_os = wikidataUIDs["Q79531"];
     auto nlp = wikidataUIDs["Q2"];
+    auto google = wikidataUIDs["Q3"];
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
     auto op=entity_reprs.get_exact_match_operator();
-    auto op_contain_nlp = entity_reprs.get_exact_match_operator(nlp);
     auto op_contain_chrome_os = entity_reprs.get_exact_match_operator(chrome_os);
+    auto op_contain_nlp = entity_reprs.get_exact_match_operator(nlp);
+    auto op_contain_google = entity_reprs.get_exact_match_operator(google);
+    auto op_sent = [&](wordrep::WikidataUID uid, wordrep::Sentence const& sent){
+        auto op_contain = entity_reprs.get_exact_match_operator(uid);
+        return ;
+    };
     for (auto sent : sents) {
         auto iter_words = sent.iter_words();
         auto end = iter_words.end();
@@ -238,8 +264,20 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
                        op_contain_chrome_os(it, end),
                        op_contain_nlp(it, end));
         }
-        fmt::print(std::cerr, "\n");
-        //fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs), op_contain_nlp(sent), op_contain_ai(sent));
+        fmt::print(std::cerr, "\nsent:{} {}\n", sent.front(), sent.back());
+        auto xs = is_contain(sent, op_contain_chrome_os);
+        assert(!xs.empty());
+        //TODO: should be empty if we don't match "Google" and "Google Chrome".
+        assert(!is_contain(sent, op_contain_google).empty());
+        for(auto x : xs){
+            fmt::print(std::cerr, "{} {}:", x.idx, x.len);
+            for(decltype(x.len)i=0; i<x.len; ++i){
+                fmt::print(std::cerr, " ({} {} {})", wordUIDs[tokens.word_uid(x.idx+i)],
+                           tokens.word_pos(x.idx+i), tokens.head_pos(x.idx+i).value());
+            }
+            fmt::print(std::cerr, "\n");
+        }
+        assert(is_contain(sent, op_contain_nlp).empty());
     }
 }
 
