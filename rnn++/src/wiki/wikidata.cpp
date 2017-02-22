@@ -145,14 +145,14 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
 }
 
 std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                          EntityReprs::OpEntityExactMatch const& op){
+                                          EntityReprs::OpEntityCompare const& op){
     std::vector<ConsecutiveTokens> offsets;
     auto iter_words = sent.iter_words();
     auto beg = iter_words.begin();
     auto end = iter_words.end();
     auto idx_beg=sent.front();
     for(auto it=beg; it!=end; ){
-        auto n = op(it,end);
+        auto n = op.exact_match(it,end);
         if(n){
             offsets.push_back({idx_beg+(it-beg),n});
             it = it + n;

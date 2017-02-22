@@ -50,31 +50,31 @@ struct TaggedEntity{
 struct EntityReprs{
     using dict_type = std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>>;
     using value_type = dict_type::value_type;
-    struct OpExactMatch{
-        OpExactMatch(EntityReprs const& self) : dict{self} {}
-        bool operator() (wordrep::WikidataUID uid, std::vector<wordrep::WordUID> qwords) const {
+    struct OpCompare{
+        OpCompare(EntityReprs const& self) : dict{self} {}
+        bool exact_match(wordrep::WikidataUID uid, std::vector<wordrep::WordUID> qwords) const {
             auto it = dict.reprs.find(uid);
             if(it==dict.reprs.cend()) return false;
-            OpEntityExactMatch op{*it};
-            return op(qwords);
+            OpEntityCompare op{*it};
+            return op.exact_match(qwords);
         }
         template<typename TI>
-        size_t operator() (wordrep::WikidataUID uid, TI beg, TI end) const {
+        size_t exact_match(wordrep::WikidataUID uid, TI beg, TI end) const {
             auto it = dict.reprs.find(uid);
             if(it ==dict.reprs.cend()) return 0;
-            OpEntityExactMatch op{*it};
-            return op(beg,end);
+            OpEntityCompare op{*it};
+            return op.exact_match(beg,end);
         }
         EntityReprs const& dict;
     };
-    struct OpEntityExactMatch{
-        OpEntityExactMatch(value_type const& reprs) : reprs{reprs} {}
-        bool operator() (std::vector<wordrep::WordUID> qwords) const {
+    struct OpEntityCompare{
+        OpEntityCompare(value_type const& reprs) : reprs{reprs} {}
+        bool exact_match(std::vector<wordrep::WordUID> qwords) const {
             for(auto words : reprs.second) if(words == qwords) return true;
             return false;
         }
         template<typename TI>
-        size_t operator() (TI beg, TI end) const {
+        size_t exact_match(TI beg, TI end) const {
             for(auto words : reprs.second){
                 auto match=words.size();
                 auto q=beg;
@@ -95,10 +95,10 @@ struct EntityReprs{
         for(auto& entity : entities)
             reprs[entity.uid].push_back(entity.words);
     }
-    OpExactMatch get_exact_match_operator() const{
+    OpCompare get_comparison_operator() const{
         return {*this};
     }
-    OpEntityExactMatch get_exact_match_operator(wordrep::WikidataUID uid) const{
+    OpEntityCompare get_exact_match_operator(wordrep::WikidataUID uid) const{
         auto it = reprs.find(uid);
         if(it==reprs.cend()) assert(0);
         return {*it};
@@ -156,7 +156,7 @@ struct ConsecutiveTokens{
 };
 
 std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                          EntityReprs::OpEntityExactMatch const& op);
+                                          EntityReprs::OpEntityCompare const& op);
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words);
 
 }//namespace wikidata

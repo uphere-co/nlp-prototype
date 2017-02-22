@@ -113,25 +113,25 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     for(auto tag : tags)
         fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
 
-    auto exact_match= entity_reprs.get_exact_match_operator();
+    auto op= entity_reprs.get_comparison_operator();
     auto& ws = wordUIDs;
     auto& ds = wikidataUIDs;
-    assert(exact_match(ds["Q1"], {ws["artificial"], ws["intelligence"]}));
-    assert(exact_match(ds["Q1"], {ws["AI"]}));
-    assert(!exact_match(ds["Q1"], {ws["natural"], ws["language"], ws["processing"]}));
-    assert(!exact_match(ds["Q1"], {ws["NLP"]}));
+    assert(op.exact_match(ds["Q1"], {ws["artificial"], ws["intelligence"]}));
+    assert(op.exact_match(ds["Q1"], {ws["AI"]}));
+    assert(!op.exact_match(ds["Q1"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(!op.exact_match(ds["Q1"], {ws["NLP"]}));
 
-    assert(!exact_match(ds["Q2"], {ws["artificial"], ws["intelligence"]}));
-    assert(!exact_match(ds["Q2"], {ws["AI"]}));
-    assert(exact_match(ds["Q2"], {ws["natural"], ws["language"], ws["processing"]}));
-    assert(exact_match(ds["Q2"], {ws["NLP"]}));
+    assert(!op.exact_match(ds["Q2"], {ws["artificial"], ws["intelligence"]}));
+    assert(!op.exact_match(ds["Q2"], {ws["AI"]}));
+    assert(op.exact_match(ds["Q2"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(op.exact_match(ds["Q2"], {ws["NLP"]}));
 
-    assert(exact_match(ds["Q3"], {ws["Google"]}));
+    assert(op.exact_match(ds["Q3"], {ws["Google"]}));
 
-    assert(!exact_match(ds["Q17948719427"], {ws["artificial"], ws["intelligence"]}));
-    assert(!exact_match(ds["Q17948719427"], {ws["AI"]}));
-    assert(!exact_match(ds["Q17948719427"], {ws["natural"], ws["language"], ws["processing"]}));
-    assert(!exact_match(ds["Q17948719427"], {ws["NLP"]}));
+    assert(!op.exact_match(ds["Q17948719427"], {ws["artificial"], ws["intelligence"]}));
+    assert(!op.exact_match(ds["Q17948719427"], {ws["AI"]}));
+    assert(!op.exact_match(ds["Q17948719427"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(!op.exact_match(ds["Q17948719427"], {ws["NLP"]}));
 }
 
 void annotate_sentence(int argc, char** argv){
@@ -227,7 +227,7 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     for(auto entity : entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
-    auto op=entity_reprs.get_exact_match_operator();
+    auto op= entity_reprs.get_comparison_operator();
     auto op_contain_chrome_os = entity_reprs.get_exact_match_operator(chrome_os);
     auto op_contain_nlp = entity_reprs.get_exact_match_operator(nlp);
     auto op_contain_google = entity_reprs.get_exact_match_operator(google);
@@ -240,9 +240,9 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
         auto end = iter_words.end();
         for(auto it=iter_words.begin(); it!=end; ++it){
             fmt::print(std::cerr, "{}({}_{}_{}) ", wordUIDs[*it],
-                       op(chrome_os, it, end),
-                       op_contain_chrome_os(it, end),
-                       op_contain_nlp(it, end));
+                       op.exact_match(chrome_os, it, end),
+                       op_contain_chrome_os.exact_match(it, end),
+                       op_contain_nlp.exact_match(it, end));
         }
         fmt::print(std::cerr, "\nsent:{} {}\n", sent.front(), sent.back());
         auto xs = is_contain(sent, op_contain_chrome_os);
@@ -279,8 +279,8 @@ void test_all(int argc, char** argv) {
 int main(int argc, char** argv){
     util::Timer timer;
 
-    wikidata::test::test_all(argc, argv);
-    return 0;
+//    wikidata::test::test_all(argc, argv);
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
