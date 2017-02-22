@@ -168,7 +168,8 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
     return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
 }
 
-std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words){
+std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,
+                                             wordrep::ConsecutiveTokens words){
     auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
     std::vector<wordrep::WordPosition> heads;
     for(auto idx : words){

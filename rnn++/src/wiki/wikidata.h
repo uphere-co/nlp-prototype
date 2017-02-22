@@ -105,24 +105,6 @@ struct AnnotatedSentence{
     std::vector<Token> tokens;
 };
 
-struct ConsecutiveTokens{
-    struct Iterator{
-        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
-        wordrep::DPTokenIndex operator*( void ) const {return idx;}
-        void operator++(void)                {++idx;}
-        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
-    private:
-        wordrep::DPTokenIndex idx;
-    };
-    Iterator begin() const { return {idx};}
-    Iterator end() const { return {idx+len};}
-    size_t size() const {return len;}
-
-    wordrep::DPTokenIndex idx;
-    size_t len;
-};
-
-
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
 
@@ -226,9 +208,9 @@ struct GreedyAnnotator{
 
 //OP is one of OpCompare, OpEntityCompare and OpAmbiguousEntityCompare.
 template<typename OP>
-std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
+std::vector<wordrep::ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
                                           OP const& op){
-    std::vector<ConsecutiveTokens> offsets;
+    std::vector<wordrep::ConsecutiveTokens> offsets;
     auto iter_words = sent.iter_words();
     auto beg = iter_words.begin();
     auto end = iter_words.end();
@@ -236,7 +218,7 @@ std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
     for(auto it=beg; it!=end; ){
         auto n = op.exact_match(it,end);
         if(n){
-            offsets.push_back({idx_beg+(it-beg),n});
+            offsets.push_back({idx_beg+(it-beg),n, sent.tokens});
             it = it + n;
         } else{
             ++it;
@@ -245,6 +227,7 @@ std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
     return offsets;
 }
 
-std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words);
+std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,
+                                             wordrep::ConsecutiveTokens words);
 
 }//namespace wikidata
