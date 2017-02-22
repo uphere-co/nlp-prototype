@@ -10,6 +10,9 @@ namespace wordrep{
 namespace wiki{
 
 struct Entity{
+    Entity(WikidataUID uid, Words words)
+            : uid{uid}, words{std::move(words)}
+    {}
     Entity(WikidataUID uid, std::vector<WordUID> words)
             : uid{uid}, words{std::move(words)}
     {}
@@ -55,7 +58,7 @@ struct AmbiguousEntity{
 };
 
 struct EntityReprs{
-    using dict_type = std::map<WikidataUID, std::vector<std::vector<WordUID>>>;
+    using dict_type = std::map<WikidataUID, std::vector<Words>>;
     using value_type = dict_type::value_type;
     struct OpCompare{
         OpCompare(EntityReprs const& self) : dict{self} {}
@@ -77,7 +80,7 @@ struct EntityReprs{
     struct OpEntityCompare{
         OpEntityCompare(value_type const& reprs) : reprs{reprs} {}
         bool exact_match(std::vector<WordUID> qwords) const {
-            for(auto words : reprs.second) if(words == qwords) return true;
+            for(auto words : reprs.second) if(words.uids == qwords) return true;
             return false;
         }
         template<typename TI>
@@ -85,8 +88,8 @@ struct EntityReprs{
             for(auto words : reprs.second){
                 auto match=words.size();
                 auto q=beg;
-                for(auto it=words.begin(); it!=words.end(); ++it){
-                    if(*q != *it || q==end) {
+                for(auto uid : words.uids){
+                    if(*q != uid || q==end) {
                         match=0;
                         break;
                     }
@@ -117,7 +120,7 @@ struct EntityReprs{
 
     EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
-            reprs[entity.uid].push_back(entity.words.uids);
+            reprs[entity.uid].push_back(entity.words);
     }
     OpCompare get_comparison_operator() const{
         return {*this};
