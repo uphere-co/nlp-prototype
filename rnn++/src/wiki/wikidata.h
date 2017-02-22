@@ -6,6 +6,7 @@
 
 #include "wordrep/word_uid.h"
 #include "wordrep/sentence.h"
+#include "wordrep/words.h"
 
 #include "utils/variant.h"
 
@@ -38,6 +39,10 @@ struct SortedEntities{
     std::vector<Entity> entities;
 };
 
+struct Synonyms{
+    wordrep::WikidataUID uid;
+    std::vector<wordrep::Words> reprs;
+};
 
 struct TaggedEntity{
     size_t offset;
@@ -196,6 +201,7 @@ struct EntityReprs{
         return op;
     }
     Entity operator[](wordrep::WikidataUID uid) const;
+    Synonyms get_synonyms(wordrep::WikidataUID uid) const;
 
     dict_type reprs;
 };

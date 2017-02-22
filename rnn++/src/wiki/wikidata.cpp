@@ -143,6 +143,13 @@ Entity EntityReprs::operator[](wordrep::WikidataUID uid) const{
     assert(it!=reprs.end());
     return {uid,it->second.front()};
 }
+Synonyms EntityReprs::get_synonyms(wordrep::WikidataUID uid) const{
+    Synonyms synonyms{};
+    auto it = reprs.find(uid);
+    assert(it!=reprs.end());
+    for(auto words : it->second) synonyms.reprs.emplace_back(std::move(words));
+    return synonyms;
+}
 
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
     auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());

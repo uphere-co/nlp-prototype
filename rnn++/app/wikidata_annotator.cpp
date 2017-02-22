@@ -1,10 +1,12 @@
 #include <cassert>
 
 #include <fmt/printf.h>
+#include <src/similarity/query_engine.h>
 
 #include "wiki/wikidata.h"
 
 #include "similarity/config.h"
+#include "similarity/query_engine.h"
 
 #include "wordrep/word_uid.h"
 
@@ -277,9 +279,13 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
     auto& annotator    = testset.annotator;
+    engine::SubmoduleFactory factory{{config_json}};
+    auto word_importance = factory.word_importance();
+    auto voca = factory.voca_info();
+    auto word_sim_cache = engine::WordSimCache{voca};
 
-    auto tagged_sent0 = annotator.annotate(testset.sents[0]);
-    auto tagged_sent1 = annotator.annotate(testset.sents[1]);
+    auto tagged_sent0  = annotator.annotate(testset.sents[0]);
+    auto tagged_sent1  = annotator.annotate(testset.sents[1]);
     auto tagged_query0 = annotator.annotate(testset.sents[2]);
     auto tagged_query1 = annotator.annotate(testset.sents[3]);
 
@@ -290,6 +296,26 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     for(auto& token : tagged_sent0)
         fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
     fmt::print("\n");
+
+    auto uids = {"Q1","Q2","Q3","Q79531"};
+    auto qs = util::map(uids,[&entity_reprs,&wikidataUIDs](auto uid){
+        return entity_reprs.get_synonyms(wikidataUIDs[uid]);});
+    for(auto& q : qs){
+        for(auto words : q.reprs) {
+            fmt::print("{}\n",words.repr(wordUIDs));
+            for(auto word : words.uids)
+                fmt::print("{} : {}\n", wordUIDs[word], word_importance.score(word));
+        }
+    }
+
+    auto words = {"DeepMind","deepmind","Obma","Obama", "afoidsfjlaksjd"};
+    for(auto word_str : words){
+        auto word= wordUIDs[word_str];
+        auto vidx = voca.indexmap[word];
+        fmt::print("{} {} : {}:score {}:vidx\n",
+                   word_str, wordUIDs[word],
+                   word_importance.score(word), vidx);
+    }
 }
 
 void test_all(int argc, char** argv) {
