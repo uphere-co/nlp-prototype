@@ -144,24 +144,6 @@ AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const
     return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
 }
 
-std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                          EntityReprs::OpEntityCompare const& op){
-    std::vector<ConsecutiveTokens> offsets;
-    auto iter_words = sent.iter_words();
-    auto beg = iter_words.begin();
-    auto end = iter_words.end();
-    auto idx_beg=sent.front();
-    for(auto it=beg; it!=end; ){
-        auto n = op.exact_match(it,end);
-        if(n){
-            offsets.push_back({idx_beg+(it-beg),n});
-            it = it + n;
-        } else{
-            ++it;
-        }
-    }
-    return offsets;
-}
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words){
     auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
     std::vector<wordrep::WordPosition> heads;

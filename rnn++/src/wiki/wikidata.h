@@ -38,14 +38,49 @@ struct SortedEntities{
     std::vector<Entity> entities;
 };
 
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
 
 struct TaggedEntity{
     size_t offset;
     size_t len;
     wordrep::WikidataUID uid;
 };
+
+struct AmbiguousEntity{
+    std::vector<TaggedEntity> entities;
+};
+struct WordWithOffset{
+    size_t offset;
+    size_t len;
+    wordrep::WordUID uid;
+};
+struct AnnotatedSentence{
+    struct Token{
+        mapbox::util::variant<WordWithOffset,AmbiguousEntity> token;
+    };
+    std::vector<Token> tokens;
+};
+
+struct ConsecutiveTokens{
+    struct Iterator{
+        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
+        wordrep::DPTokenIndex operator*( void ) const {return idx;}
+        void operator++(void)                {++idx;}
+        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
+    private:
+        wordrep::DPTokenIndex idx;
+    };
+    Iterator begin() const { return {idx};}
+    Iterator end() const { return {idx+len};}
+    size_t size() const {return len;}
+
+    wordrep::DPTokenIndex idx;
+    size_t len;
+};
+
+
+SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
+SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
+
 
 struct EntityReprs{
     using dict_type = std::map<wordrep::WikidataUID, std::vector<std::vector<wordrep::WordUID>>>;
@@ -89,7 +124,23 @@ struct EntityReprs{
             }
             return 0;
         }
-        value_type const& reprs;
+        value_type reprs;
+    };
+    struct OpAmbiguousEntityCompare{
+        bool exact_match(std::vector<wordrep::WordUID> qwords) const {
+            for(auto& op : ops)
+                if(op.exact_match(qwords)) return true;
+            return false;
+        }
+        template<typename TI>
+        size_t exact_match(TI beg, TI end) const {
+            for(auto& op : ops) {
+                auto n = op.exact_match(beg, end);
+                if (n) return n;
+            }
+            return 0;
+        }
+        std::vector<OpEntityCompare> ops;
     };
     EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
@@ -98,29 +149,19 @@ struct EntityReprs{
     OpCompare get_comparison_operator() const{
         return {*this};
     }
-    OpEntityCompare get_exact_match_operator(wordrep::WikidataUID uid) const{
+    OpEntityCompare get_comparison_operator(wordrep::WikidataUID uid) const{
         auto it = reprs.find(uid);
         if(it==reprs.cend()) assert(0);
         return {*it};
     }
+    OpAmbiguousEntityCompare get_comparison_operator(AmbiguousEntity entity) const{
+        OpAmbiguousEntityCompare op{};
+        for(auto x : entity.entities) op.ops.push_back(get_comparison_operator(x.uid));
+        return op;
+    }
     Entity operator[](wordrep::WikidataUID uid) const;
 
     dict_type reprs;
-};
-
-struct AmbiguousEntity{
-    std::vector<TaggedEntity> entities;
-};
-struct WordWithOffset{
-    size_t offset;
-    size_t len;
-    wordrep::WordUID uid;
-};
-struct AnnotatedSentence{
-    struct Token{
-        mapbox::util::variant<WordWithOffset,AmbiguousEntity> token;
-    };
-    std::vector<Token> tokens;
 };
 
 struct GreedyAnnotator{
@@ -137,26 +178,26 @@ struct GreedyAnnotator{
     std::vector<Entity> entities;
 };
 
-
-struct ConsecutiveTokens{
-    struct Iterator{
-        Iterator(wordrep::DPTokenIndex idx) : idx{idx} {}
-        wordrep::DPTokenIndex operator*( void ) const {return idx;}
-        void operator++(void)                {++idx;}
-        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
-    private:
-        wordrep::DPTokenIndex idx;
-    };
-    Iterator begin() const { return {idx};}
-    Iterator end() const { return {idx+len};}
-    size_t size() const {return len;}
-
-    wordrep::DPTokenIndex idx;
-    size_t len;
-};
-
+template<typename OP>
 std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                          EntityReprs::OpEntityCompare const& op);
+                                          OP const& op){
+    std::vector<ConsecutiveTokens> offsets;
+    auto iter_words = sent.iter_words();
+    auto beg = iter_words.begin();
+    auto end = iter_words.end();
+    auto idx_beg=sent.front();
+    for(auto it=beg; it!=end; ){
+        auto n = op.exact_match(it,end);
+        if(n){
+            offsets.push_back({idx_beg+(it-beg),n});
+            it = it + n;
+        } else{
+            ++it;
+        }
+    }
+    return offsets;
+}
+
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words);
 
 }//namespace wikidata
