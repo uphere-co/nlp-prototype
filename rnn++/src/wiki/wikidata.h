@@ -92,7 +92,7 @@ struct AnnotatedSentence{
         size_t idx;
         AnnotatedSentence const& sent;
     };
-    auto get_entities() const{
+    std::vector<AmbiguousEntity> get_entities() const{
         std::vector<AmbiguousEntity> entities;
         for(auto token : tokens)
             token.val.match([&entities](AmbiguousEntity x){entities.push_back(x);},
@@ -101,6 +101,7 @@ struct AnnotatedSentence{
     }
     auto begin() const { return Iterator{*this,0};}
     auto end() const { return Iterator{*this,tokens.size()};}
+
     std::vector<Token> tokens;
 };
 
@@ -223,6 +224,7 @@ struct GreedyAnnotator{
     std::vector<Entity> entities;
 };
 
+//OP is one of OpCompare, OpEntityCompare and OpAmbiguousEntityCompare.
 template<typename OP>
 std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
                                           OP const& op){

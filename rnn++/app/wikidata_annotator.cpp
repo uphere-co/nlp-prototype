@@ -279,21 +279,25 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
     auto& annotator    = testset.annotator;
+    auto& tokens       = testset.tokens;
     engine::SubmoduleFactory factory{{config_json}};
     auto word_importance = factory.word_importance();
-    auto voca = factory.voca_info();
-    auto word_sim_cache = engine::WordSimCache{voca};
+//    auto voca = factory.voca_info();
+//    auto word_sim_cache = engine::WordSimCache{voca};
 
-    auto tagged_sent0  = annotator.annotate(testset.sents[0]);
-    auto tagged_sent1  = annotator.annotate(testset.sents[1]);
-    auto tagged_query0 = annotator.annotate(testset.sents[2]);
-    auto tagged_query1 = annotator.annotate(testset.sents[3]);
-
+//    auto words = {"DeepMind","deepmind","Obma","Obama", "afoidsfjlaksjd"};
+//    for(auto word_str : words){
+//        auto word= wordUIDs[word_str];
+//        auto vidx = voca.indexmap[word];
+//        fmt::print("{} {} : {}:score {}:vidx\n",
+//                   word_str, wordUIDs[word],
+//                   word_importance.score(word), vidx);
+//    }
     for(auto idx : testset.sents[2])
         fmt::print("{}({}) ", wordUIDs[testset.tokens.word_uid(idx)],
                    wordUIDs[testset.tokens.head_uid(idx)]);
     fmt::print("\n");
-    for(auto& token : tagged_sent0)
+    for(auto& token : annotator.annotate(testset.sents[0]))
         fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
     fmt::print("\n");
 
@@ -308,13 +312,41 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
         }
     }
 
-    auto words = {"DeepMind","deepmind","Obma","Obama", "afoidsfjlaksjd"};
-    for(auto word_str : words){
-        auto word= wordUIDs[word_str];
-        auto vidx = voca.indexmap[word];
-        fmt::print("{} {} : {}:score {}:vidx\n",
-                   word_str, wordUIDs[word],
-                   word_importance.score(word), vidx);
+
+    for(auto sent: testset.sents){
+        auto tagged_sent = annotator.annotate(sent);
+        auto entities = tagged_sent.get_entities();
+        for(auto& ambiguous_entity : entities){
+            for(auto& tagged_entity : ambiguous_entity.entities){
+                auto entity = entity_reprs[tagged_entity.uid];
+                fmt::print("{} : ",entity.repr(wikidataUIDs, wordUIDs));
+                auto beg = sent.front()+tagged_entity.offset;
+                for(auto idx=beg; idx!=beg+tagged_entity.len; ++idx){
+                    fmt::print(" ({}:{})", wordUIDs[tokens.word_uid(idx)],wordUIDs[tokens.head_uid(idx)]);
+                }
+                fmt::print("\n");
+            }
+        }
+    }
+    auto sent1 = testset.sents[0];
+    auto sent2 = testset.sents[2];
+    auto tsent1 = annotator.annotate(sent1);
+    auto tsent2 = annotator.annotate(sent2);
+    fmt::print("{}\n",sent1.repr(wordUIDs));
+    fmt::print("{}\n",sent2.repr(wordUIDs));
+    for(auto entity1 : tsent1.get_entities()){
+        for(auto entity2 : tsent2.get_entities()){
+            auto token1 = entity1.entities.front();
+            auto token2 = entity2.entities.front();
+            auto idx1 = sent1.front()+token1.offset;
+            auto idx2 = sent2.front()+token2.offset;
+            auto word1 = tokens.word_uid(idx1);
+            auto word2 = tokens.word_uid(idx2);
+            auto head1 = tokens.head_uid(idx1);
+            auto head2 = tokens.head_uid(idx2);
+            wordrep::Words words{{word1,head1, word2, head2}};
+            fmt::print("{}\n",words.repr(wordUIDs));
+        }
     }
 }
 
