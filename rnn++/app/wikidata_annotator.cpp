@@ -22,21 +22,32 @@ namespace wikidata{
 namespace test {
 
 struct UnittestDataset{
-    UnittestDataset(wordrep::WordUIDindex const &wordUIDs,
-                    wordrep::POSUIDindex const &posUIDs,
-                    wordrep::ArcLabelUIDindex const &arclabelUIDs){
+    UnittestDataset(engine::Config const& config)
+    : factory{config},
+      wordUIDs{factory.word_uid_index()},
+      entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
+      entity_reprs{entities.entities},
+      annotator{entities} {
+        auto posUIDs = factory.pos_uid_index();
+        auto arclabelUIDs = factory.arclabel_uid_index();
         std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
                                           "../rnn++/tests/data/sentence.2.corenlp",
                                           "../rnn++/tests/data/sentence.3.corenlp",
                                           "../rnn++/tests/data/sentence.4.corenlp"};
-
         for(auto& json : jsons)
             tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{json});
         tokens.build_sent_uid(0);
         sents = tokens.IndexSentences();
     }
+    engine::SubmoduleFactory factory;
+    wordrep::WordUIDindex wordUIDs;
+    SortedEntities entities;
+    EntityReprs entity_reprs;
+    GreedyAnnotator annotator;
     wordrep::DepParsedTokens tokens{};
-    std::vector<wordrep::Sentence> sents;
+    std::vector<wordrep::Sentence> sents{};
+    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
+
 };
 
 void integer_list_ordering(){
@@ -157,34 +168,19 @@ void annotate_sentence(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
 
-    using wordrep::WordUID;
-    using wordrep::WikidataUID;
-
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
-    auto wordUIDs = factory.word_uid_index();
-    auto posUIDs = factory.pos_uid_index();
-    auto arclabelUIDs = factory.arclabel_uid_index();
-    timer.here_then_reset("Load word UIDs.");
-
-    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
-    timer.here_then_reset("Load Wikidata UIDs.");
-    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
-    timer.here_then_reset("Read items.");
-
-    EntityReprs entity_reprs{entities.entities};
-    GreedyAnnotator annotator{entities};
-    timer.here_then_reset("Build data structures.");
-    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
+    UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
     timer.here_then_reset("Prepare test data.");
 
     fmt::print(std::cerr, "List of Wikidata entities:\n");
-    for(auto entity : entities.entities)
+    for(auto entity : testset.entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
     for (auto sent : testset.sents) {
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
-        auto tagged_sent = annotator.annotate(sent);
+        auto tagged_sent = testset.annotator.annotate(sent);
         for(auto token : tagged_sent.tokens){
             fmt::print("{}",token.repr(entity_reprs, wikidataUIDs, wordUIDs));
         }
@@ -197,33 +193,18 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
 
-    using wordrep::WordUID;
-    using wordrep::WikidataUID;
-
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
-    auto wordUIDs = factory.word_uid_index();
-    auto posUIDs = factory.pos_uid_index();
-    auto arclabelUIDs = factory.arclabel_uid_index();
-    timer.here_then_reset("Load word UIDs.");
-
-    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
-    timer.here_then_reset("Load Wikidata UIDs.");
-    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
-    timer.here_then_reset("Read items.");
-
-    EntityReprs entity_reprs{entities.entities};
-    timer.here_then_reset("Build data structures.");
-    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
-    auto& tokens = testset.tokens;
-    timer.here_then_reset("Prepare test data.");
+    UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
+    auto& tokens       = testset.tokens;
 
     //chrome_os=Q79531, NLP=q2
     auto chrome_os = wikidataUIDs["Q79531"];
     auto nlp = wikidataUIDs["Q2"];
     auto google = wikidataUIDs["Q3"];
     fmt::print(std::cerr, "List of Wikidata entities:\n");
-    for(auto entity : entities.entities)
+    for(auto entity : testset.entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
     auto op= entity_reprs.get_comparison_operator();
@@ -259,33 +240,16 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
 }
 
 void operation_ambiguous_entity_on_sentence(int argc, char** argv){
-    util::Timer timer;
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
 
-    using wordrep::WordUID;
-    using wordrep::WikidataUID;
+    UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
 
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
-    auto wordUIDs = factory.word_uid_index();
-    auto posUIDs = factory.pos_uid_index();
-    auto arclabelUIDs = factory.arclabel_uid_index();
-    timer.here_then_reset("Load word UIDs.");
-
-    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
-    timer.here_then_reset("Load Wikidata UIDs.");
-    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
-    timer.here_then_reset("Read items.");
-
-    EntityReprs entity_reprs{entities.entities};
-    GreedyAnnotator annotator{entities};
-    timer.here_then_reset("Build data structures.");
-    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
-    timer.here_then_reset("Prepare test data.");
-
-    auto tagged_sent = annotator.annotate(testset.sents[0]);
-    auto tagged_sent1 = annotator.annotate(testset.sents[1]);
+    auto tagged_sent = testset.annotator.annotate(testset.sents[0]);
+    auto tagged_sent1 = testset.annotator.annotate(testset.sents[1]);
     auto es =tagged_sent.get_entities();
     auto es1 = tagged_sent1.get_entities();
     assert(es==es1);
@@ -308,26 +272,11 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
 
-    using wordrep::WordUID;
-    using wordrep::WikidataUID;
-
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
-    auto wordUIDs = factory.word_uid_index();
-    auto posUIDs = factory.pos_uid_index();
-    auto arclabelUIDs = factory.arclabel_uid_index();
-    timer.here_then_reset("Load word UIDs.");
-
-    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
-    timer.here_then_reset("Load Wikidata UIDs.");
-    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
-    timer.here_then_reset("Read items.");
-
-    EntityReprs entity_reprs{entities.entities};
-    GreedyAnnotator annotator{entities};
-    timer.here_then_reset("Build data structures.");
-    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
-    timer.here_then_reset("Prepare test data.");
+    UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
+    auto& annotator    = testset.annotator;
 
     auto tagged_sent0 = annotator.annotate(testset.sents[0]);
     auto tagged_sent1 = annotator.annotate(testset.sents[1]);
