@@ -175,13 +175,7 @@ void annotate_sentence(int argc, char** argv){
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
         auto tagged_sent = annotator.annotate(sent);
         for(auto token : tagged_sent.tokens){
-            token.token.match([&wordUIDs](WordWithOffset w){fmt::print("{} ", wordUIDs[w.uid]);},
-                              [&wikidataUIDs](AmbiguousEntity w){
-                                  fmt::print("(");
-                                  for(auto entity : w.entities)
-                                      fmt::print("{} ", wikidataUIDs[entity.uid]);
-                                  fmt::print(") ");
-                              });
+            fmt::print("{}",token.repr(entity_reprs, wikidataUIDs, wordUIDs));
         }
         fmt::print("\n");
     }
@@ -231,10 +225,6 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     auto op_contain_chrome_os = entity_reprs.get_comparison_operator(chrome_os);
     auto op_contain_nlp = entity_reprs.get_comparison_operator(nlp);
     auto op_contain_google = entity_reprs.get_comparison_operator(google);
-    auto op_sent = [&](wordrep::WikidataUID uid, wordrep::Sentence const& sent){
-        auto op_contain = entity_reprs.get_comparison_operator(uid);
-        return ;
-    };
     for (auto sent : sents) {
         auto iter_words = sent.iter_words();
         auto end = iter_words.end();
@@ -305,18 +295,15 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     assert(es[0]!=es1[1]);
     auto& test_sent = sents[1];
     for(auto token : tagged_sent.tokens){
-        token.token.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
+        fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
+        token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
                               auto op=entity_reprs.get_comparison_operator(w);
-                              auto iter = test_sent.iter_words();
-                              fmt::print("(");
-                              for(auto entity : w.entities)
-                                  fmt::print("{} ", wikidataUIDs[entity.uid]);
-                              fmt::print(") : ");
                               auto matched_tokens = is_contain(test_sent, op);
                               fmt::print("{} : {}\n", wikidataUIDs[w.entities.front().uid], matched_tokens.size());
                           },
                           [](auto ){});
     }
+    fmt::print("\n");
 }
 
 
@@ -360,7 +347,14 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     auto tagged_sent1 = annotator.annotate(sents[1]);
     auto tagged_query0 = annotator.annotate(sents[2]);
     auto tagged_query1 = annotator.annotate(sents[3]);
-    
+
+    for(auto idx : sents[2])
+        fmt::print("{}({}) ", wordUIDs[tokens.word_uid(idx)],
+                   wordUIDs[tokens.head_uid(idx)]);
+    fmt::print("\n");
+    for(auto& token : tagged_sent0)
+        fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
+    fmt::print("\n");
 }
 
 void test_all(int argc, char** argv) {

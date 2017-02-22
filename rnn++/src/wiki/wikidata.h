@@ -65,17 +65,34 @@ struct WordWithOffset{
         return x.uid==y.uid;
     }
 };
+
+struct EntityReprs;
 struct AnnotatedSentence{
     struct Token{
-        mapbox::util::variant<WordWithOffset,AmbiguousEntity> token;
+        mapbox::util::variant<WordWithOffset,AmbiguousEntity> val;
+        std::string repr(EntityReprs const& entity_reprs,
+                         wordrep::WikidataUIDindex const& wikidataUIDs,
+                         wordrep::WordUIDindex const& wordUIDs) const;
+    };
+    struct Iterator{
+        Iterator(AnnotatedSentence const& sent, size_t idx) : idx{idx}, sent{sent}{}
+        auto const& operator*( void ) const {return sent.tokens[idx];}
+        void operator++(void)                {++idx;}
+        bool operator==(Iterator rhs ) const {return idx == rhs.idx;}
+        bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
+    private:
+        size_t idx;
+        AnnotatedSentence const& sent;
     };
     auto get_entities() const{
         std::vector<AmbiguousEntity> entities;
         for(auto token : tokens)
-            token.token.match([&entities](AmbiguousEntity x){entities.push_back(x);},
+            token.val.match([&entities](AmbiguousEntity x){entities.push_back(x);},
                               [](auto ){});
         return entities;
     }
+    auto begin() const { return Iterator{*this,0};}
+    auto end() const { return Iterator{*this,tokens.size()};}
     std::vector<Token> tokens;
 };
 

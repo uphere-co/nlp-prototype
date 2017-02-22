@@ -92,6 +92,23 @@ std::ostream& operator<< (std::ostream& os, Entity const& a){
     return os;
 }
 
+std::string AnnotatedSentence::Token::repr(EntityReprs const& entity_reprs,
+                 wordrep::WikidataUIDindex const& wikidataUIDs,
+                 wordrep::WordUIDindex const& wordUIDs) const {
+    std::stringstream ss;
+    val.match([&ss,&entity_reprs,&wordUIDs,&wikidataUIDs](AmbiguousEntity w) {
+        fmt::print(ss," (");
+        for (auto entity : w.entities)
+            fmt::print(ss,"{} ", entity_reprs[entity.uid].repr(wikidataUIDs, wordUIDs));
+        fmt::print(ss,")");
+    },
+    [&ss,&wordUIDs](WordWithOffset w) {
+        fmt::print(ss,"{} ", wordUIDs[w.uid]);
+    });
+    return ss.str();
+}
+
+
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
     tbb::task_group g;
     tbb::concurrent_vector<Entity> items;
@@ -131,7 +148,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
     auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
     std::vector<TaggedEntity> tagged;
     for(auto token : tagged_sent.tokens){
-        token.token.match([](WordWithOffset){},
+        token.val.match([](WordWithOffset){},
                           [&tagged](AmbiguousEntity& w){
                               for(auto& entity : w.entities)
                                   tagged.push_back(entity);
