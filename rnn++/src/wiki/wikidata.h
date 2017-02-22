@@ -49,7 +49,7 @@ struct TaggedEntity{
     size_t len;
     wordrep::WikidataUID uid;
 
-    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent){
+    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent) const {
         return {sent.front()+offset, len, sent.dict};
     }
     friend bool operator==(TaggedEntity x, TaggedEntity y){
@@ -62,7 +62,7 @@ struct AmbiguousEntity{
     size_t len;
     std::vector<wordrep::WikidataUID> uids;
 
-    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent){
+    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent) const {
         return {sent.front()+offset, len, sent.dict};
     }
     friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
@@ -85,14 +85,31 @@ struct WordWithOffset{
 };
 
 struct EntityReprs;
-struct AnnotatedToken{
-    mapbox::util::variant<WordWithOffset,AmbiguousEntity> val;
-    std::string repr(EntityReprs const& entity_reprs,
-                     wordrep::WikidataUIDindex const& wikidataUIDs,
-                     wordrep::WordUIDindex const& wordUIDs) const;
-};
-
 struct AnnotatedSentence{
+    struct Token{
+        struct Word{
+            wordrep::DPTokenIndex idx;
+            wordrep::DepParsedTokens const* dict;
+        };
+        struct UnresolvedWikiEntity{
+            wordrep::ConsecutiveTokens words;
+            std::vector<wordrep::WikidataUID> uids;
+
+            friend bool operator==(UnresolvedWikiEntity const& x, UnresolvedWikiEntity const& y){
+                for(auto& xx : x.uids )
+                    for(auto& yy : y.uids )
+                        if(xx==yy) return true;
+                return false;
+            }
+            friend bool operator!=(UnresolvedWikiEntity const& x, UnresolvedWikiEntity const& y){
+                return !(x==y);
+            }
+        };
+        std::string repr(EntityReprs const& entity_reprs,
+                         wordrep::WikidataUIDindex const& wikidataUIDs,
+                         wordrep::WordUIDindex const& wordUIDs) const;
+        mapbox::util::variant<Word,UnresolvedWikiEntity> val;
+    };
     struct Iterator{
         Iterator(AnnotatedSentence const& sent, size_t idx) : idx{idx}, sent{sent}{}
         auto const& operator*( void ) const {return sent.tokens[idx];}
@@ -103,10 +120,10 @@ struct AnnotatedSentence{
         size_t idx;
         AnnotatedSentence const& sent;
     };
-    std::vector<AmbiguousEntity> get_entities() const{
-        std::vector<AmbiguousEntity> entities;
+    std::vector<Token::UnresolvedWikiEntity> get_entities() const{
+        std::vector<Token::UnresolvedWikiEntity> entities;
         for(auto token : tokens)
-            token.val.match([&entities](AmbiguousEntity x){entities.push_back(x);},
+            token.val.match([&entities](Token::UnresolvedWikiEntity& x){entities.push_back(x);},
                               [](auto ){});
         return entities;
     }
@@ -114,7 +131,22 @@ struct AnnotatedSentence{
     Iterator end() const { return {*this,tokens.size()};}
 
     wordrep::Sentence const& sent;
-    std::vector<AnnotatedToken> tokens;
+    std::vector<Token> tokens;
+};
+
+struct AnnotatedToken{
+    mapbox::util::variant<WordWithOffset,AmbiguousEntity> val;
+    std::string repr(EntityReprs const& entity_reprs,
+                     wordrep::WikidataUIDindex const& wikidataUIDs,
+                     wordrep::WordUIDindex const& wordUIDs) const;
+    AnnotatedSentence::Token to_sent_token(wordrep::Sentence const& sent) const {
+        return val.match([&sent](WordWithOffset const& w)->AnnotatedSentence::Token{
+                             using T = AnnotatedSentence::Token::Word;
+                             return {T{sent.front()+w.offset, sent.dict}};},
+                         [&sent](AmbiguousEntity const& e)->AnnotatedSentence::Token{
+                             using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
+                             return {T{e.map_to_sent(sent),e.uids}};});
+    }
 };
 
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);

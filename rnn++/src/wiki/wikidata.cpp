@@ -92,6 +92,21 @@ std::ostream& operator<< (std::ostream& os, Entity const& a){
     return os;
 }
 
+std::string AnnotatedSentence::Token::repr(EntityReprs const &entity_reprs,
+                                           wordrep::WikidataUIDindex const &wikidataUIDs,
+                                           wordrep::WordUIDindex const &wordUIDs) const {
+    std::stringstream ss;
+    val.match([&ss,&entity_reprs,&wordUIDs,&wikidataUIDs](UnresolvedWikiEntity w) {
+                  fmt::print(ss," (");
+                  for (auto uid : w.uids)
+                      fmt::print(ss,"{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
+                  fmt::print(ss,")");
+              },
+              [this,&ss,&wordUIDs](Word w) {
+                  fmt::print(ss,"{} ", wordUIDs[w.dict->word_uid(w.idx)]);
+              });
+    return ss.str();
+}
 std::string AnnotatedToken::repr(EntityReprs const& entity_reprs,
                  wordrep::WikidataUIDindex const& wikidataUIDs,
                  wordrep::WordUIDindex const& wordUIDs) const {
@@ -166,7 +181,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 
 AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
     auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
-    return {sent,tokens};
+    return {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
 }
 
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,

@@ -191,6 +191,7 @@ void annotate_sentence(int argc, char** argv){
 }
 
 void operation_wikiuid_on_sentence(int argc, char** argv){
+    std::cerr << "Test: wikidata::test::operation_wikiuid_on_sentence"<<std::endl;
     util::Timer timer;
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -242,6 +243,7 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
 }
 
 void operation_ambiguous_entity_on_sentence(int argc, char** argv){
+    std::cerr << "Test: wikidata::test::operation_ambiguous_entity_on_sentence"<<std::endl;
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
 
@@ -270,6 +272,7 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
 }
 
 void ambiguous_entity_match_scoring(int argc, char** argv){
+    std::cerr << "Test: wikidata::test::ambiguous_entity_match_scoring"<<std::endl;
     util::Timer timer;
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -320,23 +323,21 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
             for(auto& uid : ambiguous_entity.uids){
                 auto entity = entity_reprs[uid];
                 fmt::print("{} : ",entity.repr(wikidataUIDs, wordUIDs));
-                for(auto idx : ambiguous_entity.map_to_sent(sent)){
+                for(auto idx : ambiguous_entity.words){
                     fmt::print(" ({}:{})", wordUIDs[tokens.word_uid(idx)],wordUIDs[tokens.head_uid(idx)]);
                 }
                 fmt::print("\n");
             }
         }
     }
-    auto sent1 = testset.sents[0];
-    auto sent2 = testset.sents[2];
-    auto tsent1 = annotator.annotate(sent1);
-    auto tsent2 = annotator.annotate(sent2);
-    fmt::print("{}\n",sent1.repr(wordUIDs));
-    fmt::print("{}\n",sent2.repr(wordUIDs));
+    auto tsent1 = annotator.annotate(testset.sents[0]);
+    auto tsent2 = annotator.annotate(testset.sents[2]);
+    fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
+    fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
     for(auto entity1 : tsent1.get_entities()){
         for(auto entity2 : tsent2.get_entities()){
-            auto idx1 = sent1.front()+entity1.offset;
-            auto idx2 = sent2.front()+entity2.offset;
+            auto idx1 = entity1.words.front();
+            auto idx2 = entity2.words.front();
             auto word1 = tokens.word_uid(idx1);
             auto word2 = tokens.word_uid(idx2);
             auto head1 = tokens.head_uid(idx1);

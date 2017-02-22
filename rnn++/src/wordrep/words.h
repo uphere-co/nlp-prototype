@@ -49,6 +49,8 @@ struct ConsecutiveTokens{
     };
     Iterator begin() const { return {idx};}
     Iterator end() const { return {idx+len};}
+    DPTokenIndex front() const {return idx;}
+    DPTokenIndex back() const {return idx+len-1;}
     size_t size() const {return len;}
     Words to_words() const;
 
