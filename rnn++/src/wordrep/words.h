@@ -52,11 +52,9 @@ struct ConsecutiveTokens{
     DPTokenIndex front() const {return idx;}
     DPTokenIndex back() const {return idx+len-1;}
     size_t size() const {return len;}
-    Words to_words() const;
 
     DPTokenIndex idx;
     size_t len;
-    DepParsedTokens const* tokens;
 };
 
 }//namespace wordrep

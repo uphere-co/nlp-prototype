@@ -44,7 +44,7 @@ struct AmbiguousEntity{
     std::vector<WikidataUID> uids;
 
     ConsecutiveTokens map_to_sent(Sentence const& sent) const {
-        return {sent.front()+offset, len, sent.dict};
+        return {sent.front()+offset, len};
     }
     friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
         for(auto& xx : x.uids )

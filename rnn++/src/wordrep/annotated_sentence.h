@@ -15,10 +15,6 @@ struct EntityReprs;
 
 struct AnnotatedSentence{
     struct Token{
-        struct Word{
-            DPTokenIndex idx;
-            DepParsedTokens const* dict;
-        };
         struct UnresolvedWikiEntity{
             ConsecutiveTokens words;
             std::vector<WikidataUID> uids;
@@ -33,10 +29,7 @@ struct AnnotatedSentence{
                 return !(x==y);
             }
         };
-        std::string repr(wiki::EntityReprs const& entity_reprs,
-                         WikidataUIDindex const& wikidataUIDs,
-                         WordUIDindex const& wordUIDs) const;
-        mapbox::util::variant<Word,UnresolvedWikiEntity> val;
+        mapbox::util::variant<DPTokenIndex,UnresolvedWikiEntity> val;
     };
     struct Iterator{
         Iterator(AnnotatedSentence const& sent, size_t idx) : idx{idx}, sent{sent}{}
@@ -57,6 +50,9 @@ struct AnnotatedSentence{
     }
     Iterator begin() const { return {*this,0};}
     Iterator end() const { return {*this,tokens.size()};}
+    std::string repr(wiki::EntityReprs const& entity_reprs,
+                     WikidataUIDindex const& wikidataUIDs,
+                     WordUIDindex const& wordUIDs) const;
 
     Sentence const& sent;
     std::vector<Token> tokens;

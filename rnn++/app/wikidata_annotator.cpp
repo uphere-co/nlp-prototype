@@ -183,10 +183,7 @@ void annotate_sentence(int argc, char** argv){
     for (auto sent : testset.sents) {
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
         auto tagged_sent = testset.annotator.annotate(sent);
-        for(auto token : tagged_sent.tokens){
-            fmt::print("{}",token.repr(entity_reprs, wikidataUIDs, wordUIDs));
-        }
-        fmt::print("\n");
+        fmt::print("{}\n", tagged_sent.repr(entity_reprs, wikidataUIDs, wordUIDs));
     }
 }
 
@@ -259,8 +256,8 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     assert(es==es1);
     assert(es[0]!=es1[1]);
     auto& test_sent = testset.sents[1];
+    fmt::print("{}\n", tagged_sent.repr(entity_reprs, wikidataUIDs, wordUIDs));
     for(auto token : tagged_sent.tokens){
-        fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
         token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](wordrep::wiki::AmbiguousEntity w){
                               auto op=entity_reprs.get_comparison_operator(w);
                               auto matched_tokens = is_contain(test_sent, op);
@@ -300,9 +297,7 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
         fmt::print("{}({}) ", wordUIDs[testset.tokens.word_uid(idx)],
                    wordUIDs[testset.tokens.head_uid(idx)]);
     fmt::print("\n");
-    for(auto& token : annotator.annotate(testset.sents[0]))
-        fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
-    fmt::print("\n");
+    fmt::print("{}\n", annotator.annotate(testset.sents[0]).repr(entity_reprs, wikidataUIDs, wordUIDs));
 
     auto uids = {"Q1","Q2","Q3","Q79531"};
     auto qs = util::map(uids,[&entity_reprs,&wikidataUIDs](auto uid){
@@ -314,7 +309,6 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
                 fmt::print("{} : {}\n", wordUIDs[word], word_importance.score(word));
         }
     }
-
 
     for(auto sent: testset.sents){
         auto tagged_sent = annotator.annotate(sent);

@@ -15,8 +15,4 @@ std::ostream& operator<<(std::ostream& os, WordsRepr const& self){
     return os;
 }
 
-Words ConsecutiveTokens::to_words() const{
-    return {util::map(*this, [this](auto idx){return tokens->word_uid(idx);})};
-}
-
 }//namespace wordrep

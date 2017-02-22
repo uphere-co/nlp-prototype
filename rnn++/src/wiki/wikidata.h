@@ -27,7 +27,7 @@ struct TaggedEntity{
     wordrep::WikidataUID uid;
 
     wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent) const {
-        return {sent.front()+offset, len, sent.dict};
+        return {sent.front()+offset, len};
     }
     friend bool operator==(TaggedEntity x, TaggedEntity y){
         return x.uid==y.uid;
@@ -49,8 +49,7 @@ struct AnnotatedToken{
                      wordrep::WordUIDindex const& wordUIDs) const;
     wordrep::AnnotatedSentence::Token to_sent_token(wordrep::Sentence const& sent) const {
         return val.match([&sent](WordWithOffset const& w)->wordrep::AnnotatedSentence::Token{
-                             using T = wordrep::AnnotatedSentence::Token::Word;
-                             return {T{sent.front()+w.offset, sent.dict}};},
+                             return {sent.front()+w.offset};},
                          [&sent](wordrep::wiki::AmbiguousEntity const& e)->wordrep::AnnotatedSentence::Token{
                              using T = wordrep::AnnotatedSentence::Token::UnresolvedWikiEntity;
                              return {T{e.map_to_sent(sent),e.uids}};});
@@ -88,7 +87,7 @@ std::vector<wordrep::ConsecutiveTokens> is_contain(wordrep::Sentence const& sent
     for(auto it=beg; it!=end; ){
         auto n = op.exact_match(it,end);
         if(n){
-            offsets.push_back({idx_beg+(it-beg),n, sent.dict});
+            offsets.push_back({idx_beg+(it-beg),n});
             it = it + n;
         } else{
             ++it;
