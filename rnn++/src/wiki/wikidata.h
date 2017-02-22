@@ -43,20 +43,39 @@ struct TaggedEntity{
     size_t offset;
     size_t len;
     wordrep::WikidataUID uid;
+    friend bool operator==(TaggedEntity x, TaggedEntity y){
+        return x.uid==y.uid;
+    }
 };
 
 struct AmbiguousEntity{
     std::vector<TaggedEntity> entities;
+    friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
+        return x.entities==y.entities;
+    }
+    friend bool operator!=(AmbiguousEntity const& x, AmbiguousEntity const& y){
+        return !(x==y);
+    }
 };
+
 struct WordWithOffset{
     size_t offset;
-    size_t len;
     wordrep::WordUID uid;
+    friend bool operator==(WordWithOffset x, WordWithOffset y){
+        return x.uid==y.uid;
+    }
 };
 struct AnnotatedSentence{
     struct Token{
         mapbox::util::variant<WordWithOffset,AmbiguousEntity> token;
     };
+    auto get_entities() const{
+        std::vector<AmbiguousEntity> entities;
+        for(auto token : tokens)
+            token.token.match([&entities](AmbiguousEntity x){entities.push_back(x);},
+                              [](auto ){});
+        return entities;
+    }
     std::vector<Token> tokens;
 };
 

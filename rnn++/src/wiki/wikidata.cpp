@@ -39,7 +39,7 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         auto mit = util::binary_find(pbeg, pend, eq, less);
         if(!mit) {
             if(i == 0) {
-                out.tokens.push_back({WordWithOffset{offset,1,t}});
+                out.tokens.push_back({WordWithOffset{offset,t}});
                 ++offset;
             } else {
                 AmbiguousEntity entity;

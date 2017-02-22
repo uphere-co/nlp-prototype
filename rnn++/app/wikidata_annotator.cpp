@@ -298,10 +298,14 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     timer.here_then_reset("Prepare test data.");
 
     auto tagged_sent = annotator.annotate(sents[0]);
+    auto tagged_sent1 = annotator.annotate(sents[1]);
+    auto es =tagged_sent.get_entities();
+    auto es1 = tagged_sent1.get_entities();
+    assert(es==es1);
+    assert(es[0]!=es1[1]);
     auto& test_sent = sents[1];
     for(auto token : tagged_sent.tokens){
-        token.token.match([](WordWithOffset ){},
-                          [&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
+        token.token.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
                               auto op=entity_reprs.get_comparison_operator(w);
                               auto iter = test_sent.iter_words();
                               fmt::print("(");
@@ -310,7 +314,8 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
                               fmt::print(") : ");
                               auto matched_tokens = is_contain(test_sent, op);
                               fmt::print("{} : {}\n", wikidataUIDs[w.entities.front().uid], matched_tokens.size());
-                          });
+                          },
+                          [](auto ){});
     }
 }
 
