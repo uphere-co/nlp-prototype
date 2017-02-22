@@ -323,8 +323,8 @@ util::json_t to_json(std::vector<PerSentQueryResult> const &results){
         util::json_t score_with_offset{};
         for(auto elm :result.scores_with_offset) {
             score_with_offset.push_back({elm.score,
-                                         elm.query_word.beg, elm.query_word.end,
-                                         elm.matched_word.beg, elm.matched_word.end});
+                                         elm.query_token.beg, elm.query_token.end,
+                                         elm.matched_token.beg, elm.matched_token.end});
         }
         answer["score_with_offset"].push_back(score_with_offset);
     }

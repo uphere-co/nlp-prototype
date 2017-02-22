@@ -16,6 +16,7 @@ std::ostream& operator<<(std::ostream& os, SentenceRepr const& self) {
     return os;
 }
 
+WordUID Sentence::WordIterator::Iterator::operator*( void ) const {return tokens->word_uid(idx);}
 
 Sentence::Sentence() : tokens{nullptr} {}
 Sentence::Sentence(SentUID uid, DPTokenIndex beg, DPTokenIndex end, DepParsedTokens const *tokens)
