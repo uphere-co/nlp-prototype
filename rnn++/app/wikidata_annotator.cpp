@@ -319,6 +319,50 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     }
 }
 
+
+void ambiguous_entity_match_scoring(int argc, char** argv){
+    util::Timer timer;
+    assert(argc>1);
+    auto config_json = util::load_json(argv[1]);
+
+    using wordrep::WordUID;
+    using wordrep::WikidataUID;
+
+    engine::Config config{config_json};
+    engine::SubmoduleFactory factory{config};
+    auto wordUIDs = factory.word_uid_index();
+    auto posUIDs = factory.pos_uid_index();
+    auto arclabelUIDs = factory.arclabel_uid_index();
+    timer.here_then_reset("Load word UIDs.");
+
+    wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
+    timer.here_then_reset("Load Wikidata UIDs.");
+    auto entities = read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities");
+    timer.here_then_reset("Read items.");
+
+    EntityReprs entity_reprs{entities.entities};
+    GreedyAnnotator annotator{entities};
+    timer.here_then_reset("Build data structures.");
+
+
+    std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
+                                      "../rnn++/tests/data/sentence.2.corenlp",
+                                      "../rnn++/tests/data/sentence.3.corenlp",
+                                      "../rnn++/tests/data/sentence.4.corenlp"};
+    wordrep::DepParsedTokens tokens{};
+    for(auto& json : jsons)
+        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{json});
+    tokens.build_sent_uid(0);
+    auto sents = tokens.IndexSentences();
+    timer.here_then_reset("Prepare test data.");
+
+    auto tagged_sent0 = annotator.annotate(sents[0]);
+    auto tagged_sent1 = annotator.annotate(sents[1]);
+    auto tagged_query0 = annotator.annotate(sents[2]);
+    auto tagged_query1 = annotator.annotate(sents[3]);
+    
+}
+
 void test_all(int argc, char** argv) {
     integer_list_ordering();
     greedy_matching();
@@ -327,6 +371,7 @@ void test_all(int argc, char** argv) {
     annotate_sentence(argc,argv);
     operation_wikiuid_on_sentence(argc,argv);
     operation_ambiguous_entity_on_sentence(argc,argv);
+    ambiguous_entity_match_scoring(argc,argv);
 }
 
 }//namespace wikidata::test

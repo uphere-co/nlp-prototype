@@ -1,0 +1,205 @@
+{
+    "queries": [
+        "Which product Google recently announced ."
+    ], 
+    "max_clip_len": 200, 
+    "sentences": [
+        {
+            "basicDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 5, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "announced"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 1, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "Which"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "product"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 3, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 4, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "recently"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "index": 0, 
+            "tokens": [
+                {
+                    "index": 1, 
+                    "word": "Which", 
+                    "after": " ", 
+                    "pos": "WDT", 
+                    "characterOffsetEnd": 5, 
+                    "characterOffsetBegin": 0, 
+                    "originalText": "Which", 
+                    "before": ""
+                }, 
+                {
+                    "index": 2, 
+                    "word": "product", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 13, 
+                    "characterOffsetBegin": 6, 
+                    "originalText": "product", 
+                    "before": " "
+                }, 
+                {
+                    "index": 3, 
+                    "word": "Google", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 20, 
+                    "characterOffsetBegin": 14, 
+                    "originalText": "Google", 
+                    "before": " "
+                }, 
+                {
+                    "index": 4, 
+                    "word": "recently", 
+                    "after": " ", 
+                    "pos": "RB", 
+                    "characterOffsetEnd": 29, 
+                    "characterOffsetBegin": 21, 
+                    "originalText": "recently", 
+                    "before": " "
+                }, 
+                {
+                    "index": 5, 
+                    "word": "announced", 
+                    "after": "", 
+                    "pos": "VBD", 
+                    "characterOffsetEnd": 39, 
+                    "characterOffsetBegin": 30, 
+                    "originalText": "announced", 
+                    "before": " "
+                }, 
+                {
+                    "index": 6, 
+                    "word": ".", 
+                    "after": "", 
+                    "pos": ".", 
+                    "characterOffsetEnd": 40, 
+                    "characterOffsetBegin": 39, 
+                    "originalText": ".", 
+                    "before": ""
+                }
+            ], 
+            "enhancedPlusPlusDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 5, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "announced"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 1, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "Which"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "product"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 3, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 4, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "recently"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "enhancedDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 5, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "announced"
+                }, 
+                {
+                    "dep": "det", 
+                    "dependent": 1, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "Which"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 2, 
+                    "governorGloss": "Google", 
+                    "governor": 3, 
+                    "dependentGloss": "product"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 3, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "advmod", 
+                    "dependent": 4, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "recently"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "announced", 
+                    "governor": 5, 
+                    "dependentGloss": "."
+                }
+            ]
+        }
+    ]
+}
