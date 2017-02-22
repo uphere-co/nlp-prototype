@@ -5,7 +5,7 @@
 
 namespace data {
 
-struct WordOffset {
+struct StringOffset {
     using idx_t = int64_t;
     idx_t beg;
     idx_t end;
@@ -13,21 +13,21 @@ struct WordOffset {
 
 struct ScoreWithOffset {
     using val_t = float;
-    using idx_t = WordOffset::idx_t;
+    using idx_t = StringOffset::idx_t;
 
     val_t score;
-    WordOffset query_word;
-    WordOffset matched_word;
+    StringOffset query_token;
+    StringOffset matched_token;
 };
 
 struct QuerySentInfo{
     using val_t = float;
-    using idx_t = WordOffset::idx_t;
+    using idx_t = StringOffset::idx_t;
     using str_t = std::string;
 
     std::vector<str_t> words;
     std::vector<val_t> cutoffs;
-    WordOffset offset;
+    StringOffset offset;
     idx_t sent_uid;
 };
 
@@ -45,9 +45,9 @@ struct PerSentQueryResult {
     str_t table_name;
     str_t column_name;
     str_t index_col_name;
-    WordOffset offset;
-    WordOffset highlight_offset;
-    WordOffset clip_offset;
+    StringOffset offset;
+    StringOffset highlight_offset;
+    StringOffset clip_offset;
     std::vector<ScoreWithOffset> scores_with_offset;
 };
 

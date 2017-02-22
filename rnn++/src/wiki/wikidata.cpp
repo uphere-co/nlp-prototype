@@ -39,12 +39,12 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         auto mit = util::binary_find(pbeg, pend, eq, less);
         if(!mit) {
             if(i == 0) {
-                out.tokens.push_back({WordWithOffset{offset,t}});
+                out.tokens.push_back({WordWithOffset{offset,1,t}});
                 ++offset;
             } else {
                 AmbiguousEntity entity;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) entity.entities.push_back({offset,it->uid});
+                    if(it->words.size()==i) entity.entities.push_back({offset,i,it->uid});
                 if(!entity.entities.empty()) out.tokens.push_back({entity});
                 offset += i;
                 i = 0;
@@ -131,7 +131,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
     auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
     std::vector<TaggedEntity> tagged;
     for(auto token : tagged_sent.tokens){
-        token.token.match([](WordWithOffset w){},
+        token.token.match([](WordWithOffset){},
                           [&tagged](AmbiguousEntity& w){
                               for(auto& entity : w.entities)
                                   tagged.push_back(entity);
@@ -143,4 +143,36 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
     return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
 }
+
+std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
+                                          EntityReprs::OpEntityCompare const& op){
+    std::vector<ConsecutiveTokens> offsets;
+    auto iter_words = sent.iter_words();
+    auto beg = iter_words.begin();
+    auto end = iter_words.end();
+    auto idx_beg=sent.front();
+    for(auto it=beg; it!=end; ){
+        auto n = op.exact_match(it,end);
+        if(n){
+            offsets.push_back({idx_beg+(it-beg),n});
+            it = it + n;
+        } else{
+            ++it;
+        }
+    }
+    return offsets;
+}
+std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words){
+    auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
+    std::vector<wordrep::WordPosition> heads;
+    for(auto idx : words){
+        auto mh = dict.head_pos(idx);
+        if(!mh) continue;
+        auto head = mh.value();
+        if(util::isin(positions, head)) continue;
+        heads.push_back(head);
+    }
+    return heads;
+}
+
 }//namespace wikidata

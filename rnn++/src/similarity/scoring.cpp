@@ -19,8 +19,9 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
     if(!scores.size()) return {{},{}};
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
-    auto i_word_beg = pair.first;
-    auto i_word_end = pair.first;
+    auto idx  = pair.first;
+    auto i_word_beg = idx;
+    auto i_word_end = idx;
     CharOffset clip_beg = tokens.word_beg(i_word_beg);
     CharOffset clip_end = tokens.word_end(i_word_end);
     auto len_sent = sent.chrlen();
@@ -131,10 +132,10 @@ PerSentQueryResult build_query_result_POD(
         if(score==0.0) continue;
         ScoreWithOffset tmp;
         tmp.score = score;
-        tmp.query_word.beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_word.end = query_tokens.word_end(lhs_idx).val;
-        tmp.matched_word.beg = tokens.word_beg(rhs_idx).val;
-        tmp.matched_word.end = tokens.word_end(rhs_idx).val;
+        tmp.query_token.beg = query_tokens.word_beg(lhs_idx).val;
+        tmp.query_token.end = query_tokens.word_end(lhs_idx).val;
+        tmp.matched_token.beg = tokens.word_beg(rhs_idx).val;
+        tmp.matched_token.end = tokens.word_end(rhs_idx).val;
         result.scores_with_offset.push_back(tmp);
     }
     result.score = scores.score_sum();
