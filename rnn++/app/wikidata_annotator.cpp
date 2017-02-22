@@ -21,6 +21,24 @@
 namespace wikidata{
 namespace test {
 
+struct UnittestDataset{
+    UnittestDataset(wordrep::WordUIDindex const &wordUIDs,
+                    wordrep::POSUIDindex const &posUIDs,
+                    wordrep::ArcLabelUIDindex const &arclabelUIDs){
+        std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
+                                          "../rnn++/tests/data/sentence.2.corenlp",
+                                          "../rnn++/tests/data/sentence.3.corenlp",
+                                          "../rnn++/tests/data/sentence.4.corenlp"};
+
+        for(auto& json : jsons)
+            tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{json});
+        tokens.build_sent_uid(0);
+        sents = tokens.IndexSentences();
+    }
+    wordrep::DepParsedTokens tokens{};
+    std::vector<wordrep::Sentence> sents;
+};
+
 void integer_list_ordering(){
     std::vector<int> a1{1,1};
     std::vector<int> a2{1,2};
@@ -157,21 +175,14 @@ void annotate_sentence(int argc, char** argv){
     EntityReprs entity_reprs{entities.entities};
     GreedyAnnotator annotator{entities};
     timer.here_then_reset("Build data structures.");
-
-    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
-    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
-    wordrep::DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
-    tokens.build_sent_uid(0);
-    auto sents = tokens.IndexSentences();
+    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
     timer.here_then_reset("Prepare test data.");
 
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
-    for (auto sent : sents) {
+    for (auto sent : testset.sents) {
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
         auto tagged_sent = annotator.annotate(sent);
         for(auto token : tagged_sent.tokens){
@@ -203,14 +214,8 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
 
     EntityReprs entity_reprs{entities.entities};
     timer.here_then_reset("Build data structures.");
-
-    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
-    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
-    wordrep::DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
-    tokens.build_sent_uid(0);
-    auto sents = tokens.IndexSentences();
+    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
+    auto& tokens = testset.tokens;
     timer.here_then_reset("Prepare test data.");
 
     //chrome_os=Q79531, NLP=q2
@@ -225,7 +230,7 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     auto op_contain_chrome_os = entity_reprs.get_comparison_operator(chrome_os);
     auto op_contain_nlp = entity_reprs.get_comparison_operator(nlp);
     auto op_contain_google = entity_reprs.get_comparison_operator(google);
-    for (auto sent : sents) {
+    for (auto sent : testset.sents) {
         auto iter_words = sent.iter_words();
         auto end = iter_words.end();
         for(auto it=iter_words.begin(); it!=end; ++it){
@@ -235,10 +240,9 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
                        op_contain_nlp.exact_match(it, end));
         }
         fmt::print(std::cerr, "\nsent:{} {}\n", sent.front(), sent.back());
-        auto xs = is_contain(sent, op_contain_chrome_os);
-        assert(!xs.empty());
         //TODO: should be empty if we don't match "Google" and "Google Chrome".
         assert(!is_contain(sent, op_contain_google).empty());
+        auto xs = is_contain(sent, op_contain_chrome_os);
         for(auto x : xs){
             fmt::print(std::cerr, "{} {}:", x.idx, x.len);
             for(decltype(x.len)i=0; i<x.len; ++i){
@@ -277,23 +281,16 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     EntityReprs entity_reprs{entities.entities};
     GreedyAnnotator annotator{entities};
     timer.here_then_reset("Build data structures.");
-
-    data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
-    data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
-    wordrep::DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
-    tokens.build_sent_uid(0);
-    auto sents = tokens.IndexSentences();
+    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
     timer.here_then_reset("Prepare test data.");
 
-    auto tagged_sent = annotator.annotate(sents[0]);
-    auto tagged_sent1 = annotator.annotate(sents[1]);
+    auto tagged_sent = annotator.annotate(testset.sents[0]);
+    auto tagged_sent1 = annotator.annotate(testset.sents[1]);
     auto es =tagged_sent.get_entities();
     auto es1 = tagged_sent1.get_entities();
     assert(es==es1);
     assert(es[0]!=es1[1]);
-    auto& test_sent = sents[1];
+    auto& test_sent = testset.sents[1];
     for(auto token : tagged_sent.tokens){
         fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
         token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
@@ -305,7 +302,6 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     }
     fmt::print("\n");
 }
-
 
 void ambiguous_entity_match_scoring(int argc, char** argv){
     util::Timer timer;
@@ -330,27 +326,17 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     EntityReprs entity_reprs{entities.entities};
     GreedyAnnotator annotator{entities};
     timer.here_then_reset("Build data structures.");
-
-
-    std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
-                                      "../rnn++/tests/data/sentence.2.corenlp",
-                                      "../rnn++/tests/data/sentence.3.corenlp",
-                                      "../rnn++/tests/data/sentence.4.corenlp"};
-    wordrep::DepParsedTokens tokens{};
-    for(auto& json : jsons)
-        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{json});
-    tokens.build_sent_uid(0);
-    auto sents = tokens.IndexSentences();
+    UnittestDataset testset{wordUIDs,posUIDs,arclabelUIDs};
     timer.here_then_reset("Prepare test data.");
 
-    auto tagged_sent0 = annotator.annotate(sents[0]);
-    auto tagged_sent1 = annotator.annotate(sents[1]);
-    auto tagged_query0 = annotator.annotate(sents[2]);
-    auto tagged_query1 = annotator.annotate(sents[3]);
+    auto tagged_sent0 = annotator.annotate(testset.sents[0]);
+    auto tagged_sent1 = annotator.annotate(testset.sents[1]);
+    auto tagged_query0 = annotator.annotate(testset.sents[2]);
+    auto tagged_query1 = annotator.annotate(testset.sents[3]);
 
-    for(auto idx : sents[2])
-        fmt::print("{}({}) ", wordUIDs[tokens.word_uid(idx)],
-                   wordUIDs[tokens.head_uid(idx)]);
+    for(auto idx : testset.sents[2])
+        fmt::print("{}({}) ", wordUIDs[testset.tokens.word_uid(idx)],
+                   wordUIDs[testset.tokens.head_uid(idx)]);
     fmt::print("\n");
     for(auto& token : tagged_sent0)
         fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
