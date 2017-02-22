@@ -155,7 +155,7 @@ void word_importance(util::json_t const &config){
     auto sents = query_tokens.IndexSentences();
     for(auto sent : sents){
         for(auto idx :sent){
-            auto wuid = sent.tokens->word_uid(idx);
+            auto wuid = sent.dict->word_uid(idx);
             auto word = wordUIDs[wuid];
             auto cutoff = word_importance.score(wuid);
             assert(cutoff == 0.0);

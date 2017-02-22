@@ -35,10 +35,10 @@ DependencyGraph::DependencyGraph(Sentence const & sent)
           span{nodes.get(), util::to_type<uint32_t>(sent.size())}, //span_dyn use uint32...
           cspan{span} {
     for (auto idx : sent) {
-        auto &node = nodes[sent.tokens->word_pos(idx).val];
+        auto &node = nodes[sent.dict->word_pos(idx).val];
         node.idx = idx;
         node.graph = this;
-        auto head_pos = sent.tokens->head_pos(idx);
+        auto head_pos = sent.dict->head_pos(idx);
         if(!head_pos) continue;
         auto &head = nodes[head_pos.value().val];
         node.governor = &head;
@@ -69,14 +69,14 @@ ConnectionFragility::ConnectionFragility(DependencyGraph const &graph,
 void ConnectionFragility::set_score(){
     for(auto& pair : scores) pair.second=0;
     for(auto node : graph.all_nodes()) {
-        auto uid = graph.sentence().tokens->word_uid(node.idx);
+        auto uid = graph.sentence().dict->word_uid(node.idx);
         auto score = importance.score(uid);
         node.iter_to_top([this,score](auto const &node){ scores[node.idx] += score;});
     }
 }
 ConnectionFragility::val_t ConnectionFragility::score(node_t const &node) const {
     auto self_weight_sum = scores.at(node.idx);
-    auto uid = node.graph->sentence().tokens->word_uid(node.idx);
+    auto uid = node.graph->sentence().dict->word_uid(node.idx);
     auto self_weight     = importance.score(uid);
     auto head_idx = node.head_idx();
     auto head_weight_sum = head_idx? scores.at(head_idx.value()) : 0;

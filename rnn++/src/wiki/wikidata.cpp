@@ -166,7 +166,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 
 AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
     auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
-    return {tokens};
+    return {sent,tokens};
 }
 
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,
