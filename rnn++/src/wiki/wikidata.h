@@ -18,7 +18,7 @@ struct DepParsedTokens;
 namespace wikidata{
 
 struct SortedEntities{
-    std::vector<wordrep::Entity> entities;
+    std::vector<wordrep::wiki::Entity> entities;
 };
 
 struct TaggedEntity{
@@ -43,15 +43,15 @@ struct WordWithOffset{
 };
 
 struct AnnotatedToken{
-    mapbox::util::variant<WordWithOffset,wordrep::AmbiguousEntity> val;
-    std::string repr(wordrep::WikidataEntityReprs const& entity_reprs,
+    mapbox::util::variant<WordWithOffset,wordrep::wiki::AmbiguousEntity> val;
+    std::string repr(wordrep::wiki::EntityReprs const& entity_reprs,
                      wordrep::WikidataUIDindex const& wikidataUIDs,
                      wordrep::WordUIDindex const& wordUIDs) const;
     wordrep::AnnotatedSentence::Token to_sent_token(wordrep::Sentence const& sent) const {
         return val.match([&sent](WordWithOffset const& w)->wordrep::AnnotatedSentence::Token{
                              using T = wordrep::AnnotatedSentence::Token::Word;
                              return {T{sent.front()+w.offset, sent.dict}};},
-                         [&sent](wordrep::AmbiguousEntity const& e)->wordrep::AnnotatedSentence::Token{
+                         [&sent](wordrep::wiki::AmbiguousEntity const& e)->wordrep::AnnotatedSentence::Token{
                              using T = wordrep::AnnotatedSentence::Token::UnresolvedWikiEntity;
                              return {T{e.map_to_sent(sent),e.uids}};});
     }
@@ -73,7 +73,7 @@ struct GreedyAnnotator{
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const;
     wordrep::AnnotatedSentence annotate(wordrep::Sentence const& sent) const;
 
-    std::vector<wordrep::Entity> entities;
+    std::vector<wordrep::wiki::Entity> entities;
 };
 
 //OP is one of OpCompare, OpEntityCompare and OpAmbiguousEntityCompare.

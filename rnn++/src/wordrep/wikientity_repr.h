@@ -7,10 +7,11 @@
 #include "wordrep/words.h"
 
 namespace wordrep{
+namespace wiki{
 
 struct Entity{
     Entity(WikidataUID uid, std::vector<WordUID> words)
-            : uid{uid}, words{words}
+            : uid{uid}, words{std::move(words)}
     {}
     Entity(WordUIDindex const& wordUIDs, std::string line);
 
@@ -19,12 +20,12 @@ struct Entity{
     size_t size() const{return words.size();}
 
     friend bool operator< (Entity const& a, Entity const& b){
-        return a.words > b.words;
+        return a.words.uids > b.words.uids;
     }
     friend std::ostream& operator<< (std::ostream& os, Entity const& a);
 
     WikidataUID uid;
-    std::vector<WordUID> words;
+    Words words;
 };
 std::ostream& operator<< (std::ostream& os, Entity const& a);
 
@@ -53,11 +54,11 @@ struct AmbiguousEntity{
     }
 };
 
-struct WikidataEntityReprs{
+struct EntityReprs{
     using dict_type = std::map<WikidataUID, std::vector<std::vector<WordUID>>>;
     using value_type = dict_type::value_type;
     struct OpCompare{
-        OpCompare(WikidataEntityReprs const& self) : dict{self} {}
+        OpCompare(EntityReprs const& self) : dict{self} {}
         bool exact_match(WikidataUID uid, std::vector<WordUID> qwords) const {
             auto it = dict.reprs.find(uid);
             if(it==dict.reprs.cend()) return false;
@@ -71,7 +72,7 @@ struct WikidataEntityReprs{
             OpEntityCompare op{*it};
             return op.exact_match(beg,end);
         }
-        WikidataEntityReprs const& dict;
+        EntityReprs const& dict;
     };
     struct OpEntityCompare{
         OpEntityCompare(value_type const& reprs) : reprs{reprs} {}
@@ -114,9 +115,9 @@ struct WikidataEntityReprs{
         std::vector<OpEntityCompare> ops;
     };
 
-    WikidataEntityReprs(std::vector<Entity> const& entities){
+    EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
-            reprs[entity.uid].push_back(entity.words);
+            reprs[entity.uid].push_back(entity.words.uids);
     }
     OpCompare get_comparison_operator() const{
         return {*this};
@@ -137,4 +138,5 @@ struct WikidataEntityReprs{
     dict_type reprs;
 };
 
+}//namespace wordrep::wiki
 }//namespace wordrep

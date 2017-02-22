@@ -9,8 +9,9 @@
 #include "utils/variant.h"
 
 namespace wordrep{
-
-struct WikidataEntityReprs;
+namespace wiki {
+struct EntityReprs;
+}//namespace wordrep::wiki
 
 struct AnnotatedSentence{
     struct Token{
@@ -32,7 +33,7 @@ struct AnnotatedSentence{
                 return !(x==y);
             }
         };
-        std::string repr(WikidataEntityReprs const& entity_reprs,
+        std::string repr(wiki::EntityReprs const& entity_reprs,
                          WikidataUIDindex const& wikidataUIDs,
                          WordUIDindex const& wordUIDs) const;
         mapbox::util::variant<Word,UnresolvedWikiEntity> val;

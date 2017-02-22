@@ -7,7 +7,7 @@
 
 namespace wordrep{
 
-std::string AnnotatedSentence::Token::repr(WikidataEntityReprs const &entity_reprs,
+std::string AnnotatedSentence::Token::repr(wiki::EntityReprs const &entity_reprs,
                                            WikidataUIDindex const &wikidataUIDs,
                                            WordUIDindex const &wordUIDs) const {
     std::stringstream ss;
