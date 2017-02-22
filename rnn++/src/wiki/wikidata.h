@@ -48,17 +48,27 @@ struct TaggedEntity{
     size_t offset;
     size_t len;
     wordrep::WikidataUID uid;
+
+    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent){
+        return {sent.front()+offset, len, sent.tokens};
+    }
     friend bool operator==(TaggedEntity x, TaggedEntity y){
         return x.uid==y.uid;
     }
 };
 
 struct AmbiguousEntity{
-    std::vector<TaggedEntity> entities;
+    size_t offset;
+    size_t len;
+    std::vector<wordrep::WikidataUID> uids;
+
+    wordrep::ConsecutiveTokens map_to_sent(wordrep::Sentence const& sent){
+        return {sent.front()+offset, len, sent.tokens};
+    }
     friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
-        for(auto& xx : x.entities )
-            for(auto& yy : y.entities )
-                if(xx.uid==yy.uid) return true;
+        for(auto& xx : x.uids )
+            for(auto& yy : y.uids )
+                if(xx==yy) return true;
         return false;
     }
     friend bool operator!=(AmbiguousEntity const& x, AmbiguousEntity const& y){
@@ -75,13 +85,14 @@ struct WordWithOffset{
 };
 
 struct EntityReprs;
+struct AnnotatedToken{
+    mapbox::util::variant<WordWithOffset,AmbiguousEntity> val;
+    std::string repr(EntityReprs const& entity_reprs,
+                     wordrep::WikidataUIDindex const& wikidataUIDs,
+                     wordrep::WordUIDindex const& wordUIDs) const;
+};
+
 struct AnnotatedSentence{
-    struct Token{
-        mapbox::util::variant<WordWithOffset,AmbiguousEntity> val;
-        std::string repr(EntityReprs const& entity_reprs,
-                         wordrep::WikidataUIDindex const& wikidataUIDs,
-                         wordrep::WordUIDindex const& wordUIDs) const;
-    };
     struct Iterator{
         Iterator(AnnotatedSentence const& sent, size_t idx) : idx{idx}, sent{sent}{}
         auto const& operator*( void ) const {return sent.tokens[idx];}
@@ -102,7 +113,7 @@ struct AnnotatedSentence{
     auto begin() const { return Iterator{*this,0};}
     auto end() const { return Iterator{*this,tokens.size()};}
 
-    std::vector<Token> tokens;
+    std::vector<AnnotatedToken> tokens;
 };
 
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
@@ -183,7 +194,7 @@ struct EntityReprs{
     }
     OpAmbiguousEntityCompare get_comparison_operator(AmbiguousEntity entity) const{
         OpAmbiguousEntityCompare op{};
-        for(auto x : entity.entities) op.ops.push_back(get_comparison_operator(x.uid));
+        for(auto uid : entity.uids) op.ops.push_back(get_comparison_operator(uid));
         return op;
     }
     Entity operator[](wordrep::WikidataUID uid) const;

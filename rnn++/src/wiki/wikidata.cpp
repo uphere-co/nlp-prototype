@@ -16,8 +16,8 @@
 namespace{
 using namespace wikidata;
 template<typename TI>
-AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_beg, TI sent_end) {
-    AnnotatedSentence out;
+std::vector<AnnotatedToken> greedy_annotate(std::vector<Entity> const& entities, TI sent_beg, TI sent_end) {
+    std::vector<AnnotatedToken> tokens;
     auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
     size_t offset=0;
     size_t i = 0;
@@ -39,13 +39,13 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         auto mit = util::binary_find(pbeg, pend, eq, less);
         if(!mit) {
             if(i == 0) {
-                out.tokens.push_back({WordWithOffset{offset,t}});
+                tokens.push_back({WordWithOffset{offset,t}});
                 ++offset;
             } else {
-                AmbiguousEntity entity;
+                std::vector<wordrep::WikidataUID> uids;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) entity.entities.push_back({offset,i,it->uid});
-                if(!entity.entities.empty()) out.tokens.push_back({entity});
+                    if(it->words.size()==i) uids.push_back(it->uid);
+                if(!uids.empty()) tokens.push_back({AmbiguousEntity{offset,i,uids}});
                 offset += i;
                 i = 0;
             }
@@ -59,7 +59,7 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         pend = std::find_if_not(it, pend, eq);
         ++i;
     }
-    return out;
+    return tokens;
 }
 
 }//nameless namespace
@@ -92,14 +92,14 @@ std::ostream& operator<< (std::ostream& os, Entity const& a){
     return os;
 }
 
-std::string AnnotatedSentence::Token::repr(EntityReprs const& entity_reprs,
+std::string AnnotatedToken::repr(EntityReprs const& entity_reprs,
                  wordrep::WikidataUIDindex const& wikidataUIDs,
                  wordrep::WordUIDindex const& wordUIDs) const {
     std::stringstream ss;
     val.match([&ss,&entity_reprs,&wordUIDs,&wikidataUIDs](AmbiguousEntity w) {
         fmt::print(ss," (");
-        for (auto entity : w.entities)
-            fmt::print(ss,"{} ", entity_reprs[entity.uid].repr(wikidataUIDs, wordUIDs));
+        for (auto uid : w.uids)
+            fmt::print(ss,"{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
         fmt::print(ss,")");
     },
     [&ss,&wordUIDs](WordWithOffset w) {
@@ -152,20 +152,21 @@ Synonyms EntityReprs::get_synonyms(wordrep::WikidataUID uid) const{
 }
 
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
-    auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
+    auto tokens = greedy_annotate(entities, text.begin(), text.end());
     std::vector<TaggedEntity> tagged;
-    for(auto token : tagged_sent.tokens){
+    for(auto token : tokens){
         token.val.match([](WordWithOffset){},
                           [&tagged](AmbiguousEntity& w){
-                              for(auto& entity : w.entities)
-                                  tagged.push_back(entity);
+                              for(auto& uid : w.uids)
+                                  tagged.push_back({w.offset,w.len, uid});
                           });
     }
     return tagged;
 }
 
 AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
-    return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
+    auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
+    return {tokens};
 }
 
 std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,

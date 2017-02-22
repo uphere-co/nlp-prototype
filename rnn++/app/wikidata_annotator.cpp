@@ -262,7 +262,7 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
         token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
                               auto op=entity_reprs.get_comparison_operator(w);
                               auto matched_tokens = is_contain(test_sent, op);
-                              fmt::print("{} : {}\n", wikidataUIDs[w.entities.front().uid], matched_tokens.size());
+                              fmt::print("{} : {}\n", wikidataUIDs[w.uids.front()], matched_tokens.size());
                           },
                           [](auto ){});
     }
@@ -317,11 +317,10 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
         auto tagged_sent = annotator.annotate(sent);
         auto entities = tagged_sent.get_entities();
         for(auto& ambiguous_entity : entities){
-            for(auto& tagged_entity : ambiguous_entity.entities){
-                auto entity = entity_reprs[tagged_entity.uid];
+            for(auto& uid : ambiguous_entity.uids){
+                auto entity = entity_reprs[uid];
                 fmt::print("{} : ",entity.repr(wikidataUIDs, wordUIDs));
-                auto beg = sent.front()+tagged_entity.offset;
-                for(auto idx=beg; idx!=beg+tagged_entity.len; ++idx){
+                for(auto idx : ambiguous_entity.map_to_sent(sent)){
                     fmt::print(" ({}:{})", wordUIDs[tokens.word_uid(idx)],wordUIDs[tokens.head_uid(idx)]);
                 }
                 fmt::print("\n");
@@ -336,10 +335,8 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     fmt::print("{}\n",sent2.repr(wordUIDs));
     for(auto entity1 : tsent1.get_entities()){
         for(auto entity2 : tsent2.get_entities()){
-            auto token1 = entity1.entities.front();
-            auto token2 = entity2.entities.front();
-            auto idx1 = sent1.front()+token1.offset;
-            auto idx2 = sent2.front()+token2.offset;
+            auto idx1 = sent1.front()+entity1.offset;
+            auto idx2 = sent2.front()+entity2.offset;
             auto word1 = tokens.word_uid(idx1);
             auto word2 = tokens.word_uid(idx2);
             auto head1 = tokens.head_uid(idx1);
@@ -351,18 +348,12 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
 }
 
 void ambiguous_entity_equality(){
-    AmbiguousEntity e1, e2, e3;
     //e1 is one of {0,1,2};
-    e1.entities.push_back({0,2,0});
-    e1.entities.push_back({0,1,1});
-    e1.entities.push_back({0,2,2});
+    AmbiguousEntity e1{0,2,{0,1,2}};
     //e2 is one of {0,5};
-    e2.entities.push_back({10,2,0});
-    e2.entities.push_back({10,3,5});
+    AmbiguousEntity e2{10,2,{0,5}};
     //e3 is one of {2,11};
-    e3.entities.push_back({0,2,2});
-    e3.entities.push_back({0,1,11});
-
+    AmbiguousEntity e3{0,2,{2,11}};
     assert(e1==e2);
     assert(e1==e3);
     assert(e2!=e3);
