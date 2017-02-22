@@ -44,7 +44,7 @@ struct UnittestDataset{
     engine::SubmoduleFactory factory;
     wordrep::WordUIDindex wordUIDs;
     SortedEntities entities;
-    EntityReprs entity_reprs;
+    wordrep::WikidataEntityReprs entity_reprs;
     GreedyAnnotator annotator;
     wordrep::DepParsedTokens tokens{};
     std::vector<wordrep::Sentence> sents{};
@@ -68,7 +68,7 @@ void integer_list_ordering(){
 }
 
 void greedy_matching() {
-    std::vector<Entity> items =
+    std::vector<wordrep::Entity> items =
             {{1,   {1, 2}},
              {11,  {1, 2}},
              {2,   {1, 3}},
@@ -84,7 +84,7 @@ void greedy_matching() {
     std::sort(items.begin(), items.end());
     SortedEntities entities{items};
     std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
-    EntityReprs entity_reprs{entities.entities};
+    wordrep::WikidataEntityReprs entity_reprs{entities.entities};
     fmt::print("Entities :\n");
     for (auto &item : entities.entities)
         fmt::print("{}\n", item);
@@ -134,7 +134,7 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
 
     auto words = util::string::split(query, " ");
     std::vector<WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
-    EntityReprs entity_reprs{entities.entities};
+    wordrep::WikidataEntityReprs entity_reprs{entities.entities};
     GreedyAnnotator annotator{entities};
 
     timer.here_then_reset("Build data structures.");
@@ -261,7 +261,7 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     auto& test_sent = testset.sents[1];
     for(auto token : tagged_sent.tokens){
         fmt::print("{}", token.repr(entity_reprs, wikidataUIDs, wordUIDs));
-        token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](AmbiguousEntity w){
+        token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](wordrep::AmbiguousEntity w){
                               auto op=entity_reprs.get_comparison_operator(w);
                               auto matched_tokens = is_contain(test_sent, op);
                               fmt::print("{} : {}\n", wikidataUIDs[w.uids.front()], matched_tokens.size());
@@ -342,7 +342,7 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
             auto word2 = tokens.word_uid(idx2);
             auto head1 = tokens.head_uid(idx1);
             auto head2 = tokens.head_uid(idx2);
-            wordrep::Words words{{word1,head1, word2, head2}};
+            wordrep::Words words{{word1,head1, word2,head2}};
             fmt::print("{}\n",words.repr(wordUIDs));
         }
     }
@@ -350,11 +350,11 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
 
 void ambiguous_entity_equality(){
     //e1 is one of {0,1,2};
-    AmbiguousEntity e1{0,2,{0,1,2}};
+    wordrep::AmbiguousEntity e1{0,2,{0,1,2}};
     //e2 is one of {0,5};
-    AmbiguousEntity e2{10,2,{0,5}};
+    wordrep::AmbiguousEntity e2{10,2,{0,5}};
     //e3 is one of {2,11};
-    AmbiguousEntity e3{0,2,{2,11}};
+    wordrep::AmbiguousEntity e3{0,2,{2,11}};
     assert(e1==e2);
     assert(e1==e3);
     assert(e2!=e3);
@@ -395,8 +395,8 @@ int main(int argc, char** argv){
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
-    //TODO: Constructing EntityReprs with 14M entities takes more than 20s!
-    wikidata::EntityReprs entity_reprs{entities.entities};
+    //TODO: Constructing WikidataEntityReprs with 14M entities takes more than 20s!
+    wordrep::WikidataEntityReprs entity_reprs{entities.entities};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
