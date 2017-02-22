@@ -318,6 +318,23 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
     }
 }
 
+void ambiguous_entity_equality(){
+    AmbiguousEntity e1, e2, e3;
+    //e1 is one of {0,1,2};
+    e1.entities.push_back({0,2,0});
+    e1.entities.push_back({0,1,1});
+    e1.entities.push_back({0,2,2});
+    //e2 is one of {0,5};
+    e2.entities.push_back({10,2,0});
+    e2.entities.push_back({10,3,5});
+    //e3 is one of {2,11};
+    e3.entities.push_back({0,2,2});
+    e3.entities.push_back({0,1,11});
+
+    assert(e1==e2);
+    assert(e1==e3);
+    assert(e2!=e3);
+}
 void test_all(int argc, char** argv) {
     integer_list_ordering();
     greedy_matching();
@@ -327,6 +344,7 @@ void test_all(int argc, char** argv) {
     operation_wikiuid_on_sentence(argc,argv);
     operation_ambiguous_entity_on_sentence(argc,argv);
     ambiguous_entity_match_scoring(argc,argv);
+    ambiguous_entity_equality();
 }
 
 }//namespace wikidata::test

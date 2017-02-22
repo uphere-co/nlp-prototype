@@ -56,7 +56,10 @@ struct TaggedEntity{
 struct AmbiguousEntity{
     std::vector<TaggedEntity> entities;
     friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
-        return x.entities==y.entities;
+        for(auto& xx : x.entities )
+            for(auto& yy : y.entities )
+                if(xx.uid==yy.uid) return true;
+        return false;
     }
     friend bool operator!=(AmbiguousEntity const& x, AmbiguousEntity const& y){
         return !(x==y);
