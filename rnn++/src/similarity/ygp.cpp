@@ -42,7 +42,7 @@ std::vector<ScoredSentence> rank_cut_per_column(
     std::map<std::string, std::vector<ScoredSentence>> outputs_per_column;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
-        auto col_uid=ygp_indexer.column_uid(sent.tokens->chunk_idx(sent.front()));
+        auto col_uid=ygp_indexer.column_uid(sent.dict->chunk_idx(sent.front()));
         auto table_name = ygpdb.table(col_uid);
         outputs_per_column[table_name].push_back(scored_sent);
     }
@@ -86,7 +86,7 @@ std::vector<ScoredSentence> rank_cut_per_row_index(
     std::map<std::string, ssents_per_rowidx> outputs_per_table_row_index;
     for(auto const &scored_sent : relevant_sents){
         auto const &sent = scored_sent.sent;
-        auto cidx = sent.tokens->chunk_idx(sent.front());
+        auto cidx = sent.dict->chunk_idx(sent.front());
         auto col_uid = ygp_indexer.column_uid(cidx);
         auto table_name = ygpdb.table(col_uid);
         auto row_idx=ygp_indexer.row_idx(cidx);
@@ -159,7 +159,7 @@ std::vector<Sentence> DBInfo::get_candidate_sents(
     if(interested_columns.empty()) return candidate_sents;
     auto tmp= util::filter(candidate_sents,
                         [&interested_columns,this](auto& sent){
-        return util::isin(interested_columns, indexer.column_uid(sent.tokens->chunk_idx(sent.front())));
+        return util::isin(interested_columns, indexer.column_uid(sent.dict->chunk_idx(sent.front())));
     });
     fmt::print(std::cerr, "Select {} among {} sents\n", tmp.size(), candidate_sents.size());
     return tmp;

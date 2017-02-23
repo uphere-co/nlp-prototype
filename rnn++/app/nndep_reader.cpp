@@ -46,25 +46,25 @@ void dependency_graph() {
         DependencyGraph graph{sent};
 
         for (auto &node : graph.all_nodes()) {
-            auto uid = sent.tokens->word_uid(node.idx);
+            auto uid = sent.dict->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15} {:<5} ", wordUIDs[uid], importance.score(uid));
             if (node.governor)
-                fmt::print(std::cerr, "head : {:<15}", wordUIDs[sent.tokens->word_uid(node.governor.value()->idx)]);
+                fmt::print(std::cerr, "head : {:<15}", wordUIDs[sent.dict->word_uid(node.governor.value()->idx)]);
             else fmt::print(std::cerr, "head :{:<15} ", " ");
             fmt::print(std::cerr, "child: ");
             for (auto child : node.dependents)
-                fmt::print(std::cerr, "{:<15} ", wordUIDs[sent.tokens->word_uid(child->idx)]);
+                fmt::print(std::cerr, "{:<15} ", wordUIDs[sent.dict->word_uid(child->idx)]);
             std::cerr << std::endl;
         }
         fmt::print(std::cerr, ": {}. Root : {}\n", sent.size(),
-                   wordUIDs[sent.tokens->word_uid(graph.front().root_node().idx)]);
+                   wordUIDs[sent.dict->word_uid(graph.front().root_node().idx)]);
 
         auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5.0);
 //        auto sub_heads = phrase_segmenter.broke_into_phrases(graph, 5);
 
         ConnectionFragility subgrapher{graph, importance};
         for (auto node : graph.all_nodes()) {
-            auto uid = graph.sentence().tokens->word_uid(node.idx);
+            auto uid = graph.sentence().dict->word_uid(node.idx);
             fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
                        wordUIDs[uid], importance.score(uid), subgrapher.score(node));
         }
@@ -73,9 +73,9 @@ void dependency_graph() {
         for (auto sub_head_idx : sub_heads) {
             auto sub_head = graph.node(sub_head_idx);
             fmt::print(std::cerr, "Head of subgraph : {}\n",
-                       wordUIDs[sub_head.graph->sentence().tokens->word_uid(sub_head.idx)]);
+                       wordUIDs[sub_head.graph->sentence().dict->word_uid(sub_head.idx)]);
             graph.iter_subgraph(sub_head, [&wordUIDs, &importance, &subgrapher](auto &node) {
-                auto uid = node.graph->sentence().tokens->word_uid(node.idx);
+                auto uid = node.graph->sentence().dict->word_uid(node.idx);
                 fmt::print(std::cerr, "{:<15}  score : {:<7} {:<7}\n",
                            wordUIDs[uid], importance.score(uid), subgrapher.score(node));
             });
@@ -216,8 +216,8 @@ void pos_info(engine::SubmoduleFactory const& factory){
         if(++i>10) break;
         fmt::print("{}\n", sent.repr(wordUIDs));
         for(auto idx : sent){
-            fmt::print("{}.{} ", wordUIDs[sent.tokens->word_uid(idx)],
-                                 posUIDs[sent.tokens->pos(idx)]);
+            fmt::print("{}.{} ", wordUIDs[sent.dict->word_uid(idx)],
+                                 posUIDs[sent.dict->pos(idx)]);
         }
         fmt::print("\n");
     }
@@ -306,16 +306,16 @@ void word_cache_thread_safety(util::json_t const& config) {
     auto n = sents.size();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto& sent=sents[i];
-        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.dict->word(idx);});
         dists_cache.cache(vidxs);
     });
     timer.here_then_reset(fmt::format("Cache {} sents. Cache size : {}", sents.size(), dists_cache.size()));
     auto cached_dist = dists_cache.get_cached_operator();
     tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
         auto& sent=sents[i];
-        wordrep::Words words = util::map(sent, [&sent](auto idx){return sent.tokens->word_uid(idx);});
+        wordrep::Words words = util::map(sent, [&sent](auto idx){return sent.dict->word_uid(idx);});
         //fmt::print("{}\n", words.repr(wordUIDs));;
-        auto vidxs = util::map(sent, [&sent](auto idx){return sent.tokens->word(idx);});
+        auto vidxs = util::map(sent, [&sent](auto idx){return sent.dict->word(idx);});
         for(size_t i=0; i!=vidxs.size()-1; ++i){
             auto vidx1=vidxs[i];
             auto vidx2=vidxs[i+1];

@@ -91,14 +91,14 @@ std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence>
     auto end = relevant_sents.end();
     std::partial_sort(beg,end,end, [](auto const &x, auto const &y){
         if(x.score==y.score)
-            return x.sent.tokens->chunk_idx(x.sent.front())<y.sent.tokens->chunk_idx(y.sent.front());
+            return x.sent.dict->chunk_idx(x.sent.front())<y.sent.dict->chunk_idx(y.sent.front());
         return x.score > y.score;});
     auto score_cutoff = 0.5*relevant_sents.front().score;
     auto rank_cut = beg;
     std::set<ChunkIndex> chunk_idxs;
     while(rank_cut!=end && chunk_idxs.size()<n_unique_chunk_idx){
         if(rank_cut->score<score_cutoff) break;
-        chunk_idxs.insert(rank_cut->sent.tokens->chunk_idx(rank_cut->sent.front()));
+        chunk_idxs.insert(rank_cut->sent.dict->chunk_idx(rank_cut->sent.front()));
         ++rank_cut;
     }
     std::vector<ScoredSentence> top_n_results;
@@ -116,8 +116,8 @@ PerSentQueryResult build_query_result_POD(
     std::sort(scores_with_idxs.begin(), scores_with_idxs.end(),
               [](auto const &x, auto const &y){return std::get<2>(x)>std::get<2>(y);});
 
-    auto const &tokens = *(sent.tokens);
-    auto const &query_tokens = *(query_sent.tokens);
+    auto const &tokens = *(sent.dict);
+    auto const &query_tokens = *(query_sent.dict);
 
     auto chunk_idx = tokens.chunk_idx(sent.front());
     auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid

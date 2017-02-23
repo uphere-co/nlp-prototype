@@ -43,7 +43,7 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
         auto sent = scored_sent.sent;
         hash_t hash(0);
         for(auto idx : sent){
-            hash += std::hash<VocaIndex>{}(sent.tokens->word(idx));
+            hash += std::hash<VocaIndex>{}(sent.dict->word(idx));
         }
         if(is_seen.find(hash)!=is_seen.cend()) continue;
         is_seen[hash]=true;
@@ -202,17 +202,17 @@ public:
             DPTokenIndex tidx = pair.second;
             auto j = diff(tidx, query_sent.front());
             val_t score{0.0};
-            auto query_word = query_sent.tokens->word(tidx);
+            auto query_word = query_sent.dict->word(tidx);
             for(auto i : sent) {
-                auto word = sent.tokens->word(i);
+                auto word = sent.dict->word(i);
                 if(word==query_word) {
                     //Even if the word is unknown for query engine, it assigns a small score for exact matches.
                     score += wordrep::WordImportance::low_cutoff * 0.1;
                     scores.set(j, tidx, i, score);
                 }
                 auto dependent_score = similarity(query_word, word);
-                if(is_noun(*query_sent.tokens, tidx)) dependent_score = noun_rescore(dependent_score);
-                auto maybe_qhead_pidx = query_sent.tokens->head_pos(tidx);
+                if(is_noun(*query_sent.dict, tidx)) dependent_score = noun_rescore(dependent_score);
+                auto maybe_qhead_pidx = query_sent.dict->head_pos(tidx);
                 if(!maybe_qhead_pidx) {
                     auto tmp = cutoffs[j] * dependent_score;
                     if(tmp>score){
@@ -220,13 +220,13 @@ public:
                         scores.set(j, tidx, i, score);
                     }
                 } else {
-                    auto head_word = sent.tokens->head_word(i);
+                    auto head_word = sent.dict->head_word(i);
                     auto qhead_pidx = maybe_qhead_pidx.value().val;
                     //CAUTION: this early stopping assumes tmp =  cutoffs[j] * dependent_score * governor_score*cutoffs[qhead_pidx];
                     // if(cutoffs[qhead_pidx]<0.4) continue;
                     auto governor_score = similarity(query_word, head_word);
-                    //assert(query_sent.tokens->word_uid(tidx+qhead_pidx)==query_sent.tokens->head_uid(tidx));
-                    //if(is_noun(*query_sent.tokens, tidx+qhead_pidx)) governor_score = noun_rescore(governor_score);
+                    //assert(query_sent.dict->word_uid(tidx+qhead_pidx)==query_sent.dict->head_uid(tidx));
+                    //if(is_noun(*query_sent.dict, tidx+qhead_pidx)) governor_score = noun_rescore(governor_score);
                     auto tmp = cutoffs[j] * dependent_score * (1 + governor_score*cutoffs[qhead_pidx]);
                     if(tmp>score){
                         score = tmp;
@@ -358,22 +358,22 @@ data::QuerySentInfo construct_query_info(
         wordrep::WordImportance const& word_importance) {
     data::QuerySentInfo info;
     for(auto idx : query_sent) {
-        auto wuid = query_sent.tokens->word_uid(idx);
+        auto wuid = query_sent.dict->word_uid(idx);
         auto word = wordUIDs[wuid];
         info.words.push_back(word);
         auto cutoff = word_importance.score(wuid);
         info.cutoffs.push_back(cutoff);
     }
     info.sent_uid = query_sent.uid.val;
-    info.offset.beg = query_sent.tokens->word_beg(query_sent.front()).val;
-    info.offset.end = query_sent.tokens->word_end(query_sent.back()).val;
+    info.offset.beg = query_sent.dict->word_beg(query_sent.front()).val;
+    info.offset.end = query_sent.dict->word_end(query_sent.back()).val;
     return info;
 }
 
 void cache_words(Sentence const &sent, WordSimCache &dists_cache) {
     std::vector<VocaIndex> vidxs;
     for(auto idx : sent) {
-        auto vuid=sent.tokens->word(idx);
+        auto vuid=sent.dict->word(idx);
         vidxs.push_back(vuid);
     }
     dists_cache.cache(vidxs);
@@ -391,7 +391,7 @@ struct ProcessQuerySent{
                                            std::vector<Sentence> const &data_sents) {
         DepParsedQuery query{cutoffs, query_sent, posUIDs};
         auto op_similarity = dists_cache.get_cached_operator();
-        auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.tokens->word(idx);});
+        auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
         op_similarity.build_lookup_cache(vidxs);
 
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
@@ -469,7 +469,7 @@ struct ProcessChainQuery{
                 auto sent = scored_sent.sent;
                 //TODO: release following assumption that candidate_sents are only from dataset, not queries_sents.
                 //TODO: fix inefficienty; collecting all uids first.
-                auto uids = sent.tokens->sentences_in_chunk(sent);
+                auto uids = sent.dict->sentences_in_chunk(sent);
                 for(auto uid : uids) candidate_sents.push_back(uid2sent[uid]);
                 //std::cerr<<fmt::format("UID : {} : {} of {}", sent.uid.val, uids.front().val, uids.back().val)<<std::endl;
                 assert(uids.cend()!=std::find(uids.cbegin(), uids.cend(), sent.uid));
@@ -652,8 +652,8 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
             for(auto elm : scored_sent.scores.serialize()){
                 auto qidx = std::get<0>(elm);
                 auto midx = std::get<1>(elm);
-                auto quid = query_sent.tokens->word_uid(qidx);
-                auto muid = scored_sent.sent.tokens->word_uid(midx);
+                auto quid = query_sent.dict->word_uid(qidx);
+                auto muid = scored_sent.sent.dict->word_uid(midx);
                 auto score = std::get<2>(elm);
                 if(score<0.6) continue;
                 ++stats[sent_uid][quid][muid];
@@ -686,7 +686,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         WordUsageInPhrase phrase_finder{sents, word_importance};
         std::vector<WordUID> wuids;
         for(auto idx : query_sent) {
-            auto wuid = query_sent.tokens->word_uid(idx);
+            auto wuid = query_sent.dict->word_uid(idx);
             if (word_importance.is_noisy_word(wuid)) continue;
             wuids.push_back(wuid);
         }
