@@ -13,6 +13,7 @@ struct H5file;//forward declaration
 
 namespace wordrep{
 
+struct Words;
 struct WordImportance{
     using val_t = double;
     //words with their score below low_cutoff are considered noisy words.

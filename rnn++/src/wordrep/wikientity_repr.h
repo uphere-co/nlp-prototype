@@ -34,6 +34,7 @@ std::ostream& operator<< (std::ostream& os, Entity const& a);
 
 struct Synonyms{
     WikidataUID uid;
+
     std::vector<Words> reprs;
 };
 

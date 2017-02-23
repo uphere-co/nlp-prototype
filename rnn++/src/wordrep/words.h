@@ -23,6 +23,9 @@ struct Words{
     Words(std::vector<WordUID> &&words)
             : uids{words}
     {}
+
+    auto begin() const { return uids.cbegin();}
+    auto end() const { return uids.cend();}
     WordsRepr repr(WordUIDindex const& wordUIDs) const{
         return WordsRepr{*this, wordUIDs};
     }
