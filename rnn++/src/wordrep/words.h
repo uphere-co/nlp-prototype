@@ -47,6 +47,8 @@ struct ConsecutiveTokens{
     private:
         DPTokenIndex idx;
     };
+    ConsecutiveTokens(DPTokenIndex idx) : idx{idx}, len{1} {}
+    ConsecutiveTokens(DPTokenIndex idx, size_t len) : idx{idx}, len{len} {}
     Iterator begin() const { return {idx};}
     Iterator end() const { return {idx+len};}
     DPTokenIndex front() const {return idx;}
