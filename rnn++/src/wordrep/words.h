@@ -26,6 +26,8 @@ struct Words{
 
     auto begin() const { return uids.cbegin();}
     auto end() const { return uids.cend();}
+    WordUID front() const { return uids.front();}
+    WordUID back() const { return uids.back();}
     WordsRepr repr(WordUIDindex const& wordUIDs) const{
         return WordsRepr{*this, wordUIDs};
     }

@@ -408,7 +408,66 @@ Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
     return *it;
 }
 
+
+struct AcronymOps{
+    std::string to_acronym(Words const& words) const {
+        std::string acronym;
+        for(auto& word : words){
+            auto str = wordUIDs[word];
+            acronym.push_back(std::toupper(str.front()));
+        }
+        return acronym;
+    }
+    WordUID to_acronyms(wiki::Synonyms const& entity) const {
+        for(auto& words : entity.reprs){
+            auto acronym = wordUIDs[to_acronym(words)];
+            for(auto& repr : entity.reprs){
+                if(repr.size()!=1) continue;
+                if(repr.front()==acronym) return acronym;
+            }
+        }
+        return the_unknown_word_uid();
+    }
+    bool is_acronyms(wiki::Synonyms const& entity) const {
+        for(auto& words : entity.reprs){
+            auto acronym = wordUIDs[to_acronym(words)];
+            for(auto& repr : entity.reprs){
+                if(repr.size()!=1) continue;
+                if(repr.front()==acronym) return true;
+            }
+        }
+        return false;
+    }
+
+    WordUIDindex const& wordUIDs;
+};
+
 namespace test{
+
+void acronyms_check(util::json_t const& config_json) {
+    std::cerr << "Test: wordrep::test::acrynyms_check" << std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
+
+    auto ai = entity_reprs.get_synonyms(wikidataUIDs["Q1"]);
+    auto nlp = entity_reprs.get_synonyms(wikidataUIDs["Q2"]);
+    auto google = entity_reprs.get_synonyms(wikidataUIDs["Q4"]);
+    auto deepmind = entity_reprs.get_synonyms(wikidataUIDs["Q5"]);
+    auto chromeOS = entity_reprs.get_synonyms(wikidataUIDs["Q79531"]);
+
+    AcronymOps acronymOps{wordUIDs};
+    assert(acronymOps.is_acronyms(ai));
+    assert(wordUIDs["AI"]==acronymOps.to_acronyms(ai));
+    assert(acronymOps.is_acronyms(nlp));
+    assert(wordUIDs["NLP"]==acronymOps.to_acronyms(nlp));
+    assert(!acronymOps.is_acronyms(google));
+    assert(!acronymOps.is_acronyms(deepmind));
+    assert(!acronymOps.is_acronyms(chromeOS));
+}
 
 void representative_repr_of_query(util::json_t const& config_json) {
     std::cerr << "Test: wordrep::test::representative_repr_of_query" << std::endl;
@@ -484,6 +543,7 @@ void scoring_words(util::json_t const& config_json){
 void test_all(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
+    acronyms_check(config_json);
     representative_repr_of_query(config_json);
     scoring_words(config_json);
 }
