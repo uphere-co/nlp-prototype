@@ -443,6 +443,7 @@ void scoring_words(util::json_t const& config_json){
     auto& wordUIDs     = testset.wordUIDs;
     auto& annotator    = testset.annotator;
     auto& tokens       = testset.tokens;
+    auto& op_named_entity = testset.op_named_entity;
     engine::SubmoduleFactory factory{{config_json}};
     auto word_importance = factory.word_importance();
     auto voca = factory.voca_info();
@@ -474,7 +475,7 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.score(words));
 
-    SentenceToScored sent_to_scored{tsent1, scoring, entity_reprs};
+    SentenceToScored sent_to_scored{tsent1, scoring, entity_reprs, op_named_entity};
     for(auto& x : sent_to_scored.entities){
         for(auto entity : x.candidates)
             fmt::print("{}\t: {}\tgov:{} \n",

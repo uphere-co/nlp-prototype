@@ -7,6 +7,7 @@
 #include "wordrep/word_prob.h"
 #include "wordrep/dep_parsed.h"
 #include "wordrep/wikientity_repr.h"
+#include "wordrep/wikientity.h"
 
 #include "utils/linear_algebra.h" //for scoring test
 
@@ -103,16 +104,25 @@ Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
 struct SentenceToScored{
     SentenceToScored(AnnotatedSentence const& sent,
                      Scoring const& scoring,
-                     wiki::EntityReprs const& entity_reprs)
+                     wiki::EntityReprs const& entity_reprs,
+                     wiki::OpNamedEntity const& op)
             : orig{sent.sent} {
         for(auto& token : sent) {
             using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
             token.val.match([this](DPTokenIndex idx) {
                                 words.push_back({orig,idx});
                             },
-                            [this,&scoring,&entity_reprs](T const &entity) {
+                            [this,&op,&scoring,&entity_reprs](T const &entity) {
+                                std::vector<WikidataUID> named_entities;
+                                for (auto uid : entity.uids)
+                                    if(op.is_named_entity(uid)) named_entities.push_back(uid);
+                                if(named_entities.empty()){
+                                    for(auto idx : entity.words)
+                                        words.push_back({orig,idx});
+                                    return;
+                                }
                                 ScoredAmbiguousEntity x{{},entity.words};
-                                for (auto uid : entity.uids) {
+                                for (auto uid : named_entities) {
                                     auto synonyms = entity_reprs.get_synonyms(uid);
                                     auto repr = max_score_repr(synonyms.reprs, scoring);
                                     x.candidates.push_back({uid, scoring.score(repr)});
