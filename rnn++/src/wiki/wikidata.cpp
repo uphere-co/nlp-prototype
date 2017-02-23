@@ -131,7 +131,7 @@ wordrep::AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& se
     return {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
 }
 
-std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,
+std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const& dict,
                                              wordrep::ConsecutiveTokens words){
     auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
     std::vector<wordrep::WordPosition> heads;

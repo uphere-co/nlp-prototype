@@ -10,12 +10,12 @@
 
 #include "wordrep/word_uid.h"
 #include "wordrep/wikientity.h"
+#include "wordrep/simiarity_score.h"
 
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
 #include "utils/string.h"
 #include "utils/json.h"
-#include "utils/linear_algebra.h" //for scoring test
 
 //using util::get_str;
 //using util::find;
@@ -231,7 +231,7 @@ void operation_wikiuid_on_sentence(util::json_t const& config_json){
                            tokens.word_pos(x.idx+i), tokens.head_pos(x.idx+i).value());
             }
             fmt::print(std::cerr, "\n");
-            auto heads = head_word(tokens, x);
+            auto heads = head_word_pos(tokens, x);
             for(auto head : heads) fmt::print(std::cerr, "{} ", head);
             fmt::print(std::cerr, "\n");
         }
@@ -353,103 +353,6 @@ void test_all(int argc, char** argv) {
 }//namespace wikidata
 
 namespace wordrep{
-
-struct DepPair{
-    DepPair(Sentence const& sent, DPTokenIndex idx)
-    : word_gov{sent.dict->head_uid(idx)}, word_dep{sent.dict->word_uid(idx)},
-      gov{sent.dict->head_word(idx)}, dep{sent.dict->word(idx)}, idx{idx}
-    {}
-    WordUID word_gov;
-    WordUID word_dep;
-    VocaIndex gov;
-    VocaIndex dep;
-    DPTokenIndex idx;
-};
-
-struct AngleSimilarity{
-    AngleSimilarity(VocaInfo::voca_vecs_t const& wvecs)
-            : wvecs{wvecs}
-    {}
-    auto score(VocaIndex w1, VocaIndex w2) const{
-        auto v = wvecs[w1];
-        auto q = wvecs[w2];
-        using namespace util::math;
-        return dot(v,q)/std::sqrt(dot(v,v)*dot(q,q));
-    }
-
-    VocaInfo::voca_vecs_t const& wvecs;
-};
-
-
-struct Scoring{
-    using val_t = WordImportance::val_t;
-    Scoring(WordImportance const& word_importance, AngleSimilarity const& op)
-    : word_importance{word_importance}, op{op}
-    {}
-    auto score(DepPair query, DepPair data) const {
-        auto score_gov = 1+op.score(query.gov, data.gov)*word_importance.score(query.word_gov);
-        auto score_dep = op.score(query.dep, data.dep)*word_importance.score(query.word_dep);
-        auto score = score_gov*score_dep;
-        return score;
-    }
-    auto score(Words const& words) const {
-        WordImportance::val_t score{0.0};
-        for(auto word : words) score+=word_importance.score(word);
-        return score;
-    }
-    auto score(wiki::Synonyms const& entity) const {
-        auto it = std::max_element(entity.reprs.cbegin(),entity.reprs.cend(),[this](auto const& x, auto const& y){
-            return score(x)<score(y);
-        });
-        return score(*it);
-    }
-
-    WordImportance const& word_importance;
-    AngleSimilarity op;
-};
-
-
-struct ScoredEntity{
-    WikidataUID uid;
-    Scoring::val_t score;
-    ConsecutiveTokens idxs;
-};
-struct ScoredAmbiguousEntity{
-    struct Entity{
-        WikidataUID uid;
-        Scoring::val_t score;
-    };
-    std::vector<Entity> candidates;
-    ConsecutiveTokens idxs;
-};
-
-struct SentenceToScored{
-    SentenceToScored(AnnotatedSentence const& sent)
-    : orig{sent.sent} {
-        for(auto& token : sent) {
-            using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
-            token.val.match([](DPTokenIndex idx) {},
-                            [](T const &entity) {
-                                ScoredAmbiguousEntity x{{},entity.words};
-                                for (auto uid : entity.uids) {
-                                    x.candidates.push_back({uid, 0.0});
-                                }
-                            });
-        }
-    }
-    Sentence const& orig;
-    std::vector<ScoredAmbiguousEntity> entities;
-    std::vector<DepPair> words;
-};
-
-Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
-    auto it = std::max_element(reprs.cbegin(),reprs.cend(),[&scoring](auto const& x, auto const& y){
-        return scoring.score(x)<scoring.score(y);
-    });
-    return *it;
-}
-
-
 namespace test{
 
 void acronyms_check(util::json_t const& config_json) {
@@ -529,12 +432,14 @@ void representative_repr_of_query(util::json_t const& config_json) {
     assert(repr == Words{std::move(words)});
     fmt::print("{} : {}\n", repr.repr(wordUIDs), scoring.score(repr));
 }
+
 void scoring_words(util::json_t const& config_json){
     std::cerr << "Test: wordrep::test::scoring_words"<<std::endl;
     util::Timer timer;
 
     wikidata::test::UnittestDataset testset{{config_json}};
     auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& entity_reprs = testset.entity_reprs;
     auto& wordUIDs     = testset.wordUIDs;
     auto& annotator    = testset.annotator;
     auto& tokens       = testset.tokens;
@@ -569,14 +474,18 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.score(words));
 
-    SentenceToScored sent_to_scored{tsent1};
+    SentenceToScored sent_to_scored{tsent1, scoring, entity_reprs};
     for(auto& x : sent_to_scored.entities){
         for(auto entity : x.candidates)
-            fmt::print("{} : {}\n", wikidataUIDs[entity.uid], entity.score);
+            fmt::print("{}\t: {}\tgov:{} \n",
+                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs,scoring).repr(wordUIDs),
+                       entity.score,
+                       wordUIDs[tokens.head_uid(center_word(tokens, x.idxs))]);
     }
     for(auto& w : sent_to_scored.words){
         wordrep::Words words{{w.word_dep,w.word_gov}};
-        fmt::print("{} : {}\n",words.repr(wordUIDs));
+        fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
+                   word_importance.score(w.word_dep),word_importance.score(w.word_gov));
     }
 };
 
