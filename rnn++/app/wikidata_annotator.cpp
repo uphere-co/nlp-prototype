@@ -9,6 +9,7 @@
 #include "similarity/query_engine.h"
 
 #include "wordrep/word_uid.h"
+#include "wordrep/wikientity.h"
 
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
@@ -29,7 +30,10 @@ struct UnittestDataset{
       entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
       annotator{entities},
       wordUIDs{factory.word_uid_index()},
-      entity_reprs{entities.entities} {
+      entity_reprs{entities.entities},
+      op_acronym{wordUIDs},
+      op_named_entity{"../rnn++/tests/data/wikidata.test.uid.named_entities",
+                      wordUIDs, entity_reprs} {
         auto posUIDs = factory.pos_uid_index();
         auto arclabelUIDs = factory.arclabel_uid_index();
         std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
@@ -46,6 +50,8 @@ struct UnittestDataset{
     GreedyAnnotator annotator;
     wordrep::WordUIDindex wordUIDs;
     wordrep::wiki::EntityReprs entity_reprs;
+    wordrep::wiki::OpAcronym op_acronym;
+    wordrep::wiki::OpNamedEntity op_named_entity;
     wordrep::DepParsedTokens tokens{};
     wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
     std::vector<wordrep::Sentence> sents{};
@@ -444,39 +450,6 @@ Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
 }
 
 
-struct AcronymOps{
-    std::string to_acronym(Words const& words) const {
-        std::string acronym;
-        for(auto& word : words){
-            auto str = wordUIDs[word];
-            acronym.push_back(std::toupper(str.front()));
-        }
-        return acronym;
-    }
-    WordUID to_acronyms(wiki::Synonyms const& entity) const {
-        for(auto& words : entity.reprs){
-            auto acronym = wordUIDs[to_acronym(words)];
-            for(auto& repr : entity.reprs){
-                if(repr.size()!=1) continue;
-                if(repr.front()==acronym) return acronym;
-            }
-        }
-        return the_unknown_word_uid();
-    }
-    bool is_acronyms(wiki::Synonyms const& entity) const {
-        for(auto& words : entity.reprs){
-            auto acronym = wordUIDs[to_acronym(words)];
-            for(auto& repr : entity.reprs){
-                if(repr.size()!=1) continue;
-                if(repr.front()==acronym) return true;
-            }
-        }
-        return false;
-    }
-
-    WordUIDindex const& wordUIDs;
-};
-
 namespace test{
 
 void acronyms_check(util::json_t const& config_json) {
@@ -487,6 +460,7 @@ void acronyms_check(util::json_t const& config_json) {
     auto& entity_reprs = testset.entity_reprs;
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
+    auto& acronymOps = testset.op_acronym;
 
     auto ai = entity_reprs.get_synonyms(wikidataUIDs["Q1"]);
     auto nlp = entity_reprs.get_synonyms(wikidataUIDs["Q2"]);
@@ -494,7 +468,6 @@ void acronyms_check(util::json_t const& config_json) {
     auto deepmind = entity_reprs.get_synonyms(wikidataUIDs["Q5"]);
     auto chromeOS = entity_reprs.get_synonyms(wikidataUIDs["Q79531"]);
 
-    AcronymOps acronymOps{wordUIDs};
     assert(acronymOps.is_acronyms(ai));
     assert(wordUIDs["AI"]==acronymOps.to_acronyms(ai));
     assert(acronymOps.is_acronyms(nlp));
@@ -502,6 +475,30 @@ void acronyms_check(util::json_t const& config_json) {
     assert(!acronymOps.is_acronyms(google));
     assert(!acronymOps.is_acronyms(deepmind));
     assert(!acronymOps.is_acronyms(chromeOS));
+}
+void named_entity_check(util::json_t const& config_json) {
+    std::cerr << "Test: wordrep::test::named_entity_check" << std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& op_named_entity = testset.op_named_entity;
+
+    auto ai       = wikidataUIDs["Q1"];
+    auto nlp      = wikidataUIDs["Q2"];
+    auto google   = wikidataUIDs["Q3"];
+    auto google2  = wikidataUIDs["Q4"];
+    auto deepmind = wikidataUIDs["Q5"];
+    auto week     = wikidataUIDs["Q23387"];
+    auto chromeOS = wikidataUIDs["Q79531"];
+
+    assert(op_named_entity.is_named_entity(ai));
+    assert(op_named_entity.is_named_entity(nlp));
+    assert(op_named_entity.is_named_entity(google));
+    assert(op_named_entity.is_named_entity(google2));
+    assert(op_named_entity.is_named_entity(deepmind));
+    assert(!op_named_entity.is_named_entity(week));
+    assert(op_named_entity.is_named_entity(chromeOS));
 }
 
 void representative_repr_of_query(util::json_t const& config_json) {
@@ -512,7 +509,6 @@ void representative_repr_of_query(util::json_t const& config_json) {
     auto& entity_reprs = testset.entity_reprs;
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
-    auto& annotator    = testset.annotator;
     auto& tokens       = testset.tokens;
     engine::SubmoduleFactory factory{{config_json}};
     auto word_importance = factory.word_importance();
@@ -538,7 +534,6 @@ void scoring_words(util::json_t const& config_json){
     util::Timer timer;
 
     wikidata::test::UnittestDataset testset{{config_json}};
-    auto& entity_reprs = testset.entity_reprs;
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
     auto& annotator    = testset.annotator;
@@ -589,6 +584,7 @@ void test_all(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
     acronyms_check(config_json);
+    named_entity_check(config_json);
     representative_repr_of_query(config_json);
     scoring_words(config_json);
 }
