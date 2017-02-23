@@ -351,12 +351,13 @@ namespace wordrep{
 struct DepPair{
     DepPair(Sentence const& sent, DPTokenIndex idx)
     : word_gov{sent.dict->head_uid(idx)}, word_dep{sent.dict->word_uid(idx)},
-      gov{sent.dict->head_word(idx)}, dep{sent.dict->word(idx)}
+      gov{sent.dict->head_word(idx)}, dep{sent.dict->word(idx)}, idx{idx}
     {}
     WordUID word_gov;
     WordUID word_dep;
     VocaIndex gov;
     VocaIndex dep;
+    DPTokenIndex idx;
 };
 
 struct AngleSimilarity{
@@ -375,6 +376,7 @@ struct AngleSimilarity{
 
 
 struct Scoring{
+    using val_t = WordImportance::val_t;
     Scoring(WordImportance const& word_importance, AngleSimilarity const& op)
     : word_importance{word_importance}, op{op}
     {}
@@ -400,6 +402,39 @@ struct Scoring{
     AngleSimilarity op;
 };
 
+
+struct ScoredEntity{
+    WikidataUID uid;
+    Scoring::val_t score;
+    ConsecutiveTokens idxs;
+};
+struct ScoredAmbiguousEntity{
+    struct Entity{
+        WikidataUID uid;
+        Scoring::val_t score;
+    };
+    std::vector<Entity> candidates;
+    ConsecutiveTokens idxs;
+};
+
+struct SentenceToScored{
+    SentenceToScored(AnnotatedSentence const& sent)
+    : orig{sent.sent} {
+        for(auto& token : sent) {
+            using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
+            token.val.match([](DPTokenIndex idx) {},
+                            [](T const &entity) {
+                                ScoredAmbiguousEntity x{{},entity.words};
+                                for (auto uid : entity.uids) {
+                                    x.candidates.push_back({uid, 0.0});
+                                }
+                            });
+        }
+    }
+    Sentence const& orig;
+    std::vector<ScoredAmbiguousEntity> entities;
+    std::vector<DepPair> words;
+};
 
 Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
     auto it = std::max_element(reprs.cbegin(),reprs.cend(),[&scoring](auto const& x, auto const& y){
@@ -538,6 +573,16 @@ void scoring_words(util::json_t const& config_json){
     auto& w=wordUIDs;
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.score(words));
+
+    SentenceToScored sent_to_scored{tsent1};
+    for(auto& x : sent_to_scored.entities){
+        for(auto entity : x.candidates)
+            fmt::print("{} : {}\n", wikidataUIDs[entity.uid], entity.score);
+    }
+    for(auto& w : sent_to_scored.words){
+        wordrep::Words words{{w.word_dep,w.word_gov}};
+        fmt::print("{} : {}\n",words.repr(wordUIDs));
+    }
 };
 
 void test_all(int argc, char** argv){
