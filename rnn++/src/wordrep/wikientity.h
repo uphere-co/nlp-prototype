@@ -44,6 +44,9 @@ struct OpAcronym{
 };
 
 struct OpNamedEntity{
+    OpNamedEntity(WikidataUIDindex&& named_entities, WordUIDindex const& wordUIDs, EntityReprs const& entity_reprs)
+            : named_entities{std::move(named_entities)}, op_acronym{wordUIDs}, entity_reprs{entity_reprs}
+    {}
     OpNamedEntity(std::string ne_list, WordUIDindex const& word_uid, EntityReprs const& entity_reprs)
             : named_entities{ne_list}, op_acronym{word_uid}, entity_reprs{entity_reprs}
     {}
