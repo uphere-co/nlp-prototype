@@ -14,6 +14,7 @@ struct OpAcronym{
         std::string acronym;
         for(auto& word : words){
             auto str = wordUIDs[word];
+            if(str=="and"||str=="the"||str=="of"||!std::isalpha(str.front())) continue;
             acronym.push_back(std::toupper(str.front()));
         }
         return acronym;
@@ -57,3 +58,4 @@ struct OpNamedEntity{
 
 }//namespace wordrep::wiki
 }//namespace wordrep
+

@@ -394,6 +394,10 @@ void named_entity_check(util::json_t const& config_json) {
     auto deepmind = wikidataUIDs["Q5"];
     auto week     = wikidataUIDs["Q23387"];
     auto chromeOS = wikidataUIDs["Q79531"];
+    auto basf    = wikidataUIDs["Q9401"];
+    auto lc      = wikidataUIDs["Q131454"];
+    auto boa     = wikidataUIDs["Q487907"];
+    auto facebook= wikidataUIDs["Q380"];
 
     assert(op_named_entity.is_named_entity(ai));
     assert(op_named_entity.is_named_entity(nlp));
@@ -402,6 +406,12 @@ void named_entity_check(util::json_t const& config_json) {
     assert(op_named_entity.is_named_entity(deepmind));
     assert(!op_named_entity.is_named_entity(week));
     assert(op_named_entity.is_named_entity(chromeOS));
+    assert(op_named_entity.is_named_entity(basf));
+    //TODO:Make fails test to success
+    assert(op_named_entity.is_named_entity(lc));//partially successed : Library of Congress
+//    assert(op_named_entity.is_named_entity(boa));//will fail : Bank of America
+//    assert(op_named_entity.is_named_entity(facebook));//will fail : Facebook
+
 }
 
 void representative_repr_of_query(util::json_t const& config_json) {
