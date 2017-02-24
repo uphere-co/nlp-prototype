@@ -485,8 +485,10 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
+    ScoringPreprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
-    SentenceToScored sent_to_scored1{tsent1, scoring, entity_reprs, op_named_entity};
+    auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
     for(auto& x : sent_to_scored1.entities){
         for(auto entity : x.candidates) {
             auto idx = center_word(tokens, x.idxs);
@@ -503,12 +505,11 @@ void scoring_words(util::json_t const& config_json){
         wordrep::Words words{{w.word_dep,w.word_gov}};
         fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
                    word_importance.score(w.word_dep),word_importance.score(w.word_gov));
-        fmt::print("ROOT: {} {}\n", w.word_gov, wordUIDs["ROOT"]);
     }
 
 
     fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
-    SentenceToScored sent_to_scored2{tsent2, scoring, entity_reprs, op_named_entity};
+    auto sent_to_scored2 = scoring_preprocessor.sentence(tsent2);
     for(auto& x : sent_to_scored2.entities){
         for(auto entity : x.candidates) {
             auto idx = center_word(tokens, x.idxs);

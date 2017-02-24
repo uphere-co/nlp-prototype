@@ -112,24 +112,26 @@ Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
     return *it;
 }
 
-struct SentenceToScored{
-    SentenceToScored(AnnotatedSentence const& sent,
-                     Scoring const& scoring,
-                     wiki::EntityReprs const& entity_reprs,
-                     wiki::OpNamedEntity const& op)
-            : orig{sent.sent} {
-        for(auto& token : sent) {
+struct ScoringPreprocess {
+    struct SentenceToScored{
+        Sentence const& orig;
+        std::vector<Scoring::AmbiguousEntity> entities;
+        std::vector<DepPair> words;
+    };
+    SentenceToScored sentence(AnnotatedSentence const& orig) const {
+        SentenceToScored sent{orig.sent,{},{}};
+        for(auto& token : orig) {
             using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
-            token.val.match([this](DPTokenIndex idx) {
-                                words.push_back({orig,idx});
+            token.val.match([&sent,&orig](DPTokenIndex idx) {
+                                sent.words.push_back({orig.sent,idx});
                             },
-                            [this,&op,&scoring,&entity_reprs](T const &entity) {
+                            [this,&sent,&orig](T const &entity) {
                                 std::vector<WikidataUID> named_entities;
                                 for (auto uid : entity.uids)
                                     if(op.is_named_entity(uid)) named_entities.push_back(uid);
                                 if(named_entities.empty()){
                                     for(auto idx : entity.words)
-                                        words.push_back({orig,idx});
+                                        sent.words.push_back({orig.sent,idx});
                                     return;
                                 }
                                 Scoring::AmbiguousEntity x{{},entity.words};
@@ -138,14 +140,16 @@ struct SentenceToScored{
                                     auto repr = max_score_repr(synonyms.reprs, scoring);
                                     x.candidates.push_back({uid, scoring.phrase(repr)});
                                 }
-                                entities.push_back(x);
+                                sent.entities.push_back(x);
                             });
         }
+        return sent;
     }
-    Sentence const& orig;
-    std::vector<Scoring::AmbiguousEntity> entities;
-    std::vector<DepPair> words;
+    Scoring const &scoring;
+    wiki::EntityReprs const &entity_reprs;
+    wiki::OpNamedEntity const &op;
 };
+
 
 }//namespace wordrep
 
