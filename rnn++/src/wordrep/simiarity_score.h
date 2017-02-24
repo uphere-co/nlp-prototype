@@ -80,6 +80,14 @@ struct Scoring{
         auto score = score_gov*score_dep;
         return score;
     }
+    val_t similarity(AmbiguousEntity const& query, AmbiguousEntity const& data) const {
+        val_t max_score = 0.0;
+        for(auto e1 : query.candidates){
+            if(!util::isin(data.candidates, e1)) continue;
+            max_score = std::max(e1.score,max_score);
+        }
+        return max_score;
+    }
     WordImportance const& word_importance;
     AngleSimilarity op;
 };
