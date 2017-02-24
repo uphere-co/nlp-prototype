@@ -41,44 +41,47 @@ struct AngleSimilarity{
 
 struct Scoring{
     using val_t = WordImportance::val_t;
+    struct Entity{
+        WikidataUID uid;
+        val_t score;
+        ConsecutiveTokens idxs;
+    };
+    struct AmbiguousEntity{
+        struct Candidate{
+            WikidataUID uid;
+            val_t score;
+            friend bool operator==(Candidate x, Candidate y){
+                return x.uid==y.uid;
+            }
+        };
+        std::vector<Candidate> candidates;
+        ConsecutiveTokens idxs;
+    };
+
+
     Scoring(WordImportance const& word_importance, AngleSimilarity const& op)
             : word_importance{word_importance}, op{op}
     {}
-    auto score(DepPair query, DepPair data) const {
+    val_t phrase(Words const &words) const {
+        WordImportance::val_t score{0.0};
+        for(auto word : words) score+=word_importance.score(word);
+        return score;
+    }
+    val_t phrase(wiki::Synonyms const& entity) const {
+        auto it = std::max_element(entity.reprs.cbegin(),entity.reprs.cend(),[this](auto const& x, auto const& y){
+            return phrase(x)<phrase(y);
+        });
+        return phrase(*it);
+    }
+
+    val_t similarity(DepPair query, DepPair data) const {
         auto score_gov = 1+op.score(query.gov, data.gov)*word_importance.score(query.word_gov);
         auto score_dep = op.score(query.dep, data.dep)*word_importance.score(query.word_dep);
         auto score = score_gov*score_dep;
         return score;
     }
-    auto score(Words const& words) const {
-        WordImportance::val_t score{0.0};
-        for(auto word : words) score+=word_importance.score(word);
-        return score;
-    }
-    auto score(wiki::Synonyms const& entity) const {
-        auto it = std::max_element(entity.reprs.cbegin(),entity.reprs.cend(),[this](auto const& x, auto const& y){
-            return score(x)<score(y);
-        });
-        return score(*it);
-    }
-
     WordImportance const& word_importance;
     AngleSimilarity op;
-};
-
-
-struct ScoredEntity{
-    WikidataUID uid;
-    Scoring::val_t score;
-    ConsecutiveTokens idxs;
-};
-struct ScoredAmbiguousEntity{
-    struct Entity{
-        WikidataUID uid;
-        Scoring::val_t score;
-    };
-    std::vector<Entity> candidates;
-    ConsecutiveTokens idxs;
 };
 
 //TODO: merge with wikidata::head_word_pos.
@@ -96,7 +99,7 @@ DPTokenIndex center_word(DepParsedTokens const& dict, ConsecutiveTokens words){
 
 Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
     auto it = std::max_element(reprs.cbegin(),reprs.cend(),[&scoring](auto const& x, auto const& y){
-        return scoring.score(x)<scoring.score(y);
+        return scoring.phrase(x)<scoring.phrase(y);
     });
     return *it;
 }
@@ -121,18 +124,18 @@ struct SentenceToScored{
                                         words.push_back({orig,idx});
                                     return;
                                 }
-                                ScoredAmbiguousEntity x{{},entity.words};
+                                Scoring::AmbiguousEntity x{{},entity.words};
                                 for (auto uid : named_entities) {
                                     auto synonyms = entity_reprs.get_synonyms(uid);
                                     auto repr = max_score_repr(synonyms.reprs, scoring);
-                                    x.candidates.push_back({uid, scoring.score(repr)});
+                                    x.candidates.push_back({uid, scoring.phrase(repr)});
                                 }
                                 entities.push_back(x);
                             });
         }
     }
     Sentence const& orig;
-    std::vector<ScoredAmbiguousEntity> entities;
+    std::vector<Scoring::AmbiguousEntity> entities;
     std::vector<DepPair> words;
 };
 

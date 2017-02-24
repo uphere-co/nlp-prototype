@@ -15,7 +15,7 @@ make -j8
 - app/parser_model1.cpp : measure similarity between two parsed files
  1. ./parser_similarity parsed_file1 parsed_file2
 
-# Doxygen 
+# Doxygen
 ## Usages
 Just run `doxygen` inside this directory, then documentation is generated and stored in HTML_OUTPUT of `Doxyfile` file, `/data/groups/uphere/doxygen/rnn++/`, presently.
 
@@ -151,6 +151,9 @@ ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
 ## Wikidata entity annotation
 ```
 # Preparing data
+#Get wikidata.nes from corenlp/wiki/wikidata_ner
+cat wikidata.nes | awk -F '\t' '$2=="True"{print $1}' > wikidata.uid.ne
+cat wikidata.items | awk -F '\t' 'NF==5{print $1}' > wikidata.uid
 cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items
 cat wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 cat wikidata.all_entities | ./wikidata_annotator config.rss.json

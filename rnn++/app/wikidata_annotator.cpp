@@ -433,14 +433,14 @@ void representative_repr_of_query(util::json_t const& config_json) {
     auto entity_uid = wikidataUIDs["Q2"];
     auto entity = entity_reprs.get_synonyms(entity_uid);
     for(auto words : entity.reprs){
-        fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.score(words));
+        fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
     }
     auto repr = max_score_repr(entity.reprs, scoring);
-    assert(scoring.score(repr) == scoring.score(entity));
+    assert(scoring.phrase(repr) == scoring.phrase(entity));
     auto& w = wordUIDs;
     std::vector<WordUID> words = {w["natural"],w["language"],w["processing"]};
     assert(repr == Words{std::move(words)});
-    fmt::print("{} : {}\n", repr.repr(wordUIDs), scoring.score(repr));
+    fmt::print("{} : {}\n", repr.repr(wordUIDs), scoring.phrase(repr));
 }
 
 void scoring_words(util::json_t const& config_json){
@@ -477,23 +477,51 @@ void scoring_words(util::json_t const& config_json){
             DepPair dep_pair2{tsent2.sent, idx2};
 
             wordrep::Words words{{dep_pair1.word_dep,dep_pair1.word_gov,dep_pair2.word_dep,dep_pair2.word_gov}};
-            fmt::print("{} : {}\n",words.repr(wordUIDs), scoring.score(dep_pair1, dep_pair2));
+            fmt::print("{} : {}\n",words.repr(wordUIDs), scoring.similarity(dep_pair1, dep_pair2));
         }
     }
 
     auto& w=wordUIDs;
     Words words{{w["European"],w["Union"]}};
-    fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.score(words));
+    fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
-    SentenceToScored sent_to_scored{tsent1, scoring, entity_reprs, op_named_entity};
-    for(auto& x : sent_to_scored.entities){
-        for(auto entity : x.candidates)
-            fmt::print("{}\t: {}\tgov:{} \n",
-                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs,scoring).repr(wordUIDs),
-                       entity.score,
-                       wordUIDs[tokens.head_uid(center_word(tokens, x.idxs))]);
+    fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
+    SentenceToScored sent_to_scored1{tsent1, scoring, entity_reprs, op_named_entity};
+    for(auto& x : sent_to_scored1.entities){
+        for(auto entity : x.candidates) {
+            auto idx = center_word(tokens, x.idxs);
+            fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
+                       tokens.word_pos(idx),
+                       x.idxs.size(),
+                       wordUIDs[tokens.word_uid(idx)],
+                       wordUIDs[tokens.head_uid(idx)],
+                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs, scoring).repr(wordUIDs),
+                       entity.score);
+        }
     }
-    for(auto& w : sent_to_scored.words){
+    for(auto& w : sent_to_scored1.words){
+        wordrep::Words words{{w.word_dep,w.word_gov}};
+        fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
+                   word_importance.score(w.word_dep),word_importance.score(w.word_gov));
+        fmt::print("ROOT: {} {}\n", w.word_gov, wordUIDs["ROOT"]);
+    }
+
+
+    fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
+    SentenceToScored sent_to_scored2{tsent2, scoring, entity_reprs, op_named_entity};
+    for(auto& x : sent_to_scored2.entities){
+        for(auto entity : x.candidates) {
+            auto idx = center_word(tokens, x.idxs);
+            fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
+                       tokens.word_pos(idx),
+                       x.idxs.size(),
+                       wordUIDs[tokens.word_uid(idx)],
+                       wordUIDs[tokens.head_uid(idx)],
+                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs, scoring).repr(wordUIDs),
+                       entity.score);
+        }
+    }
+    for(auto& w : sent_to_scored2.words){
         wordrep::Words words{{w.word_dep,w.word_gov}};
         fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
                    word_importance.score(w.word_dep),word_importance.score(w.word_gov));
