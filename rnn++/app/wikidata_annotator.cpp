@@ -257,9 +257,9 @@ void operation_ambiguous_entity_on_sentence(util::json_t const& config_json){
     fmt::print("{}\n", tagged_sent.repr(entity_reprs, wikidataUIDs, wordUIDs));
     for(auto token : tagged_sent.tokens){
         token.val.match([&test_sent,&entity_reprs,&wikidataUIDs](wordrep::wiki::AmbiguousEntity w){
-                              auto op=entity_reprs.get_comparison_operator(w);
+                              auto op=entity_reprs.get_comparison_operator(w.uid);
                               auto matched_tokens = is_contain(test_sent, op);
-                              fmt::print("{} : {}\n", wikidataUIDs[w.uids.front()], matched_tokens.size());
+                              fmt::print("{} : {}\n", wikidataUIDs[w.uid.candidates.front()], matched_tokens.size());
                           },
                           [](auto ){});
     }
@@ -310,7 +310,7 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
         auto tagged_sent = annotator.annotate(sent);
         auto entities = tagged_sent.get_entities();
         for(auto& ambiguous_entity : entities){
-            for(auto& uid : ambiguous_entity.uids){
+            for(auto uid : ambiguous_entity.uid.candidates){
                 auto entity = entity_reprs[uid];
                 fmt::print("{} : ",entity.repr(wikidataUIDs, wordUIDs));
                 for(auto idx : ambiguous_entity.words){
@@ -324,11 +324,11 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
 
 void ambiguous_entity_equality(){
     //e1 is one of {0,1,2};
-    wordrep::wiki::AmbiguousEntity e1{0,2,{0,1,2}};
+    wordrep::wiki::AmbiguousEntity e1{0,2,{{0,1,2}}};
     //e2 is one of {0,5};
-    wordrep::wiki::AmbiguousEntity e2{10,2,{0,5}};
+    wordrep::wiki::AmbiguousEntity e2{10,2,{{0,5}}};
     //e3 is one of {2,11};
-    wordrep::wiki::AmbiguousEntity e3{0,2,{2,11}};
+    wordrep::wiki::AmbiguousEntity e3{0,2,{{2,11}}};
     assert(e1==e2);
     assert(e1==e3);
     assert(e2!=e3);
@@ -466,12 +466,12 @@ void scoring_words(util::json_t const& config_json){
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
     for(auto entity1 : tsent1.get_entities()){
-        for(auto uid: entity1.uids) fmt::print("{} ", wikidataUIDs[uid]);
+        for(auto uid: entity1.uid.candidates) fmt::print("{} ", wikidataUIDs[uid]);
         fmt::print("\n");
         auto idx1 = entity1.words.front();
         DepPair dep_pair1{tsent1.sent, idx1};
         for(auto entity2 : tsent2.get_entities()){
-            for(auto uid: entity2.uids) fmt::print("{} ", wikidataUIDs[uid]);
+            for(auto uid: entity2.uid.candidates) fmt::print("{} ", wikidataUIDs[uid]);
             fmt::print("\n");
             auto idx2 = entity2.words.front();
             DepPair dep_pair2{tsent2.sent, idx2};
@@ -564,19 +564,24 @@ void scoring_words(util::json_t const& config_json){
                    best_match.score);
     }
     fmt::print("\nQuery=sent2, Data=sent1. Matched results:\n");
+
+    for(auto entity : sent_to_scored2.entities) {
+        auto op = entity_reprs.get_comparison_operator(entity.uid);
+        assert(op.isin(sent_to_scored1.orig));
+    }
     auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
     auto scored_sent1 = op_query_similarity.score(sent_to_scored1);
     for(auto entity : scored_sent1.entities){
         if(!entity.second) continue;
         auto score = entity.second.value();
-        fmt::print("{:<15} - {:<15} : {}\n", entity.first.repr(tokens, wordUIDs),
-                    score.data.repr(tokens,wordUIDs), score.score);
+        fmt::print("{:<5} : {:<25} - {:<25}\n", score.score, entity.first.repr(tokens, wordUIDs),
+                    score.data.repr(tokens,wordUIDs));
     }
     for(auto word : scored_sent1.words){
         if(!word.second) continue;
         auto score = word.second.value();
-        fmt::print("{:<15} - {:<15} : {}\n", word.first.repr(wordUIDs),
-                   score.data.repr(tokens,wordUIDs), score.score);
+        fmt::print("{:<5} : {:<25} - {:<25}\n", score.score, word.first.repr(wordUIDs),
+                   score.data.repr(tokens,wordUIDs));
     }
 };
 

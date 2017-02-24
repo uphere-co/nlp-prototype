@@ -52,7 +52,7 @@ struct AnnotatedToken{
                              return {sent.front()+w.offset};},
                          [&sent](wordrep::wiki::AmbiguousEntity const& e)->wordrep::AnnotatedSentence::Token{
                              using T = wordrep::AnnotatedSentence::Token::UnresolvedWikiEntity;
-                             return {T{e.map_to_sent(sent),e.uids}};});
+                             return {T{e.map_to_sent(sent),e.uid.candidates}};});
     }
 };
 

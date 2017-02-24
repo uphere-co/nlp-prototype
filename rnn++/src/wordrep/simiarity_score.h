@@ -64,6 +64,7 @@ struct Scoring{
         std::string repr(DepParsedTokens const& dict, WordUIDindex const& wordUIDs) const;
 
         std::vector<Candidate> candidates;
+        wiki::AmbiguousUID uid;
         ConsecutiveTokens idxs;
         WordUID word_gov;
         VocaIndex gov;
@@ -92,7 +93,7 @@ struct Scoring{
                                 },
                                 [this,&sent,&orig](T const &entity) {
                                     std::vector<WikidataUID> named_entities;
-                                    for (auto uid : entity.uids)
+                                    for (auto uid : entity.uid.candidates)
                                         if(op.is_named_entity(uid)) named_entities.push_back(uid);
                                     if(named_entities.empty()){
                                         for(auto idx : entity.words)
@@ -103,10 +104,11 @@ struct Scoring{
                                     auto idx         = entity.words.dep_token_idx(dict);
                                     WordUID word_gov = dict.head_uid(idx);
                                     VocaIndex gov    = dict.head_word(idx);
-                                    Scoring::AmbiguousEntity x{{},entity.words, word_gov,gov};
+                                    Scoring::AmbiguousEntity x{{},{},entity.words, word_gov,gov};
                                     for (auto uid : named_entities) {
                                         auto synonyms = entity_reprs.get_synonyms(uid);
                                         auto repr = scoring.max_score_repr(synonyms);
+                                        x.uid.candidates.push_back(uid);
                                         x.candidates.push_back({uid, scoring.phrase(repr)});
                                     }
                                     sent.entities.push_back(x);

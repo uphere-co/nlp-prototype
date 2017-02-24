@@ -1,61 +1,9 @@
 #pragma once
 
-#include <map>
-#include <vector>
-
-#include "wordrep/indexes.h"
-#include "wordrep/words.h"
-#include "wordrep/sentence.h"
+#include "wordrep/wikientity_base.h"
 
 namespace wordrep{
 namespace wiki{
-
-struct Entity{
-    Entity(WikidataUID uid, Words words)
-            : uid{uid}, words{std::move(words)}
-    {}
-    Entity(WikidataUID uid, std::vector<WordUID> words)
-            : uid{uid}, words{std::move(words)}
-    {}
-    Entity(WordUIDindex const& wordUIDs, std::string line);
-
-    std::string repr(WikidataUIDindex const& wikidataUIDs,
-                     WordUIDindex const& wordUIDs) const;
-    size_t size() const{return words.size();}
-
-    friend bool operator< (Entity const& a, Entity const& b){
-        return a.words.uids > b.words.uids;
-    }
-    friend std::ostream& operator<< (std::ostream& os, Entity const& a);
-
-    WikidataUID uid;
-    Words words;
-};
-std::ostream& operator<< (std::ostream& os, Entity const& a);
-
-struct AmbiguousEntity{
-    size_t offset;
-    size_t len;
-    std::vector<WikidataUID> uids;
-
-    ConsecutiveTokens map_to_sent(Sentence const& sent) const {
-        return {sent.front()+offset, len};
-    }
-    friend bool operator==(AmbiguousEntity const& x, AmbiguousEntity const& y){
-        for(auto& xx : x.uids )
-            for(auto& yy : y.uids )
-                if(xx==yy) return true;
-        return false;
-    }
-    friend bool operator!=(AmbiguousEntity const& x, AmbiguousEntity const& y){
-        return !(x==y);
-    }
-};
-
-struct Synonyms{
-    WikidataUID uid;
-    std::vector<Words> reprs;
-};
 
 struct EntityReprs{
     using dict_type = std::map<WikidataUID, std::vector<Words>>;
@@ -99,6 +47,13 @@ struct EntityReprs{
             }
             return 0;
         }
+        bool isin(Sentence const& sent) const {
+            auto end = sent.iter_words().end();
+            for(auto it=sent.iter_words().begin(); it!=end; ++it)
+                if(exact_match(it,end))
+                    return true;
+            return false;
+        }
         value_type reprs;
     };
     struct OpAmbiguousEntityCompare{
@@ -115,6 +70,12 @@ struct EntityReprs{
             }
             return 0;
         }
+        bool isin(Sentence const& sent) const {
+            for(auto& op : ops) {
+                if(op.isin(sent)) return true;
+            }
+            return false;
+        }
         std::vector<OpEntityCompare> ops;
     };
 
@@ -130,9 +91,9 @@ struct EntityReprs{
         if(it==reprs.cend()) assert(0);
         return {*it};
     }
-    OpAmbiguousEntityCompare get_comparison_operator(AmbiguousEntity entity) const{
+    OpAmbiguousEntityCompare get_comparison_operator(AmbiguousUID const& entity) const{
         OpAmbiguousEntityCompare op{};
-        for(auto uid : entity.uids) op.ops.push_back(get_comparison_operator(uid));
+        for(auto uid : entity.candidates) op.ops.push_back(get_comparison_operator(uid));
         return op;
     }
     Entity operator[](WikidataUID uid) const;
