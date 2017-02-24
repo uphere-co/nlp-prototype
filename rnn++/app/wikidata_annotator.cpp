@@ -480,6 +480,7 @@ void scoring_words(util::json_t const& config_json){
             fmt::print("{} : {}\n",words.repr(wordUIDs), scoring.similarity(dep_pair1, dep_pair2));
         }
     }
+    fmt::print("\n");
 
     auto& w=wordUIDs;
     Words words{{w["European"],w["Union"]}};
@@ -491,7 +492,7 @@ void scoring_words(util::json_t const& config_json){
     auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
     for(auto& x : sent_to_scored1.entities){
         for(auto entity : x.candidates) {
-            auto idx = center_word(tokens, x.idxs);
+            auto idx = x.idxs.dep_token_idx(tokens);
             fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
                        tokens.word_pos(idx),
                        x.idxs.size(),
@@ -506,13 +507,13 @@ void scoring_words(util::json_t const& config_json){
         fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
                    word_importance.score(w.word_dep),word_importance.score(w.word_gov));
     }
-
+    fmt::print("\n");
 
     fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
     auto sent_to_scored2 = scoring_preprocessor.sentence(tsent2);
     for(auto& x : sent_to_scored2.entities){
         for(auto entity : x.candidates) {
-            auto idx = center_word(tokens, x.idxs);
+            auto idx = x.idxs.dep_token_idx(tokens);
             fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
                        tokens.word_pos(idx),
                        x.idxs.size(),
@@ -526,6 +527,20 @@ void scoring_words(util::json_t const& config_json){
         wordrep::Words words{{w.word_dep,w.word_gov}};
         fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
                    word_importance.score(w.word_dep),word_importance.score(w.word_gov));
+    }
+    fmt::print("\n");
+    for(auto& x : sent_to_scored1.entities){
+        for(auto& y : sent_to_scored2.entities){
+            fmt::print("{} vs {} : {}\n", x.repr(tokens, wordUIDs), y.repr(tokens, wordUIDs),
+                       scoring.similarity(x, y));
+        }
+    }
+
+    for(auto& x : sent_to_scored2.words){
+        for(auto& y : sent_to_scored1.words){
+            fmt::print("{} vs {} : {}\n", x.repr(wordUIDs), y.repr(wordUIDs),
+                       scoring.similarity(x, y));
+        }
     }
 };
 

@@ -1,8 +1,10 @@
 #include "wordrep/annotated_sentence.h"
 
+#include <sstream>
 #include <fmt/printf.h>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/dep_parsed.h"
 #include "wordrep/wikientity_repr.h"
 
 namespace wordrep{

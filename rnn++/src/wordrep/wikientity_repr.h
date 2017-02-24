@@ -5,6 +5,7 @@
 
 #include "wordrep/indexes.h"
 #include "wordrep/words.h"
+#include "wordrep/sentence.h"
 
 namespace wordrep{
 namespace wiki{

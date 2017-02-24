@@ -4,7 +4,6 @@
 
 #include "wordrep/indexes.h"
 #include "wordrep/word_uid.h"
-#include "wordrep/dep_parsed.h"
 
 namespace wordrep {
 
@@ -59,6 +58,9 @@ struct ConsecutiveTokens{
     DPTokenIndex front() const {return idx;}
     DPTokenIndex back() const {return idx+len-1;}
     size_t size() const {return len;}
+    std::string repr(DepParsedTokens const& dict, WordUIDindex const& wordUIDs) const;
+    //TODO: merge with wikidata::head_word_pos.
+    DPTokenIndex dep_token_idx(DepParsedTokens const& dict) const;
 
     DPTokenIndex idx;
     size_t len;

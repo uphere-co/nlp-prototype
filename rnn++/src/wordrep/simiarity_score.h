@@ -1,6 +1,7 @@
 #pragma once
 
 //TODO: move headers to .cpp
+#include "wordrep/annotated_sentence.h"
 #include "wordrep/sentence.h"
 #include "wordrep/words.h"
 #include "wordrep/voca_info.h"
@@ -18,6 +19,8 @@ struct DepPair{
             : word_gov{sent.dict->head_uid(idx)}, word_dep{sent.dict->word_uid(idx)},
               gov{sent.dict->head_word(idx)}, dep{sent.dict->word(idx)}, idx{idx}
     {}
+    std::string repr(WordUIDindex const& wordUIDs) const;
+
     WordUID word_gov;
     WordUID word_dep;
     VocaIndex gov;
@@ -44,6 +47,8 @@ struct Scoring{
     struct Entity{
         WikidataUID uid;
         val_t score;
+        WordUID word_gov;
+        VocaIndex gov;
         ConsecutiveTokens idxs;
     };
     struct AmbiguousEntity{
@@ -54,8 +59,12 @@ struct Scoring{
                 return x.uid==y.uid;
             }
         };
+        std::string repr(DepParsedTokens const& dict, WordUIDindex const& wordUIDs) const;
+
         std::vector<Candidate> candidates;
         ConsecutiveTokens idxs;
+        WordUID word_gov;
+        VocaIndex gov;
     };
 
 
@@ -81,36 +90,26 @@ struct Scoring{
         return score;
     }
     val_t similarity(AmbiguousEntity const& query, AmbiguousEntity const& data) const {
-        val_t max_score = 0.0;
+        val_t score_dep = 0.0;
         for(auto e1 : query.candidates){
             if(!util::isin(data.candidates, e1)) continue;
-            max_score = std::max(e1.score,max_score);
+            score_dep = std::max(e1.score,score_dep);
         }
-        return max_score;
+        auto score_gov = 1+op.score(query.gov, data.gov)*word_importance.score(query.word_gov);
+        auto score = score_gov*score_dep;
+        return score;
     }
     WordImportance const& word_importance;
     AngleSimilarity op;
 };
 
-//TODO: merge with wikidata::head_word_pos.
-DPTokenIndex center_word(DepParsedTokens const& dict, ConsecutiveTokens words){
-    auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
-    for(auto idx : words){
-        auto mh = dict.head_pos(idx);
-        if(!mh) continue;
-        auto head = mh.value();
-        if(util::isin(positions, head)) continue;
-        return idx;
-    }
-    return words.front();
-}
-
-Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
+inline Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
     auto it = std::max_element(reprs.cbegin(),reprs.cend(),[&scoring](auto const& x, auto const& y){
         return scoring.phrase(x)<scoring.phrase(y);
     });
     return *it;
 }
+
 
 struct ScoringPreprocess {
     struct SentenceToScored{
@@ -134,7 +133,11 @@ struct ScoringPreprocess {
                                         sent.words.push_back({orig.sent,idx});
                                     return;
                                 }
-                                Scoring::AmbiguousEntity x{{},entity.words};
+                                auto& dict       = *orig.sent.dict;
+                                auto idx         = entity.words.dep_token_idx(dict);
+                                WordUID word_gov = dict.head_uid(idx);
+                                VocaIndex gov    = dict.head_word(idx);
+                                Scoring::AmbiguousEntity x{{},entity.words, word_gov,gov};
                                 for (auto uid : named_entities) {
                                     auto synonyms = entity_reprs.get_synonyms(uid);
                                     auto repr = max_score_repr(synonyms.reprs, scoring);

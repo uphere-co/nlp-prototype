@@ -6,6 +6,8 @@
 
 #include "wordrep/word_iter.h"
 
+#include "utils/string.h"
+
 namespace wordrep{
 namespace wiki {
 
