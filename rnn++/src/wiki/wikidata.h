@@ -101,18 +101,20 @@ std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const&
                                                  wordrep::ConsecutiveTokens words);
 
 
-struct WikiEntityModule{
-    WikiEntityModule(std::string wikidata_entities,
-                     std::string named_entity_wikidata_uids,
-                     std::string wikidata_uids,
-                     wordrep::WordUIDindex const& wordUIDs)
-            : entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
+struct EntityModule{
+    EntityModule(std::string word_uids,
+                 std::string wikidata_entities,
+                 std::string named_entity_wikidata_uids,
+                 std::string wikidata_uids)
+            : wordUIDs{word_uids},
+              entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
               annotator{entities},
               entity_reprs{entities.entities},
               op_acronym{wordUIDs},
               op_named_entity{named_entity_wikidata_uids, wordUIDs, entity_reprs},
               entityUIDs{wikidata_uids}
     {}
+    wordrep::WordUIDindex wordUIDs;
     SortedEntities entities;
     GreedyAnnotator annotator;
     wordrep::wiki::EntityReprs entity_reprs;

@@ -39,7 +39,7 @@ struct ConfigKeys{
                          {"w2v_float_t"},
                          {"wikidata_entities"},
                          {"wikidata_uids"},
-                         {"named_entity_wikidata_uids"}};
+                         {"named_entity_uids"}};
 };
 
 using Config = util::ConfigT<ConfigKeys>;
@@ -56,7 +56,7 @@ struct SubmoduleFactory{
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
 
-    wikidata::WikiEntityModule wikientity_module(wordrep::WordUIDindex const& wordUIDs) const;
+    wikidata::EntityModule wikientity_module() const;
 
     Dataset empty_dataset() const;
     Dataset load_dataset() const;

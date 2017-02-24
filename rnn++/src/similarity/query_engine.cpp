@@ -493,6 +493,9 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   db{factory.common.load_dataset()},
   dbinfo{factory},
   queries{factory.common.empty_dataset()},
+  wiki{factory.common.wikientity_module()},
+  scoring{word_importance,db.voca.wvecs},
+  scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
   dists_cache{db.voca}
 {}
 
@@ -509,6 +512,9 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   db{std::move(engine.db)},
   dbinfo{std::move(engine.dbinfo)},
   queries{std::move(engine.queries)},
+  wiki{std::move(engine.wiki)},
+  scoring{word_importance,db.voca.wvecs},
+  scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
   dists_cache{db.voca}
 {}
 

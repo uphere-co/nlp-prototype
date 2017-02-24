@@ -124,6 +124,10 @@ private:
     Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;
+    wikidata::EntityModule wiki;
+    wordrep::Scoring scoring;
+    wordrep::Scoring::Preprocess scoring_preprocessor;
+
     mutable WordSimCache dists_cache;
     mutable QueryResultCache result_cache{};
 };

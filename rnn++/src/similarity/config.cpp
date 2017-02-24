@@ -54,11 +54,11 @@ data::DBIndexer SubmoduleFactory::db_indexer() const {
             config.value("dep_parsed_prefix")};
 };
 
-wikidata::WikiEntityModule SubmoduleFactory::wikientity_module(wordrep::WordUIDindex const& wordUIDs) const{
-    return {config.value("wikidata_entities"),
-            config.value("named_entity_wikidata_uids"),
-            config.value("wikidata_uids"),
-            wordUIDs};
+wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
+    return {config.value("word_uids_dump"),
+            config.value("wikidata_entities"),
+            config.value("named_entity_uids"),
+            config.value("wikidata_uids")};
 }
 
 }//namespace engine
