@@ -134,7 +134,7 @@ struct Scoring{
             return scoring.similarity(query, data);
         }
     };
-    OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query){
+    OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query) const {
         return {*this, query};
     }
 
