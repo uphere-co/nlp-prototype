@@ -14,6 +14,9 @@
 #include "wordrep/voca_info.h"
 #include "wordrep/word_case_corrector.h"
 
+#include "wordrep/simiarity_score.h"
+#include "wiki/wikidata.h"
+
 #include "utils/json.h"
 
 namespace engine{
@@ -33,7 +36,10 @@ struct ConfigKeys{
                          {"wordvec_store"},
                          {"voca_name"},
                          {"w2vmodel_name"},
-                         {"w2v_float_t"}};
+                         {"w2v_float_t"},
+                         {"wikidata_entities"},
+                         {"wikidata_uids"},
+                         {"named_entity_wikidata_uids"}};
 };
 
 using Config = util::ConfigT<ConfigKeys>;
@@ -49,6 +55,9 @@ struct SubmoduleFactory{
     wordrep::WordImportance word_importance() const;
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
+
+    wikidata::WikiEntityModule wikientity_module(wordrep::WordUIDindex const& wordUIDs) const;
+
     Dataset empty_dataset() const;
     Dataset load_dataset() const;
     data::DBIndexer db_indexer() const;
