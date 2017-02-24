@@ -1,5 +1,6 @@
 #pragma once
 
+#include <utility>
 //TODO: move headers to .cpp
 #include "wordrep/annotated_sentence.h"
 #include "wordrep/sentence.h"
@@ -67,12 +68,21 @@ struct Scoring{
         WordUID word_gov;
         VocaIndex gov;
     };
+    struct SentenceToScored{
+        Sentence const& orig;
+        std::vector<AmbiguousEntity> entities;
+        std::vector<DepPair> words;
+    };
+    struct Score{
+        ConsecutiveTokens data;
+        val_t score;
+    };
+    struct ScoredSentence{
+        Sentence const& orig;
+        std::vector<std::pair<AmbiguousEntity,std::optional<Score>>> entities;
+        std::vector<std::pair<DepPair,std::optional<Score>>>         words;
+    };
     struct Preprocess {
-        struct SentenceToScored{
-            Sentence const& orig;
-            std::vector<Scoring::AmbiguousEntity> entities;
-            std::vector<DepPair> words;
-        };
         SentenceToScored sentence(AnnotatedSentence const& orig) const {
             SentenceToScored sent{orig.sent,{},{}};
             for(auto& token : orig) {
@@ -109,7 +119,6 @@ struct Scoring{
         wiki::OpNamedEntity const &op;
     };
 
-
     Words max_score_repr(wiki::Synonyms const& synonym) const {
         auto it = std::max_element(synonym.reprs.cbegin(),synonym.reprs.cend(),[this](auto const& x, auto const& y){
             return phrase(x)<phrase(y);
@@ -145,9 +154,48 @@ struct Scoring{
         auto score = score_gov*score_dep;
         return score;
     }
-    val_t similarity(DepPair query, Preprocess::SentenceToScored const& data) const{
-        
-        return 0.0;
+    std::optional<Score> similarity(DepPair query, SentenceToScored const& data) const{
+        val_t max_score = 0.0;
+        std::optional<ConsecutiveTokens> best_match={};
+        for(auto pair : data.words) {
+            auto score = similarity(pair, query);
+            if (max_score > score) continue;
+            max_score = score;
+            best_match = ConsecutiveTokens{pair.idx};
+        }
+        for(auto& entity : data.entities) {
+            for (auto idx : entity.idxs) {
+                DepPair pair{data.orig, idx};
+                auto score = similarity(query, pair);
+                if (max_score >= score) continue;
+                max_score = score;
+                best_match = entity.idxs;
+            }
+        }
+        if(best_match)
+            return Score{best_match.value(), max_score};
+        return {};
+    }
+    std::optional<Score> similarity(AmbiguousEntity const& query, SentenceToScored const& data) const{
+        val_t max_score = 0.0;
+        std::optional<ConsecutiveTokens> best_match={};
+        for(auto& entity : data.entities) {
+            auto score = similarity(query, entity);
+            if(max_score>=score) continue;
+            max_score = score;
+            best_match = entity.idxs;
+        }
+        if(best_match)
+            return Score{best_match.value(), max_score};
+        return {};
+    }
+    ScoredSentence similarity(SentenceToScored const& query, SentenceToScored const& data) const{
+        ScoredSentence scored_sent{data.orig,{},{}};
+        for(auto& entity : query.entities)
+            scored_sent.entities.push_back(std::make_pair(entity, similarity(entity, data)));
+        for(auto& word : query.words)
+            scored_sent.words.push_back(std::make_pair(word, similarity(word, data)));
+        return scored_sent;
     }
     WordImportance const& word_importance;
     AngleSimilarity op;
