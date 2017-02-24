@@ -647,19 +647,20 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     std::map<SentUID, std::map<WordUID,std::map<WordUID,std::vector<SentUID>>>> results_by_match;
     std::map<SentUID, std::map<WordUID,std::map<WordUID,std::size_t>>> stats;
     auto collect_result_stats = [&results_by_match,&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
-        auto sent_uid = query_sent.uid;
-        for(auto const &scored_sent : relevant_sents){
-            for(auto elm : scored_sent.scores.serialize()){
-                auto qidx = std::get<0>(elm);
-                auto midx = std::get<1>(elm);
-                auto quid = query_sent.dict->word_uid(qidx);
-                auto muid = scored_sent.sent.dict->word_uid(midx);
-                auto score = std::get<2>(elm);
-                if(score<0.6) continue;
-                ++stats[sent_uid][quid][muid];
-                results_by_match[sent_uid][quid][muid].push_back(scored_sent.sent.uid);
-            }
-        }
+//TODO: Templorarily disable this. Make it phrase based.
+//        auto sent_uid = query_sent.uid;
+//        for(auto const &scored_sent : relevant_sents){
+//            for(auto elm : scored_sent.scores.serialize()){
+//                auto qidx = std::get<0>(elm);
+//                auto midx = std::get<1>(elm);
+//                auto quid = query_sent.dict->word_uid(qidx);
+//                auto muid = scored_sent.sent.dict->word_uid(midx);
+//                auto score = std::get<2>(elm);
+//                if(score<0.6) continue;
+//                ++stats[sent_uid][quid][muid];
+//                results_by_match[sent_uid][quid][muid].push_back(scored_sent.sent.uid);
+//            }
+//        }
     };
     output_t answers{};
     auto op_cut =[this,n_cut](auto const& xs){return dbinfo.rank_cut(xs,n_cut);};
