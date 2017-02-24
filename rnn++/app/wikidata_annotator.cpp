@@ -435,7 +435,7 @@ void representative_repr_of_query(util::json_t const& config_json) {
     for(auto words : entity.reprs){
         fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
     }
-    auto repr = max_score_repr(entity.reprs, scoring);
+    auto repr = scoring.max_score_repr(entity);
     assert(scoring.phrase(repr) == scoring.phrase(entity));
     auto& w = wordUIDs;
     std::vector<WordUID> words = {w["natural"],w["language"],w["processing"]};
@@ -486,7 +486,7 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
-    ScoringPreprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
 
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
@@ -498,7 +498,7 @@ void scoring_words(util::json_t const& config_json){
                        x.idxs.size(),
                        wordUIDs[tokens.word_uid(idx)],
                        wordUIDs[tokens.head_uid(idx)],
-                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs, scoring).repr(wordUIDs),
+                       scoring.max_score_repr(entity_reprs.get_synonyms(entity.uid)).repr(wordUIDs),
                        entity.score);
         }
     }
@@ -519,7 +519,7 @@ void scoring_words(util::json_t const& config_json){
                        x.idxs.size(),
                        wordUIDs[tokens.word_uid(idx)],
                        wordUIDs[tokens.head_uid(idx)],
-                       max_score_repr(entity_reprs.get_synonyms(entity.uid).reprs, scoring).repr(wordUIDs),
+                       scoring.max_score_repr(entity_reprs.get_synonyms(entity.uid)).repr(wordUIDs),
                        entity.score);
         }
     }

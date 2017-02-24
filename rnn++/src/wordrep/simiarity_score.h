@@ -42,14 +42,15 @@ struct AngleSimilarity{
     VocaInfo::voca_vecs_t const& wvecs;
 };
 
+
 struct Scoring{
     using val_t = WordImportance::val_t;
     struct Entity{
         WikidataUID uid;
         val_t score;
+        ConsecutiveTokens idxs;
         WordUID word_gov;
         VocaIndex gov;
-        ConsecutiveTokens idxs;
     };
     struct AmbiguousEntity{
         struct Candidate{
@@ -66,11 +67,56 @@ struct Scoring{
         WordUID word_gov;
         VocaIndex gov;
     };
+    struct Preprocess {
+        struct SentenceToScored{
+            Sentence const& orig;
+            std::vector<Scoring::AmbiguousEntity> entities;
+            std::vector<DepPair> words;
+        };
+        SentenceToScored sentence(AnnotatedSentence const& orig) const {
+            SentenceToScored sent{orig.sent,{},{}};
+            for(auto& token : orig) {
+                using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
+                token.val.match([&sent,&orig](DPTokenIndex idx) {
+                                    sent.words.push_back({orig.sent,idx});
+                                },
+                                [this,&sent,&orig](T const &entity) {
+                                    std::vector<WikidataUID> named_entities;
+                                    for (auto uid : entity.uids)
+                                        if(op.is_named_entity(uid)) named_entities.push_back(uid);
+                                    if(named_entities.empty()){
+                                        for(auto idx : entity.words)
+                                            sent.words.push_back({orig.sent,idx});
+                                        return;
+                                    }
+                                    auto& dict       = *orig.sent.dict;
+                                    auto idx         = entity.words.dep_token_idx(dict);
+                                    WordUID word_gov = dict.head_uid(idx);
+                                    VocaIndex gov    = dict.head_word(idx);
+                                    Scoring::AmbiguousEntity x{{},entity.words, word_gov,gov};
+                                    for (auto uid : named_entities) {
+                                        auto synonyms = entity_reprs.get_synonyms(uid);
+                                        auto repr = scoring.max_score_repr(synonyms);
+                                        x.candidates.push_back({uid, scoring.phrase(repr)});
+                                    }
+                                    sent.entities.push_back(x);
+                                });
+            }
+            return sent;
+        }
+        Scoring const &scoring;
+        wiki::EntityReprs const &entity_reprs;
+        wiki::OpNamedEntity const &op;
+    };
 
 
-    Scoring(WordImportance const& word_importance, AngleSimilarity const& op)
-            : word_importance{word_importance}, op{op}
-    {}
+    Words max_score_repr(wiki::Synonyms const& synonym) const {
+        auto it = std::max_element(synonym.reprs.cbegin(),synonym.reprs.cend(),[this](auto const& x, auto const& y){
+            return phrase(x)<phrase(y);
+        });
+        return *it;
+    }
+
     val_t phrase(Words const &words) const {
         WordImportance::val_t score{0.0};
         for(auto word : words) score+=word_importance.score(word);
@@ -99,60 +145,13 @@ struct Scoring{
         auto score = score_gov*score_dep;
         return score;
     }
+    val_t similarity(DepPair query, Preprocess::SentenceToScored const& data) const{
+        
+        return 0.0;
+    }
     WordImportance const& word_importance;
     AngleSimilarity op;
 };
 
-inline Words max_score_repr(std::vector<Words> const& reprs, Scoring const& scoring){
-    auto it = std::max_element(reprs.cbegin(),reprs.cend(),[&scoring](auto const& x, auto const& y){
-        return scoring.phrase(x)<scoring.phrase(y);
-    });
-    return *it;
-}
-
-
-struct ScoringPreprocess {
-    struct SentenceToScored{
-        Sentence const& orig;
-        std::vector<Scoring::AmbiguousEntity> entities;
-        std::vector<DepPair> words;
-    };
-    SentenceToScored sentence(AnnotatedSentence const& orig) const {
-        SentenceToScored sent{orig.sent,{},{}};
-        for(auto& token : orig) {
-            using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
-            token.val.match([&sent,&orig](DPTokenIndex idx) {
-                                sent.words.push_back({orig.sent,idx});
-                            },
-                            [this,&sent,&orig](T const &entity) {
-                                std::vector<WikidataUID> named_entities;
-                                for (auto uid : entity.uids)
-                                    if(op.is_named_entity(uid)) named_entities.push_back(uid);
-                                if(named_entities.empty()){
-                                    for(auto idx : entity.words)
-                                        sent.words.push_back({orig.sent,idx});
-                                    return;
-                                }
-                                auto& dict       = *orig.sent.dict;
-                                auto idx         = entity.words.dep_token_idx(dict);
-                                WordUID word_gov = dict.head_uid(idx);
-                                VocaIndex gov    = dict.head_word(idx);
-                                Scoring::AmbiguousEntity x{{},entity.words, word_gov,gov};
-                                for (auto uid : named_entities) {
-                                    auto synonyms = entity_reprs.get_synonyms(uid);
-                                    auto repr = max_score_repr(synonyms.reprs, scoring);
-                                    x.candidates.push_back({uid, scoring.phrase(repr)});
-                                }
-                                sent.entities.push_back(x);
-                            });
-        }
-        return sent;
-    }
-    Scoring const &scoring;
-    wiki::EntityReprs const &entity_reprs;
-    wiki::OpNamedEntity const &op;
-};
-
 
 }//namespace wordrep
-
