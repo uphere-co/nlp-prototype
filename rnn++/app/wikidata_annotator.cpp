@@ -564,17 +564,18 @@ void scoring_words(util::json_t const& config_json){
                    best_match.score);
     }
     fmt::print("\nQuery=sent2, Data=sent1. Matched results:\n");
-    auto scored_sent1 = scoring.similarity(sent_to_scored2, sent_to_scored1);
+    auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
+    auto scored_sent1 = op_query_similarity.score(sent_to_scored1);
     for(auto entity : scored_sent1.entities){
         if(!entity.second) continue;
         auto score = entity.second.value();
-        fmt::print("{} - {} : {}\n", entity.first.repr(tokens, wordUIDs),
+        fmt::print("{:<15} - {:<15} : {}\n", entity.first.repr(tokens, wordUIDs),
                     score.data.repr(tokens,wordUIDs), score.score);
     }
     for(auto word : scored_sent1.words){
         if(!word.second) continue;
         auto score = word.second.value();
-        fmt::print("{} - {} : {}\n", word.first.repr(wordUIDs),
+        fmt::print("{:<15} - {:<15} : {}\n", word.first.repr(wordUIDs),
                    score.data.repr(tokens,wordUIDs), score.score);
     }
 };

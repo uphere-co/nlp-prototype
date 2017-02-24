@@ -119,6 +119,18 @@ struct Scoring{
         wiki::OpNamedEntity const &op;
     };
 
+    //TODO: make a cached version.
+    struct OpSentenceSimilarity{
+        Scoring const& scoring;
+        SentenceToScored query;
+        ScoredSentence score(SentenceToScored const&data) const{
+            return scoring.similarity(query, data);
+        }
+    };
+    OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query){
+        return {*this, query};
+    }
+
     Words max_score_repr(wiki::Synonyms const& synonym) const {
         auto it = std::max_element(synonym.reprs.cbegin(),synonym.reprs.cend(),[this](auto const& x, auto const& y){
             return phrase(x)<phrase(y);
@@ -157,11 +169,11 @@ struct Scoring{
     std::optional<Score> similarity(DepPair query, SentenceToScored const& data) const{
         val_t max_score = 0.0;
         std::optional<ConsecutiveTokens> best_match={};
-        for(auto pair : data.words) {
-            auto score = similarity(pair, query);
+        for(auto word : data.words) {
+            auto score = similarity(word, query);
             if (max_score > score) continue;
             max_score = score;
-            best_match = ConsecutiveTokens{pair.idx};
+            best_match = ConsecutiveTokens{word.idx};
         }
         for(auto& entity : data.entities) {
             for (auto idx : entity.idxs) {
