@@ -565,10 +565,12 @@ void scoring_words(util::json_t const& config_json){
     }
     fmt::print("\nQuery=sent2, Data=sent1. Matched results:\n");
 
-    for(auto entity : sent_to_scored2.entities) {
-        auto op = entity_reprs.get_comparison_operator(entity.uid);
-        assert(op.isin(sent_to_scored1.orig));
-    }
+    auto op2 = entity_reprs.get_comparison_operator(sent_to_scored2.all_named_entities());
+    auto op1 = entity_reprs.get_comparison_operator(sent_to_scored1.all_named_entities());
+    timer.here_then_reset("Prepare sentence prefiltering.");
+    assert(op2.isin(sent_to_scored1.orig));
+    assert(!op1.isin(sent_to_scored2.orig));
+    timer.here_then_reset("Check sentences contain all named entities in query.");
     auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
     auto scored_sent1 = op_query_similarity.score(sent_to_scored1);
     for(auto entity : scored_sent1.entities){

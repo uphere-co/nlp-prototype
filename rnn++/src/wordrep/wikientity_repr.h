@@ -78,6 +78,16 @@ struct EntityReprs{
         }
         std::vector<OpEntityCompare> ops;
     };
+    struct OpContainAllAmbiguousEntities{
+        bool isin(Sentence const& sent) const{
+            for(auto& op : ops)
+                if(!op.isin(sent))
+                    return false;
+            return true;
+
+        }
+        std::vector<OpAmbiguousEntityCompare> ops;
+    };
 
     EntityReprs(std::vector<Entity> const& entities){
         for(auto& entity : entities)
@@ -94,6 +104,11 @@ struct EntityReprs{
     OpAmbiguousEntityCompare get_comparison_operator(AmbiguousUID const& entity) const{
         OpAmbiguousEntityCompare op{};
         for(auto uid : entity.candidates) op.ops.push_back(get_comparison_operator(uid));
+        return op;
+    }
+    OpContainAllAmbiguousEntities get_comparison_operator(std::vector<AmbiguousUID> const& uids) const{
+        OpContainAllAmbiguousEntities op{};
+        for(auto uid : uids) op.ops.push_back(get_comparison_operator(uid));
         return op;
     }
     Entity operator[](WikidataUID uid) const;
