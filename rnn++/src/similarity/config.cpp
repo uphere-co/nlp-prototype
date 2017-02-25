@@ -56,6 +56,7 @@ data::DBIndexer SubmoduleFactory::db_indexer() const {
 
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
     return {config.value("word_uids_dump"),
+            config.value("pos_uids_dump"),
             config.value("wikidata_entities"),
             config.value("named_entity_uids"),
             config.value("wikidata_uids")};

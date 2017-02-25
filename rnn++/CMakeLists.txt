@@ -1,4 +1,4 @@
-project(rnnparser)
+project(rnnpp)
 cmake_minimum_required(VERSION 3.4)
 
 SET(HOME $ENV{HOME})

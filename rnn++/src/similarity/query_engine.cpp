@@ -283,13 +283,18 @@ struct ProcessQuerySent{
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
+        query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
+        if(named_entities.empty()) return {};
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
-        for(auto& e : named_entities)
-            for(auto uid : e.candidates){
+        for(auto& e : named_entities) {
+            fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
+            for (auto uid : e.candidates) {
                 auto entity = wiki.entity_reprs[uid];
-                fmt::print(std::cerr, "NAMED ENTITY IN QUERY : {}\n", entity.repr(wiki.entityUIDs, wiki.wordUIDs));
+                fmt::print(std::cerr, "({}) ", entity.repr(wiki.entityUIDs, wiki.wordUIDs));
             }
+            fmt::print(std::cerr, "\n");
+        }
         auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
@@ -553,7 +558,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
 
     std::map<SentUID, std::map<WordUID,std::map<WordUID,std::vector<SentUID>>>> results_by_match;
     std::map<SentUID, std::map<WordUID,std::map<WordUID,std::size_t>>> stats;
-    auto collect_result_stats = [&results_by_match,&stats](auto const &query_sent, auto const &, auto const &relevant_sents){
+    auto collect_result_stats = [&results_by_match,&stats](auto const &/*query_sent*/, auto const &, auto const &/*relevant_sents*/){
 //TODO: Templorarily disable this. Make it phrase based.
 //        auto sent_uid = query_sent.uid;
 //        for(auto const &scored_sent : relevant_sents){
