@@ -542,6 +542,42 @@ void scoring_words(util::json_t const& config_json){
                        scoring.similarity(x, y));
         }
     }
+    fmt::print("\nQuery=sent1, Data=sent2. Base matches:\n");
+    for(auto& x : sent_to_scored1.entities){
+        auto m_best_match = scoring.similarity(x,sent_to_scored2);
+        if(!m_best_match) continue;
+        auto best_match = m_best_match.value();
+        auto dep_idx = best_match.data.dep_token_idx(tokens);
+        auto word_gov = tokens.head_uid(dep_idx);
+        fmt::print("{} vs {}:dep {}:gov : {}\n", x.repr(tokens, wordUIDs),
+                   best_match.data.repr(tokens,wordUIDs), wordUIDs[word_gov],
+                   best_match.score);
+    }
+    for(auto& x : sent_to_scored1.words){
+        auto m_best_match = scoring.similarity(x,sent_to_scored2);
+        if(!m_best_match) continue;
+        auto best_match = m_best_match.value();
+        auto dep_idx = best_match.data.dep_token_idx(tokens);
+        auto word_gov = tokens.head_uid(dep_idx);
+        fmt::print("{} vs {}:dep {}:gov : {}\n", x.repr(wordUIDs),
+                   best_match.data.repr(tokens,wordUIDs), wordUIDs[word_gov],
+                   best_match.score);
+    }
+    fmt::print("\nQuery=sent2, Data=sent1. Matched results:\n");
+    auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
+    auto scored_sent1 = op_query_similarity.score(sent_to_scored1);
+    for(auto entity : scored_sent1.entities){
+        if(!entity.second) continue;
+        auto score = entity.second.value();
+        fmt::print("{:<15} - {:<15} : {}\n", entity.first.repr(tokens, wordUIDs),
+                    score.data.repr(tokens,wordUIDs), score.score);
+    }
+    for(auto word : scored_sent1.words){
+        if(!word.second) continue;
+        auto score = word.second.value();
+        fmt::print("{:<15} - {:<15} : {}\n", word.first.repr(wordUIDs),
+                   score.data.repr(tokens,wordUIDs), score.score);
+    }
 };
 
 void test_all(int argc, char** argv){
