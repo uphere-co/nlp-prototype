@@ -140,7 +140,7 @@ struct Scoring{
 
     Words max_score_repr(wiki::Synonyms const& synonym) const {
         auto it = std::max_element(synonym.reprs.cbegin(),synonym.reprs.cend(),[this](auto const& x, auto const& y){
-            return phrase(x)<phrase(y);
+            return this->phrase(x)<this->phrase(y);
         });
         return *it;
     }
@@ -152,7 +152,7 @@ struct Scoring{
     }
     val_t phrase(wiki::Synonyms const& entity) const {
         auto it = std::max_element(entity.reprs.cbegin(),entity.reprs.cend(),[this](auto const& x, auto const& y){
-            return phrase(x)<phrase(y);
+            return this->phrase(x)<this->phrase(y);
         });
         return phrase(*it);
     }
