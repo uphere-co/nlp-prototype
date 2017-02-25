@@ -9,6 +9,7 @@
 #include "wordrep/words.h"
 #include "wordrep/annotated_sentence.h"
 #include "wordrep/wikientity_repr.h"
+#include "wordrep/wikientity.h"
 
 #include "utils/variant.h"
 
@@ -52,7 +53,7 @@ struct AnnotatedToken{
                              return {sent.front()+w.offset};},
                          [&sent](wordrep::wiki::AmbiguousEntity const& e)->wordrep::AnnotatedSentence::Token{
                              using T = wordrep::AnnotatedSentence::Token::UnresolvedWikiEntity;
-                             return {T{e.map_to_sent(sent),e.uid.candidates}};});
+                             return {T{e.map_to_sent(sent),e.uid}};});
     }
 };
 
@@ -99,4 +100,34 @@ std::vector<wordrep::ConsecutiveTokens> is_contain(wordrep::Sentence const& sent
 std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const& dict,
                                                  wordrep::ConsecutiveTokens words);
 
+
+struct EntityModule{
+    EntityModule(std::string word_uids,
+                 std::string wikidata_entities,
+                 std::string named_entity_wikidata_uids,
+                 std::string wikidata_uids)
+            : wordUIDs{word_uids},
+              entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
+              annotator{entities},
+              entity_reprs{entities.entities},
+              op_named_entity{named_entity_wikidata_uids, wordUIDs, entity_reprs},
+              entityUIDs{wikidata_uids}
+    {}
+    EntityModule(EntityModule &&orig)
+            : wordUIDs{std::move(orig.wordUIDs)},
+              entities{std::move(orig.entities)},
+              annotator{entities},
+              entity_reprs{entities.entities},
+              op_named_entity{std::move(orig.op_named_entity.named_entities),wordUIDs, entity_reprs},
+              entityUIDs{std::move(orig.entityUIDs)}
+    {}
+    wordrep::WordUIDindex wordUIDs;
+    SortedEntities entities;
+    GreedyAnnotator annotator;
+    wordrep::wiki::EntityReprs entity_reprs;
+    wordrep::wiki::OpNamedEntity op_named_entity;
+    wordrep::WikidataUIDindex entityUIDs;
+//    wordrep::Scoring scoring{word_importance, voca.wvecs}
+//    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+};
 }//namespace wikidata
