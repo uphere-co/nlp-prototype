@@ -103,10 +103,12 @@ std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const&
 
 struct EntityModule{
     EntityModule(std::string word_uids,
+                 std::string pos_uids,
                  std::string wikidata_entities,
                  std::string named_entity_wikidata_uids,
                  std::string wikidata_uids)
             : wordUIDs{word_uids},
+              posUIDs{pos_uids},
               entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
               annotator{entities},
               entity_reprs{entities.entities},
@@ -115,6 +117,7 @@ struct EntityModule{
     {}
     EntityModule(EntityModule &&orig)
             : wordUIDs{std::move(orig.wordUIDs)},
+              posUIDs{std::move(orig.posUIDs)},
               entities{std::move(orig.entities)},
               annotator{entities},
               entity_reprs{entities.entities},
@@ -122,6 +125,7 @@ struct EntityModule{
               entityUIDs{std::move(orig.entityUIDs)}
     {}
     wordrep::WordUIDindex wordUIDs;
+    wordrep::POSUIDindex posUIDs;
     SortedEntities entities;
     GreedyAnnotator annotator;
     wordrep::wiki::EntityReprs entity_reprs;

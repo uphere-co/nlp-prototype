@@ -76,6 +76,28 @@ struct Scoring{
                 uids.push_back(entity.uid);
             return uids;
         }
+        void filter_false_named_entity(POSUIDindex const& posUIDs){
+            for(auto it=entities.begin(); it!=entities.end();){
+                auto& entity = *it;
+                if(entity.idxs.size()!=1) continue;
+                auto idx = entity.idxs.front();
+                auto is_noun = [&posUIDs](auto pos){
+                    auto NN = posUIDs["NN"];
+                    auto NNS = posUIDs["NNS"];
+                    auto NNP = posUIDs["NNP"];
+                    auto NNPS = posUIDs["NNPS"];
+                    return pos==NN||pos==NNS||pos==NNP||pos==NNPS;
+                };
+                auto pos = this->orig.dict->pos(idx);
+                if(is_noun(pos)) {
+                    ++it;
+                    continue;
+                }
+                words.push_back({orig,idx});
+                std::swap(entity, entities.back());
+                entities.pop_back();
+            }
+        }
         Sentence const& orig;
         std::vector<AmbiguousEntity> entities;
         std::vector<DepPair> words;
