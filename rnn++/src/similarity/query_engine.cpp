@@ -285,6 +285,7 @@ struct ProcessQuerySent{
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
         query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
+        if(named_entities.empty()) return {};
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
         for(auto& e : named_entities) {
             fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
