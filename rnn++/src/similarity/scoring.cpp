@@ -64,6 +64,23 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
 
 namespace engine{
 
+ScoredSentence output(wordrep::Scoring::ScoredSentence const& sent){
+    DepSearchScore score{0};
+    for(auto e : sent.entities) {
+        if(!e.second) continue;
+        auto& query = e.first;
+        auto& matched = e.second.value();
+        score.insert(query.idxs, matched);
+    }
+    for(auto e : sent.words){
+        if(!e.second) continue;
+        auto& query = e.first;
+        auto& matched = e.second.value();
+        score.insert({query.idx}, matched);
+    }
+    return {sent.orig, score};
+}
+
 //Select top N results by sent_uid
 std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
                                            size_t n_max_result){

@@ -64,11 +64,18 @@ struct Scoring{
         std::string repr(DepParsedTokens const& dict, WordUIDindex const& wordUIDs) const;
 
         std::vector<Candidate> candidates;
+        wiki::AmbiguousUID uid;
         ConsecutiveTokens idxs;
         WordUID word_gov;
         VocaIndex gov;
     };
     struct SentenceToScored{
+        std::vector<wiki::AmbiguousUID> all_named_entities() const{
+            std::vector<wiki::AmbiguousUID> uids;
+            for(auto& entity : entities)
+                uids.push_back(entity.uid);
+            return uids;
+        }
         Sentence const& orig;
         std::vector<AmbiguousEntity> entities;
         std::vector<DepPair> words;
@@ -91,10 +98,10 @@ struct Scoring{
                                     sent.words.push_back({orig.sent,idx});
                                 },
                                 [this,&sent,&orig](T const &entity) {
-                                    std::vector<WikidataUID> named_entities;
-                                    for (auto uid : entity.uids)
-                                        if(op.is_named_entity(uid)) named_entities.push_back(uid);
-                                    if(named_entities.empty()){
+                                    wiki::AmbiguousUID named_entity_uid;
+                                    for (auto uid : entity.uid.candidates)
+                                        if(op.is_named_entity(uid)) named_entity_uid.candidates.push_back(uid);
+                                    if(named_entity_uid.candidates.empty()){
                                         for(auto idx : entity.words)
                                             sent.words.push_back({orig.sent,idx});
                                         return;
@@ -103,8 +110,8 @@ struct Scoring{
                                     auto idx         = entity.words.dep_token_idx(dict);
                                     WordUID word_gov = dict.head_uid(idx);
                                     VocaIndex gov    = dict.head_word(idx);
-                                    Scoring::AmbiguousEntity x{{},entity.words, word_gov,gov};
-                                    for (auto uid : named_entities) {
+                                    Scoring::AmbiguousEntity x{{},named_entity_uid,entity.words, word_gov,gov};
+                                    for (auto uid : named_entity_uid.candidates) {
                                         auto synonyms = entity_reprs.get_synonyms(uid);
                                         auto repr = scoring.max_score_repr(synonyms);
                                         x.candidates.push_back({uid, scoring.phrase(repr)});

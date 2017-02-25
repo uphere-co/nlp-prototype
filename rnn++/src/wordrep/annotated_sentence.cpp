@@ -16,7 +16,7 @@ std::string AnnotatedSentence::repr(wiki::EntityReprs const &entity_reprs,
     for(auto token : tokens) {
         token.val.match([&ss, &entity_reprs, &wordUIDs, &wikidataUIDs](Token::UnresolvedWikiEntity w) {
                             fmt::print(ss, " (");
-                            for (auto uid : w.uids)
+                            for (auto uid : w.uid.candidates)
                                 fmt::print(ss, "{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
                             fmt::print(ss, ")");
                         },

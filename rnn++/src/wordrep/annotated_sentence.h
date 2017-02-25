@@ -1,10 +1,6 @@
 #pragma once
 
-#include <vector>
-
-#include "wordrep/indexes.h"
-#include "wordrep/words.h"
-#include "wordrep/sentence.h"
+#include "wordrep/wikientity_base.h"
 
 #include "utils/variant.h"
 
@@ -17,11 +13,11 @@ struct AnnotatedSentence{
     struct Token{
         struct UnresolvedWikiEntity{
             ConsecutiveTokens words;
-            std::vector<WikidataUID> uids;
+            wiki::AmbiguousUID uid;
 
             friend bool operator==(UnresolvedWikiEntity const& x, UnresolvedWikiEntity const& y){
-                for(auto& xx : x.uids )
-                    for(auto& yy : y.uids )
+                for(auto& xx : x.uid.candidates )
+                    for(auto& yy : y.uid.candidates )
                         if(xx==yy) return true;
                 return false;
             }

@@ -41,10 +41,10 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
                 tokens.push_back({WordWithOffset{offset,t}});
                 ++offset;
             } else {
-                std::vector<wordrep::WikidataUID> uids;
+                wordrep::wiki::AmbiguousUID uid;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) uids.push_back(it->uid);
-                if(!uids.empty()) tokens.push_back({wordrep::wiki::AmbiguousEntity{offset,i,uids}});
+                    if(it->words.size()==i) uid.candidates.push_back(it->uid);
+                if(!uid.candidates.empty()) tokens.push_back({wordrep::wiki::AmbiguousEntity{offset,i,uid}});
                 offset += i;
                 i = 0;
             }
@@ -71,7 +71,7 @@ std::string AnnotatedToken::repr(wordrep::wiki::EntityReprs const& entity_reprs,
     std::stringstream ss;
     val.match([&ss,&entity_reprs,&wordUIDs,&wikidataUIDs](wordrep::wiki::AmbiguousEntity w) {
         fmt::print(ss," (");
-        for (auto uid : w.uids)
+        for (auto uid : w.uid.candidates)
             fmt::print(ss,"{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
         fmt::print(ss,")");
     },
@@ -119,7 +119,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
     for(auto token : tokens){
         token.val.match([](WordWithOffset){},
                           [&tagged](wordrep::wiki::AmbiguousEntity& w){
-                              for(auto& uid : w.uids)
+                              for(auto& uid : w.uid.candidates)
                                   tagged.push_back({w.offset,w.len, uid});
                           });
     }
