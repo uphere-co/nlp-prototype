@@ -175,4 +175,5 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/data_source" DESTINATION incl
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/wordrep" DESTINATION include)
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/dataset.h" DESTINATION include)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/wiki/wikidata.h" DESTINATION include/wiki)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/wrapper/enginewrapper.h" DESTINATION include)
