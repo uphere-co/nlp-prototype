@@ -96,7 +96,7 @@ std::vector<wordrep::ConsecutiveTokens> is_contain(wordrep::Sentence const& sent
     return offsets;
 }
 
-std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict,
-                                             wordrep::ConsecutiveTokens words);
+std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const& dict,
+                                                 wordrep::ConsecutiveTokens words);
 
 }//namespace wikidata

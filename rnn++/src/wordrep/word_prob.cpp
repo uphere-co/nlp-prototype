@@ -5,6 +5,7 @@
 
 #include "wordrep/word_prob.h"
 #include "wordrep/word_hash.h"
+#include "wordrep/words.h"
 
 #include "utils/hdf5.h"
 #include "utils/persistent_vector.h"

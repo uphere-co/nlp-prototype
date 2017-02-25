@@ -13,6 +13,7 @@ class UIDIndex{
 public:
     using uid_t = TUID;
     UIDIndex(std::string file);
+    bool isin(uid_t uid) const;
     uid_t operator[] (std::string const &word) const;
     std::string operator[](uid_t uid) const;
     void write_to_disk (std::string filename) const;

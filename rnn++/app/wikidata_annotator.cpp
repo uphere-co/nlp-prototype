@@ -9,12 +9,13 @@
 #include "similarity/query_engine.h"
 
 #include "wordrep/word_uid.h"
+#include "wordrep/wikientity.h"
+#include "wordrep/simiarity_score.h"
 
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
 #include "utils/string.h"
 #include "utils/json.h"
-
 
 //using util::get_str;
 //using util::find;
@@ -26,10 +27,13 @@ namespace test {
 struct UnittestDataset{
     UnittestDataset(engine::Config const& config)
     : factory{config},
-      wordUIDs{factory.word_uid_index()},
       entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
+      annotator{entities},
+      wordUIDs{factory.word_uid_index()},
       entity_reprs{entities.entities},
-      annotator{entities} {
+      op_acronym{wordUIDs},
+      op_named_entity{"../rnn++/tests/data/wikidata.test.uid.named_entities",
+                      wordUIDs, entity_reprs} {
         auto posUIDs = factory.pos_uid_index();
         auto arclabelUIDs = factory.arclabel_uid_index();
         std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
@@ -42,13 +46,15 @@ struct UnittestDataset{
         sents = tokens.IndexSentences();
     }
     engine::SubmoduleFactory factory;
-    wordrep::WordUIDindex wordUIDs;
     SortedEntities entities;
-    wordrep::wiki::EntityReprs entity_reprs;
     GreedyAnnotator annotator;
+    wordrep::WordUIDindex wordUIDs;
+    wordrep::wiki::EntityReprs entity_reprs;
+    wordrep::wiki::OpAcronym op_acronym;
+    wordrep::wiki::OpNamedEntity op_named_entity;
     wordrep::DepParsedTokens tokens{};
-    std::vector<wordrep::Sentence> sents{};
     wordrep::WikidataUIDindex wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"};
+    std::vector<wordrep::Sentence> sents{};
 
 };
 
@@ -114,11 +120,9 @@ void uid_lookup_benchmark() {
     timer.here_then_reset("Finish comparisons.");
 }
 
-void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
+void compare_wordUIDs_and_WikidataUID(util::json_t const& config_json,
+                                      std::string query){
     util::Timer timer;
-    assert(argc>2);
-    auto config_json = util::load_json(argv[1]);
-    std::string query = util::string::read_whole(argv[2]);
 
     using wordrep::WordUID;
     using wordrep::WikidataUID;
@@ -165,10 +169,8 @@ void compare_wordUIDs_and_WikidataUID(int argc, char** argv){
     assert(!op.exact_match(ds["Q17948719427"], {ws["NLP"]}));
 }
 
-void annotate_sentence(int argc, char** argv){
+void annotate_sentence(util::json_t const& config_json){
     util::Timer timer;
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
 
     UnittestDataset testset{{config_json}};
     auto& entity_reprs = testset.entity_reprs;
@@ -187,11 +189,9 @@ void annotate_sentence(int argc, char** argv){
     }
 }
 
-void operation_wikiuid_on_sentence(int argc, char** argv){
+void operation_wikiuid_on_sentence(util::json_t const& config_json){
     std::cerr << "Test: wikidata::test::operation_wikiuid_on_sentence"<<std::endl;
     util::Timer timer;
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
 
     UnittestDataset testset{{config_json}};
     auto& entity_reprs = testset.entity_reprs;
@@ -231,7 +231,7 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
                            tokens.word_pos(x.idx+i), tokens.head_pos(x.idx+i).value());
             }
             fmt::print(std::cerr, "\n");
-            auto heads = head_word(tokens, x);
+            auto heads = head_word_pos(tokens, x);
             for(auto head : heads) fmt::print(std::cerr, "{} ", head);
             fmt::print(std::cerr, "\n");
         }
@@ -239,10 +239,8 @@ void operation_wikiuid_on_sentence(int argc, char** argv){
     }
 }
 
-void operation_ambiguous_entity_on_sentence(int argc, char** argv){
+void operation_ambiguous_entity_on_sentence(util::json_t const& config_json){
     std::cerr << "Test: wikidata::test::operation_ambiguous_entity_on_sentence"<<std::endl;
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
 
     UnittestDataset testset{{config_json}};
     auto& entity_reprs = testset.entity_reprs;
@@ -268,11 +266,9 @@ void operation_ambiguous_entity_on_sentence(int argc, char** argv){
     fmt::print("\n");
 }
 
-void ambiguous_entity_match_scoring(int argc, char** argv){
+void ambiguous_entity_match_scoring(util::json_t const& config_json){
     std::cerr << "Test: wikidata::test::ambiguous_entity_match_scoring"<<std::endl;
     util::Timer timer;
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
 
     UnittestDataset testset{{config_json}};
     auto& entity_reprs = testset.entity_reprs;
@@ -324,22 +320,6 @@ void ambiguous_entity_match_scoring(int argc, char** argv){
             }
         }
     }
-    auto tsent1 = annotator.annotate(testset.sents[0]);
-    auto tsent2 = annotator.annotate(testset.sents[2]);
-    fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
-    fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
-    for(auto entity1 : tsent1.get_entities()){
-        for(auto entity2 : tsent2.get_entities()){
-            auto idx1 = entity1.words.front();
-            auto idx2 = entity2.words.front();
-            auto word1 = tokens.word_uid(idx1);
-            auto word2 = tokens.word_uid(idx2);
-            auto head1 = tokens.head_uid(idx1);
-            auto head2 = tokens.head_uid(idx2);
-            wordrep::Words words{{word1,head1, word2,head2}};
-            fmt::print("{}\n",words.repr(wordUIDs));
-        }
-    }
 }
 
 void ambiguous_entity_equality(){
@@ -354,24 +334,233 @@ void ambiguous_entity_equality(){
     assert(e2!=e3);
 }
 void test_all(int argc, char** argv) {
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    std::string query = util::string::read_whole(argv[2]);
+
     integer_list_ordering();
     greedy_matching();
 //    uid_lookup_benchmark();
-    compare_wordUIDs_and_WikidataUID(argc, argv);
-    annotate_sentence(argc,argv);
-    operation_wikiuid_on_sentence(argc,argv);
-    operation_ambiguous_entity_on_sentence(argc,argv);
-    ambiguous_entity_match_scoring(argc,argv);
+    compare_wordUIDs_and_WikidataUID(config_json, query);
+    annotate_sentence(config_json);
+    operation_wikiuid_on_sentence(config_json);
+    operation_ambiguous_entity_on_sentence(config_json);
+    ambiguous_entity_match_scoring(config_json);
     ambiguous_entity_equality();
 }
 
 }//namespace wikidata::test
 }//namespace wikidata
 
+namespace wordrep{
+namespace test{
+
+void acronyms_check(util::json_t const& config_json) {
+    std::cerr << "Test: wordrep::test::acrynyms_check" << std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
+    auto& acronymOps = testset.op_acronym;
+
+    auto ai = entity_reprs.get_synonyms(wikidataUIDs["Q1"]);
+    auto nlp = entity_reprs.get_synonyms(wikidataUIDs["Q2"]);
+    auto google = entity_reprs.get_synonyms(wikidataUIDs["Q4"]);
+    auto deepmind = entity_reprs.get_synonyms(wikidataUIDs["Q5"]);
+    auto chromeOS = entity_reprs.get_synonyms(wikidataUIDs["Q79531"]);
+
+    assert(acronymOps.is_acronyms(ai));
+    assert(wordUIDs["AI"]==acronymOps.to_acronyms(ai));
+    assert(acronymOps.is_acronyms(nlp));
+    assert(wordUIDs["NLP"]==acronymOps.to_acronyms(nlp));
+    assert(!acronymOps.is_acronyms(google));
+    assert(!acronymOps.is_acronyms(deepmind));
+    assert(!acronymOps.is_acronyms(chromeOS));
+}
+void named_entity_check(util::json_t const& config_json) {
+    std::cerr << "Test: wordrep::test::named_entity_check" << std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& op_named_entity = testset.op_named_entity;
+
+    auto ai       = wikidataUIDs["Q1"];
+    auto nlp      = wikidataUIDs["Q2"];
+    auto google   = wikidataUIDs["Q3"];
+    auto google2  = wikidataUIDs["Q4"];
+    auto deepmind = wikidataUIDs["Q5"];
+    auto week     = wikidataUIDs["Q23387"];
+    auto chromeOS = wikidataUIDs["Q79531"];
+    auto basf    = wikidataUIDs["Q9401"];
+    auto lc      = wikidataUIDs["Q131454"];
+    auto boa     = wikidataUIDs["Q487907"];
+    auto facebook= wikidataUIDs["Q380"];
+
+    assert(op_named_entity.is_named_entity(ai));
+    assert(op_named_entity.is_named_entity(nlp));
+    assert(op_named_entity.is_named_entity(google));
+    assert(op_named_entity.is_named_entity(google2));
+    assert(op_named_entity.is_named_entity(deepmind));
+    assert(!op_named_entity.is_named_entity(week));
+    assert(op_named_entity.is_named_entity(chromeOS));
+    assert(op_named_entity.is_named_entity(basf));
+    //TODO:Make fails test to success
+    assert(op_named_entity.is_named_entity(lc));//partially successed : Library of Congress
+//    assert(op_named_entity.is_named_entity(boa));//will fail : Bank of America
+//    assert(op_named_entity.is_named_entity(facebook));//will fail : Facebook
+
+}
+
+void representative_repr_of_query(util::json_t const& config_json) {
+    std::cerr << "Test: wordrep::test::representative_repr_of_query" << std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& wordUIDs     = testset.wordUIDs;
+    auto& tokens       = testset.tokens;
+    engine::SubmoduleFactory factory{{config_json}};
+    auto word_importance = factory.word_importance();
+    auto voca = factory.voca_info();
+    tokens.build_voca_index(voca.indexmap);
+
+    Scoring scoring{word_importance, voca.wvecs};
+
+    auto entity_uid = wikidataUIDs["Q2"];
+    auto entity = entity_reprs.get_synonyms(entity_uid);
+    for(auto words : entity.reprs){
+        fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
+    }
+    auto repr = scoring.max_score_repr(entity);
+    assert(scoring.phrase(repr) == scoring.phrase(entity));
+    auto& w = wordUIDs;
+    std::vector<WordUID> words = {w["natural"],w["language"],w["processing"]};
+    assert(repr == Words{std::move(words)});
+    fmt::print("{} : {}\n", repr.repr(wordUIDs), scoring.phrase(repr));
+}
+
+void scoring_words(util::json_t const& config_json){
+    std::cerr << "Test: wordrep::test::scoring_words"<<std::endl;
+    util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& entity_reprs = testset.entity_reprs;
+    auto& wordUIDs     = testset.wordUIDs;
+    auto& annotator    = testset.annotator;
+    auto& tokens       = testset.tokens;
+    auto& op_named_entity = testset.op_named_entity;
+    engine::SubmoduleFactory factory{{config_json}};
+    auto word_importance = factory.word_importance();
+    auto voca = factory.voca_info();
+    tokens.build_voca_index(voca.indexmap);
+
+    Scoring scoring{word_importance, voca.wvecs};
+
+    auto tsent1 = annotator.annotate(testset.sents[0]);
+    auto tsent2 = annotator.annotate(testset.sents[2]);
+    fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
+    fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
+    for(auto entity1 : tsent1.get_entities()){
+        for(auto uid: entity1.uids) fmt::print("{} ", wikidataUIDs[uid]);
+        fmt::print("\n");
+        auto idx1 = entity1.words.front();
+        DepPair dep_pair1{tsent1.sent, idx1};
+        for(auto entity2 : tsent2.get_entities()){
+            for(auto uid: entity2.uids) fmt::print("{} ", wikidataUIDs[uid]);
+            fmt::print("\n");
+            auto idx2 = entity2.words.front();
+            DepPair dep_pair2{tsent2.sent, idx2};
+
+            wordrep::Words words{{dep_pair1.word_dep,dep_pair1.word_gov,dep_pair2.word_dep,dep_pair2.word_gov}};
+            fmt::print("{} : {}\n",words.repr(wordUIDs), scoring.similarity(dep_pair1, dep_pair2));
+        }
+    }
+    fmt::print("\n");
+
+    auto& w=wordUIDs;
+    Words words{{w["European"],w["Union"]}};
+    fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
+
+    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+
+    fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
+    auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
+    for(auto& x : sent_to_scored1.entities){
+        for(auto entity : x.candidates) {
+            auto idx = x.idxs.dep_token_idx(tokens);
+            fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
+                       tokens.word_pos(idx),
+                       x.idxs.size(),
+                       wordUIDs[tokens.word_uid(idx)],
+                       wordUIDs[tokens.head_uid(idx)],
+                       scoring.max_score_repr(entity_reprs.get_synonyms(entity.uid)).repr(wordUIDs),
+                       entity.score);
+        }
+    }
+    for(auto& w : sent_to_scored1.words){
+        wordrep::Words words{{w.word_dep,w.word_gov}};
+        fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
+                   word_importance.score(w.word_dep),word_importance.score(w.word_gov));
+    }
+    fmt::print("\n");
+
+    fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
+    auto sent_to_scored2 = scoring_preprocessor.sentence(tsent2);
+    for(auto& x : sent_to_scored2.entities){
+        for(auto entity : x.candidates) {
+            auto idx = x.idxs.dep_token_idx(tokens);
+            fmt::print("{}:{} dep:{} gov:{}\t{}\t: {}\n",
+                       tokens.word_pos(idx),
+                       x.idxs.size(),
+                       wordUIDs[tokens.word_uid(idx)],
+                       wordUIDs[tokens.head_uid(idx)],
+                       scoring.max_score_repr(entity_reprs.get_synonyms(entity.uid)).repr(wordUIDs),
+                       entity.score);
+        }
+    }
+    for(auto& w : sent_to_scored2.words){
+        wordrep::Words words{{w.word_dep,w.word_gov}};
+        fmt::print("{}\t:{}:dep\t{}:gov\n",words.repr(wordUIDs),
+                   word_importance.score(w.word_dep),word_importance.score(w.word_gov));
+    }
+    fmt::print("\n");
+    for(auto& x : sent_to_scored1.entities){
+        for(auto& y : sent_to_scored2.entities){
+            fmt::print("{} vs {} : {}\n", x.repr(tokens, wordUIDs), y.repr(tokens, wordUIDs),
+                       scoring.similarity(x, y));
+        }
+    }
+
+    for(auto& x : sent_to_scored2.words){
+        for(auto& y : sent_to_scored1.words){
+            fmt::print("{} vs {} : {}\n", x.repr(wordUIDs), y.repr(wordUIDs),
+                       scoring.similarity(x, y));
+        }
+    }
+};
+
+void test_all(int argc, char** argv){
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    acronyms_check(config_json);
+    named_entity_check(config_json);
+    representative_repr_of_query(config_json);
+    scoring_words(config_json);
+}
+
+}//namespace wordrep::test
+}//namespace wordrep
+
 int main(int argc, char** argv){
     util::Timer timer;
 
-    wikidata::test::test_all(argc, argv);
+//    wikidata::test::test_all(argc, argv);
+    wordrep::test::test_all(argc,argv);
     return 0;
 
     assert(argc>2);

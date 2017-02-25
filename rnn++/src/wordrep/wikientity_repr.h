@@ -5,6 +5,7 @@
 
 #include "wordrep/indexes.h"
 #include "wordrep/words.h"
+#include "wordrep/sentence.h"
 
 namespace wordrep{
 namespace wiki{
@@ -32,12 +33,6 @@ struct Entity{
 };
 std::ostream& operator<< (std::ostream& os, Entity const& a);
 
-struct Synonyms{
-    WikidataUID uid;
-    std::vector<Words> reprs;
-};
-
-
 struct AmbiguousEntity{
     size_t offset;
     size_t len;
@@ -55,6 +50,11 @@ struct AmbiguousEntity{
     friend bool operator!=(AmbiguousEntity const& x, AmbiguousEntity const& y){
         return !(x==y);
     }
+};
+
+struct Synonyms{
+    WikidataUID uid;
+    std::vector<Words> reprs;
 };
 
 struct EntityReprs{
