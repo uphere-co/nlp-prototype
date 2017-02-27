@@ -363,7 +363,7 @@ int main(int argc, char** argv){
 //    return 0;
 
     data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
-    auto raw_query_str = util::string::read_whole(input);
+    auto raw_query_str = util::string::strip(util::string::read_whole(input));
     auto raw_query_json = corenlp_client.from_query_content(raw_query_str);
     raw_query_json["query_str"] = raw_query_str;
 

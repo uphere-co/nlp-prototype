@@ -280,6 +280,7 @@ struct ProcessQuerySent{
         auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
         op_similarity.build_lookup_cache(vidxs);
 
+
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
@@ -299,7 +300,7 @@ struct ProcessQuerySent{
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
-        tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
+        tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
             auto sent = data_sents[i];
             if(!op_ne.isin(sent)) return;
             auto tagged_sent = wiki.annotator.annotate(sent);
