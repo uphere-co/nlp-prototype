@@ -675,9 +675,9 @@ void test_all(int argc, char** argv){
 int main(int argc, char** argv){
     util::Timer timer;
 
-    wikidata::test::test_all(argc, argv);
-    wordrep::test::test_all(argc,argv);
-    return 0;
+//    wikidata::test::test_all(argc, argv);
+//    wordrep::test::test_all(argc,argv);
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -694,7 +694,6 @@ int main(int argc, char** argv){
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
-    //TODO: Constructing EntityReprs with 14M entities takes more than 20s!
     wordrep::wiki::EntityReprs entity_reprs{entities.entities};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
@@ -705,7 +704,6 @@ int main(int argc, char** argv){
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-//        fmt::print("{} {} : {}\n", tag.offset, tag.len, wikidataUIDs[tag.uid]);
         fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
     return 0;
 }
