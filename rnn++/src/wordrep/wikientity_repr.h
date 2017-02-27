@@ -6,37 +6,37 @@ namespace wordrep{
 namespace wiki{
 
 struct EntityReprs{
-    using dict_type = std::map<WikidataUID, std::vector<Words>>;
-    using value_type = dict_type::value_type;
     struct OpCompare{
         OpCompare(EntityReprs const& self) : dict{self} {}
         bool exact_match(WikidataUID uid, std::vector<WordUID> qwords) const {
-            auto it = dict.reprs.find(uid);
-            if(it==dict.reprs.cend()) return false;
-            OpEntityCompare op{*it};
+            auto mit = dict.find(uid);
+            if(!mit) return false;
+            auto synonym = mit.value();
+            OpEntityCompare op{synonym};
             return op.exact_match(qwords);
         }
         template<typename TI>
         size_t exact_match(WikidataUID uid, TI beg, TI end) const {
-            auto it = dict.reprs.find(uid);
-            if(it ==dict.reprs.cend()) return 0;
-            OpEntityCompare op{*it};
+            auto mit = dict.find(uid);
+            if(!mit) return 0;
+            auto synonym = mit.value();
+            OpEntityCompare op{synonym};
             return op.exact_match(beg,end);
         }
         EntityReprs const& dict;
     };
     struct OpEntityCompare{
-        OpEntityCompare(value_type const& reprs) : reprs{reprs} {}
+        OpEntityCompare(Synonyms const& reprs) : synonyms{reprs} {}
         bool exact_match(std::vector<WordUID> qwords) const {
-            for(auto words : reprs.second) if(words.uids == qwords) return true;
+            for(auto repr : synonyms.reprs) if(repr.uids == qwords) return true;
             return false;
         }
         template<typename TI>
         size_t exact_match(TI beg, TI end) const {
-            for(auto words : reprs.second){
-                auto match=words.size();
+            for(auto repr : synonyms.reprs){
+                auto match=repr.size();
                 auto q=beg;
-                for(auto uid : words.uids){
+                for(auto uid : repr.uids){
                     if(*q != uid || q==end) {
                         match=0;
                         break;
@@ -54,7 +54,7 @@ struct EntityReprs{
                     return true;
             return false;
         }
-        value_type reprs;
+        Synonyms synonyms;
     };
     struct OpAmbiguousEntityCompare{
         bool exact_match(std::vector<WordUID> qwords) const {
@@ -89,17 +89,15 @@ struct EntityReprs{
         std::vector<OpAmbiguousEntityCompare> ops;
     };
 
-    EntityReprs(std::vector<Entity> const& entities){
-        for(auto& entity : entities)
-            reprs[entity.uid].push_back(entity.words);
-    }
+    EntityReprs(std::vector<Entity> entities);
     OpCompare get_comparison_operator() const{
         return {*this};
     }
     OpEntityCompare get_comparison_operator(WikidataUID uid) const{
-        auto it = reprs.find(uid);
-        if(it==reprs.cend()) assert(0);
-        return {*it};
+        auto mit = find(uid);
+        if(!mit) assert(0);
+        auto it = mit.value();
+        return {it};
     }
     OpAmbiguousEntityCompare get_comparison_operator(AmbiguousUID const& entity) const{
         OpAmbiguousEntityCompare op{};
@@ -114,7 +112,9 @@ struct EntityReprs{
     Entity operator[](WikidataUID uid) const;
     Synonyms get_synonyms(WikidataUID uid) const;
 
-    dict_type reprs;
+private:
+    std::vector<Entity> dict;
+    std::optional<Synonyms> find(WikidataUID uid) const;
 };
 
 }//namespace wordrep::wiki

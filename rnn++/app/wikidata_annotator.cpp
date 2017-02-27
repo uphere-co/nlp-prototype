@@ -206,7 +206,6 @@ void annotate_sentence(util::json_t const& config_json){
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : testset.entities.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
-
     for (auto sent : testset.sents) {
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
         auto tagged_sent = testset.annotator.annotate(sent);
@@ -348,6 +347,7 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
 }
 
 void ambiguous_entity_equality(){
+    std::cerr << "Test: wikidata::test::ambiguous_entity_equality"<<std::endl;
     //e1 is one of {0,1,2};
     wordrep::wiki::AmbiguousEntity e1{0,2,{{0,1,2}}};
     //e2 is one of {0,5};
@@ -358,6 +358,53 @@ void ambiguous_entity_equality(){
     assert(e1==e3);
     assert(e2!=e3);
 }
+
+void block_binary_search(){
+    std::cerr << "Test: wikidata::test::block_binary_search"<<std::endl;
+    using wordrep::WikidataUID;
+    using wordrep::WordUID;
+    std::vector<wordrep::wiki::Entity> items =
+            {{1,   {1, 2}},
+             {1,   {1, 2}},
+             {2,   {1, 3}},
+             {2,   {1, 2, 3}},
+             {3,   {1, 2, 3}},
+             {3,   {1, 2, 3}},
+             {4,   {2, 3, 4}},
+             {4,   {5}},
+             {5,   {5}},
+             {5,   {5}},
+             {6,   {6, 7}},
+             {7,   {2, 3}},
+             {8,   {5, 6, 8}},
+             {8,   {9}},
+             {10,  {9,10}}};
+    std::sort(items.begin(), items.end(), [](auto x, auto y){return x.uid<y.uid;});
+
+    auto find = [&items](wordrep::WikidataUID uid){
+        auto less = [uid](auto& rhs){return uid <rhs.uid;};
+        auto eq   = [uid](auto& rhs){return uid==rhs.uid;};
+        auto beg = items.cbegin();
+        auto end = items.cend();
+        auto mit= util::binary_find_block(beg, end, eq, less);
+        if(!mit) assert(0);
+        return mit.value();
+    };
+    auto diff = [](auto pair){return pair.second-pair.first;};
+    assert(diff(find(1))==2);
+    assert(diff(find(2))==2);
+    assert(diff(find(3))==2);
+    assert(diff(find(4))==2);
+    assert(diff(find(5))==2);
+    assert(diff(find(6))==1);
+    assert(diff(find(7))==1);
+    assert(diff(find(8))==2);
+    assert(diff(find(10))==1);
+    wordrep::wiki::EntityReprs entity_reprs{items};
+    auto op=entity_reprs.get_comparison_operator(1);
+    assert(op.exact_match({1,2}));
+}
+
 void test_all(int argc, char** argv) {
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -365,6 +412,7 @@ void test_all(int argc, char** argv) {
 
     integer_list_ordering();
     greedy_matching();
+    block_binary_search();
 //    uid_lookup_benchmark();
     compare_wordUIDs_and_WikidataUID(config_json, query);
     annotate_sentence(config_json);
@@ -646,8 +694,7 @@ int main(int argc, char** argv){
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
-    //TODO: Constructing EntityReprs with 14M entities takes more than 20s!
-//    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
@@ -657,7 +704,6 @@ int main(int argc, char** argv){
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-        fmt::print("{} {} : {}\n", tag.offset, tag.len, wikidataUIDs[tag.uid]);
-//        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
+        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
     return 0;
 }

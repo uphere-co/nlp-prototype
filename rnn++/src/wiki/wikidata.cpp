@@ -28,13 +28,13 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
 //    fmt::print(std::cerr, "Sent length : {}\n", sent_end-sent_beg);
     while(true){
         auto t = *(sent_beg+offset+i);
-        //auto min_len = i+1;
-        auto eq   = [t,i](wordrep::wiki::Entity const& x){
-            if(x.words.size()<=i) return false;
+        auto min_len = i+1;
+        auto eq   = [t,i,min_len](wordrep::wiki::Entity const& x){
+            if(x.words.size()<min_len) return false;
             return t==x.words.uids[i];
         };
-        auto less = [t,i](wordrep::wiki::Entity const& x){
-            if(x.words.size()<=i) return true;
+        auto less = [t,i,min_len](wordrep::wiki::Entity const& x){
+            if(x.words.size()<min_len) return true;
             return t>x.words.uids[i];
         };
 //        fmt::print(std::cerr, "offset = {}, i = {},   end:{} beg:{}\n", offset, i, pend-beg,pbeg-beg);
