@@ -77,9 +77,12 @@ struct Scoring{
             return uids;
         }
         void filter_false_named_entity(POSUIDindex const& posUIDs){
-            for(auto it=entities.begin(); it!=entities.end();){
+            for(auto it=entities.begin(); it<entities.end();){
                 auto& entity = *it;
-                if(entity.idxs.size()!=1) continue;
+                if(entity.idxs.size()!=1) {
+                    ++it;
+                    continue;
+                }
                 auto idx = entity.idxs.front();
                 auto is_noun = [&posUIDs](auto pos){
                     auto NN = posUIDs["NN"];
