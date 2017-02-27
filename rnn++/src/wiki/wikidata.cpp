@@ -25,8 +25,10 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
     auto pbeg = beg;
     auto pend = end;
 
+//    fmt::print(std::cerr, "Sent length : {}\n", sent_end-sent_beg);
     while(true){
         auto t = *(sent_beg+offset+i);
+        //auto min_len = i+1;
         auto eq   = [t,i](wordrep::wiki::Entity const& x){
             if(x.words.size()<=i) return false;
             return t==x.words.uids[i];
@@ -35,7 +37,11 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
             if(x.words.size()<=i) return true;
             return t>x.words.uids[i];
         };
+//        fmt::print(std::cerr, "offset = {}, i = {},   end:{} beg:{}\n", offset, i, pend-beg,pbeg-beg);
         auto mit = util::binary_find(pbeg, pend, eq, less);
+
+//        bool is_it{mit};
+//        fmt::print(std::cerr, "offset = {}, i = {}, {} end:{} beg:{}\n", offset, i, is_it, pend-beg,pbeg-beg);
         if(!mit) {
             if(i == 0) {
                 tokens.push_back({WordWithOffset{offset,t}});
@@ -44,9 +50,14 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
                 wordrep::wiki::AmbiguousUID uid;
                 for(auto it=pbeg; it!=pend; ++it)
                     if(it->words.size()==i) uid.candidates.push_back(it->uid);
-                if(!uid.candidates.empty()) tokens.push_back({wordrep::wiki::AmbiguousEntity{offset,i,uid}});
-                offset += i;
-                i = 0;
+                if(uid.candidates.empty()){
+                    ++offset;
+                    i = 0;
+                } else{
+                    tokens.push_back({wordrep::wiki::AmbiguousEntity{offset,i,uid}});
+                    offset += i;
+                    i = 0;
+                }
             }
             if(!(sent_beg + offset<sent_end)) break;
             pbeg = beg;
