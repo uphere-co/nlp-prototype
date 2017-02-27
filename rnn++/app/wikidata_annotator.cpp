@@ -71,6 +71,17 @@ void integer_list_ordering(){
     assert(vs[2]==b);
     assert(vs[3]==c);
     assert(vs[4]==d);
+
+    using wordrep::wiki::Entity;
+    assert(!(Entity{1,{1,2}}<Entity{1,{1,2}}));
+    assert(!(Entity{11,{1,2}}<Entity{1,{1,2}}));
+    assert(!(Entity{1,{1,2}}<Entity{11,{1,2}}));
+    assert((Entity{1,{1,3}}<Entity{2,{1,2}}));
+
+    assert((Entity{1,{1,3}}<Entity{2,{1,1,1}}));
+    assert((Entity{1,{1,3,1}}<Entity{2,{1,3}}));
+    assert((Entity{1,{1,1,2}}<Entity{2,{1,1,1}}));
+    assert((Entity{1,{2,1,1}}<Entity{2,{1,2,2}}));
 }
 
 void greedy_matching() {
@@ -86,7 +97,10 @@ void greedy_matching() {
              {55,  {5}},
              {555, {5}},
              {6,   {6, 7}},
-             {7,   {2, 3}}};
+             {7,   {2, 3}},
+             {8,   {5, 6, 8}},
+             {9,   {9}},
+             {10,  {9,10}}};
     std::sort(items.begin(), items.end());
     SortedEntities entities{items};
     std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
@@ -101,8 +115,18 @@ void greedy_matching() {
 
     GreedyAnnotator annotator{entities};
     auto tags = annotator.annotate(text);
+    auto uids = util::map(tags, [](auto tag){return tag.uid;});
+    assert(util::isin(uids, {6}));
+    assert(!util::isin(uids, {8}));
     for (auto tag : tags)
         fmt::print("{} {} : {}\n", tag.offset, tag.len,  tag.uid);
+    {
+        std::vector<wordrep::WordUID> text = {9,10};
+        auto tags = annotator.annotate(text);
+        auto uids = util::map(tags, [](auto tag){return tag.uid;});
+        assert(!util::isin(uids, {9}));
+        assert(util::isin(uids, {10}));
+    }
 }
 
 void uid_lookup_benchmark() {
@@ -170,6 +194,7 @@ void compare_wordUIDs_and_WikidataUID(util::json_t const& config_json,
 }
 
 void annotate_sentence(util::json_t const& config_json){
+    std::cerr << "Test: wikidata::test::annotate_sentence"<<std::endl;
     util::Timer timer;
 
     UnittestDataset testset{{config_json}};
@@ -235,7 +260,7 @@ void operation_wikiuid_on_sentence(util::json_t const& config_json){
             for(auto head : heads) fmt::print(std::cerr, "{} ", head);
             fmt::print(std::cerr, "\n");
         }
-        assert(is_contain(sent, op_contain_nlp).empty());
+//        assert(is_contain(sent, op_contain_nlp).empty());
     }
 }
 
@@ -603,12 +628,12 @@ int main(int argc, char** argv){
     util::Timer timer;
 
 //    wikidata::test::test_all(argc, argv);
-    wordrep::test::test_all(argc,argv);
-    return 0;
+//    wordrep::test::test_all(argc,argv);
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
-    std::string query = util::string::read_whole(argv[2]);
+    std::string query = util::string::strip(util::string::read_whole(argv[2]));
 
     engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
@@ -622,16 +647,17 @@ int main(int argc, char** argv){
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
     //TODO: Constructing EntityReprs with 14M entities takes more than 20s!
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+//    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
     auto words = util::string::split(query, " ");
     std::vector<wordrep::WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
+
     auto tags = annotator.annotate(text);
     timer.here_then_reset(fmt::format("Annotate a query of {} words.", words.size()));
     for(auto tag : tags)
-//        fmt::print("{} {} : {}\n", tag.offset, tag.len, wikidataUIDs[tag.uid]);
-        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
+        fmt::print("{} {} : {}\n", tag.offset, tag.len, wikidataUIDs[tag.uid]);
+//        fmt::print("{} {} : {}\n", tag.offset, tag.len, entity_reprs[tag.uid].repr(wikidataUIDs, wordUIDs));
     return 0;
 }
