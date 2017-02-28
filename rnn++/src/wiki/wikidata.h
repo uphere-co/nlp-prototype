@@ -1,7 +1,4 @@
 #pragma once
-
-#include <sstream>
-#include <iostream>
 #include <vector>
 
 #include "wordrep/word_uid.h"
@@ -16,6 +13,7 @@
 namespace wordrep{
 struct DepParsedTokens;
 }
+
 namespace wikidata{
 
 struct SortedEntities{
