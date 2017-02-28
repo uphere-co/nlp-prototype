@@ -29,6 +29,15 @@ UIDIndex<TUID>::UIDIndex(std::string file) : current_idx{typename TUID::val_t{0}
 }
 
 template<typename TUID>
+bool UIDIndex<TUID>::isin(uid_t uid) const {
+    auto eq   = [uid](auto x){return uid==x.first;};
+    auto less = [uid](auto x){return uid<x.first;};
+    auto mit = util::binary_find(uid2word, eq, less);
+    if(!mit) return false;
+    return true;
+}
+
+template<typename TUID>
 typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::get_uid(std::string const &word) {
     return uid_t::from_unsigned(hash(word));
 }

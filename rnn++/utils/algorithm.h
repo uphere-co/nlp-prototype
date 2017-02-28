@@ -209,13 +209,24 @@ std::optional<TI> binary_find(TI beg, TI end, T val) {
 
 //less{val}(x) :: true if val < x;
 template<typename TI, typename TE, typename TL>
-std::optional<TI> binary_find(TI beg, TI end, TE const& eq,  TL const& less) {
+std::optional<TI> binary_find(TI beg, TI end, TE const& eq, TL const& less) {
     if(beg==end) return {};
     auto it = beg + (end-beg)/2;
     if(eq(*it)) return it;
     else if(end-beg==1) return {};
     else if(less(*it)) return binary_find(beg, it, eq, less);
     return binary_find(it, end, eq, less);
+}
+
+template<typename TI, typename TE, typename TL>
+std::optional<std::pair<TI,TI>> binary_find_block(TI beg, TI end, TE const& eq, TL const& less) {
+    auto mit =  binary_find(beg, end, eq, less);
+    if(!mit) return {};
+    auto it = mit.value();
+    auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
+    auto pbeg = std::find_if_not(to_reverse(it), to_reverse(beg), eq).base();
+    auto pend = std::find_if_not(it, end, eq);
+    return std::make_pair(pbeg,pend);
 }
 
 template<typename T>
@@ -230,6 +241,12 @@ auto binary_find(std::vector<T> const &vs, TE const& eq, TL const& less){
     auto beg = vs.cbegin();
     auto end = vs.cend();
     return binary_find(beg,end,eq, less);
+}
+template<typename T, typename TE, typename TL>
+auto binary_find_block(std::vector<T> const &vs, TE const& eq, TL const& less){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find_block(beg,end,eq, less);
 }
 
 template<typename TK, typename TV>

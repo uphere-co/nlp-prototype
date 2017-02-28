@@ -4,7 +4,6 @@
 
 #include <fmt/printf.h>
 
-#include "wordrep/word_iter.h"
 #include "wordrep/dep_parsed.h"
 
 #include "utils/base_types.h"
@@ -16,8 +15,8 @@
 namespace{
 using namespace wikidata;
 template<typename TI>
-AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_beg, TI sent_end) {
-    AnnotatedSentence out;
+std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> const& entities, TI sent_beg, TI sent_end) {
+    std::vector<AnnotatedToken> tokens;
     auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
     size_t offset=0;
     size_t i = 0;
@@ -26,28 +25,39 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
     auto pbeg = beg;
     auto pend = end;
 
+//    fmt::print(std::cerr, "Sent length : {}\n", sent_end-sent_beg);
     while(true){
         auto t = *(sent_beg+offset+i);
-        auto eq   = [t,i](Entity const& x){
-            if(x.words.size()<=i) return false;
-            return t==x.words[i];
+        auto min_len = i+1;
+        auto eq   = [t,i,min_len](wordrep::wiki::Entity const& x){
+            if(x.words.size()<min_len) return false;
+            return t==x.words.uids[i];
         };
-        auto less = [t,i](Entity const& x){
-            if(x.words.size()<=i) return true;
-            return t>x.words[i];
+        auto less = [t,i,min_len](wordrep::wiki::Entity const& x){
+            if(x.words.size()<min_len) return true;
+            return t>x.words.uids[i];
         };
+//        fmt::print(std::cerr, "offset = {}, i = {},   end:{} beg:{}\n", offset, i, pend-beg,pbeg-beg);
         auto mit = util::binary_find(pbeg, pend, eq, less);
+
+//        bool is_it{mit};
+//        fmt::print(std::cerr, "offset = {}, i = {}, {} end:{} beg:{}\n", offset, i, is_it, pend-beg,pbeg-beg);
         if(!mit) {
             if(i == 0) {
-                out.tokens.push_back({WordWithOffset{offset,1,t}});
+                tokens.push_back({WordWithOffset{offset,t}});
                 ++offset;
             } else {
-                AmbiguousEntity entity;
+                wordrep::wiki::AmbiguousUID uid;
                 for(auto it=pbeg; it!=pend; ++it)
-                    if(it->words.size()==i) entity.entities.push_back({offset,i,it->uid});
-                if(!entity.entities.empty()) out.tokens.push_back({entity});
-                offset += i;
-                i = 0;
+                    if(it->words.size()==i) uid.candidates.push_back(it->uid);
+                if(uid.candidates.empty()){
+                    ++offset;
+                    i = 0;
+                } else{
+                    tokens.push_back({wordrep::wiki::AmbiguousEntity{offset,i,uid}});
+                    offset += i;
+                    i = 0;
+                }
             }
             if(!(sent_beg + offset<sent_end)) break;
             pbeg = beg;
@@ -59,42 +69,33 @@ AnnotatedSentence greedy_annotate(std::vector<Entity> const& entities, TI sent_b
         pend = std::find_if_not(it, pend, eq);
         ++i;
     }
-    return out;
+    return tokens;
 }
 
 }//nameless namespace
 
 namespace wikidata{
 
-Entity::Entity(wordrep::WordUIDindex const& wordUIDs, std::string line) {
-    auto tokens = util::string::split(line, "\t");
-    if(tokens.size()!=2){
-        fmt::print("{}\n", line);
-        assert(0);
-    }
-    uid = wordrep::WikidataUIDindex::get_uid(tokens[0]);
-    wordrep::WordIterBase<std::string> word_iter{tokens[1]};
-    word_iter.iter([this,&wordUIDs](auto w){words.push_back(wordUIDs[w]);});
-//        for(auto w : util::string::split(tokens[1], " "))
-
-}
-
-std::string Entity::repr(wordrep::WikidataUIDindex const& wikidataUIDs,
-                 wordrep::WordUIDindex const& wordUIDs) const{
+std::string AnnotatedToken::repr(wordrep::wiki::EntityReprs const& entity_reprs,
+                 wordrep::WikidataUIDindex const& wikidataUIDs,
+                 wordrep::WordUIDindex const& wordUIDs) const {
     std::stringstream ss;
-    ss << wikidataUIDs[uid];
-    for(auto word : words) ss << " " << wordUIDs[word];
+    val.match([&ss,&entity_reprs,&wordUIDs,&wikidataUIDs](wordrep::wiki::AmbiguousEntity w) {
+        fmt::print(ss," (");
+        for (auto uid : w.uid.candidates)
+            fmt::print(ss,"{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
+        fmt::print(ss,")");
+    },
+    [&ss,&wordUIDs](WordWithOffset w) {
+        fmt::print(ss,"{} ", wordUIDs[w.uid]);
+    });
     return ss.str();
 }
-std::ostream& operator<< (std::ostream& os, Entity const& a){
-    fmt::print(os, "{}\t", a.uid);
-    for(auto word: a.words) fmt::print(os, " {}", word);
-    return os;
-}
+
 
 SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
     tbb::task_group g;
-    tbb::concurrent_vector<Entity> items;
+    tbb::concurrent_vector<wordrep::wiki::Entity> items;
 
     util::Timer timer;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
@@ -111,7 +112,7 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
     timer.here_then_reset("Read all items.");
     tbb::parallel_sort(items.begin(), items.end());
     timer.here_then_reset("Sorted items.");
-    std::vector<Entity> entities;
+    std::vector<wordrep::wiki::Entity> entities;
     for(auto&& item : items) entities.push_back(std::move(item));
     return SortedEntities{std::move(entities)};
 }
@@ -121,48 +122,28 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 }
 
 
-Entity EntityReprs::operator[](wordrep::WikidataUID uid) const{
-    auto it = reprs.find(uid);
-    assert(it!=reprs.end());
-    return {uid,it->second.front()};
-}
+
 
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
-    auto tagged_sent = greedy_annotate(entities, text.begin(), text.end());
+    auto tokens = greedy_annotate(entities, text.begin(), text.end());
     std::vector<TaggedEntity> tagged;
-    for(auto token : tagged_sent.tokens){
-        token.token.match([](WordWithOffset){},
-                          [&tagged](AmbiguousEntity& w){
-                              for(auto& entity : w.entities)
-                                  tagged.push_back(entity);
+    for(auto token : tokens){
+        token.val.match([](WordWithOffset){},
+                          [&tagged](wordrep::wiki::AmbiguousEntity& w){
+                              for(auto& uid : w.uid.candidates)
+                                  tagged.push_back({w.offset,w.len, uid});
                           });
     }
     return tagged;
 }
 
-AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
-    return greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
+wordrep::AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
+    auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
+    return {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
 }
 
-std::vector<ConsecutiveTokens> is_contain(wordrep::Sentence const& sent,
-                                          EntityReprs::OpEntityCompare const& op){
-    std::vector<ConsecutiveTokens> offsets;
-    auto iter_words = sent.iter_words();
-    auto beg = iter_words.begin();
-    auto end = iter_words.end();
-    auto idx_beg=sent.front();
-    for(auto it=beg; it!=end; ){
-        auto n = op.exact_match(it,end);
-        if(n){
-            offsets.push_back({idx_beg+(it-beg),n});
-            it = it + n;
-        } else{
-            ++it;
-        }
-    }
-    return offsets;
-}
-std::vector<wordrep::WordPosition> head_word(wordrep::DepParsedTokens const& dict, ConsecutiveTokens words){
+std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const& dict,
+                                             wordrep::ConsecutiveTokens words){
     auto positions = util::map(words,[&dict](auto idx){return dict.word_pos(idx);});
     std::vector<wordrep::WordPosition> heads;
     for(auto idx : words){

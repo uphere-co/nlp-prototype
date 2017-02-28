@@ -26,6 +26,7 @@ message("rnn++ path: " ${RNNPP_PATH})
 
 FILE(GLOB parser_files ${RNNPP_PATH}/src/parser/* ${RNNPP_PATH}/src/*)
 FILE(GLOB wordrep_files ${RNNPP_PATH}/src/wordrep/*cpp)
+FILE(GLOB wiki_files ${RNNPP_PATH}/src/wiki/*cpp)
 FILE(GLOB similarity_files ${RNNPP_PATH}/src/similarity/*cpp)
 FILE(GLOB util_files ${RNNPP_PATH}/utils/*cpp)
 FILE(GLOB etl_files ${RNNPP_PATH}/src/data_source/*cpp)
@@ -36,7 +37,7 @@ FILE(GLOB etl_files ${RNNPP_PATH}/src/data_source/*cpp)
 #target_link_libraries(trainer hdf5_cpp hdf5_hl_cpp tbb fmt)
 
 add_executable(query_similarity app/query_similarity
-               ${similarity_files} ${wordrep_files} ${util_files} ${etl_files})
+               ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files} ${etl_files})
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pq pqxx)
 #target_link_libraries(query_similarity hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx) #Link errors if includes `pq`
 target_link_libraries(query_similarity stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt zmq pqxx dw)

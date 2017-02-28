@@ -1,4 +1,4 @@
-project(rnnparser)
+project(rnnpp)
 cmake_minimum_required(VERSION 3.4)
 
 SET(HOME $ENV{HOME})
@@ -39,7 +39,7 @@ FILE(GLOB test_files tests/*cpp)
 
 add_executable(test_all app/test_all ${test_files}
         ${rnn_files} ${rnn_simple_model_files}
-        ${similarity_files}
+        ${similarity_files} ${wiki_files}
         ${etl_files} ${util_files} ${wordrep_files})
 target_link_libraries(test_all stdc++fs hdf5_cpp hdf5_hl_cpp lbfgs tbb fmt pqxx dw)
 
@@ -82,32 +82,32 @@ add_executable(parser_similarity app/parser_eval tests/test_tree_spans
                utils/string)
 
 add_executable(nndep_reader app/nndep_reader
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(nndep_reader stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(stress_query_engine app/stress_query_engine
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(stress_query_engine stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(ygpdb_etl app/ygpdb_etl
-               ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+               ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(ygpdb_dump app/ygpdb_dump
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(ygpdb_dump stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_count app/word_count
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(word_count stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_count_collect app/word_count_collect
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(word_count_collect stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(show_words_in_voca app/show_words_in_voca
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(show_words_in_voca stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_importance_build app/word_importance_build
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(word_importance_build stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_importance_export app/word_importance_export
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(word_importance_export stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(word_context app/word_context
@@ -124,11 +124,11 @@ add_executable(index_words app/index_words
                ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(index_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
-add_executable(wikidata_annotator app/wikidata_annotator ${wiki_files}
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+add_executable(wikidata_annotator app/wikidata_annotator
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(wikidata_annotator stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
-add_executable(wikidata_etl app/wikidata_etl ${wiki_files}
-        ${etl_files} ${similarity_files} ${wordrep_files} ${util_files})
+add_executable(wikidata_etl app/wikidata_etl
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 
@@ -148,15 +148,14 @@ add_library(parser STATIC ${simple_model_parsers} ${util_files})
 target_link_libraries(parser stdc++fs fmt tbb hd5f_cpp)  # not effective when making query package
 
 # etl_files may need to be splitted out as a separate package.
-add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files}  ${util_files})
+add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files} ${wiki_files}  ${util_files})
 target_link_libraries(similarity stdc++fs fmt tbb hd5f_cpp pqxx dw) # not effective when making query package
-
 
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
 
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
-target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs) # not effective when making query package
+target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
 install(TARGETS train_model0 train_model1 train_model4 parser_model1 parser_model4 phrases_model4 parser_similarity RUNTIME DESTINATION bin)
 
@@ -173,6 +172,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/similarity" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/data_source" DESTINATION include)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/wordrep" DESTINATION include)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/wiki" DESTINATION include)
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/dataset.h" DESTINATION include)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/wrapper/enginewrapper.h" DESTINATION include)

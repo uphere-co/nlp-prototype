@@ -20,8 +20,8 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
     std::sort(scores.begin(), scores.end(), [](auto x, auto y){return x.second>y.second;});
     auto pair = scores.front();
     auto idx  = pair.first;
-    auto i_word_beg = idx;
-    auto i_word_end = idx;
+    auto i_word_beg = idx.front();
+    auto i_word_end = idx.back();
     CharOffset clip_beg = tokens.word_beg(i_word_beg);
     CharOffset clip_end = tokens.word_end(i_word_end);
     auto len_sent = sent.chrlen();
@@ -31,14 +31,14 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
     for(auto pair : scores){
         auto idx = pair.first;
         //auto score = pair.second;
-        auto beg = tokens.word_beg(idx);
-        auto end = tokens.word_end(idx);
+        auto beg = tokens.word_beg(idx.front());
+        auto end = tokens.word_end(idx.back());
         if(beg<clip_beg && clip_end < beg+max_len ) {
             clip_beg = beg;
-            i_word_beg = idx;
+            i_word_beg = idx.front();
         } else if(end>clip_end && end < clip_beg+max_len ) {
             clip_end = end;
-            i_word_end = idx;
+            i_word_end = idx.back();
         }
 //        fmt::print("{} {} {} {}\n", idx.val, score, tokens.word_beg(idx).val, tokens.word_end(idx).val);
     }
@@ -63,6 +63,23 @@ auto get_clip_offset = [](Sentence sent, engine::DepSearchScore const &score, au
 }//nameless namespace
 
 namespace engine{
+
+ScoredSentence output(wordrep::Scoring::ScoredSentence const& sent){
+    DepSearchScore score{0};
+    for(auto e : sent.entities) {
+        if(!e.second) continue;
+        auto& query = e.first;
+        auto& matched = e.second.value();
+        score.insert(query.idxs, matched);
+    }
+    for(auto e : sent.words){
+        if(!e.second) continue;
+        auto& query = e.first;
+        auto& matched = e.second.value();
+        score.insert({query.idx}, matched);
+    }
+    return {sent.orig, score};
+}
 
 //Select top N results by sent_uid
 std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_sents,
@@ -91,14 +108,14 @@ std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence>
     auto end = relevant_sents.end();
     std::partial_sort(beg,end,end, [](auto const &x, auto const &y){
         if(x.score==y.score)
-            return x.sent.tokens->chunk_idx(x.sent.front())<y.sent.tokens->chunk_idx(y.sent.front());
+            return x.sent.dict->chunk_idx(x.sent.front())<y.sent.dict->chunk_idx(y.sent.front());
         return x.score > y.score;});
     auto score_cutoff = 0.5*relevant_sents.front().score;
     auto rank_cut = beg;
     std::set<ChunkIndex> chunk_idxs;
     while(rank_cut!=end && chunk_idxs.size()<n_unique_chunk_idx){
         if(rank_cut->score<score_cutoff) break;
-        chunk_idxs.insert(rank_cut->sent.tokens->chunk_idx(rank_cut->sent.front()));
+        chunk_idxs.insert(rank_cut->sent.dict->chunk_idx(rank_cut->sent.front()));
         ++rank_cut;
     }
     std::vector<ScoredSentence> top_n_results;
@@ -116,8 +133,8 @@ PerSentQueryResult build_query_result_POD(
     std::sort(scores_with_idxs.begin(), scores_with_idxs.end(),
               [](auto const &x, auto const &y){return std::get<2>(x)>std::get<2>(y);});
 
-    auto const &tokens = *(sent.tokens);
-    auto const &query_tokens = *(query_sent.tokens);
+    auto const &tokens = *(sent.dict);
+    auto const &query_tokens = *(query_sent.dict);
 
     auto chunk_idx = tokens.chunk_idx(sent.front());
     auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
@@ -132,10 +149,10 @@ PerSentQueryResult build_query_result_POD(
         if(score==0.0) continue;
         ScoreWithOffset tmp;
         tmp.score = score;
-        tmp.query_token.beg = query_tokens.word_beg(lhs_idx).val;
-        tmp.query_token.end = query_tokens.word_end(lhs_idx).val;
-        tmp.matched_token.beg = tokens.word_beg(rhs_idx).val;
-        tmp.matched_token.end = tokens.word_end(rhs_idx).val;
+        tmp.query_token.beg = query_tokens.word_beg(lhs_idx.front()).val;
+        tmp.query_token.end = query_tokens.word_end(lhs_idx.back()).val;
+        tmp.matched_token.beg = tokens.word_beg(rhs_idx.front()).val;
+        tmp.matched_token.end = tokens.word_end(rhs_idx.back()).val;
         result.scores_with_offset.push_back(tmp);
     }
     result.score = scores.score_sum();

@@ -25,12 +25,12 @@ Phrase::Phrase(Sentence const& sent, std::vector<DPTokenIndex> &&tokens)
 
 std::vector<WordUID> Phrase::to_word_uids() const {
     return util::map(idxs, [this](auto idx){
-        return sent.tokens->word_uid(idx);
+        return sent.dict->word_uid(idx);
     });
 }
 bool Phrase::isin(WordUID word) const {
     for(auto idx : idxs)
-        if(sent.tokens->word_uid(idx)==word) return true;
+        if(sent.dict->word_uid(idx)==word) return true;
     return false;
 };
 PhraseRepr Phrase::repr(WordUIDindex const& wordUIDs) const{

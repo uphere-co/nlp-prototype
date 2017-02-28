@@ -34,29 +34,29 @@ struct Sentence{
     };
     struct WordIterator{
         struct Iterator{
-            Iterator(DPTokenIndex idx, wordrep::DepParsedTokens const *tokens)
-                    : idx{idx}, tokens{tokens}
+            Iterator(DPTokenIndex idx, wordrep::DepParsedTokens const *dict)
+                    : idx{idx}, dict{dict}
             {}
 
             WordUID operator*( void ) const;
             void operator++(void)                {++idx;}
-            friend Iterator operator+(Iterator x, size_t i) {return {x.idx+i,x.tokens};}
+            friend Iterator operator+(Iterator x, size_t i) {return {x.idx+i,x.dict};}
             friend auto operator-(Iterator x, Iterator y) {return util::diff(x.idx, y.idx);}
             friend bool operator<(Iterator x, Iterator y) {return x.idx < y.idx;}
             bool operator==(Iterator rhs ) const {return idx == rhs.idx;}
             bool operator!=(Iterator rhs ) const {return idx != rhs.idx;}
         private:
             DPTokenIndex idx;
-            wordrep::DepParsedTokens const *tokens;
+            wordrep::DepParsedTokens const *dict;
         };
-        WordIterator(DepParsedTokens const *tokens, DPTokenIndex beg, DPTokenIndex end)
-        : tokens{tokens}, beg_token{beg}, end_token{end}
+        WordIterator(DepParsedTokens const *dict, DPTokenIndex beg, DPTokenIndex end)
+        : dict{dict}, beg_token{beg}, end_token{end}
         {}
-        Iterator begin() const { return {beg_token, tokens};}
-        Iterator end() const   { return {end_token, tokens};}
+        Iterator begin() const { return {beg_token, dict};}
+        Iterator end() const   { return {end_token, dict};}
         size_t size() const {return util::diff(end_token,beg_token);}
     private:
-        DepParsedTokens const *tokens;
+        DepParsedTokens const *dict;
         DPTokenIndex beg_token;
         DPTokenIndex end_token;
     };
@@ -77,10 +77,10 @@ struct Sentence{
 
     bool isin(WordUID idx) const;
     SentenceRepr repr(WordUIDindex const& wordUIDs) const;
-    WordIterator iter_words() const{ return WordIterator{tokens, beg_token, end_token};}
+    WordIterator iter_words() const{ return WordIterator{dict, beg_token, end_token};}
 
     SentUID uid;
-    DepParsedTokens const *tokens;
+    DepParsedTokens const *dict;
 private:
     DPTokenIndex beg_token;
     DPTokenIndex end_token;
