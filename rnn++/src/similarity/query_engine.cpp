@@ -212,16 +212,20 @@ struct ProcessQuerySent{
     std::vector<ScoredSentence> operator()(Sentence query_sent,
                                            std::vector<val_t> const& /*cutoffs*/,
                                            std::vector<Sentence> const& data_sents) {
+        util::Timer timer;
         auto op_similarity = dists_cache.get_cached_operator();
         auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
+        timer.here_then_reset("Get voca indexes.");
         op_similarity.build_lookup_cache(vidxs);
-
+        timer.here_then_reset("Build word sim caches.");
 
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
+        timer.here_then_reset("Annotate a query sentence.");
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
         query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
+        timer.here_then_reset("A query sentence is ready to be compared.");
         if(named_entities.empty()) return {};
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
         for(auto& e : named_entities) {
