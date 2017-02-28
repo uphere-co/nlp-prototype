@@ -151,12 +151,11 @@ target_link_libraries(parser stdc++fs fmt tbb hd5f_cpp)  # not effective when ma
 add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files} ${wiki_files}  ${util_files})
 target_link_libraries(similarity stdc++fs fmt tbb hd5f_cpp pqxx dw) # not effective when making query package
 
-
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
 
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
-target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs) # not effective when making query package
+target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
 install(TARGETS train_model0 train_model1 train_model4 parser_model1 parser_model4 phrases_model4 parser_similarity RUNTIME DESTINATION bin)
 
