@@ -155,6 +155,12 @@ struct Scoring{
     };
 
     struct OpSimilarity{
+        struct OpWordSimilarity{
+            val_t score(VocaIndex w1, VocaIndex w2) const {
+                return op.match([w1,w2](auto const& op){return op.score(w1, w2);});
+            }
+            mapbox::util::variant<WordSimCache::WordSimOp,AngleSimilarity> op;
+        };
         val_t similarity(DepPair query, DepPair data) const {
             auto score_gov = 1+op.score(query.gov, data.gov)*word_importance.score(query.word_gov);
             auto score_dep = op.score(query.dep, data.dep)*word_importance.score(query.word_dep);
@@ -216,23 +222,26 @@ struct Scoring{
             return scored_sent;
         }
         WordImportance const& word_importance;
-        AngleSimilarity op;
+        OpWordSimilarity op;
     };
     OpSimilarity op_similarity() const{
-        return {word_importance, op};
+        return {word_importance, {op}};
     }
     //TODO: make a cached version.
     struct OpSentenceSimilarity{
-        Scoring const& scoring;
+        OpSimilarity op;
         SentenceToScored query;
         mutable std::optional<WordSimCache::WordSimOp> op_cached={};
         ScoredSentence score(SentenceToScored const&data) const{
-            auto op = scoring.op_similarity();
             return op.similarity(query, data);
         }
     };
     OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query) const {
-        return {*this, query};
+        return {{word_importance, {op}}, query};
+    }
+    OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query,
+                                                WordSimCache::WordSimOp const& op_cached) const {
+        return {{word_importance, {op_cached}}, query};
     }
 
     Words max_score_repr(wiki::Synonyms const& synonym) const {

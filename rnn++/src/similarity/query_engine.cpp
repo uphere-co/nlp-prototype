@@ -213,10 +213,10 @@ struct ProcessQuerySent{
                                            std::vector<val_t> const& /*cutoffs*/,
                                            std::vector<Sentence> const& data_sents) {
         util::Timer timer;
-        auto op_similarity = dists_cache.get_cached_operator();
+        auto op_word_sim = dists_cache.get_cached_operator();
         auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
         timer.here_then_reset("Get voca indexes.");
-        op_similarity.build_lookup_cache(vidxs);
+        op_word_sim.build_lookup_cache(vidxs);
         timer.here_then_reset("Build word sim caches.");
 
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
@@ -226,7 +226,6 @@ struct ProcessQuerySent{
         query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
         timer.here_then_reset("A query sentence is ready to be compared.");
-        if(named_entities.empty()) return {};
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
         for(auto& e : named_entities) {
             fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
@@ -238,6 +237,7 @@ struct ProcessQuerySent{
         }
         auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
+//        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {

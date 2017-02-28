@@ -32,10 +32,14 @@ public:
         WordSimOp(WordSimCache& cache)
                 : cache{&cache}
         {}
-        WordSimCache::val_t operator()(VocaIndex vidx1, VocaIndex vidx2) const {
-            if(lookup_cache.find(vidx1)!=lookup_cache.end())
-                return (*lookup_cache.find(vidx1)->second)[vidx2];
+        WordSimCache::val_t score(VocaIndex vidx1, VocaIndex vidx2) const {
+            auto it = lookup_cache.find(vidx1);
+            if(it!=lookup_cache.end())
+                return (*it->second)[vidx2];
             return cache->try_find(vidx1)[vidx2];
+        }
+        WordSimCache::val_t operator()(VocaIndex vidx1, VocaIndex vidx2) const {
+            return score(vidx1, vidx2);
         }
         void build_lookup_cache(VocaIndex const& vidx) {
             lookup_cache[vidx]=&cache->try_find(vidx);
