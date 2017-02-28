@@ -296,7 +296,7 @@ void word_cache_thread_safety(util::json_t const& config) {
     auto sents = tokens.IndexSentences();
     wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
 
-    WordSimCache dists_cache{voca};
+    wordrep::WordSimCache dists_cache{voca};
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
     auto distance = [&dist_measure,&voca](auto vidx1, auto vidx2){
         return dist_measure(voca.wvecs[vidx1], voca.wvecs[vidx2]);};
