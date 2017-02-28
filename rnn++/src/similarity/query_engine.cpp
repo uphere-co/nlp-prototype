@@ -465,7 +465,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
