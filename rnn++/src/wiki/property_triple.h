@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <fmt/printf.h>
 
@@ -56,9 +57,11 @@ struct PropertyTable{
 
         auto p31 = wordrep::WikidataUIDindex::get_uid("P31");
         for(PropertyTriple item : items){
-            if(item.property_type == p31)
-                for(auto property : item.properties)
+            if(item.property_type == p31) {
+                p31_properties[item.entity] = item.properties;
+                for (auto property : item.properties)
                     instance_of[property].push_back(item.entity);
+            }
         }
         for(auto& x : instance_of)
             std::sort(x.second.begin(), x.second.end());
@@ -75,7 +78,18 @@ struct PropertyTable{
         if(x==instance_of.cend()) return {{}};
         return {x->second};
     }
+    std::vector<wordrep::WikidataUID> get_instance_uids(wordrep::WikidataUID uid) const{
+        auto x = instance_of.find(uid);
+        if(x==instance_of.cend()) return {};
+        return x->second;
+    }
+    std::vector<wordrep::WikidataUID> get_p31_properties(wordrep::WikidataUID uid) const{
+        auto x = p31_properties.find(uid);
+        if(x==p31_properties.cend()) return {};
+        return x->second;
+    }
     std::map<wordrep::WikidataUID,std::vector<wordrep::WikidataUID>> instance_of;
+    std::unordered_map<wordrep::WikidataUID,std::vector<wordrep::WikidataUID>> p31_properties;
 };
 
 }//namespace wikidata

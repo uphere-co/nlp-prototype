@@ -35,6 +35,7 @@ private:
 
 struct PreprocessedSent{
     PreprocessedSent(wikidata::EntityModule const& wiki,
+                     wordrep::Scoring const& scoring,
                      wordrep::Scoring::Preprocess const& scoring_preprocessor,
                      std::vector<wordrep::Sentence> const& orig_sents){
         if(!orig_sents.empty()){
@@ -47,6 +48,21 @@ struct PreprocessedSent{
             auto tagged_sent = wiki.annotator.annotate(sent);
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
             sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
+
+            for(auto& e : sent_to_scored.entities){
+                std::vector<wordrep::WikidataUID> instances;
+                for(auto uid : e.uid.candidates)
+                    util::append(instances, wiki.prop_dict.get_p31_properties(uid));
+                for (auto uid : instances) {
+                    //TODO: don't know why m_synonyms can be empty.
+                    auto m_synonyms = wiki.entity_reprs.find(uid);
+                    if(!m_synonyms) continue;
+                    auto synonyms = m_synonyms.value();
+                    auto repr = scoring.max_score_repr(synonyms);
+                    e.candidates.push_back({uid, scoring.phrase(repr)});
+                    e.uid.candidates.push_back(uid);
+                }
+            }
             sents.push_back(sent_to_scored);
         });
     }
