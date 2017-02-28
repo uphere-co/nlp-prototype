@@ -352,6 +352,8 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
 void property_p31_instance_of(util::json_t const& config_json){
     std::cerr<<"Test: wikidata::test::property_p31_instance_of"<<std::endl;
     util::Timer timer;
+//    PropertyTable p_dict{util::get_str(config_json,"wikidata_properties")};
+//    timer.here_then_reset("Property table loaded.");
 
     UnittestDataset testset{{config_json}};
     auto& wikidataUIDs = testset.wikidataUIDs;
@@ -434,8 +436,7 @@ void test_all(int argc, char** argv) {
     auto config_json = util::load_json(argv[1]);
     std::string query = util::string::read_whole(argv[2]);
 
-    property_p31_instance_of(config_json);
-    return;
+
     integer_list_ordering();
     greedy_matching();
     block_binary_search();
@@ -444,6 +445,7 @@ void test_all(int argc, char** argv) {
     annotate_sentence(config_json);
     operation_wikiuid_on_sentence(config_json);
     operation_ambiguous_entity_on_sentence(config_json);
+    property_p31_instance_of(config_json);
     ambiguous_entity_match_scoring(config_json);
     ambiguous_entity_equality();
 }

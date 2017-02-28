@@ -19,17 +19,21 @@ namespace wikidata{
 struct PropertyTriple{
     PropertyTriple(std::string line){
         auto tokens = util::string::split(line, "\t");
-        if (tokens.size() != 3) {
+        if (tokens.size() != 2) {
             fmt::print("{}\n", line);
             assert(0);
         }
         entity = wordrep::WikidataUIDindex::get_uid(tokens[0]);
-        property_type = wordrep::WikidataUIDindex::get_uid(tokens[1]);
-        property = wordrep::WikidataUIDindex::get_uid(tokens[2]);
+        auto ps = util::string::split(tokens[1]);
+        property_type = wordrep::WikidataUIDindex::get_uid(ps.front());
+        std::swap(ps.back(), ps.front());
+        ps.pop_back();
+        for(auto p : ps)
+            properties.push_back(wordrep::WikidataUIDindex::get_uid(p));
     }
     wordrep::WikidataUID entity;
     wordrep::WikidataUID property_type;
-    wordrep::WikidataUID property;
+    std::vector<wordrep::WikidataUID> properties;
 };
 
 struct PropertyTable{
@@ -52,7 +56,8 @@ struct PropertyTable{
         auto p31 = wordrep::WikidataUIDindex::get_uid("P31");
         for(PropertyTriple item : items){
             if(item.property_type == p31)
-                instance_of[item.property].push_back(item.entity);
+                for(auto property : item.properties)
+                    instance_of[property].push_back(item.entity);
         }
         for(auto& x : instance_of)
             std::sort(x.second.begin(), x.second.end());
@@ -66,6 +71,7 @@ struct PropertyTable{
 
     OpInstanceOf get_op_instance_of(wordrep::WikidataUID uid) const{
         auto x = instance_of.find(uid);
+        if(x==instance_of.cend()) return {{}};
         return {x->second};
     }
     std::map<wordrep::WikidataUID,std::vector<wordrep::WikidataUID>> instance_of;
