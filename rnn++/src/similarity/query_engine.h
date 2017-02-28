@@ -53,6 +53,7 @@ struct PreprocessedSent{
     size_t size() const {return sents.size();}
     tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
 };
+
 template<typename T>
 class QueryEngineT {
 public:

@@ -250,55 +250,6 @@ struct ProcessQuerySent{
         });
         return deduplicate_results(relevant_sents);
     }
-    std::vector<ScoredSentence> operator()(Sentence query_sent,
-                                           std::vector<val_t> const& /*cutoffs*/,
-                                           std::vector<wordrep::Scoring::SentenceToScored> const& data_sents) {
-        util::Timer timer;
-        auto op_word_sim = dists_cache.get_cached_operator();
-        auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
-        timer.here_then_reset("Get voca indexes.");
-        op_word_sim.build_lookup_cache(vidxs);
-        timer.here_then_reset("Build word sim caches.");
-
-        fmt::print(std::cerr, "Sample data sent : {} named entities\n", data_sents.front().orig.repr(wiki.wordUIDs));
-
-        auto tagged_query_sent = wiki.annotator.annotate(query_sent);
-        timer.here_then_reset("Annotate a query sentence.");
-        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
-        auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
-        query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
-        auto named_entities = query_sent_to_scored.all_named_entities();
-        timer.here_then_reset("A query sentence is ready to be compared.");
-        fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
-        for(auto& e : named_entities) {
-            fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
-            for (auto uid : e.candidates) {
-                auto entity = wiki.entity_reprs[uid];
-                fmt::print(std::cerr, "({}) ", entity.repr(wiki.entityUIDs, wiki.wordUIDs));
-            }
-            fmt::print(std::cerr, "\n");
-        }
-        auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
-        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
-//        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
-        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
-        auto score_cut = self_scored_sent.score * 0.6;
-        tbb::concurrent_vector<ScoredSentence> relevant_sents{};
-        auto n = data_sents.size();
-        tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
-//            util::Timer a;
-            auto& sent_to_scored = data_sents[i];
-            if(!op_ne.isin(sent_to_scored.orig)) return;
-//            auto tagged_sent = wiki.annotator.annotate(sent);
-//            a.here_then_reset("Annotate data sent.");
-//            a.here_then_reset("Preprocessing data sent.");
-            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
-//            a.here_then_reset("Scoring data sent.");
-            if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
-//            a.here_then_reset("Save data sent.");
-        });
-        return deduplicate_results(relevant_sents);
-    }
     WordSimCache& dists_cache;
     wikidata::EntityModule const& wiki;
     wordrep::Scoring const& scoring;
@@ -318,7 +269,7 @@ struct ProcessQuerySents{
                     OP const &op_per_sent) {
         util::Timer timer{};
         tbb::task_group g;
-        for(auto const &query : query_sents){
+        for(auto const &query : query_sents) {
             if(query.sent.empty()) continue;
             g.run([&timer,query,&op_per_sent,&candidate_sents, this](){
                 std::cerr<<fmt::format("Query : Find with {} candidate sentences.",candidate_sents.size())<<std::endl;
@@ -403,7 +354,6 @@ json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
 template<typename T>
 json_t QueryEngineT<T>::register_documents(json_t const &ask) {
     if (ask.find("sentences") == ask.end()) return json_t{};
-    ;
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
     json_t answer{};
     answer["sent_uids"]=util::serialize(uids);
