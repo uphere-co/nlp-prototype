@@ -221,9 +221,9 @@ struct ProcessQuerySent{
 
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
         timer.here_then_reset("Annotate a query sentence.");
-        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
+        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
-        query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+        query_sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
         timer.here_then_reset("A query sentence is ready to be compared.");
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
@@ -295,7 +295,7 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   queries{factory.common.empty_dataset()},
   wiki{factory.common.wikientity_module()},
   scoring{word_importance,db.voca.wvecs},
-  scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
+  scoring_preprocessor{scoring, wiki.entity_reprs},
   data_sents{wiki, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
 {
@@ -319,7 +319,7 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   queries{std::move(engine.queries)},
   wiki{std::move(engine.wiki)},
   scoring{word_importance,db.voca.wvecs},
-  scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
+  scoring_preprocessor{scoring, wiki.entity_reprs},
   data_sents{wiki, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
 {
