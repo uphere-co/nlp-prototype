@@ -538,6 +538,8 @@ void scoring_words(util::json_t const& config_json){
     auto tsent2 = annotator.annotate(testset.sents[2]);
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
+
+    auto op_scorer = scoring.op_similarity();
     for(auto entity1 : tsent1.get_entities()){
         for(auto uid: entity1.uid.candidates) fmt::print("{} ", wikidataUIDs[uid]);
         fmt::print("\n");
@@ -550,7 +552,7 @@ void scoring_words(util::json_t const& config_json){
             DepPair dep_pair2{tsent2.sent, idx2};
 
             wordrep::Words words{{dep_pair1.word_dep,dep_pair1.word_gov,dep_pair2.word_dep,dep_pair2.word_gov}};
-            fmt::print("{} : {}\n",words.repr(wordUIDs), scoring.similarity(dep_pair1, dep_pair2));
+            fmt::print("{} : {}\n",words.repr(wordUIDs), op_scorer.similarity(dep_pair1, dep_pair2));
         }
     }
     fmt::print("\n");
@@ -605,19 +607,19 @@ void scoring_words(util::json_t const& config_json){
     for(auto& x : sent_to_scored1.entities){
         for(auto& y : sent_to_scored2.entities){
             fmt::print("{} vs {} : {}\n", x.repr(tokens, wordUIDs), y.repr(tokens, wordUIDs),
-                       scoring.similarity(x, y));
+                       op_scorer.similarity(x, y));
         }
     }
 
     for(auto& x : sent_to_scored2.words){
         for(auto& y : sent_to_scored1.words){
             fmt::print("{} vs {} : {}\n", x.repr(wordUIDs), y.repr(wordUIDs),
-                       scoring.similarity(x, y));
+                       op_scorer.similarity(x, y));
         }
     }
     fmt::print("\nQuery=sent1, Data=sent2. Base matches:\n");
     for(auto& x : sent_to_scored1.entities){
-        auto m_best_match = scoring.similarity(x,sent_to_scored2);
+        auto m_best_match = op_scorer.similarity(x,sent_to_scored2);
         if(!m_best_match) continue;
         auto best_match = m_best_match.value();
         auto dep_idx = best_match.data.dep_token_idx(tokens);
@@ -627,7 +629,7 @@ void scoring_words(util::json_t const& config_json){
                    best_match.score);
     }
     for(auto& x : sent_to_scored1.words){
-        auto m_best_match = scoring.similarity(x,sent_to_scored2);
+        auto m_best_match = op_scorer.similarity(x,sent_to_scored2);
         if(!m_best_match) continue;
         auto best_match = m_best_match.value();
         auto dep_idx = best_match.data.dep_token_idx(tokens);
@@ -675,9 +677,9 @@ void test_all(int argc, char** argv){
 int main(int argc, char** argv){
     util::Timer timer;
 
-//    wikidata::test::test_all(argc, argv);
-//    wordrep::test::test_all(argc,argv);
-//    return 0;
+    wikidata::test::test_all(argc, argv);
+    wordrep::test::test_all(argc,argv);
+    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);

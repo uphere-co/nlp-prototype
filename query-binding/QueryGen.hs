@@ -67,4 +67,4 @@ headerMap = [ ( "EngineWrapper", ([NS "util"], [HdrName "enginewrapper.h"]))
 main :: IO ()
 main = do 
   simpleBuilder "Query.Binding" headerMap (cabal,cabalattr,classes,toplevelfunctions,templates)
-    [ "enginewrapper", "similarity", "parser", "tbb", "fmt", "pqxx", "hdf5_cpp", "stdc++fs" ] extraDep
+    [ "enginewrapper", "similarity", "parser", "tbb", "fmt", "pqxx", "hdf5_cpp", "dw", "stdc++fs" ] extraDep

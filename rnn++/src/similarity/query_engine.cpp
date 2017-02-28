@@ -22,6 +22,12 @@
 #include "utils/linear_algebra.h"
 #include "utils/versioned_name.h"
 
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward {
+backward::SignalHandling sh;
+} // namespace backward
+
 using namespace wordrep;
 using namespace util::io;
 namespace ygp = data::ygp;
@@ -31,6 +37,7 @@ using util::Timer;
 using data::PerSentQueryResult;
 using data::DBIndexer;
 using data::ColumnUID;
+
 
 namespace {
 using engine::ScoredSentence;
@@ -55,77 +62,6 @@ std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSen
 }//nameless namespace
 
 namespace engine {
-
-WordSimCache::WordSimCache(voca_info_t const &voca) : voca{voca} {
-    auto n= voca.wvecs.size();
-    data_t::accessor a;
-    distance_caches.insert(a, wordrep::VocaIndex{});
-    a->second = dist_cache_t{n};//For unknown word
-}
-
-bool WordSimCache::find(wordrep::VocaIndex idx) const{
-    data_t::const_accessor a;
-    return distance_caches.find(a, idx);
-}
-
-const WordSimCache::dist_cache_t& WordSimCache::try_find(wordrep::VocaIndex idx){
-    if(!find(idx)) cache({idx});
-    return distances(idx);
-}
-bool WordSimCache::insert(wordrep::VocaIndex idx, dist_cache_t const &dist){
-    data_t::accessor a;
-    distance_caches.find(a, idx);
-    if(distance_caches.find(a, idx)) return false;
-    distance_caches.insert(a, idx);
-    a->second = dist;
-    return true;
-}
-const WordSimCache::dist_cache_t& WordSimCache::distances(wordrep::VocaIndex widx) const {
-    data_t::const_accessor a;
-    bool is_exist=distance_caches.find(a,widx);
-    //TODO:     make cache private method and remove this assert.
-    if(!is_exist) assert(0);
-    return a->second;
-}
-void WordSimCache::cache(std::vector<VocaIndex> const &words) {
-    auto n= voca.wvecs.size();
-    std::vector<VocaIndex> words_to_cache;
-    std::vector<dist_cache_t> dists;
-    for(auto vidx : words) {
-        if(find(vidx)) continue;
-        words_to_cache.push_back(vidx);
-        dists.push_back(dist_cache_t{n});
-    }
-    auto n_words = dists.size();
-
-    auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>(0,n,10000),
-                      [&](tbb::blocked_range<decltype(n)> const &r){
-                          for(decltype(n) i=r.begin(); i!=r.end(); ++i){
-                              for(decltype(n_words)j=0; j!=n_words; ++j ){
-                                  auto qidx = words_to_cache[j];
-                                  auto q = voca.wvecs[qidx];
-                                  auto widx = VocaIndex::from_unsigned(i);
-                                  dists[j][widx] = dist_measure(voca.wvecs[widx], q);
-                              }
-                          }
-                      });
-
-    for(decltype(n_words)i=0; i!=n_words; ++i){
-        auto vidx=words_to_cache[i];
-        insert(vidx,dists[i]);
-    }
-}
-
-WordSimCache::val_t WordSimCache::max_similarity(wordrep::VocaIndex widx) const{
-    if(!find(widx)) return 0.0;
-    auto dists = distances(widx);
-    auto beg = dists.val.begin();
-    std::partial_sort(beg, beg+2, dists.val.end(), std::greater<val_t>{});
-    auto it = beg+1;
-    return *it;
-}
-
 
 void QueryResultCache::insert(wordrep::SentUID uid, result_t const&result) {
     data_t::accessor a;
@@ -275,18 +211,21 @@ struct ProcessQuerySent{
 
     std::vector<ScoredSentence> operator()(Sentence query_sent,
                                            std::vector<val_t> const& /*cutoffs*/,
-                                           std::vector<Sentence> const& data_sents) {
-        auto op_similarity = dists_cache.get_cached_operator();
+                                           PreprocessedSent const& data_sents) {
+        util::Timer timer;
+        auto op_word_sim = dists_cache.get_cached_operator();
         auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
-        op_similarity.build_lookup_cache(vidxs);
-
+        timer.here_then_reset("Get voca indexes.");
+        op_word_sim.build_lookup_cache(vidxs);
+        timer.here_then_reset("Build word sim caches.");
 
         auto tagged_query_sent = wiki.annotator.annotate(query_sent);
+        timer.here_then_reset("Annotate a query sentence.");
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
         query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
         auto named_entities = query_sent_to_scored.all_named_entities();
-        if(named_entities.empty()) return {};
+        timer.here_then_reset("A query sentence is ready to be compared.");
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
         for(auto& e : named_entities) {
             fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
@@ -298,15 +237,65 @@ struct ProcessQuerySent{
         }
         auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
+//        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
+        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
+        auto score_cut = self_scored_sent.score * 0.6;
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
-            auto sent = data_sents[i];
-            if(!op_ne.isin(sent)) return;
-            auto tagged_sent = wiki.annotator.annotate(sent);
-            auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-            auto scored_sent = op_query_similarity.score(sent_to_scored);
-            relevant_sents.push_back(output(scored_sent));
+            auto& sent_to_scored = data_sents.sents[i];
+            if(!op_ne.isin(sent_to_scored.orig)) return;
+            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
+            if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
+        });
+        return deduplicate_results(relevant_sents);
+    }
+    std::vector<ScoredSentence> operator()(Sentence query_sent,
+                                           std::vector<val_t> const& /*cutoffs*/,
+                                           std::vector<wordrep::Scoring::SentenceToScored> const& data_sents) {
+        util::Timer timer;
+        auto op_word_sim = dists_cache.get_cached_operator();
+        auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
+        timer.here_then_reset("Get voca indexes.");
+        op_word_sim.build_lookup_cache(vidxs);
+        timer.here_then_reset("Build word sim caches.");
+
+        fmt::print(std::cerr, "Sample data sent : {} named entities\n", data_sents.front().orig.repr(wiki.wordUIDs));
+
+        auto tagged_query_sent = wiki.annotator.annotate(query_sent);
+        timer.here_then_reset("Annotate a query sentence.");
+        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
+        auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
+        query_sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+        auto named_entities = query_sent_to_scored.all_named_entities();
+        timer.here_then_reset("A query sentence is ready to be compared.");
+        fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
+        for(auto& e : named_entities) {
+            fmt::print(std::cerr, "NAMED ENTITY IN QUERY: ");
+            for (auto uid : e.candidates) {
+                auto entity = wiki.entity_reprs[uid];
+                fmt::print(std::cerr, "({}) ", entity.repr(wiki.entityUIDs, wiki.wordUIDs));
+            }
+            fmt::print(std::cerr, "\n");
+        }
+        auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
+        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
+//        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
+        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
+        auto score_cut = self_scored_sent.score * 0.6;
+        tbb::concurrent_vector<ScoredSentence> relevant_sents{};
+        auto n = data_sents.size();
+        tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
+//            util::Timer a;
+            auto& sent_to_scored = data_sents[i];
+            if(!op_ne.isin(sent_to_scored.orig)) return;
+//            auto tagged_sent = wiki.annotator.annotate(sent);
+//            a.here_then_reset("Annotate data sent.");
+//            a.here_then_reset("Preprocessing data sent.");
+            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
+//            a.here_then_reset("Scoring data sent.");
+            if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
+//            a.here_then_reset("Save data sent.");
         });
         return deduplicate_results(relevant_sents);
     }
@@ -325,7 +314,7 @@ struct ProcessQuerySents{
 
     template<typename OP>
     void operator()(std::vector<SentenceQuery> const &query_sents,
-                    std::vector<wordrep::Sentence> const &candidate_sents,
+                    PreprocessedSent const &candidate_sents,
                     OP const &op_per_sent) {
         util::Timer timer{};
         tbb::task_group g;
@@ -337,8 +326,8 @@ struct ProcessQuerySents{
                 op_per_sent(query.sent, query.info, relevant_sents);
             });
         }
-        timer.here_then_reset("All sentences in QuerySents are processed.");
         g.wait();
+        timer.here_then_reset("All sentences in QuerySents are processed.");
     }
 
     ProcessQuerySent processor;
@@ -359,7 +348,8 @@ struct ProcessChainQuery{
                     OP const &op_per_sent) {
         util::Timer timer{};
         for(auto const &query : query_chain){
-            auto relevant_sents = processor(query.sent, query.info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
+            std::vector<ScoredSentence> relevant_sents;
+//            auto relevant_sents = processor(query.sent, query.info.cutoffs, candidate_sents);//util::deserialize<val_t>(info.cutoffs)
 
             candidate_sents.clear();
             assert(candidate_sents.size()==0);
@@ -403,13 +393,18 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   wiki{factory.common.wikientity_module()},
   scoring{word_importance,db.voca.wvecs},
   scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
+  data_sents{wiki, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
-{}
+{
+    fmt::print(std::cerr, "Engine is constructed using factory.\n");
+}
 
 template<typename T>
 QueryEngineT<T>::QueryEngineT(json_t const &config)
         : QueryEngineT<T>{typename T::factory_t{{config}}}
-{}
+{
+    fmt::print(std::cerr, "Engine is constructed.\n");
+}
 
 template<typename T>
 QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
@@ -422,8 +417,11 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   wiki{std::move(engine.wiki)},
   scoring{word_importance,db.voca.wvecs},
   scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity},
+  data_sents{wiki, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
-{}
+{
+    fmt::print(std::cerr, "Engine is move constructed.\n");
+}
 
 template<typename T>
 json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
@@ -467,7 +465,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(5);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
@@ -491,7 +489,8 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
-    query_processor(queries, candidate_sents, per_sent);
+
+    query_processor(queries, data_sents, per_sent);
     return to_json(answers.to_vector());
 }
 
@@ -536,8 +535,8 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
         answers.push_back(answer);
     };
 
-    ProcessChainQuery processor{db.uid2sent, dists_cache, wiki, scoring};
-    processor(queries, candidate_sents, per_sent);
+//    ProcessChainQuery processor{db.uid2sent, dists_cache, wiki, scoring};
+//    processor(queries, candidate_sents, per_sent);
 
     return to_json(answers);
 }
@@ -616,8 +615,8 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         get_query_suggestions(query_sent, relevant_sents);
     };
 
-    ProcessChainQuery processor{db.uid2sent, dists_cache, wiki, scoring};
-    processor(queries, candidate_sents, op_per_sent);
+//    ProcessChainQuery processor{db.uid2sent, dists_cache, wiki, scoring};
+//    processor(queries, candidate_sents, op_per_sent);
 
     util::json_t stats_output = util::json_t::array();
     util::json_t stats_output_idxs = util::json_t::array();
