@@ -110,10 +110,10 @@ struct QueryEngine {
         return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
     }
     json_t ask_chain_query(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_chain_query(ask);});
+        return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
     }
     json_t ask_query_stats(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_query_stats(ask);});
+        return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
     }
     json_t ask_sents_content(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_sents_content(ask);});
