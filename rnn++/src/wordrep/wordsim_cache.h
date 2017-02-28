@@ -34,6 +34,7 @@ public:
         {}
         WordSimCache::val_t score(VocaIndex vidx1, VocaIndex vidx2) const {
             auto it = lookup_cache.find(vidx1);
+            assert(it!=lookup_cache.end());
             if(it!=lookup_cache.end())
                 return (*it->second)[vidx2];
             return cache->try_find(vidx1)[vidx2];

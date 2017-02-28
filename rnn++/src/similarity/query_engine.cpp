@@ -238,15 +238,22 @@ struct ProcessQuerySent{
         auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
 //        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
+        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
+        auto score_cut = self_scored_sent.score * 0.6;
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
+//            util::Timer a;
             auto sent = data_sents[i];
             if(!op_ne.isin(sent)) return;
             auto tagged_sent = wiki.annotator.annotate(sent);
+//            a.here_then_reset("Annotate data sent.");
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-            auto scored_sent = op_query_similarity.score(sent_to_scored);
-            relevant_sents.push_back(output(scored_sent));
+//            a.here_then_reset("Preprocessing data sent.");
+            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
+//            a.here_then_reset("Scoring data sent.");
+            if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
+//            a.here_then_reset("Save data sent.");
         });
         return deduplicate_results(relevant_sents);
     }

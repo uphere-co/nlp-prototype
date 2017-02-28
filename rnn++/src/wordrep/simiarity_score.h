@@ -161,6 +161,16 @@ struct Scoring{
             }
             mapbox::util::variant<WordSimCache::WordSimOp,AngleSimilarity> op;
         };
+        struct OpWordImportance{
+            val_t score(WordUID word) const{
+                return op.match([word](WordImportance const* wm){
+                    return wm->score(word);
+                    }, [word](std::map<WordUID,val_t> const& cache){
+                    return cache.find(word)->second;
+                    });
+            }
+            mapbox::util::variant<WordImportance const*,std::map<WordUID,val_t>> op;
+        };
         val_t similarity(DepPair query, DepPair data) const {
             auto score_gov = 1+op.score(query.gov, data.gov)*word_importance.score(query.word_gov);
             auto score_dep = op.score(query.dep, data.dep)*word_importance.score(query.word_dep);
@@ -221,11 +231,11 @@ struct Scoring{
                 scored_sent.words.push_back(std::make_pair(word, similarity(word, data)));
             return scored_sent;
         }
-        WordImportance const& word_importance;
+        OpWordImportance word_importance;
         OpWordSimilarity op;
     };
     OpSimilarity op_similarity() const{
-        return {word_importance, {op}};
+        return {{&word_importance}, {op}};
     }
     //TODO: make a cached version.
     struct OpSentenceSimilarity{
@@ -237,11 +247,27 @@ struct Scoring{
         }
     };
     OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query) const {
-        return {{word_importance, {op}}, query};
+        std::map<WordUID,val_t> word_importance_cache;
+        for(auto word : query.words){
+            word_importance_cache[word.word_dep]=word_importance.score(word.word_dep);
+            word_importance_cache[word.word_gov]=word_importance.score(word.word_gov);
+        }
+        for(auto e : query.entities){
+            word_importance_cache[e.word_gov]=word_importance.score(e.word_gov);
+        }
+        return {{{word_importance_cache}, {op}}, query};
     }
     OpSentenceSimilarity op_sentence_similarity(SentenceToScored const& query,
                                                 WordSimCache::WordSimOp const& op_cached) const {
-        return {{word_importance, {op_cached}}, query};
+        std::map<WordUID,val_t> word_importance_cache;
+        for(auto word : query.words){
+            word_importance_cache[word.word_dep]=word_importance.score(word.word_dep);
+            word_importance_cache[word.word_gov]=word_importance.score(word.word_gov);
+        }
+        for(auto e : query.entities){
+            word_importance_cache[e.word_gov]=word_importance.score(e.word_gov);
+        }
+        return {{{word_importance_cache}, {op_cached}}, query};
     }
 
     Words max_score_repr(wiki::Synonyms const& synonym) const {
