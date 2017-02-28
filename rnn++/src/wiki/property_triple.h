@@ -33,7 +33,7 @@ struct PropertyTriple{
 };
 
 struct PropertyTable{
-    PropertyTriples(std::string file){
+    PropertyTable(std::string file){
         std::ifstream is{file};
         tbb::task_group g;
         tbb::concurrent_vector<PropertyTriple> items;

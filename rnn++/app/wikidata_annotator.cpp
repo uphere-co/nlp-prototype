@@ -364,6 +364,10 @@ void property_p31_instance_of(util::json_t const& config_json){
     auto op_company = p_dict.get_op_instance_of(company);
     assert(op_company.is_instance(facebook));
     assert(!op_company.is_instance(nlp));
+    //Test for null-data safety
+    auto op_facebook = p_dict.get_op_instance_of(facebook);
+    assert(!op_facebook.is_instance(facebook));
+    assert(!op_facebook.is_instance(company));
 }
 
 void ambiguous_entity_equality(){
