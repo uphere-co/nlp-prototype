@@ -46,6 +46,7 @@ struct PreprocessedSent{
             auto& sent = orig_sents[i];
             auto tagged_sent = wiki.annotator.annotate(sent);
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
+            sent_to_scored.filter_false_named_entity(wiki.posUIDs);
             sents.push_back(sent_to_scored);
         });
     }
