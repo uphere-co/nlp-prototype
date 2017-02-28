@@ -1,6 +1,7 @@
 #pragma once
 //TODO: move to .cpp file
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
