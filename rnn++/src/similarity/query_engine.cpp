@@ -496,6 +496,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
 
 template<typename T>
 json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
+    return ask_query(ask);
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename  dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
@@ -543,6 +544,10 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
 
 template<typename T>
 json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
+    util::json_t out{};
+    out["results"] = ask_query(ask);
+    return out;
+
     std::cerr<<fmt::format("{}\n", ask.dump(4))<<std::endl;
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
