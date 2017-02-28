@@ -223,15 +223,6 @@ struct Scoring{
                 max_score = score;
                 best_match = ConsecutiveTokens{word.idx};
             }
-            for(auto& entity : data.entities) {
-                for (auto idx : entity.idxs) {
-                    DepPair pair{data.orig, idx};
-                    auto score = similarity(query, pair);
-                    if (max_score >= score) continue;
-                    max_score = score;
-                    best_match = entity.idxs;
-                }
-            }
             if(best_match)
                 return Score{best_match.value(), max_score};
             return {};

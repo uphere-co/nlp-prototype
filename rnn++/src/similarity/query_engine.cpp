@@ -228,13 +228,16 @@ struct ProcessQuerySent{
         auto named_entities = query_sent_to_scored.all_named_entities();
         timer.here_then_reset("A query sentence is ready to be compared.");
         fmt::print(std::cerr, "{} : {} named entities\n", query_sent.repr(wiki.wordUIDs), named_entities.size());
-        fmt::print(std::cerr, "WIKIDATA ENTITY IN QUERY: ");
+        fmt::print(std::cerr, "WIKIDATA ENTITY IN QUERY:\n");
         for(auto& e : query_sent_to_scored.entities){
             fmt::print(std::cerr, "{} :", e.idxs.repr(*query_sent_to_scored.orig.dict, wiki.wordUIDs));
             for(auto uid : e.uid.candidates)
                 fmt::print(std::cerr, " {}", wiki.entityUIDs[uid]);
             fmt::print(std::cerr, "\n");
         }
+        fmt::print(std::cerr, "WORDS IN QUERY:\n");
+        for(auto& e : query_sent_to_scored.words)
+            fmt::print(std::cerr, "{}\n", e.repr(wiki.wordUIDs));
 
         //auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
