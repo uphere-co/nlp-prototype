@@ -31,6 +31,7 @@ let
          , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb
          , fmt, pqxx
          , variant
+         , elfutils
          }:
          mkDerivation {
            pname = "query-binding";
@@ -40,7 +41,7 @@ let
 	     base fficxx fficxx-runtime template-haskell
 	   ];
 	   librarySystemDepends = [
-	     rnnpp json hdf5_cpp msgsl tbb variant fmt pqxx
+	     rnnpp json hdf5_cpp msgsl tbb variant fmt pqxx elfutils
 	   ];
 	   license = stdenv.lib.licenses.bsd3;
 	 }) { inherit rnnpp json hdf5_cpp msgsl tbb variant fmt;
