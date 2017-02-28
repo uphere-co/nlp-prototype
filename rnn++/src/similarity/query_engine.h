@@ -33,6 +33,25 @@ private:
     data_t caches;
 };
 
+struct PreprocessedSent{
+    PreprocessedSent(wikidata::EntityModule const& wiki,
+                     wordrep::Scoring::Preprocess const& scoring_preprocessor,
+                     std::vector<wordrep::Sentence> const& orig_sents){
+        if(!orig_sents.empty()){
+            assert(orig_sents.front().uid==wordrep::SentUID{0});
+            assert(orig_sents.back().uid==wordrep::SentUID::from_unsigned(orig_sents.size()-1));
+        }
+        auto n = orig_sents.size();
+        tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
+            auto& sent = orig_sents[i];
+            auto tagged_sent = wiki.annotator.annotate(sent);
+            auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
+            sents.push_back(sent_to_scored);
+        });
+    }
+    size_t size() const {return sents.size();}
+    tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
+};
 template<typename T>
 class QueryEngineT {
 public:
@@ -69,7 +88,7 @@ private:
     wikidata::EntityModule wiki;
     wordrep::Scoring scoring;
     wordrep::Scoring::Preprocess scoring_preprocessor;
-
+    PreprocessedSent data_sents;
     mutable wordrep::WordSimCache dists_cache;
     mutable QueryResultCache result_cache{};
 };

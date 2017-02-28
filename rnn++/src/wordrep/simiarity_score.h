@@ -73,6 +73,12 @@ struct Scoring{
         VocaIndex gov;
     };
     struct SentenceToScored{
+        SentenceToScored(SentenceToScored const& src)
+        : orig{src.orig}, entities{src.entities}, words{src.words}
+        {}
+        SentenceToScored(Sentence const& sent)
+                : orig{sent}, entities{}, words{}
+        {}
         std::vector<wiki::AmbiguousUID> all_named_entities() const{
             std::vector<wiki::AmbiguousUID> uids;
             for(auto& entity : entities)
@@ -119,7 +125,7 @@ struct Scoring{
     };
     struct Preprocess {
         SentenceToScored sentence(AnnotatedSentence const& orig) const {
-            SentenceToScored sent{orig.sent,{},{}};
+            SentenceToScored sent{orig.sent};
             for(auto& token : orig) {
                 using T = AnnotatedSentence::Token::UnresolvedWikiEntity;
                 token.val.match([&sent,&orig](DPTokenIndex idx) {
