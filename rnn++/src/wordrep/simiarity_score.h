@@ -240,13 +240,16 @@ struct Scoring{
                 return Score{best_match.value(), max_score};
             return {};
         }
-        ScoredSentence similarity(SentenceToScored const& query, SentenceToScored const& data) const{
+        std::optional<ScoredSentence> similarity(SentenceToScored const& query, SentenceToScored const& data) const{
             ScoredSentence scored_sent{data.orig,{},{}};
-            for(auto& entity : query.entities)
-                scored_sent.entities.push_back(std::make_pair(entity, similarity(entity, data)));
+            for(auto& entity : query.entities) {
+                auto m_score = similarity(entity, data);
+                if(!m_score) return {};
+                scored_sent.entities.push_back(std::make_pair(entity, m_score));
+            }
             for(auto& word : query.words)
                 scored_sent.words.push_back(std::make_pair(word, similarity(word, data)));
-            return scored_sent;
+            return {scored_sent};
         }
         OpWordImportance word_importance;
         OpWordSimilarity op;
@@ -259,7 +262,7 @@ struct Scoring{
         OpSimilarity op;
         SentenceToScored query;
         mutable std::optional<WordSimCache::WordSimOp> op_cached={};
-        ScoredSentence score(SentenceToScored const&data) const{
+        std::optional<ScoredSentence> score(SentenceToScored const&data) const{
             return op.similarity(query, data);
         }
     };

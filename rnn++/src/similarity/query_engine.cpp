@@ -242,16 +242,17 @@ struct ProcessQuerySent{
         //auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
 //        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
-        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
+        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored).value());
         auto score_cut = self_scored_sent.score * 0.6;
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
             auto& sent_to_scored = data_sents.sents[i];
             //if(!op_ne.isin(sent_to_scored.orig)) return;
-            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
+            auto m_scored_sent = op_query_similarity.score(sent_to_scored);
+            if(!m_scored_sent) return;
             //if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
-            relevant_sents.push_back((scored_sent));
+            relevant_sents.push_back(output(m_scored_sent.value()));
         });
         return deduplicate_results(relevant_sents);
     }
@@ -541,7 +542,9 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     timer.here_then_reset("Annotate a sentence.");
 
     auto op_query_similarity = scoring.op_sentence_similarity(query_to_scored);
-    auto scored_sent = op_query_similarity.score(sent_to_scored);
+    auto m_scored_sent = op_query_similarity.score(sent_to_scored);
+    if(!m_scored_sent) return {};
+    auto scored_sent = m_scored_sent.value();
 
     fmt::print(std::cerr, "\nEntities:\n");
     for(auto&e : scored_sent.entities){
