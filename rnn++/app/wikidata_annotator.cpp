@@ -589,7 +589,7 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
-    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs};
 
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
