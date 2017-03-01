@@ -521,6 +521,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     auto tagged_query = wiki.annotator.annotate(query);
     fmt::print("Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
+
     for(auto e : query_to_scored.entities)
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
     for(auto e : query_to_scored.words)
@@ -530,6 +531,12 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
 
     auto tagged_sent = wiki.annotator.annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
+    fmt::print("Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
+    for(auto e : sent_to_scored.entities)
+        fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
+    for(auto e : sent_to_scored.words)
+        fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
+
     sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
     timer.here_then_reset("Annotate a sentence.");
 
@@ -577,6 +584,13 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
                    score);
     }
 
+    auto op_token=scoring.op_similarity();
+    for(auto qword : query_to_scored.words)
+        for(auto word : sent_to_scored.words) {
+            fmt::print("{:<25}:query {:<25}:word : {}\n",
+                       qword.repr(wiki.wordUIDs), word.repr(wiki.wordUIDs),
+                       op_token.similarity(qword, word));
+        }
     return json_t{};
 }
 
