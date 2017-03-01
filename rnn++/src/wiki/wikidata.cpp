@@ -51,6 +51,7 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
                 for(auto it=pbeg; it!=pend; ++it)
                     if(it->words.size()==i) uid.candidates.push_back(it->uid);
                 if(uid.candidates.empty()){
+                    tokens.push_back({WordWithOffset{offset,t}});
                     ++offset;
                     i = 0;
                 } else{
@@ -126,10 +127,14 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
     auto tokens = greedy_annotate(entities, text.begin(), text.end());
+//    fmt::print("Annotator returns {} tokens.", tokens.size());
     std::vector<TaggedEntity> tagged;
     for(auto token : tokens){
-        token.val.match([](WordWithOffset){},
+        token.val.match([](WordWithOffset w){
+//                           fmt::print("Word token not tagged : {}\n", w.uid);
+                        },
                           [&tagged](wordrep::wiki::AmbiguousEntity& w){
+//                              fmt::print("Word token tagged. Offset : {}\n", w.offset);
                               for(auto& uid : w.uid.candidates)
                                   tagged.push_back({w.offset,w.len, uid});
                           });
@@ -139,7 +144,9 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 
 wordrep::AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
     auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
-    return {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
+
+    wordrep::AnnotatedSentence annoted_sent = {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
+    return annoted_sent;
 }
 
 std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const& dict,

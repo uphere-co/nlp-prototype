@@ -501,6 +501,80 @@ json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
 }
 
 
+template<typename T>
+json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    typename dbinfo_t::query_t user_query{ask};
+
+    auto query_sents = dbinfo.get_query_sents(user_query, queries.uid2sent, db.uid2sent);
+    auto query = query_sents[0];
+    auto sent  = query_sents[1];
+    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
+
+    util::Timer timer;
+    fmt::print("Query : {}\n\n",query.repr(wiki.wordUIDs));
+    auto tagged_query = wiki.annotator.annotate(query);
+    fmt::print("Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
+    auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
+    for(auto e : query_to_scored.entities)
+        fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
+    for(auto e : query_to_scored.words)
+        fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
+    query_to_scored.filter_false_named_entity(wiki.posUIDs);
+    timer.here_then_reset("Annotate a query sentence.");
+
+    auto tagged_sent = wiki.annotator.annotate(sent);
+    auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
+    sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+    timer.here_then_reset("Annotate a sentence.");
+
+    auto op_query_similarity = scoring.op_sentence_similarity(query_to_scored);
+    auto scored_sent = op_query_similarity.score(sent_to_scored);
+
+    fmt::print(std::cerr, "\nEntities:\n");
+    for(auto&e : scored_sent.entities){
+        auto chunk = e.first;
+        auto m_matched = e.second;
+        if(!m_matched) {
+            fmt::print(std::cerr, "{:<15} : No match.", chunk.repr(*scored_sent.orig.dict, wiki.wordUIDs));
+            for(auto uid : chunk.uid.candidates)
+                fmt::print(std::cerr, " {}", uid);
+            fmt::print(std::cerr, " \n");
+        }
+        else{
+            auto matched = m_matched.value();
+            fmt::print(std::cerr, "{:<15} : {:<15}. Score:{}\n", chunk.repr(*scored_sent.orig.dict,wiki.wordUIDs),
+                       matched.data.repr(*scored_sent.orig.dict, wiki.wordUIDs), matched.score);
+        }
+    }
+    fmt::print(std::cerr, "\nWords:\n");
+    for(auto&e : scored_sent.words){
+        auto chunk = e.first;
+        auto m_matched = e.second;
+        if(!m_matched) {
+            fmt::print(std::cerr, "{:<15} : No match.\n", chunk.repr(wiki.wordUIDs));
+        }
+        else{
+            auto matched = m_matched.value();
+            fmt::print(std::cerr, "{:<15} : {:<15}. Score:{}\n", chunk.repr(wiki.wordUIDs),
+                       matched.data.repr(*scored_sent.orig.dict, wiki.wordUIDs), matched.score);
+        }
+    }
+    fmt::print(std::cerr, "\nOutput scores:\n");
+    auto output_sent = output(scored_sent);
+    for(auto token : output_sent.scores.serialize()){
+        auto lhs = std::get<0>(token);
+        auto rhs = std::get<1>(token);
+        auto score = std::get<2>(token);
+        fmt::print("{:<15} : {:<15}. Score:{}\n",
+                   lhs.repr(*output_sent.sent.dict, wiki.wordUIDs),
+                   rhs.repr(*output_sent.sent.dict, wiki.wordUIDs),
+                   score);
+    }
+
+    return json_t{};
+}
+
 class UnknownQueryEngineException: public std::exception {
     virtual const char* what() const throw() {
         return "Missing or unknown query engine type.";
