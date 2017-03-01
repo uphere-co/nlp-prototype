@@ -512,12 +512,14 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
 
     util::Timer timer;
+    fmt::print("Query : {}\n\n",query.repr(wiki.wordUIDs));
     auto tagged_query = wiki.annotator.annotate(query);
+    fmt::print("Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
     for(auto e : query_to_scored.entities)
-        fmt::print(std::cerr, "{:<15} : Entity.", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
+        fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
     for(auto e : query_to_scored.words)
-        fmt::print(std::cerr, "{:<15} : Word.", e.repr(wiki.wordUIDs));
+        fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
     query_to_scored.filter_false_named_entity(wiki.posUIDs);
     timer.here_then_reset("Annotate a query sentence.");
 
