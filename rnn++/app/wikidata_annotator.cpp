@@ -4,6 +4,7 @@
 #include <src/similarity/query_engine.h>
 
 #include "wiki/wikidata.h"
+#include "wiki/property_triple.h"
 
 #include "similarity/config.h"
 #include "similarity/query_engine.h"
@@ -29,6 +30,7 @@ struct UnittestDataset{
     : factory{config},
       entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
       annotator{entities},
+      p_dict{"../rnn++/tests/data/wikidata.test.properties"},
       wordUIDs{factory.word_uid_index()},
       entity_reprs{entities.entities},
       op_acronym{wordUIDs},
@@ -48,6 +50,7 @@ struct UnittestDataset{
     engine::SubmoduleFactory factory;
     SortedEntities entities;
     GreedyAnnotator annotator;
+    PropertyTable p_dict;
     wordrep::WordUIDindex wordUIDs;
     wordrep::wiki::EntityReprs entity_reprs;
     wordrep::wiki::OpAcronym op_acronym;
@@ -346,6 +349,29 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
     }
 }
 
+void property_p31_instance_of(util::json_t const& config_json){
+    std::cerr<<"Test: wikidata::test::property_p31_instance_of"<<std::endl;
+    util::Timer timer;
+//    PropertyTable p_dict{util::get_str(config_json,"wikidata_properties")};
+//    timer.here_then_reset("Property table loaded.");
+
+    UnittestDataset testset{{config_json}};
+    auto& wikidataUIDs = testset.wikidataUIDs;
+    auto& p_dict       = testset.p_dict;
+
+    auto nlp = wikidataUIDs["Q2"];
+    auto facebook = wikidataUIDs["Q380"];
+    auto company = wikidataUIDs["Q4830453"];
+
+    auto op_company = p_dict.get_op_instance_of(company);
+    assert(op_company.is_instance(facebook));
+    assert(!op_company.is_instance(nlp));
+    //Test for null-data safety
+    auto op_facebook = p_dict.get_op_instance_of(facebook);
+    assert(!op_facebook.is_instance(facebook));
+    assert(!op_facebook.is_instance(company));
+}
+
 void ambiguous_entity_equality(){
     std::cerr << "Test: wikidata::test::ambiguous_entity_equality"<<std::endl;
     //e1 is one of {0,1,2};
@@ -410,6 +436,7 @@ void test_all(int argc, char** argv) {
     auto config_json = util::load_json(argv[1]);
     std::string query = util::string::read_whole(argv[2]);
 
+
     integer_list_ordering();
     greedy_matching();
     block_binary_search();
@@ -418,6 +445,7 @@ void test_all(int argc, char** argv) {
     annotate_sentence(config_json);
     operation_wikiuid_on_sentence(config_json);
     operation_ambiguous_entity_on_sentence(config_json);
+    property_p31_instance_of(config_json);
     ambiguous_entity_match_scoring(config_json);
     ambiguous_entity_equality();
 }
@@ -561,7 +589,7 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
-    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
+    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs};
 
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
@@ -678,7 +706,7 @@ int main(int argc, char** argv){
     util::Timer timer;
 
     wikidata::test::test_all(argc, argv);
-    wordrep::test::test_all(argc,argv);
+//    wordrep::test::test_all(argc,argv);
     return 0;
 
     assert(argc>2);

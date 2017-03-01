@@ -1,5 +1,6 @@
 #include "src/wiki/wikidata.h"
 
+#include <sstream>
 #include <fstream>
 
 #include <fmt/printf.h>

@@ -39,6 +39,7 @@ struct ConfigKeys{
                          {"w2v_float_t"},
                          {"wikidata_entities"},
                          {"wikidata_uids"},
+                         {"wikidata_properties"},
                          {"named_entity_uids"}};
 };
 
