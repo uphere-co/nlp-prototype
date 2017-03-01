@@ -218,7 +218,7 @@ struct Scoring{
             val_t max_score = 0.0;
             std::optional<ConsecutiveTokens> best_match={};
             for(auto word : data.words) {
-                auto score = similarity(word, query);
+                auto score = similarity(query, word);
                 if (max_score > score) continue;
                 max_score = score;
                 best_match = ConsecutiveTokens{word.idx};
