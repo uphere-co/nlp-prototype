@@ -514,7 +514,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     auto query_sents = dbinfo.get_query_sents(user_query, queries.uid2sent, db.uid2sent);
     auto query = query_sents[0];
     auto sent  = query_sents[1];
-    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
+    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
 
     util::Timer timer;
     fmt::print("Query : {}\n\n",query.repr(wiki.wordUIDs));
@@ -525,12 +525,12 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
     for(auto e : query_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
-    query_to_scored.filter_false_named_entity(wiki.posUIDs);
+    query_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
     timer.here_then_reset("Annotate a query sentence.");
 
     auto tagged_sent = wiki.annotator.annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-    sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+    sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
     timer.here_then_reset("Annotate a sentence.");
 
     auto op_query_similarity = scoring.op_sentence_similarity(query_to_scored);
