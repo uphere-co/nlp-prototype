@@ -111,10 +111,9 @@ struct EntityReprs{
     }
     Entity operator[](WikidataUID uid) const;
     Synonyms get_synonyms(WikidataUID uid) const;
-
+    std::optional<Synonyms> find(WikidataUID uid) const;
 private:
     std::vector<Entity> dict;
-    std::optional<Synonyms> find(WikidataUID uid) const;
 };
 
 }//namespace wordrep::wiki
