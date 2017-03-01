@@ -242,16 +242,17 @@ struct ProcessQuerySent{
         //auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
 //        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
-        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored));
+        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored).value());
         auto score_cut = self_scored_sent.score * 0.6;
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
             auto& sent_to_scored = data_sents.sents[i];
             //if(!op_ne.isin(sent_to_scored.orig)) return;
-            auto scored_sent = output(op_query_similarity.score(sent_to_scored));
+            auto m_scored_sent = op_query_similarity.score(sent_to_scored);
+            if(!m_scored_sent) return;
             //if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
-            relevant_sents.push_back((scored_sent));
+            relevant_sents.push_back(output(m_scored_sent.value()));
         });
         return deduplicate_results(relevant_sents);
     }
@@ -508,33 +509,52 @@ json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
 
 template<typename T>
 json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
-    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    json_t out{};
+    out["wiki_entities_in_query"]=json_t::array();
+    if (!dbinfo_t::query_t::is_valid(ask)) return out;
     typename dbinfo_t::query_t user_query{ask};
 
     auto query_sents = dbinfo.get_query_sents(user_query, queries.uid2sent, db.uid2sent);
+    if(query_sents.size()<2) return out;
     auto query = query_sents[0];
     auto sent  = query_sents[1];
-    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs, wiki.op_named_entity};
+    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
 
     util::Timer timer;
     fmt::print("Query : {}\n\n",query.repr(wiki.wordUIDs));
     auto tagged_query = wiki.annotator.annotate(query);
     fmt::print("Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
+
     for(auto e : query_to_scored.entities)
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
     for(auto e : query_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
-    query_to_scored.filter_false_named_entity(wiki.posUIDs);
+    query_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
     timer.here_then_reset("Annotate a query sentence.");
 
     auto tagged_sent = wiki.annotator.annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-    sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+    fmt::print("Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.wordUIDs));
+    for(auto e : sent_to_scored.entities)
+        fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
+    for(auto e : sent_to_scored.words)
+        fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.wordUIDs));
+    sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
     timer.here_then_reset("Annotate a sentence.");
 
+    for(auto e : query_to_scored.entities){
+        std::stringstream ss;
+        ss << fmt::format("{} :", e.idxs.repr(*query_to_scored.orig.dict, wiki.wordUIDs));
+        for(auto uid : e.uid.candidates)
+            ss << fmt::format(" {}", wiki.entityUIDs[uid]);
+        out["wiki_entities_in_query"].push_back(ss.str());
+    }
+
     auto op_query_similarity = scoring.op_sentence_similarity(query_to_scored);
-    auto scored_sent = op_query_similarity.score(sent_to_scored);
+    auto m_scored_sent = op_query_similarity.score(sent_to_scored);
+    if(!m_scored_sent) return out;
+    auto scored_sent = m_scored_sent.value();
 
     fmt::print(std::cerr, "\nEntities:\n");
     for(auto&e : scored_sent.entities){
@@ -577,7 +597,14 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
                    score);
     }
 
-    return json_t{};
+    auto op_token=scoring.op_similarity();
+    for(auto qword : query_to_scored.words)
+        for(auto word : sent_to_scored.words) {
+            fmt::print("{:<25}:query {:<25}:word : {}\n",
+                       qword.repr(wiki.wordUIDs), word.repr(wiki.wordUIDs),
+                       op_token.similarity(qword, word));
+        }
+    return out;
 }
 
 class UnknownQueryEngineException: public std::exception {

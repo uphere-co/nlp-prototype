@@ -675,7 +675,9 @@ void scoring_words(util::json_t const& config_json){
     assert(!op1.isin(sent_to_scored2.orig));
     timer.here_then_reset("Check sentences contain all named entities in query.");
     auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
-    auto scored_sent1 = op_query_similarity.score(sent_to_scored1);
+    auto m_scored_sent1 = op_query_similarity.score(sent_to_scored1);
+    assert(!m_scored_sent1);
+    auto scored_sent1 = m_scored_sent1.value();
     for(auto entity : scored_sent1.entities){
         if(!entity.second) continue;
         auto score = entity.second.value();
