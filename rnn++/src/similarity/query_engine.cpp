@@ -246,7 +246,8 @@ struct ProcessQuerySent{
             auto& sent_to_scored = data_sents.sents[i];
             if(!op_ne.isin(sent_to_scored.orig)) return;
             auto scored_sent = output(op_query_similarity.score(sent_to_scored));
-            if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
+            //if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
+            relevant_sents.push_back((scored_sent));
         });
         return deduplicate_results(relevant_sents);
     }
