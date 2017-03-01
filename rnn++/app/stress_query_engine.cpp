@@ -31,9 +31,6 @@ int main(int argc, char** argv){
                 std::ofstream infile{fmt::format("answers/{}.input", i)};
                 infile << uids.dump(4);
             }
-//            auto answer = engine.ask_query(uids);
-//    auto answers = engine.ask_chain_query(uids);
-//    engine.annotation_on_result(config, answers);
             auto answer = engine.ask_query_stats(uids);
             engine.annotation_on_result(config, answer["results"]);
             {

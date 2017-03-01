@@ -115,7 +115,10 @@ time cat news.2014.train  | nc mark 22224 > a
 ./ygpdb_dump c | awk 'NF>2&&NF<10{print }' | head -n 1000 > queries.ygp.short
 # Get short sentences from news summaries
 find ~/word2vec/NYT.text/ -name '*.summary' | xargs awk '{print }' | awk 'NF>2&&NF<20{print }' | head -n 1000 > queries.rss.short
-# Run stress test
+# Run stress test:
+# Prepare a directory for output
+mkdir answers
+# Run it.
 ./stress_query_engine config.rss.json queries.rss.short >a 2>b
 ./stress_query_engine config.ygp.json queries.ygp.short >a 2>b
 

@@ -166,8 +166,6 @@ util::json_t to_json(std::vector<data::QueryResult> const &answers){
         answer_json["n_relevant_matches"] = answer.n_relevant_matches;
         annotate_input_info(answer_json, answer.query);
         auto cutoff = util::math::sum(answer_json["cutoffs"].get<std::vector<double>>());
-//        double cutoff{0.0};
-//        for(double x : answer_json["cutoffs"]) cutoff+=x;
         for(double x : answer_json["score"]) answer_json["is_highly_meet"].push_back(x>cutoff);
         output.push_back(answer_json);
     }
@@ -239,19 +237,13 @@ struct ProcessQuerySent{
         for(auto& e : query_sent_to_scored.words)
             fmt::print(std::cerr, "{}\n", e.repr(wiki.wordUIDs));
 
-        //auto op_ne = wiki.entity_reprs.get_comparison_operator(named_entities);
         auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored);
-//        auto op_query_similarity = scoring.op_sentence_similarity(query_sent_to_scored, op_word_sim);
-        auto self_scored_sent = output(op_query_similarity.score(query_sent_to_scored).value());
-        auto score_cut = self_scored_sent.score * 0.6;
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
             auto& sent_to_scored = data_sents.sents[i];
-            //if(!op_ne.isin(sent_to_scored.orig)) return;
             auto m_scored_sent = op_query_similarity.score(sent_to_scored);
             if(!m_scored_sent) return;
-            //if(scored_sent.score>score_cut) relevant_sents.push_back((scored_sent));
             relevant_sents.push_back(output(m_scored_sent.value()));
         });
         return deduplicate_results(relevant_sents);
