@@ -2,6 +2,7 @@
 #include <map>
 
 #include <fmt/printf.h>
+#include <fmt/format.h>
 
 #include "data_source/ygp_db.h"
 #include "data_source/db.h"
@@ -244,7 +245,8 @@ struct ProcessQuerySent{
             auto& sent_to_scored = data_sents.sents[i];
             auto m_scored_sent = op_query_similarity.score(sent_to_scored);
             if(!m_scored_sent) return;
-            relevant_sents.push_back(output(m_scored_sent.value()));
+            auto scored_sent = output(m_scored_sent.value());
+            if(scored_sent.score>0.0) relevant_sents.push_back(scored_sent);
         });
         return deduplicate_results(relevant_sents);
     }
@@ -326,6 +328,8 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
 
 template<typename T>
 json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("QueryEngine::preprocess_query is called : {}", ask.dump()));
     if (ask.find("sentences") == ask.end()) return json_t{};
     data::CoreNLPjson query{ask};
 
@@ -346,22 +350,29 @@ json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
         if(pair.first==pair.second) continue;
         answer["word_pair"].push_back({pair.first, pair.second});
     }
+    timer.here_then_reset("QueryEngine::preprocess_query is finished.");
     return answer;
 }
 
 template<typename T>
 json_t QueryEngineT<T>::register_documents(json_t const &ask) {
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("QueryEngine::register_documents is called : {}", ask.dump()));
+
     if (ask.find("sentences") == ask.end()) return json_t{};
     auto uids = queries.append_chunk(data::CoreNLPjson{ask});
     json_t answer{};
     answer["sent_uids"]=util::serialize(uids);
     std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     dbinfo.tag_on_register_documents(ask, answer);
+    timer.here_then_reset("QueryEngine::register_documents is finished.");
     return answer;
 }
 
 template<typename T>
 json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("QueryEngine::ask_query is called : {}", ask.dump()));
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
@@ -391,6 +402,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     };
 
     query_processor(queries, data_sents, per_sent);
+    timer.here_then_reset("QueryEngine::ask_query is finished.");
     return to_json(answers.to_vector());
 }
 
@@ -401,6 +413,8 @@ json_t QueryEngineT<T>::ask_chain_query(json_t const &ask) const {
 
 template<typename T>
 json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("QueryEngine::ask_query_stats is called : {}", ask.dump()));
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
     typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
@@ -448,11 +462,14 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         get_query_suggestions(query_sent, relevant_sents);
     };
 
+    timer.here_then_reset("QueryEngine::ask_query_stats : preparing for query_processing is finished.");
     query_processor(queries, data_sents, per_sent);
+    timer.here_then_reset("QueryEngine::ask_query_stats : query_processing is finished.");
 
     util::json_t out{};
     out["results"] = to_json(answers.to_vector());
     out["query_suggestions_per_sent"] = query_suggestions;
+    timer.here_then_reset("QueryEngine::ask_query_stats : finished.");
     return out;
 }
 

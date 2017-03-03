@@ -53,9 +53,11 @@ int main(int /*argc*/, char** argv){
         auto input_json= nlohmann::json::parse(input);
         std::cerr << input_json.dump(4) << std::endl;
         if(input_json.find("raw_text")!=input_json.end()) {
+            timer.here_then_reset("TestApp::raw_text : received a query");
             std::cerr << "Register documents"<<std::endl;
             auto query_str=input_json["raw_text"].get<std::string>();
             auto query_json = corenlp_client.from_query_content(query_str);
+            timer.here_then_reset("TestApp::raw_text : a query is parsed from CoreNLP server");
             query_json["query_str"] = query_str;
 //        std::cerr << query_json.dump(4) << std::endl;
             auto uids = engine.register_documents(query_json);
@@ -65,6 +67,7 @@ int main(int /*argc*/, char** argv){
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
             socket.send(reply);
+            timer.here_then_reset("TestApp::raw_text : a query is processed");
         } else if (input_json.find("ask_query")!=input_json.end()){
             std::cerr << "Ask  query"<<std::endl;
             auto answer = engine.ask_query(input_json);
