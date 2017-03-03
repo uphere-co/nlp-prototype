@@ -1,8 +1,12 @@
 #include "similarity/scoring.h"
 
+#include <fmt/printf.h>
+
 #include "wordrep/indexes.h"
 
 #include "data_source/db.h"
+
+#include "utils/profiling.h"
 
 using wordrep::Sentence;
 using wordrep::CharOffset;
@@ -99,17 +103,21 @@ std::vector<ScoredSentence> plain_rank_cut(std::vector<ScoredSentence> relevant_
     return top_n_results;
 }
 //Select top N results by chunk_idx
+//TODO : optimize this function.
 std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence> relevant_sents,
                                            size_t n_unique_chunk_idx){
-    auto n_found = relevant_sents.size();
-    if(n_found<=n_unique_chunk_idx) return relevant_sents;
+    if(relevant_sents.empty()) return relevant_sents;
+    n_unique_chunk_idx = std::min(relevant_sents.size(),n_unique_chunk_idx);
 
     auto beg = relevant_sents.begin();
     auto end = relevant_sents.end();
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("Begin sorting with {} sentences", n_unique_chunk_idx));
     std::partial_sort(beg,end,end, [](auto const &x, auto const &y){
         if(x.score==y.score)
             return x.sent.dict->chunk_idx(x.sent.front())<y.sent.dict->chunk_idx(y.sent.front());
         return x.score > y.score;});
+    timer.here_then_reset("Sorting finished");
     auto score_cutoff = 0.5*relevant_sents.front().score;
     auto rank_cut = beg;
     std::set<ChunkIndex> chunk_idxs;
@@ -120,6 +128,7 @@ std::vector<ScoredSentence> rank_cut_by_unique_chunk(std::vector<ScoredSentence>
     }
     std::vector<ScoredSentence> top_n_results;
     std::copy(beg, rank_cut, std::back_inserter(top_n_results));
+    timer.here_then_reset("Pick top N result:  finished");
     return top_n_results;
 }
 
