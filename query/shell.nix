@@ -18,6 +18,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
          , template-haskell, rnnpp, json, hdf5-cpp, msgsl, tbb
          , fmt, pqxx
          , variant
+         , elfutils
          }:
          mkDerivation {
            pname = "query-binding";
@@ -27,7 +28,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	     base fficxx fficxx-runtime template-haskell
 	   ];
 	   librarySystemDepends = [
-	     rnnpp json hdf5-cpp msgsl tbb variant fmt pqxx
+	     rnnpp json hdf5-cpp msgsl tbb variant fmt pqxx elfutils
 	   ];
 	   license = stdenv.lib.licenses.bsd3;
 	 }) { inherit rnnpp tbb hdf5-cpp;
@@ -36,6 +37,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
               variant = toolz_cpp.variant;
               fmt = toolz_cpp.fmt;
               pqxx = libpqxx;
+              inherit elfutils;
             };
     };
     

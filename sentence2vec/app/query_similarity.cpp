@@ -69,7 +69,7 @@ int main(int /*argc*/, char** argv){
             std::cerr << "Ask  query"<<std::endl;
             auto answer = engine.ask_query(input_json);
             engine.annotation_on_result(config, answer);
-            std::cerr << answer.dump(4) << std::endl;
+            //std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
@@ -78,7 +78,7 @@ int main(int /*argc*/, char** argv){
             std::cerr << "Ask chain query"<<std::endl;
             auto answer = engine.ask_chain_query(input_json);
             engine.annotation_on_result(config, answer);
-            std::cerr << answer.dump(4) << std::endl;
+            //std::cerr << answer.dump(4) << std::endl;
             std::string aa{answer.dump(4)};
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
@@ -101,7 +101,14 @@ int main(int /*argc*/, char** argv){
             zmq::message_t reply(aa.size());
             std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
             socket.send(reply);
-        } else if (input_json.find("sents")!=input_json.end()){
+        } else if (input_json.find("sent_compare")!=input_json.end()){
+            std::cerr << "Compare sentences"<<std::endl;
+            auto answer = engine.compare_sentences(input_json);
+            std::string aa{answer.dump(4)};
+            zmq::message_t reply(aa.size());
+            std::memcpy((void *) reply.data(), (void *) aa.data(), aa.size());
+            socket.send(reply);
+        }else if (input_json.find("sents")!=input_json.end()){
             std::cerr << "Getting sentences from UIDs"<<std::endl;
             auto answer = engine.ask_sents_content(input_json);
             std::cerr << answer.dump(4) << std::endl;

@@ -85,29 +85,58 @@ struct Scoring{
                 uids.push_back(entity.uid);
             return uids;
         }
-        void filter_false_named_entity(POSUIDindex const& posUIDs){
+        void filter_false_named_entity(wiki::OpNamedEntity const &op,
+                                       POSUIDindex const& posUIDs){
             for(auto it=entities.begin(); it<entities.end();){
                 auto& entity = *it;
                 if(entity.idxs.size()!=1) {
-                    ++it;
-                    continue;
+                    for(auto iit = entity.uid.candidates.begin();iit!=entity.uid.candidates.end();){
+                        auto& uid=*iit;
+                        if(!op.is_named_entity(uid)){
+                            std::swap(uid, entity.uid.candidates.back());
+                            entity.uid.candidates.pop_back();
+                            continue;
+                        } else{
+                            ++iit;
+                        }
+                    }
+                    for(auto iit = entity.candidates.begin();iit!=entity.candidates.end();){
+                        auto& elm=*iit;
+                        if(!op.is_named_entity(elm.uid)){
+                            std::swap(elm, entity.candidates.back());
+                            entity.candidates.pop_back();
+                            continue;
+                        } else{
+                            ++iit;
+                        }
+                    }
+                    if(entity.candidates.empty()){
+                        for(auto idx : entity.idxs){
+                            words.push_back({orig,idx});
+                        }
+                        std::swap(entity, entities.back());
+                        entities.pop_back();
+                    } else{
+                        ++it;
+                    }
+                } else{
+                    auto idx = entity.idxs.front();
+                    auto is_noun = [&posUIDs](auto pos){
+                        auto NN = posUIDs["NN"];
+                        auto NNS = posUIDs["NNS"];
+                        auto NNP = posUIDs["NNP"];
+                        auto NNPS = posUIDs["NNPS"];
+                        return pos==NN||pos==NNS||pos==NNP||pos==NNPS;
+                    };
+                    auto pos = this->orig.dict->pos(idx);
+                    if(is_noun(pos)) {
+                        ++it;
+                    } else{
+                        words.push_back({orig,idx});
+                        std::swap(entity, entities.back());
+                        entities.pop_back();
+                    }
                 }
-                auto idx = entity.idxs.front();
-                auto is_noun = [&posUIDs](auto pos){
-                    auto NN = posUIDs["NN"];
-                    auto NNS = posUIDs["NNS"];
-                    auto NNP = posUIDs["NNP"];
-                    auto NNPS = posUIDs["NNPS"];
-                    return pos==NN||pos==NNS||pos==NNP||pos==NNPS;
-                };
-                auto pos = this->orig.dict->pos(idx);
-                if(is_noun(pos)) {
-                    ++it;
-                    continue;
-                }
-                words.push_back({orig,idx});
-                std::swap(entity, entities.back());
-                entities.pop_back();
             }
         }
         Sentence const& orig;
@@ -132,20 +161,12 @@ struct Scoring{
                                     sent.words.push_back({orig.sent,idx});
                                 },
                                 [this,&sent,&orig](T const &entity) {
-                                    wiki::AmbiguousUID named_entity_uid;
-                                    for (auto uid : entity.uid.candidates)
-                                        if(op.is_named_entity(uid)) named_entity_uid.candidates.push_back(uid);
-                                    if(named_entity_uid.candidates.empty()){
-                                        for(auto idx : entity.words)
-                                            sent.words.push_back({orig.sent,idx});
-                                        return;
-                                    }
                                     auto& dict       = *orig.sent.dict;
                                     auto idx         = entity.words.dep_token_idx(dict);
                                     WordUID word_gov = dict.head_uid(idx);
                                     VocaIndex gov    = dict.head_word(idx);
-                                    Scoring::AmbiguousEntity x{{},named_entity_uid,entity.words, word_gov,gov};
-                                    for (auto uid : named_entity_uid.candidates) {
+                                    Scoring::AmbiguousEntity x{{},entity.uid, entity.words, word_gov,gov};
+                                    for (auto uid : x.uid.candidates) {
                                         auto synonyms = entity_reprs.get_synonyms(uid);
                                         auto repr = scoring.max_score_repr(synonyms);
                                         x.candidates.push_back({uid, scoring.phrase(repr)});
@@ -157,7 +178,6 @@ struct Scoring{
         }
         Scoring const &scoring;
         wiki::EntityReprs const &entity_reprs;
-        wiki::OpNamedEntity const &op;
     };
 
     struct OpSimilarity{
@@ -198,19 +218,10 @@ struct Scoring{
             val_t max_score = 0.0;
             std::optional<ConsecutiveTokens> best_match={};
             for(auto word : data.words) {
-                auto score = similarity(word, query);
+                auto score = similarity(query, word);
                 if (max_score > score) continue;
                 max_score = score;
                 best_match = ConsecutiveTokens{word.idx};
-            }
-            for(auto& entity : data.entities) {
-                for (auto idx : entity.idxs) {
-                    DepPair pair{data.orig, idx};
-                    auto score = similarity(query, pair);
-                    if (max_score >= score) continue;
-                    max_score = score;
-                    best_match = entity.idxs;
-                }
             }
             if(best_match)
                 return Score{best_match.value(), max_score};
@@ -229,13 +240,16 @@ struct Scoring{
                 return Score{best_match.value(), max_score};
             return {};
         }
-        ScoredSentence similarity(SentenceToScored const& query, SentenceToScored const& data) const{
+        std::optional<ScoredSentence> similarity(SentenceToScored const& query, SentenceToScored const& data) const{
             ScoredSentence scored_sent{data.orig,{},{}};
-            for(auto& entity : query.entities)
-                scored_sent.entities.push_back(std::make_pair(entity, similarity(entity, data)));
+            for(auto& entity : query.entities) {
+                auto m_score = similarity(entity, data);
+                if(!m_score) return {};
+                scored_sent.entities.push_back(std::make_pair(entity, m_score));
+            }
             for(auto& word : query.words)
                 scored_sent.words.push_back(std::make_pair(word, similarity(word, data)));
-            return scored_sent;
+            return {scored_sent};
         }
         OpWordImportance word_importance;
         OpWordSimilarity op;
@@ -248,7 +262,7 @@ struct Scoring{
         OpSimilarity op;
         SentenceToScored query;
         mutable std::optional<WordSimCache::WordSimOp> op_cached={};
-        ScoredSentence score(SentenceToScored const&data) const{
+        std::optional<ScoredSentence> score(SentenceToScored const&data) const{
             return op.similarity(query, data);
         }
     };

@@ -35,6 +35,7 @@ private:
 
 struct PreprocessedSent{
     PreprocessedSent(wikidata::EntityModule const& wiki,
+                     wordrep::Scoring const& scoring,
                      wordrep::Scoring::Preprocess const& scoring_preprocessor,
                      std::vector<wordrep::Sentence> const& orig_sents){
         if(!orig_sents.empty()){
@@ -46,13 +47,29 @@ struct PreprocessedSent{
             auto& sent = orig_sents[i];
             auto tagged_sent = wiki.annotator.annotate(sent);
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-            sent_to_scored.filter_false_named_entity(wiki.posUIDs);
+            sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
+
+            for(auto& e : sent_to_scored.entities){
+                std::vector<wordrep::WikidataUID> instances;
+                for(auto uid : e.uid.candidates)
+                    util::append(instances, wiki.prop_dict.get_p31_properties(uid));
+                for (auto uid : instances) {
+                    //TODO: don't know why m_synonyms can be empty.
+                    auto m_synonyms = wiki.entity_reprs.find(uid);
+                    if(!m_synonyms) continue;
+                    auto synonyms = m_synonyms.value();
+                    auto repr = scoring.max_score_repr(synonyms);
+                    e.candidates.push_back({uid, scoring.phrase(repr)});
+                    e.uid.candidates.push_back(uid);
+                }
+            }
             sents.push_back(sent_to_scored);
         });
     }
     size_t size() const {return sents.size();}
     tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
 };
+
 template<typename T>
 class QueryEngineT {
 public:
@@ -74,6 +91,7 @@ public:
     json_t ask_query_stats(json_t const &ask) const;
     json_t ask_sents_content(json_t const &ask) const;
     json_t ask_query_suggestion(json_t const &ask) const;
+    json_t compare_sentences(json_t const &ask) const;
 
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
         T::annotation_on_result(config, answers);
@@ -111,16 +129,19 @@ struct QueryEngine {
         return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
     }
     json_t ask_chain_query(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
+        return engine.match([&ask] (auto& e)  { return e.ask_chain_query(ask);});
     }
     json_t ask_query_stats(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_query(ask);});
+        return engine.match([&ask] (auto& e)  { return e.ask_query_stats(ask);});
     }
     json_t ask_sents_content(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_sents_content(ask);});
     }
     json_t ask_query_suggestion(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query_suggestion(ask);});
+    }
+    json_t compare_sentences(json_t const &ask) const{
+        return engine.match([&ask] (auto& e)  { return e.compare_sentences(ask);});
     }
     void annotation_on_result(util::json_t const& config, util::json_t &answers) const {
         engine.match([&config,&answers] (auto& e)  { return e.annotation_on_result(config, answers);});

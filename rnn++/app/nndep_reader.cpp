@@ -359,9 +359,6 @@ int main(int argc, char** argv){
     engine::SubmoduleFactory factory{config};
     for(auto key : factory.config.values) fmt::print(std::cerr, "{:<25} : {}\n",key.first.val, key.second);
 
-//    update_column(config);
-//    return 0;
-
     data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
     auto raw_query_str = util::string::strip(util::string::read_whole(input));
     auto raw_query_json = corenlp_client.from_query_content(raw_query_str);
@@ -393,6 +390,7 @@ int main(int argc, char** argv){
     uids["n_cut"]=10;
     uids["max_clip_len"] = query_json["max_clip_len"];
     if(false){
+        //test YGP db column restriction.
         uids["confine_ygp_table_columns"].push_back("regulation.regtitle");
 //    uids["confine_ygp_table_columns"].push_back("regulation.enregsummary");
 //    uids["confine_ygp_table_columns"].push_back("regulation.enmainrequire");
@@ -417,29 +415,7 @@ int main(int argc, char** argv){
     timer.here_then_reset("Annotate query output.");
     //fmt::print("stats_answers:\n");
     fmt::print("{}\n", stat_answer.dump(4));
-    if(false){
-        util::json_t tmp;
-        std::vector<int64_t> sents;
-        for(auto& per_sent: stat_answer["stats"])
-            for(auto& per_key : per_sent)
-                for(auto& matches : per_key)
-                    for(auto uid : matches)
-                        sents.push_back(uid);
-        tmp["sents"]=sents;
-	//fmt::print("{}\n", tmp.dump(4));
 
-
-//        auto custom_query = uids;
-//        custom_query["sents"]=sents;
-//        custom_query["n_cut"]=30;
-//        fmt::print("{}\n", uids.dump(4));
-//        fmt::print("{}\n", custom_query.dump(4));
-//        auto chain_answers_custom = engine.ask_chain_query(custom_query);
-//        data::ygp::annotation_on_result(config, chain_answers_custom);
-//        fmt::print("{}\n", chain_answers_custom.dump(4));
-////    auto content = engine.ask_sents_content(tmp);
-//        //fmt::print("{}\n", content.dump(4));
-    }
     timer.here_then_reset("Queries are answered.");
 
     return 0;
