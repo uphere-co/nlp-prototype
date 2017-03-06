@@ -9,11 +9,12 @@
 #include "utils/parallel.h"
 #include "utils/json.h"
 
-int main(int /*argc*/, char** argv){
+int main(int argc, char** argv){
     using namespace util;
     Timer timer{};
 
 //    auto config = load_json("/data/groups/uphere/similarity_test/config.json");
+    assert(argc>2);
     auto config = load_json(argv[1]);
     std::cerr << config.dump(4) << std::endl;
 

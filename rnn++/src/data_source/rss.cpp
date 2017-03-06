@@ -78,6 +78,7 @@ void write_column_indexes(util::json_t const &config,
 
 void annotation_on_result(util::json_t const& config, util::json_t &answers){
     auto dumpfile_hashes = util::get_str(config,"row_hashes");
+    auto rawtext_dir     = util::get_str(config,"rawtext_dir");
     Columns rssdb{config["column_uids_dump"].get<std::string>()};
     HashIndexer hash2idx{dumpfile_hashes};
     for(auto &answer : answers){
@@ -95,7 +96,7 @@ void annotation_on_result(util::json_t const& config, util::json_t &answers){
             auto column = rssdb.column(col_uid);
 
             //TODO: make the path configurable
-            auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/NYT.text/{}.{}", hash, column));
+            auto row_str = util::string::read_whole(fmt::format("{}/{}.{}", rawtext_dir, hash, column));
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
