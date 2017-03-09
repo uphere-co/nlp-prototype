@@ -210,7 +210,7 @@ void test_random_vector_gen(){
 
 
 int main(int argc, char** argv){
-//    iter_sentences(argc,argv);
+    iter_sentences(argc,argv);
 //    training(argc,argv);
     return 0;
 }

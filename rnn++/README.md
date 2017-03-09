@@ -129,7 +129,7 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 ## Incremental word2vec training
 ### List words in existing voca
 ```
-./show_words_in_voca config.ygp.json > known_words
+./list_words config.ygp.json > known_words
 #List newly seen words in a dataset
 ## YGP case:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text
