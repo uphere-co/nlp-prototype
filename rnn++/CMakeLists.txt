@@ -111,8 +111,9 @@ add_executable(word_importance_export app/word_importance_export
 target_link_libraries(word_importance_export stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 add_executable(word_context app/word_context
-        ${wordrep_files} ${word2vec_files} ${util_files})
-target_link_libraries(word_context stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files}
+        ${word2vec_files})
+target_link_libraries(word_context stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word2vec_train app/word2vec_train
         ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(word2vec_train stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)

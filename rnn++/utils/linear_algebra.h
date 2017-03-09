@@ -44,14 +44,18 @@ struct Vector{
         return *this;
     };
     Vector& operator+=(const Vector& vec) {
-        span+=vec.span;
+//        span+=vec.span;
+        auto n = span.size();
+        for(decltype(n)i=0; i!=n; ++i) span[i] += vec.span[i];
         return *this;
     }
     Vector& operator-=(const Vector& vec) {
         span-=vec.span;
         return *this;
-    }Vector& operator*=(T x) {
-        span*=x;
+    }
+    Vector& operator*=(T x) {
+//        span*=x;
+        for(auto &v : _val) v *= x;
         return *this;
     }
     Vector(Vector&& vec) : _val{std::move(vec._val)} {
@@ -60,6 +64,13 @@ struct Vector{
         assert(span[0]==_val[0]);
         // std::cerr<<"Move Vector{gsl::span<M>}\n";
     };
+
+    auto l1_norm() const {
+        T norm{0.0};
+        for(auto x : _val) norm += std::abs(x);
+        return norm;
+    }
+
     std::vector<T> _val;
     gsl::span<T, M> span=_val; //this default is critical!
 };
