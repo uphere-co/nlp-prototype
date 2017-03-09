@@ -20,20 +20,28 @@ using wordrep::IndexedTexts;
 using word2vec::UnigramDist;
 using word2vec::SubSampler;
 
+struct ContextCount{
+    WordUID word;
+    std::map<WordUID,size_t> count;
+};
 void get_contexts(IndexedTexts const& texts,
                   wordrep::WordUIDindex const& wordUIDs,
                   std::vector<WordUID> const& words){
     util::Timer timer;
 //    auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
     auto n = IndexedTexts::Index::from_unsigned(texts.sents_uid.size());
-    auto indexed_words = util::zip(texts.words_uid.get(),
-                                   util::sequence(IndexedTexts::Index{0}, n));
-    tbb::parallel_sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
-    timer.here_then_reset("Sorting words by their UIDs.");
+    std::vector<std::pair<WordUID, IndexedTexts::Index>> indexed_words;
+    indexed_words.reserve(texts.size());
+    IndexedTexts::Index idx{0};
+    for(auto word : texts.words_uid) indexed_words.push_back({word,idx++});
+    timer.here_then_reset("Prepare data.");
+    tbb::parallel_sort(indexed_words.begin(), indexed_words.end(), [](auto x, auto y){return x.first<y.first;});
+    timer.here_then_reset("Sort words by their UIDs.");
 
-    tbb::concurrent_vector<std::pair<WordUID,std::map<WordUID, size_t>>> contexts_count;
+    util::ConcurrentVector<ContextCount> contexts_count;
     auto n_word = words.size();
     tbb::parallel_for(decltype(n_word){0}, n_word, [&](auto i){
+        auto n_gram = 10;
         auto word = words[i];
         //auto beg=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
         auto it=util::binary_find(indexed_words, [word](auto x){return word==x.first;}, [word](auto x){return word<x.first;});
@@ -43,31 +51,30 @@ void get_contexts(IndexedTexts const& texts,
         rbeg=std::find_if_not(rbeg,indexed_words.crend(),[word](auto x){return x.first==word;});
         beg = rbeg.base();
         auto end=std::find_if_not(beg,indexed_words.cend(),[word](auto x){return x.first==word;});
-        std::map<WordUID, size_t> ccount;
+        ContextCount ccount{word, {}};
         for(auto it=beg; it!=end; ++it){
-//            for(auto idx=it->second-5; idx!=it->second+5+1; ++idx)
-//                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
-//            fmt::print("\n");
-            for(auto idx=it->second-5; idx!=it->second; ++idx){
+            IndexedTexts::Index cbeg = it->second>IndexedTexts::Index{n_gram} ? it->second-n_gram:0;
+            IndexedTexts::Index cend = it->second+1+5<n ? it->second-n_gram:n;
+            for(auto idx=cbeg; idx<it->second; ++idx){
                 auto cword = texts.word_uid(idx);
-                ++ccount[cword];
+                ++ccount.count[cword];
             }
-            for(auto idx=it->second+1; idx!=it->second+1+5; ++idx){
+            assert(texts.word_uid(it->second)==word);
+            for(auto idx=it->second+1; idx<cend; ++idx){
                 auto cword = texts.word_uid(idx);
-                ++ccount[cword];
+                ++ccount.count[cword];
             }
         }
-        contexts_count.push_back({word, ccount});
-        //timer.here_then_reset(fmt::format("Get context words for : {}", wordUIDs[word]));
+        contexts_count.push_back(ccount);
     });
     timer.here_then_reset(fmt::format("Get context words"));
-    for(auto elm : contexts_count){
-        auto word = elm.first;
-        auto cs = util::to_pairs(elm.second);
-        std::sort(cs.begin(), cs.end(), [](auto x, auto y){return x.second>y.second;});
-        for(auto c : cs) {
-            auto cword = c.first;
-            auto count = c.second;
+    auto counts = contexts_count.to_vector();
+    timer.here_then_reset(fmt::format("Build results"));
+    for(auto elm : counts){
+        auto word = elm.word;
+        for(auto ccount : elm.count){
+            auto cword = ccount.first;
+            auto count = ccount.second;
             fmt::print("{:<15} {:<15} {}\n", wordUIDs[word], wordUIDs[cword], count);
         }
     }
@@ -87,13 +94,24 @@ int main(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     util::Timer timer;
 
-    IndexedTexts texts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                       config["dep_parsed_prefix"]};
     wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-
-    std::vector<std::string> words=getlines(std::move(std::cin));
-    auto wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
-    timer.here_then_reset("Data loaded.");
+    tbb::task_group g;
+    std::optional<IndexedTexts> m_texts = {};
+    std::optional<std::vector<std::string>> m_words = {};
+    std::optional<std::vector<WordUID>> m_wuids = {};
+    g.run([&m_texts, &config](){
+        m_texts = IndexedTexts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                               config["dep_parsed_prefix"]};
+    });
+    g.run([&m_wuids,&wordUIDs](){
+        auto words = getlines(std::move(std::cin));
+        m_wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
+    });
+    g.wait();
+    timer.here_then_reset("Load data.");
+    auto texts = m_texts.value();
+    auto wuids = m_wuids.value();
+    timer.here_then_reset("Construct data objects.");
     get_contexts(texts, wordUIDs, wuids);
     timer.here_then_reset("Finish.");
 

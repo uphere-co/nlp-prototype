@@ -19,6 +19,7 @@ struct IndexedTexts{
     VocaIndex word(Index n) const {return words[n.val];}
     ChunkIndex chunk_idx(Index n) const {return chunks_idx[n.val];}
     SentUID   sent_uid(Index n) const {return sents_uid[n.val];}
+    size_t   size() const {return words.size();}
 
     util::TypedPersistentVector<ChunkIndex> chunks_idx;
     util::TypedPersistentVector<SentUID> sents_uid;
