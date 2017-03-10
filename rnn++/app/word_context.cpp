@@ -15,6 +15,7 @@
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
+    auto output_h5store_name = argv[2];
     engine::SubmoduleFactory factory{{config}};
     util::Timer timer;
 
@@ -44,7 +45,7 @@ int main(int argc, char** argv){
 //    assert(new_words_with_context.size()==new_words.size());
     timer.here_then_reset(fmt::format("Get contexts of {} unseen words.", unseen_words_with_context.size()));
     wordrep::write_to_disk(base_voca, new_voca_words.known_words, unseen_words_with_context,
-                           "test.h5", factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
+                           output_h5store_name, factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
 //    for(auto word : new_words){
 //        if(util::isin(words_with_c, word)) continue;
 //        fmt::print(std::cerr, "{}\n", wordUIDs[word]);
