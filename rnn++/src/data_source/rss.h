@@ -41,7 +41,7 @@ void write_column_indexes(util::json_t const &config,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs);
 
-void annotation_on_result(util::json_t const &config, util::json_t &answers);
+void annotation_on_result(util::json_t const& config, util::json_t &answers);
 
 struct Columns{
     Columns(std::string column_uids);

@@ -94,6 +94,9 @@ target_link_libraries(ygpdb_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(ygpdb_dump app/ygpdb_dump
         ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(ygpdb_dump stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(rss_dump app/rss_dump
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
+target_link_libraries(rss_dump stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(word_count app/word_count
         ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(word_count stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
@@ -157,7 +160,7 @@ add_library(util STATIC ${util_files})
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
 target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
-install(TARGETS train_model0 train_model1 train_model4 parser_model1 parser_model4 phrases_model4 parser_similarity RUNTIME DESTINATION bin)
+install(TARGETS nndep_reader RUNTIME DESTINATION bin)
 
 install(TARGETS similarity DESTINATION lib) 
 
