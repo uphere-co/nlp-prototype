@@ -155,7 +155,7 @@ cat nyt.text.ptb.words | ./word_context config.rss.json test.h5
 # Build unigram distribution for the new dataset
 cat nyt.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
 # Evaluate quality of word embedding.
-./word2vec_eval config.rssw2v.json unigram.h5```
+./word2vec_eval config.rssw2v.json unigram.h5
 ```
 
 ## Wikidata entity annotation

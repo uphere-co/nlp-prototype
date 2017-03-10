@@ -30,9 +30,9 @@ void check_word_uid(int argc, char** argv){
     auto config = util::load_json(argv[1]);
 
     auto wordvec_file=util::io::h5read("nyt_words.h5");
-    UnigramDist unigram{wordvec_file};
     wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
     wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
+    UnigramDist unigram{wordvec_file, voca};
 
     auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
 //    for(auto word : words){
@@ -62,7 +62,7 @@ void iter_sentences(int argc, char** argv){
     using namespace word2vec;
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    UnigramDist unigram{util::io::h5read("nyt_words.h5")};
+    UnigramDist unigram{util::io::h5read("nyt_words.h5"), voca};
     SubSampler subsampler{0.001, unigram};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
     std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};
@@ -107,12 +107,14 @@ void iter_sentences(int argc, char** argv){
 
 void training(int argc, char** argv){
     //assert(argc>1);
-    //auto config = util::load_json(argv[1]);
+    auto config = util::load_json(argv[1]);
+
+    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
     util::MockTimer timer;
 
     IndexedTexts texts{util::io::h5read("nyt_texts.h5"), "nyt"};
 
-    word2vec::UnigramDist unigram{util::io::h5read("nyt_words.h5")};
+    word2vec::UnigramDist unigram{util::io::h5read("nyt_words.h5"),voca};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
     word2vec::SubSampler subsampler{0.001, unigram};
 
