@@ -78,6 +78,9 @@ Launch word counter as a TCP server :
 ## Indexing RSS data
 ### Adapt updated indexing scheme
 - cp ygp/all_words rss/
+ - Note that this file, specified in "word_uids_dump" field of config, should be updated for a new dataset.
+ - The update is not essential for query engine, but necessary for human(e.g. for testing and debugging).
+ - See "Incremental word2vec training" section for getting new "unseen" words. 
 - cp ygp/news.h5 rss/
 - cp ygp/prob.test.h5 rss/
 - Update word_uids_dump field of RSSQueryEngine config JSON.
