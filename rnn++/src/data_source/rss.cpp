@@ -39,7 +39,8 @@ HashIndexer::HashIndexer(std::string filename)
 void write_column_indexes(util::json_t const &config,
                           std::string dumpfile_hashes,
                           std::string row_rawfiles,
-                          std::vector<size_t> const &idxs){
+                          std::vector<size_t> const &idxs,
+                          std::string output_filename){
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
@@ -66,9 +67,6 @@ void write_column_indexes(util::json_t const &config,
         ++row_uid;
     }
 
-    auto output_name = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                           wordrep::DepParsedTokens::major_version, 0};
-    auto output_filename = output_name.fullname;
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     data::ygp::write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
     data::ygp::write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
