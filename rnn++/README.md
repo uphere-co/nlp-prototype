@@ -82,19 +82,21 @@ Launch word counter as a TCP server :
 - cp ygp/prob.test.h5 rss/
 - Update word_uids_dump field of RSSQueryEngine config JSON.
 
-
 ### Build a dataset
-- Prepare config JSON for a dataset.
-- (can be skipped:) Build voca vecs by pruning unnecessary words for a dataset
+- Prepare config JSON for a dataset
+ 1. It needs word vector embedding. 
+ 2. Either use eixsting one or build custum word embedding from it(See "Incremental word2vec training" section for details).
 - Index the dataset with them
 ```
-# For processing partial dataset:
-# (For processing all dataset, just remove `head -n 1000` part of the following.)
-find /opt/NYT.dump/ -type f | head -n 1000 | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} tests/
-find tests/ -type f |  xargs -P 20 -i'{}' python ../rnn++/scripts/corenlp.py {} jsons/
-find /opt/NYT.dump/ -type f -printf "%f\n"|head -n 1000 > nyt_hashes
-find jsons/ -type f > nyt_jsons
-./rss_dump config.rsstest.json nyt_hashes nyt_jsons
+# Parse HTML dumps to extract texts
+find /opt/NYT.dump/ -type f | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/NYT.text/
+# Depenency parsing of the texts
+find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/NYT.json/
+# Indexing to build HDF5 store file.
+find /opt/NYT.dump/ -type f -printf "%f\n" > nyt_hashes
+find /opt/NYT.json/ -type f > nyt_jsons
+# "1" is a minor version of the indexed dataset. 
+./rss_dump config.rss.json nyt_hashes nyt_jsons 1
 ```
 
 ## Run an app as a network daemon
