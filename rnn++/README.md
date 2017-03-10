@@ -142,10 +142,12 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 # Get words in a dataset
 ## YGP case:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
-cat ygp.text.ptb | ./word_count | awk '$2>9{print $1}' > ygp.text.ptb.words
+cat ygp.text.ptb | ./word_count | awk '$2>9{print}' > ygp.text.ptb.counts
+cat ygp.text.ptb.counts | awk '{print $1}' > ygp.text.ptb.words
 ## RSS case:
 find /opt/NYT.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > nyt.text.ptb
-cat nyt.text.ptb | ./word_count | awk '$2>9{print $1}' > nyt.text.ptb.words
+cat nyt.text.ptb | ./word_count | awk '$2>9{print}' > nyt.text.ptb.counts
+cat nyt.text.ptb.counts | awk '{print $1}' > nyt.text.ptb.words
 
 # Pipe new words to get their word embedding and store it to new HDF5 store "test.h5"
 cat nyt.text.ptb.words | ./word_context config.rss.json test.h5

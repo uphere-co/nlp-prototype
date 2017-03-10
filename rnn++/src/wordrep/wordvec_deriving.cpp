@@ -117,6 +117,10 @@ void write_to_disk(VocaInfo const& base_voca,
     std::vector<WordUID> words_new_voca =known_words;
     util::append(words_new_voca, util::map(unseen_words_with_context, [](auto x){return x.word;}));
     util::TypedPersistentVector<WordUID> new_uids{voca_name, std::move(words_new_voca)};
+    //Add word vector for a special word, -UNKNOWN-.
+    auto unknown = base_voca.wvecs[base_voca.indexmap[the_unknown_word_uid()]];
+    util::append(raw_vecs, unknown.cbegin(), unknown.cend());
+    new_uids.push_back(the_unknown_word_uid());
     assert(raw_vecs.size()==new_uids.size()*wordrep::VocaInfo::dim);
     util::io::H5file outfile{{h5store_name}, util::io::hdf5::FileMode::replace};
     new_uids.write(outfile);

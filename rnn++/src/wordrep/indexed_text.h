@@ -16,7 +16,7 @@ struct IndexedTexts{
               words {file,prefix+".word"}
     {}
     WordUID   word_uid(Index n) const {return words_uid[n.val];}
-    VocaIndex word(Index n) const {return words[n.val];}
+    //VocaIndex word(Index n) const {return words[n.val];}
     ChunkIndex chunk_idx(Index n) const {return chunks_idx[n.val];}
     SentUID   sent_uid(Index n) const {return sents_uid[n.val];}
     size_t   size() const {return words.size();}
