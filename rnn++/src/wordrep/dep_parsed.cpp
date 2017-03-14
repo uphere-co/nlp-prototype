@@ -63,8 +63,7 @@ DepParsedTokens::DepParsedTokens(std::string prefix)
 {}
 
 void DepParsedTokens::write_to_disk(std::string filename) const {
-//    H5file outfile{H5name{filename}, hdf5::FileMode::rw_exist};
-    H5file outfile{H5name{filename}, hdf5::FileMode::create};
+    H5file outfile{H5name{filename}, hdf5::FileMode::replace};
     sents_uid.write(outfile);
     chunks_idx.write(outfile);
     sents_idx.write(outfile);
