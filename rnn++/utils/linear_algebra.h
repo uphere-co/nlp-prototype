@@ -44,7 +44,6 @@ struct Vector{
         return *this;
     };
     Vector& operator+=(const Vector& vec) {
-//        span+=vec.span;
         auto n = span.size();
         for(decltype(n)i=0; i!=n; ++i) span[i] += vec.span[i];
         return *this;
@@ -54,7 +53,6 @@ struct Vector{
         return *this;
     }
     Vector& operator*=(T x) {
-//        span*=x;
         for(auto &v : _val) v *= x;
         return *this;
     }

@@ -46,18 +46,6 @@ int main(int argc, char** argv){
     timer.here_then_reset(fmt::format("Get contexts of {} unseen words.", unseen_words_with_context.size()));
     wordrep::write_to_disk(base_voca, new_voca_words.known_words, unseen_words_with_context,
                            output_h5store_name, factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
-//    for(auto word : new_words){
-//        if(util::isin(words_with_c, word)) continue;
-//        fmt::print(std::cerr, "{}\n", wordUIDs[word]);
-//    }
-//    for(auto elm : new_words_with_context){
-//        auto word = elm.word;
-//        for(auto ccount : elm.count){
-//            auto cword = ccount.first;
-//            auto count = ccount.second;
-//            fmt::print("{:<15} {:<15} {}\n", wordUIDs[word], wordUIDs[cword], count);
-//        }
-//    }
-//    timer.here_then_reset("Print contexts.");
+
     return 0;
 }
