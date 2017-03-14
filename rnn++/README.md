@@ -83,21 +83,21 @@ Launch word counter as a TCP server :
 - Update word_uids_dump field of RSSQueryEngine config JSON.
 
 
-### Build a hash list and a list of corenlp dump files
+### Build a dataset
+- Prepare config JSON for a dataset.
+- (can be skipped:) Build voca vecs by pruning unnecessary words for a dataset
+- Index the dataset with them
 ```
-#Find all dump files  | show sha256 hash only | word count on them | select hashes with count 3 only(i.e. have all columns)
-find ~/word2vec/NYT.corenlp/ -name '*.*.*'  -printf "%f\n" | cut -d'.' -f1 | ./word_count | awk -F" " '$2==3{print $1}' > article.hashes
-find ~/word2vec/NYT.corenlp/ -name '*.*.*'  -printf "%f\n" | cut -d'.' -f1 | ./word_count | awk -F" " '{print $1}' > article.hashes
-find ~/word2vec/NYT.corenlp/ -name '*.*.*' > article.corenlp
+# For processing partial dataset:
+# (For processing all dataset, just remove `head -n 1000` part of the following.)
+find /opt/NYT.dump/ -type f | head -n 1000 | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} tests/
+find tests/ -type f |  xargs -P 20 -i'{}' python ../rnn++/scripts/corenlp.py {} jsons/
+find /opt/NYT.dump/ -type f -printf "%f\n"|head -n 1000 > nyt_hashes
+find jsons/ -type f > nyt_jsons
+./rss_dump config.rsstest.json nyt_hashes nyt_jsons
 ```
 
-## Build test dataset
-
-- Prepare config JSON for test dataset.
-- Build voca vecs by pruning unnecessary words for test dataset
-- Index the test dataset with it
-- Test and use it!
-
+## Run an app as a network daemon
 ```
 #Standalone :
 tcpserver mark 22224 ./index_words config.nyt.json

@@ -117,19 +117,6 @@ int list_columns(){
     return 0;
 }
 
-void parse_textfile(std::string dump_files){
-    auto files = util::string::readlines(dump_files);
-    auto n = files.size();
-    tbb::parallel_for(decltype(n){0},n, [&](auto const &i) {
-        auto file = files[i];
-        data::CoreNLPwebclient corenlp_webclient("../rnn++/scripts/corenlp.py");
-        corenlp_webclient.from_query_file(file);
-    });
-}
-
-
-
-
 namespace test {
 
 void unicode_conversion(){
@@ -555,30 +542,6 @@ void parse_batch_output(){
 }//namespace data::corenlp
 }//namespace data
 
-int process_rss_dump(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    util::Timer timer;
-
-    auto hashes = util::get_str(config,"row_hashes");
-    auto json_dump_path = util::get_str(config,"corenlp_dumps");
-    auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
-
-    data::CoreNLPoutputParser dump_parser{config};
-    auto json_dumps = util::string::readlines(json_dump_path);
-    timer.here_then_reset(fmt::format("Begin to process {} JSON dump files. ",json_dumps.size()));
-    data::parallel_load_jsons(json_dumps, dump_parser);
-    timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
-    auto tokens = dump_parser.get(dataset_prefix);
-    auto non_null_idxs = dump_parser.get_nonnull_idx();
-    timer.here_then_reset("Parsing is finished. ");
-
-    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, 0};
-    tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, hashes, json_dump_path, non_null_idxs);
-    return 0;
-}
 int process_ygp_dump(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
@@ -646,9 +609,7 @@ int main(int argc, char** argv){
     test_common(argc, argv);
     return 0;
 
-//    parse_textfile(dump_files);
 //    pruning_voca();
-    process_rss_dump(argc, argv);
 //    process_ygp_dump(argc,argv);
     //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
 
