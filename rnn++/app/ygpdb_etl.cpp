@@ -559,16 +559,12 @@ void test_common(int argc, char** argv){
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    test_ygp(argc, argv);
+//    test_ygp(argc, argv);
 //    test_rss(argc, argv);
-    test_common(argc, argv);
-    return 0;
+//    test_common(argc, argv);
+//    return 0;
 
-//    process_ygp_dump(argc,argv);
-    //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
-
+    process_ygp_dump(argc,argv);
+//    data::ygp::parse_psql(get_str(config,"column_uids_dump"));
     return 0;
-//    convert_h5py_to_native();
-//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
-//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "s2010.h5", "s2010.words", "s2010.uids");
 }
