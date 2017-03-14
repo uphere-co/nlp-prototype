@@ -35,9 +35,6 @@ void check_word_uid(int argc, char** argv){
     UnigramDist unigram{wordvec_file, voca};
 
     auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
-//    for(auto word : words){
-//        fmt::print("{} {}\n", word, unigram.count)
-//    }
 }
 void iter_sentences(int argc, char** argv){
     //assert(argc>1);

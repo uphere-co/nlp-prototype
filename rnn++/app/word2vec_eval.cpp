@@ -40,7 +40,6 @@ struct Chunk{
 };
 struct ObjectiveScore{
     using float_t = UnigramDist::float_t;
-    //using WordBlock = wordrep::WordBlock_base<UnigramDist::float_t,100>;
     using WordBlock = wordrep::WordBlock_base<VocaInfo::val_t,100>;
     ObjectiveScore(IndexedTexts const& texts,
                    WordBlock const& wvecs,
@@ -58,7 +57,6 @@ struct ObjectiveScore{
         std::vector<VocaIndex> subsampled;
         subsampled.reserve(chunk.end - chunk.beg);
         for (auto i = chunk.beg; i != chunk.end; ++i) {
-            //auto idx = texts.word(i);
             auto idx = voca.indexmap[texts.word_uid(i)];
             subsampled.push_back(idx);
         }
@@ -68,8 +66,6 @@ struct ObjectiveScore{
         for (std::ptrdiff_t i = 0; i < len; ++i) {
             word2vec::WordContext context{i, subsampled, 5, 5};
             auto vidx = subsampled[context.self];
-//            auto widx = voca.indexmap[vidx];
-//            fmt::print("{:<15} {:<6}\n", wordUIDs[widx], vidx);
             auto w = wvecs[vidx];
             for (auto cword : context.contexts) {
                 auto c = cvecs[subsampled[cword]];
@@ -97,14 +93,6 @@ void evaluation(int argc, char** argv){
     engine::SubmoduleFactory factory{{config}};
     util::MockTimer timer;
 
-//    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-//    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-//                  config["w2vmodel_name"], config["w2v_float_t"]};
-//    auto data_store = util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-//    IndexedTexts texts{data_store, config["dep_parsed_prefix"]};
-//    word2vec::UnigramDist unigram{util::io::h5read("nyt_words.h5")};
-//    util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
-
     std::string text_store  = util::get_latest_version(factory.config.value("dep_parsed_store")).fullname;
     std::string text_prefix = factory.config.value("dep_parsed_prefix");
     IndexedTexts texts{util::io::h5read(text_store), text_prefix};
@@ -114,7 +102,6 @@ void evaluation(int argc, char** argv){
     word2vec::UnigramDist unigram{util::io::h5read("unigram.h5"), voca.indexmap};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
 
-    //using WordBlock = wordrep::WordBlock_base<UnigramDist::float_t,100>;
     using WordBlock = wordrep::WordBlock_base<VocaInfo::val_t,100>;
     std::uniform_real_distribution<WordBlock::val_t> dist{-0.05,0.05};
     auto n_voca = unigram.size();
@@ -137,19 +124,8 @@ void evaluation(int argc, char** argv){
         auto& chunk = chunks[i];
         auto score = oscore_eval(chunk, voca, wordUIDs);
         score_sum += score;
-//        fmt::print(std::cerr, "{}\n", score);
     }
     std::cerr<<fmt::format("{} : sum\n", score_sum/n_sent)<<std::endl;
-
-//    std::random_device rd{};
-//    auto seed = rd();
-//    tbb::parallel_for(decltype(n){0}, n,
-//                      [&timer, &texts, &chunks,&voca,&neg_sampler,seed]
-//                              (auto &i_chunk) {
-//                          auto chunk = chunks[i_chunk];
-//
-//                      });
-
 }
 
 int main(int argc, char** argv){
