@@ -55,10 +55,19 @@ Example usages
 
 ## Indexing YGP DB:
 ```
-#Run word counter with std::string token type
-./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.raw
+#Dumping YGP DB:
+#Usage : ./ygpdb_dump COLUMNS_TO_DUMP DUMP_DIR > aa
+#COLUMNS_TO_DUMP : a same format used in the file mentioned in a "column_uids_dump" field of config JSON file.  
+#DUMP_DIR : store dumped text files in there. Do not generate dump files if it is empty.
+#Example usages : generate dump files for indexing
+./ygpdb_dump ~/word2vec/ygp/column.uid /opt/YGP.dump/ > ygp.text 2>ygp.text.log
+#Dump to stdout only for word2vec training:
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
+
 #collect words
-cat ygp.raw | ./word_count | cut -d' ' -f1 >> all_words
+cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate
+# Deduplicate words :
+cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words
 #Check `config.ygp.json` uses the upodated `all_words` file.
 
 #Collect JSON dumps of YGP DB row elements. 
