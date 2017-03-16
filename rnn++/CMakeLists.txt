@@ -118,8 +118,9 @@ add_executable(word2vec_train app/word2vec_train
         ${util_files} ${wordrep_files} ${word2vec_files})
 target_link_libraries(word2vec_train stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 add_executable(word2vec_eval app/word2vec_eval
-        ${util_files} ${wordrep_files} ${word2vec_files})
-target_link_libraries(word2vec_eval stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+        ${word2vec_files}
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
+target_link_libraries(word2vec_eval stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 add_executable(list_words app/list_words
         ${util_files} ${wordrep_files})
 target_link_libraries(list_words stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)

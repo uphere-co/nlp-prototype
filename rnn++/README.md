@@ -127,13 +127,14 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 ```
 
 ## Incremental word2vec training
-### List words in existing voca
 
-1. Get new words in texts for a given voca.
+1. Get new words in a new dataset.
 2. Select words whose occurrence is larger than 9
 3. Derive word embedding for the new set of words from an existing word embedding
   * For known words : reuse their word embedding 
   * For unseen words : a weighted sum of its context words
+4. Build unigram distribution of the new dataset
+5. Evaluate a quality of word vector embedding
 
 ```
 # extract words from a voca of a config (only for debugging; not necessary for other process)
@@ -142,15 +143,20 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 # Get words in a dataset
 ## YGP case:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
-cat ygp.text.ptb | ./word_count | awk '$2>9{print $1}' > ygp.text.ptb.words
+cat ygp.text.ptb | ./word_count | awk '$2>9{print}' > ygp.text.ptb.counts
+cat ygp.text.ptb.counts | awk '{print $1}' > ygp.text.ptb.words
 ## RSS case:
 find /opt/NYT.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > nyt.text.ptb
-cat nyt.text.ptb | ./word_count | awk '$2>9{print $1}' > nyt.text.ptb.words
+cat nyt.text.ptb | ./word_count | awk '$2>9{print}' > nyt.text.ptb.counts
+cat nyt.text.ptb.counts | awk '{print $1}' > nyt.text.ptb.words
 
-# Pipe new words to get their word embedding and store it to new HDF5 store "test.h5"
+# Pipe new words in a new dataset to get their word embedding and store it to new HDF5 store "test.h5"
 cat nyt.text.ptb.words | ./word_context config.rss.json test.h5
+# Build unigram distribution for the new dataset
+cat nyt.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
+# Evaluate quality of word embedding.
+./word2vec_eval config.rssw2v.json unigram.h5
 ```
-
 
 ## Wikidata entity annotation
 ```

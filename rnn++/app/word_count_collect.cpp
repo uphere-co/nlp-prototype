@@ -22,7 +22,7 @@ auto collect_count(std::istream&& is){
     std::map<std::string,count_t> counts;
     std::string line;
     while(std::getline(is, line)){
-        auto elms = util::string::split(line, " ");
+        auto elms = util::string::split(line, "\t");
         assert(elms.size()==2);
         //token_t key{std::stoll(elms[0])};
         auto key = elms[0];
@@ -87,11 +87,12 @@ int main(int /*argc*/, char** argv) {
 //    return 0;
     auto config = util::load_json(argv[1]);
     auto dumpfile = argv[2];
-    //auto prefix = argv[2];
 
-    list_new_words(config);
+    //list_new_words(config);
+    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto counts = util::map(util::to_pairs(collect_count(std::move(std::cin))),
+                            [&wordUIDs](auto x){return std::make_pair(wordUIDs[x.first],x.second);});
 
-/*
     auto prefix = "unigram.";
     PersistentVector<token_t,token_t::val_t> uid{"uid"};
     PersistentVector<count_t,count_t> count{"count"};
@@ -104,6 +105,5 @@ int main(int /*argc*/, char** argv) {
     fmt::print("Total {} words after filtering.\n", util::math::sum(count.get()));
     uid.write(file,   prefix);
     count.write(file, prefix);
-*/
     return 0;
 }

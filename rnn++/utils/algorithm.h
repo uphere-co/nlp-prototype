@@ -21,6 +21,10 @@ template<typename T>
 void append(std::vector<T> &orig, std::vector<T> const &elms) {
     std::copy(elms.cbegin(), elms.cend(), std::back_inserter(orig));
 }
+template<typename T, typename TI>
+void append(std::vector<T> &orig, TI beg, TI end) {
+    std::copy(beg, end, std::back_inserter(orig));
+}
 
 template<typename T1, typename T2>
 auto zip(T1 const &x, T2 const &y) {
