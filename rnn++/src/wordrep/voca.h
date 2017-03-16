@@ -13,7 +13,8 @@ public:
     WordUID   operator[](VocaIndex idx) const;
 
     bool isin(WordUID uid) {return uid2idx.find(uid)!=uid2idx.end();}
-    bool is_known(VocaIndex) const;
+    auto all_words() const {return uids;}
+    auto size() const {return uids.size();}
 private:
     std::unordered_map<WordUID, VocaIndex> uid2idx;
     std::vector<WordUID> uids;

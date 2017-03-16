@@ -131,7 +131,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 //    fmt::print("Annotator returns {} tokens.", tokens.size());
     std::vector<TaggedEntity> tagged;
     for(auto token : tokens){
-        token.val.match([](WordWithOffset w){
+        token.val.match([](WordWithOffset /*w*/){
 //                           fmt::print("Word token not tagged : {}\n", w.uid);
                         },
                           [&tagged](wordrep::wiki::AmbiguousEntity& w){

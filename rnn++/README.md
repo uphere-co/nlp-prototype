@@ -128,28 +128,29 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 
 ## Incremental word2vec training
 ### List words in existing voca
+
+1. Get new words in texts for a given voca.
+2. Select words whose occurrence is larger than 9
+3. Derive word embedding for the new set of words from an existing word embedding
+  * For known words : reuse their word embedding 
+  * For unseen words : a weighted sum of its context words
+
 ```
-./show_words_in_voca config.ygp.json > known_words
-#List newly seen words in a dataset
+# extract words from a voca of a config (only for debugging; not necessary for other process)
+./list_words ~/word2vec/rss/news.h5 news.en.uids ~/word2vec/rss/all_words > voca
+
+# Get words in a dataset
 ## YGP case:
-./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text
-cat ygp.text | ./word_count > ygp.word_count
-cat ygp.word_count | ./word_count_collect config.ygp.json > ygp.new_words
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
+cat ygp.text.ptb | ./word_count | awk '$2>9{print $1}' > ygp.text.ptb.words
 ## RSS case:
-find ~/word2vec/NYT.text/ -name '*.*' -not -path '/home/jihuni/word2vec/NYT.text/' | xargs awk '{print }' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text
-cat rss.text | ./word_count > rss.word_count
-cat rss.word_count | ./word_count_collect config.rss.json > rss.new_words
-```
-### Getting count of context words 
-```
-cat ygp.new_words | cut -d' ' -f1 | ./word_context config.ygp.json > b
+find /opt/NYT.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > nyt.text.ptb
+cat nyt.text.ptb | ./word_count | awk '$2>9{print $1}' > nyt.text.ptb.words
+
+# Pipe new words to get their word embedding and store it to new HDF5 store "test.h5"
+cat nyt.text.ptb.words | ./word_context config.rss.json test.h5
 ```
 
-### Parsing large number of HTML dump of news articless
-```
-#Split files into chunks
-ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
-```
 
 ## Wikidata entity annotation
 ```

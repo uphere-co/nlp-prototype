@@ -39,8 +39,9 @@ template<typename T>
 struct ConcurrentVector{
     void push_back(T const& value ) {vec.push_back(value);}
     void push_back(T&& value ) {vec.push_back(std::move(value));}
-    auto to_vector(){
+    auto to_vector() const {
         std::vector<T> vs;
+        vs.reserve(vec.size());
         for(auto const &v : vec) vs.push_back(v);
         return vs;
     }

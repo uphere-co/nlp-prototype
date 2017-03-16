@@ -2,100 +2,50 @@
 
 #include <fmt/printf.h>
 
-#include "word2vec/word2vec.h"
+#include "wordrep/wordvec_deriving.h"
 
-#include "wordrep/indexed_text.h"
-#include "wordrep/word_uid.h"
+#include "similarity/config.h"
 
-#include "utils/string.h"
 #include "utils/json.h"
+#include "utils/optional.h"
 #include "utils/versioned_name.h"
 #include "utils/parallel.h"
-#include "utils/random.h"
 #include "utils/profiling.h"
-
-using wordrep::WordUID;
-using wordrep::VocaIndex;
-using wordrep::IndexedTexts;
-using word2vec::UnigramDist;
-using word2vec::SubSampler;
-
-void get_contexts(IndexedTexts const& texts,
-                  wordrep::WordUIDindex const& wordUIDs,
-                  std::vector<WordUID> const& words){
-    util::Timer timer;
-//    auto iter = util::IterChunkIndex_factory(texts.sents_uid.get());
-    auto n = IndexedTexts::Index::from_unsigned(texts.sents_uid.size());
-    auto indexed_words = util::zip(texts.words_uid.get(),
-                                   util::sequence(IndexedTexts::Index{0}, n));
-    tbb::parallel_sort(indexed_words .begin(), indexed_words .end(), [](auto x, auto y){return x.first<y.first;});
-    timer.here_then_reset("Sorting words by their UIDs.");
-
-    tbb::concurrent_vector<std::pair<WordUID,std::map<WordUID, size_t>>> contexts_count;
-    auto n_word = words.size();
-    tbb::parallel_for(decltype(n_word){0}, n_word, [&](auto i){
-        auto word = words[i];
-        //auto beg=std::find_if(indexed_words.cbegin(),indexed_words.cend(),[word](auto x){return x.first==word;});
-        auto it=util::binary_find(indexed_words, [word](auto x){return word==x.first;}, [word](auto x){return word<x.first;});
-        if(!it) return;
-        auto beg = it.value();
-        std::reverse_iterator<decltype(beg)> rbeg{beg};
-        rbeg=std::find_if_not(rbeg,indexed_words.crend(),[word](auto x){return x.first==word;});
-        beg = rbeg.base();
-        auto end=std::find_if_not(beg,indexed_words.cend(),[word](auto x){return x.first==word;});
-        std::map<WordUID, size_t> ccount;
-        for(auto it=beg; it!=end; ++it){
-//            for(auto idx=it->second-5; idx!=it->second+5+1; ++idx)
-//                fmt::print("{} ", wordUIDs[texts.word_uid(idx)]);
-//            fmt::print("\n");
-            for(auto idx=it->second-5; idx!=it->second; ++idx){
-                auto cword = texts.word_uid(idx);
-                ++ccount[cword];
-            }
-            for(auto idx=it->second+1; idx!=it->second+1+5; ++idx){
-                auto cword = texts.word_uid(idx);
-                ++ccount[cword];
-            }
-        }
-        contexts_count.push_back({word, ccount});
-        //timer.here_then_reset(fmt::format("Get context words for : {}", wordUIDs[word]));
-    });
-    timer.here_then_reset(fmt::format("Get context words"));
-    for(auto elm : contexts_count){
-        auto word = elm.first;
-        auto cs = util::to_pairs(elm.second);
-        std::sort(cs.begin(), cs.end(), [](auto x, auto y){return x.second>y.second;});
-        for(auto c : cs) {
-            auto cword = c.first;
-            auto count = c.second;
-            fmt::print("{:<15} {:<15} {}\n", wordUIDs[word], wordUIDs[cword], count);
-        }
-    }
-}
-
-auto getlines(std::istream&& is){
-    std::vector<std::string> lines;
-    std::string line;
-    while(std::getline(is, line)){
-        lines.push_back(line);
-    }
-    return lines;
-}
 
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
+    auto output_h5store_name = argv[2];
+    engine::SubmoduleFactory factory{{config}};
     util::Timer timer;
 
-    IndexedTexts texts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
-                       config["dep_parsed_prefix"]};
-    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    wordrep::WordUIDindex wordUIDs = factory.word_uid_index();
+    tbb::task_group g;
+    std::optional<wordrep::IndexedTexts> m_texts = {};
+    std::optional<std::vector<std::string>> m_words = {};
+    std::optional<std::vector<wordrep::WordUID>> m_wuids = {};
+    g.run([&m_texts, &config](){
+        m_texts = wordrep::IndexedTexts{util::io::h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname),
+                               config["dep_parsed_prefix"]};
+    });
+    g.run([&m_wuids,&wordUIDs](){
+        auto words = util::string::readlines(std::move(std::cin));
+        m_wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
+    });
+    g.wait();
+    timer.here_then_reset("Load data.");
+    auto texts = m_texts.value();
+    auto words_for_new_voca = m_wuids.value();
+    timer.here_then_reset("Construct data objects.");
+    auto base_voca = factory.voca_info();
+    timer.here_then_reset(fmt::format("Load and sort base voca of {} words.", base_voca.indexmap.size()));
 
-    std::vector<std::string> words=getlines(std::move(std::cin));
-    auto wuids = util::map(words, [&wordUIDs](auto word){return wordUIDs[word];});
-    timer.here_then_reset("Data loaded.");
-    get_contexts(texts, wordUIDs, wuids);
-    timer.here_then_reset("Finish.");
+    auto new_voca_words = wordrep::split_words(base_voca, words_for_new_voca);
+    auto unseen_words_with_context = get_ngram_contexts(texts, new_voca_words.unseen_words);
+//    assert(new_words_with_context.size()==new_words.size());
+    timer.here_then_reset(fmt::format("Get contexts of {} unseen words.", unseen_words_with_context.size()));
+    wordrep::write_to_disk(base_voca, new_voca_words.known_words, unseen_words_with_context,
+                           output_h5store_name, factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
 
     return 0;
 }
