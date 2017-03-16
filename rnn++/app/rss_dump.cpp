@@ -17,6 +17,7 @@ int process_rss_dump(int argc, char** argv){
 
     auto hashes           = argv[2];
     auto json_dump_path   = argv[3];
+    int minor_version     = std::stoi(argv[4]);
     auto dataset_prefix   = util::get_str(config,"dep_parsed_prefix");
     auto dep_parsed_store = util::get_str(config,"dep_parsed_store");
 
@@ -30,9 +31,9 @@ int process_rss_dump(int argc, char** argv){
     timer.here_then_reset("Parsing is finished. ");
 
     auto output_filename = util::VersionedName{dep_parsed_store,
-                                               wordrep::DepParsedTokens::major_version, 0};
+                                               wordrep::DepParsedTokens::major_version, minor_version};
     tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, hashes, json_dump_path, non_null_idxs);
+    data::rss::write_column_indexes(config, hashes, json_dump_path, non_null_idxs, output_filename.fullname);
     return 0;
 }
 
