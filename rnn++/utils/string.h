@@ -9,14 +9,16 @@
 namespace util{
 namespace string{
 
+bool isspace(std::string const& str);
+
 std::vector<std::string> split(std::string words, const char *delim=" \t");
 std::string join(std::vector<std::string> words, std::string delim);
 std::string strip(std::string const& str);
-std::string tolower(std::string str);
 
+std::string tolower(std::string str);
 std::vector<std::string> readlines(std::string file);
 std::vector<std::string> readlines(std::istream &&is);
-
+void write_whole(std::string filename, std::string const& content);
 std::string read_whole(std::string file);
 template<typename T>
 std::optional<std::vector<char>> read_chunk(T &is, int64_t n_buf){
