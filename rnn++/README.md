@@ -1,19 +1,19 @@
 # C++ implementation of RecursiveNN
 ## Build
-```
+```bash
 cmake {path of nlp-prototype/rnn++}
 make -j8
 ./app
 ```
 ## Usages
 - app/train_model1.cpp : train RNN model1. 
- 1. Set params in `config.h` and `config.cpp` accordingly.
- - `./app`
+  1. Set params in `config.h` and `config.cpp` accordingly.
+  2. `./app`
 - app/parser_model1.cpp : parse sentences with a given RNN params
- 1. set HDF5 store file `rnn_param_store_name` in `config.cpp`
- - `./model1 {model1.UUID.IthMiniBatch} 1b.testset > parsed_file_name`
+  1. set HDF5 store file `rnn_param_store_name` in `config.cpp`
+  2. `./model1 {model1.UUID.IthMiniBatch} 1b.testset > parsed_file_name`
 - app/parser_model1.cpp : measure similarity between two parsed files
- 1. ./parser_similarity parsed_file1 parsed_file2
+  1. ./parser_similarity parsed_file1 parsed_file2
 
 # Doxygen
 ## Usages
@@ -21,7 +21,7 @@ Just run `doxygen` inside this directory, then documentation is generated and st
 
 # Query Engine
 ## Usages
-```
+```bash
 # Getting/indexing YGP db data
 ./etl_ygpdb config.ygp.json -1
 
@@ -33,19 +33,19 @@ echo Batteries mercury restriction > query.0
 ## Relevant apps for word vector training.
 Note that all apps use stdin and stdout for data I/O.
 - `app/word_count`
- - word counting. 
- - takes stdin and outputs to stdout. The `tcpserver` of `ucspi-tcp` package can be used to deploy it as a service.
- - input : output of CoreNLP PTBTokenizer
+  - word counting. 
+  - takes stdin and outputs to stdout. The `tcpserver` of `ucspi-tcp` package can be used to deploy it as a service.
+  - input : output of CoreNLP PTBTokenizer
 - `app/ygpdb_dump`
- - dump YGP db to stdout.
- - input : a file with a list of columns to export; e.g. "column_uids_dump" file in JSON config of YGP query engine/
+  - dump YGP db to stdout.
+  - input : a file with a list of columns to export; e.g. "column_uids_dump" file in JSON config of YGP query engine/
 - `app/word_count_collect`
- - write sum of word count outputs of word_count into HDF5 file.
- - will be used as unigram distribution for word2vec trainer
- - input : ouput HDF5 filename
+  - write sum of word count outputs of word_count into HDF5 file.
+  - will be used as unigram distribution for word2vec trainer
+  - input : ouput HDF5 filename
 
 Example usages
-```
+```bash
 #Get unigram distribution of YGP DB:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | ./word_count_collect words.h5
 #Get lists of words
@@ -87,17 +87,17 @@ Launch word counter as a TCP server :
 ## Indexing RSS data
 ### Adapt updated indexing scheme
 - cp ygp/all_words rss/
- - Note that this file, specified in "word_uids_dump" field of config, should be updated for a new dataset.
- - The update is not essential for query engine, but necessary for human(e.g. for testing and debugging).
- - See "Incremental word2vec training" section for getting new "unseen" words. 
+  - Note that this file, specified in "word_uids_dump" field of config, should be updated for a new dataset.
+  - The update is not essential for query engine, but necessary for human(e.g. for testing and debugging).
+  - See "Incremental word2vec training" section for getting new "unseen" words. 
 - cp ygp/news.h5 rss/
 - cp ygp/prob.test.h5 rss/
 - Update word_uids_dump field of RSSQueryEngine config JSON.
 
 ### Build a dataset
 - Prepare config JSON for a dataset
- 1. It needs word vector embedding. 
- 2. Either use eixsting one or build custum word embedding from it(See "Incremental word2vec training" section for details).
+  1. It needs word vector embedding. 
+  2. Either use eixsting one or build custum word embedding from it(See "Incremental word2vec training" section for details).
 - Index the dataset with them
 ```
 # Parse HTML dumps to extract texts
@@ -145,8 +145,8 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 1. Get new words in a new dataset.
 2. Select words whose occurrence is larger than 9
 3. Derive word embedding for the new set of words from an existing word embedding
-  * For known words : reuse their word embedding 
-  * For unseen words : a weighted sum of its context words
+   * For known words : reuse their word embedding 
+   * For unseen words : a weighted sum of its context words
 4. Build unigram distribution of the new dataset
 5. Evaluate a quality of word vector embedding
 
