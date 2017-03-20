@@ -89,7 +89,6 @@ public:
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
     json_t ask_query_stats(json_t const &ask) const;
-    json_t ask_sents_content(json_t const &ask) const;
     json_t ask_query_suggestion(json_t const &ask) const;
     json_t compare_sentences(json_t const &ask) const;
 
@@ -133,9 +132,6 @@ struct QueryEngine {
     }
     json_t ask_query_stats(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query_stats(ask);});
-    }
-    json_t ask_sents_content(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_sents_content(ask);});
     }
     json_t ask_query_suggestion(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query_suggestion(ask);});

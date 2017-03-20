@@ -81,9 +81,7 @@ make -j20 && ./nndep_reader config.ygptest.json query.0
 #For testing dataset, randomly select N elements:
 sort -R ygp.corenlp | head -n 10000 > aaa
 ```
-Launch word counter as a TCP server :
-```
-```
+
 ## Indexing RSS data
 ### Adapt updated indexing scheme
 - cp ygp/all_words rss/

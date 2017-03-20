@@ -265,76 +265,6 @@ void country_code(util::json_t const &config){
 }//namespace data::ygp
 }//namespace data
 
-namespace data{
-namespace rss{
-namespace test {
-
-void rss_corenlp_path(){
-    std::cerr<<"Run rss::test::rss_corenlp_path " <<std::endl;
-    {
-        auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
-        RSSRowFilePath path{fullpath};
-        assert(path.table =="nyt");
-        assert(path.column=="maintext");
-        assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
-    }
-    {
-        auto fullpath = "/home/jihuni/word2vec/NYT.corenlp/672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3.maintext.corenlp";
-        RSSRowFilePath path{fullpath};
-        assert(path.table =="NYT");
-        assert(path.column=="maintext");
-        assert(path.hash  =="672b36bc0531fb33c3d324ed7528d8b42c9082b4ff7b8ef07a33d043752aeae3");
-    }
-}
-
-void IndexUIDs(util::json_t const& config){
-    Factory factory{{config}};
-    std::cerr<<"Run rss::test::IndexUIDs " <<std::endl;
-    Columns rssdb = factory.db();
-    auto tmp = rssdb.col_uid("title");
-    fmt::print(std::cerr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {}\n", tmp.val);
-    for(int i=0; i<3; ++i)
-        fmt::print(std::cerr, "!!!!!!!!{} {}\n", rssdb.col_uid(rssdb.column(i)).val, rssdb.column(i));
-    assert(rssdb.col_uid("title") == data::ColumnUID{0});
-    assert(rssdb.col_uid("summary") == data::ColumnUID{1});
-    assert(rssdb.col_uid("maintext") == data::ColumnUID{2});
-}
-
-void rss_indexing(util::json_t const &config) {
-    Factory factory{{config}};
-    wordrep::DepParsedTokens tokens = factory.common.dep_parsed_tokens();
-    wordrep::WordUIDindex wordUIDs  = factory.common.word_uid_index();
-    auto sents = tokens.IndexSentences();
-    auto sent = sents[563];
-    auto chunk_idx = tokens.chunk_idx(sent.front());
-
-    data::DBIndexer const db_indexer = factory.common.db_indexer();
-    //auto row_uid = db_indexer.row_uid(chunk_idx);//if a chunk is a row, chunk_idx is row_uid
-    auto col_uid = db_indexer.column_uid(chunk_idx);
-    auto row_idx = db_indexer.row_idx(chunk_idx);
-    std::map<data::ColumnUID, std::string> uid2col;
-    uid2col[0] = "title";
-    uid2col[1] = "summary";
-    uid2col[2] = "maintext";
-    data::rss::HashIndexer hash2idx = factory.hash_indexer();
-    //TODO: remove hard-coded path.
-    auto filename = fmt::format("/home/jihuni/word2vec/NYT.text/{}.{}", hash2idx.hash(row_idx.val), uid2col[col_uid]);
-    std::cerr << filename << std::endl;
-    auto row_str = util::string::read_whole(filename);
-    auto offset_beg = sent.beg_offset();
-    auto offset_end = sent.end_offset();
-    std::cerr << fmt::format("{}:{}", offset_beg.val, offset_end.val) << std::endl;
-    auto    substr = util::string::substring_unicode_offset(row_str, offset_beg.val, offset_end.val);
-    std::cerr << substr << std::endl;
-    std::cerr << sent.repr(wordUIDs) << std::endl;
-    std::cerr << std::endl;
-}
-
-
-}//namespace data::rss::test
-}//namespace data::rss
-}//namespace data
-
 namespace data {
 namespace corenlp {
 namespace test {
@@ -527,13 +457,6 @@ int process_ygp_dump(int argc, char** argv){
     return 0;
 }
 
-void test_rss(int argc, char** argv){
-    assert(argc > 1);
-    auto config = util::load_json(argv[1]);
-    data::rss::test::rss_corenlp_path();
-    data::rss::test::IndexUIDs(config);
-    data::rss::test::rss_indexing(config);
-}
 void test_ygp(int argc, char** argv) {
     assert(argc > 1);
     auto config = util::load_json(argv[1]);
@@ -560,7 +483,6 @@ int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
 //    test_ygp(argc, argv);
-//    test_rss(argc, argv);
 //    test_common(argc, argv);
 //    return 0;
 

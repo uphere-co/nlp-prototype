@@ -16,7 +16,7 @@ namespace rss{
 
 template<typename T>
 struct ConfigKeys{
-    std::vector<T> keys={{"row_hashes"}};
+    std::vector<T> keys={};
 };
 
 struct Config{
@@ -29,7 +29,6 @@ struct Config{
 struct Factory{
     Factory(Config const& config) : config{config}, common{config.common} {}
     Columns db() const;
-    HashIndexer hash_indexer() const;
 
     Config config;
     engine::SubmoduleFactory common;
