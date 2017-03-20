@@ -55,10 +55,19 @@ Example usages
 
 ## Indexing YGP DB:
 ```
-#Run word counter with std::string token type
-./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.raw
+#Dumping YGP DB:
+#Usage : ./ygpdb_dump COLUMNS_TO_DUMP DUMP_DIR > aa
+#COLUMNS_TO_DUMP : a same format used in the file mentioned in a "column_uids_dump" field of config JSON file.  
+#DUMP_DIR : store dumped text files in there. Do not generate dump files if it is empty.
+#Example usages : generate dump files for indexing
+./ygpdb_dump ~/word2vec/ygp/column.uid /opt/YGP.dump/ > ygp.text 2>ygp.text.log
+#Dump to stdout only for word2vec training:
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
+
 #collect words
-cat ygp.raw | ./word_count | cut -d' ' -f1 >> all_words
+cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate
+# Deduplicate words :
+cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words
 #Check `config.ygp.json` uses the upodated `all_words` file.
 
 #Collect JSON dumps of YGP DB row elements. 
@@ -78,23 +87,28 @@ Launch word counter as a TCP server :
 ## Indexing RSS data
 ### Adapt updated indexing scheme
 - cp ygp/all_words rss/
+ - Note that this file, specified in "word_uids_dump" field of config, should be updated for a new dataset.
+ - The update is not essential for query engine, but necessary for human(e.g. for testing and debugging).
+ - See "Incremental word2vec training" section for getting new "unseen" words. 
 - cp ygp/news.h5 rss/
 - cp ygp/prob.test.h5 rss/
 - Update word_uids_dump field of RSSQueryEngine config JSON.
 
-
 ### Build a dataset
-- Prepare config JSON for a dataset.
-- (can be skipped:) Build voca vecs by pruning unnecessary words for a dataset
+- Prepare config JSON for a dataset
+ 1. It needs word vector embedding. 
+ 2. Either use eixsting one or build custum word embedding from it(See "Incremental word2vec training" section for details).
 - Index the dataset with them
 ```
-# For processing partial dataset:
-# (For processing all dataset, just remove `head -n 1000` part of the following.)
-find /opt/NYT.dump/ -type f | head -n 1000 | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} tests/
-find tests/ -type f |  xargs -P 20 -i'{}' python ../rnn++/scripts/corenlp.py {} jsons/
-find /opt/NYT.dump/ -type f -printf "%f\n"|head -n 1000 > nyt_hashes
-find jsons/ -type f > nyt_jsons
-./rss_dump config.rsstest.json nyt_hashes nyt_jsons
+# Parse HTML dumps to extract texts
+find /opt/NYT.dump/ -type f | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/NYT.text/
+# Depenency parsing of the texts
+find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/NYT.json/
+# Indexing to build HDF5 store file.
+find /opt/NYT.dump/ -type f -printf "%f\n" > nyt_hashes
+find /opt/NYT.json/ -type f > nyt_jsons
+# "1" is a minor version of the indexed dataset. 
+./rss_dump config.rss.json nyt_hashes nyt_jsons 1
 ```
 
 ## Run an app as a network daemon
@@ -127,28 +141,35 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 ```
 
 ## Incremental word2vec training
-### List words in existing voca
-```
-./show_words_in_voca config.ygp.json > known_words
-#List newly seen words in a dataset
-## YGP case:
-./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text
-cat ygp.text | ./word_count > ygp.word_count
-cat ygp.word_count | ./word_count_collect config.ygp.json > ygp.new_words
-## RSS case:
-find ~/word2vec/NYT.text/ -name '*.*' -not -path '/home/jihuni/word2vec/NYT.text/' | xargs awk '{print }' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text
-cat rss.text | ./word_count > rss.word_count
-cat rss.word_count | ./word_count_collect config.rss.json > rss.new_words
-```
-### Getting count of context words 
-```
-cat ygp.new_words | cut -d' ' -f1 | ./word_context config.ygp.json > b
-```
 
-### Parsing large number of HTML dump of news articless
+1. Get new words in a new dataset.
+2. Select words whose occurrence is larger than 9
+3. Derive word embedding for the new set of words from an existing word embedding
+  * For known words : reuse their word embedding 
+  * For unseen words : a weighted sum of its context words
+4. Build unigram distribution of the new dataset
+5. Evaluate a quality of word vector embedding
+
 ```
-#Split files into chunks
-ls ~/word2vec/article | split -d -a 3 -l 10000 - articles.
+# extract words from a voca of a config (only for debugging; not necessary for other process)
+./list_words ~/word2vec/rss/news.h5 news.en.uids ~/word2vec/rss/all_words > voca
+
+# Get words in a dataset
+## YGP case:
+./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
+cat ygp.text.ptb | ./word_count | awk '$2>9{print}' > ygp.text.ptb.counts
+cat ygp.text.ptb.counts | awk '{print $1}' > ygp.text.ptb.words
+## RSS case:
+find /opt/NYT.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > nyt.text.ptb
+cat nyt.text.ptb | ./word_count | awk '$2>9{print}' > nyt.text.ptb.counts
+cat nyt.text.ptb.counts | awk '{print $1}' > nyt.text.ptb.words
+
+# Pipe new words in a new dataset to get their word embedding and store it to new HDF5 store "test.h5"
+cat nyt.text.ptb.words | ./word_context config.rss.json test.h5
+# Build unigram distribution for the new dataset
+cat nyt.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
+# Evaluate quality of word embedding.
+./word2vec_eval config.rssw2v.json unigram.h5
 ```
 
 ## Wikidata entity annotation

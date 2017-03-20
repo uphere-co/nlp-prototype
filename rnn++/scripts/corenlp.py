@@ -17,7 +17,8 @@ else:
 out_file = os.path.join(out_path,out_basename)
 
 with open(query_file, "r") as f:
-    content=f.read()
+    #In default, max length of a query string of CoreNLP webserver is 100000
+    content=f.read()[:99000]
 r = requests.post('http://mark:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}', data =content)
 #r = requests.post('http://bill:9000/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}', data =content)
 r.encoding='UTF-8'

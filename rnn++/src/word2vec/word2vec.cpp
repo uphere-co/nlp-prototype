@@ -1,6 +1,8 @@
+#include "word2vec/word2vec.h"
+
 #include <fmt/printf.h>
 
-#include "word2vec/word2vec.h"
+#include "wordrep/voca.h"
 
 #include "utils/math.h"
 #include "utils/optional.h"
@@ -9,10 +11,10 @@
 
 namespace word2vec {
 
-UnigramDist::UnigramDist(util::io::H5file const &h5store) {
+UnigramDist::UnigramDist(util::io::H5file const &h5store,
+                         wordrep::VocaIndexMap const& voca) {
     util::PersistentVector<WordUID,WordUID::val_t> uid{h5store,"unigram.uid"};
     util::PersistentVector<size_t,size_t> count{h5store,"unigram.count"};
-    wordrep::VocaIndexMap voca{util::TypedPersistentVector<WordUID>{h5store,"widx2wuid"}.get()};
     weights.reserve(count.size());
     auto norm = 1.0 / util::math::sum(count.get());
     auto n = count.size();

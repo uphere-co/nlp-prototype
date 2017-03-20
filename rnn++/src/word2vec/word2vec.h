@@ -1,7 +1,7 @@
 #pragma once
 
 #include <random>
-#include "wordrep/voca.h"
+#include "wordrep/indexes.h"
 
 //TODO:Remove following header.
 #include "utils/linear_algebra.h"
@@ -13,13 +13,18 @@ struct H5file; //forward declaration
 }
 }
 
+namespace wordrep{
+class VocaIndexMap;
+}//namespace wordrep
+
 namespace word2vec {
 
 struct UnigramDist {
     using WordUID = wordrep::WordUID;
     using VocaIndex = wordrep::VocaIndex;
     using float_t = double;
-    UnigramDist(util::io::H5file const &h5store);
+    UnigramDist(util::io::H5file const &h5store,
+                wordrep::VocaIndexMap const& voca);
 
     float_t get_prob(VocaIndex idx) const;
     std::vector<std::pair<VocaIndex,float_t>> get_neg_sample_dist(float_t pow) const;

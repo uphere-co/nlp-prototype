@@ -14,6 +14,10 @@
 namespace util{
 namespace string{
 
+bool isspace(std::string const& str){
+    return std::find_if_not(str.cbegin(),str.cend(), [](auto x){return std::isspace(x);})==str.cend();
+}
+
 std::vector<std::string> split(std::string words, const char *delim){
     std::vector<std::string> tokens;
     boost::split(tokens, words, boost::is_any_of(delim));
@@ -50,6 +54,10 @@ std::vector<std::string> readlines(std::istream &&is){
     return lines;
 }
 
+void write_whole(std::string filename, std::string const& content){
+    std::ofstream t(filename);
+    t << content;
+}
 std::string read_whole(std::string file){
     std::ifstream t(file);
     std::stringstream buffer;

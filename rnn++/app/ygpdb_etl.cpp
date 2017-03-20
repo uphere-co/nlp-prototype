@@ -42,51 +42,6 @@ void write_WordUIDs(std::string uid_dump, std::string filename, std::string voca
     file.writeRawData(H5name{uids_name}, uids);
 }
 
-void pruning_voca(){
-    auto h5store = "/home/jihuni/word2vec/rss/news.h5";
-    auto voca_words_name = "news.en.uids";
-    auto voca_vecs_name = "news.en.vecs";
-    auto voca_float_typename = "float32";
-    auto file_words = "test.voca";
-    WordUIDindex all_wordUIDs("/home/jihuni/word2vec/rss/all_words");
-
-    auto all_word_uids = load_voca(h5store, voca_words_name);
-    VocaIndexMap all_voca{all_word_uids};
-
-    std::set<WordUID> all_words{all_word_uids.cbegin(),all_word_uids.cend()};
-
-    WordUIDindex wordUIDs(file_words);
-    auto uids = wordUIDs.get_uids();
-    uids.push_back(the_unknown_word_uid());
-
-    auto known_uids = util::filter(uids, [&all_words](auto uid){return all_words.find(uid)!=all_words.end();});
-    VocaIndexMap voca{known_uids};
-
-    auto n_words = known_uids.size();
-
-    using WordBlock = WordBlock_base<float,100>;
-    WordBlock all_wvecs{load_raw_wvec(h5store, voca_vecs_name, voca_float_typename)};
-
-    //WordBlock wvecs{std::vector<WordBlock::val_t>(WordBlock::dim * n_words)};
-    std::vector<WordBlock::val_t> raw_vecs;
-    raw_vecs.reserve(WordBlock::dim * n_words);
-    for(VocaIndex i=0; i!=VocaIndex::from_unsigned(n_words); ++i){
-        auto word_uid = voca[i];
-        auto a=all_wvecs[all_voca[word_uid]];
-        std::copy(a.cbegin(),a.cend(), std::back_inserter(raw_vecs));
-        //auto b = wvecs[i];
-        //b = a;
-//        for(int j=0; j!=100; ++j) b[j]==a[j];
-        //for(int j=0; j!=100; ++j) assert(a[j]==b[j]);
-    }
-    WordBlock wvecs{std::move(raw_vecs)};
-    H5file outfile{H5name{"test.h5"}, hdf5::FileMode::replace};
-    util::TypedPersistentVector<WordUID> new_uids{voca_words_name, std::move(known_uids)};
-    new_uids.write(outfile);
-    outfile.writeRawData({voca_vecs_name},  util::serialize(wvecs.serialize()));
-}
-
-
 int list_columns(){
     try
     {
@@ -604,18 +559,12 @@ void test_common(int argc, char** argv){
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    test_ygp(argc, argv);
+//    test_ygp(argc, argv);
 //    test_rss(argc, argv);
-    test_common(argc, argv);
-    return 0;
+//    test_common(argc, argv);
+//    return 0;
 
-//    pruning_voca();
-//    process_ygp_dump(argc,argv);
-    //data::ygp::parse_psql(get_str(config,"column_uids_dump"));
-
+    process_ygp_dump(argc,argv);
+//    data::ygp::parse_psql(get_str(config,"column_uids_dump"));
     return 0;
-//    pruning_voca();
-//    convert_h5py_to_native();
-//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "test.Google.h5", "news.en.words", "news.en.uids");
-//    write_WordUIDs("/home/jihuni/word2vec/ygp/words.uid", "s2010.h5", "s2010.words", "s2010.uids");
 }

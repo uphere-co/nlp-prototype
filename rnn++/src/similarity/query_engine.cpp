@@ -578,7 +578,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
                        entity.repr(*sent_to_scored.orig.dict, wiki.wordUIDs),
                        op_token.similarity(qentity, entity));
         }
-    
+
     if(!m_scored_sent) return out;
     auto scored_sent = m_scored_sent.value();
 
