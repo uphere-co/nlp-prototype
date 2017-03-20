@@ -8,10 +8,24 @@
 
 namespace wordrep{
 
+struct ContextCount;
+struct ContextCountRepr{
+    ContextCount const& self;
+    WordUIDindex const& wordUIDs;
+    friend std::ostream& operator<<(std::ostream& os, ContextCountRepr const& src);
+};
+
 struct ContextCount{
+    ContextCountRepr repr(WordUIDindex const& wordUIDs){
+        return {*this, wordUIDs};
+    }
     WordUID word;
     std::map<WordUID,size_t> count;
 };
+
+
+std::ostream& operator<<(std::ostream& os, ContextCountRepr const& src);
+
 struct DerivedVoca{
     std::vector<WordUID> known_words;
     std::vector<WordUID> unseen_words;

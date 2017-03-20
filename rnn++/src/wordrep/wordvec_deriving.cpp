@@ -1,4 +1,5 @@
 #include <fmt/printf.h>
+#include <fmt/format.h>
 
 #include "wordrep/wordvec_deriving.h"
 
@@ -10,6 +11,13 @@
 #include "utils/linear_algebra.h"
 
 namespace wordrep{
+
+std::ostream& operator<<(std::ostream& os, ContextCountRepr const& src){
+    for(auto elm : src.self.count){
+        os << fmt::format("{} {} : {}\n", src.wordUIDs[src.self.word], src.wordUIDs[elm.first], elm.second);
+    }
+    return os;
+}
 
 std::vector<ContextCount> get_ngram_contexts(IndexedTexts const &texts,
                                              std::vector<WordUID> const &words,

@@ -42,8 +42,10 @@ int main(int argc, char** argv){
 
     auto new_voca_words = wordrep::split_words(base_voca, words_for_new_voca);
     auto unseen_words_with_context = get_ngram_contexts(texts, new_voca_words.unseen_words);
-//    assert(new_words_with_context.size()==new_words.size());
-    timer.here_then_reset(fmt::format("Get contexts of {} unseen words.", unseen_words_with_context.size()));
+
+    assert(unseen_words_with_context.size()==new_voca_words.unseen_words.size());
+    timer.here_then_reset(fmt::format("Get contexts of {} unseen words; {} words are already known.",
+                                      unseen_words_with_context.size(), new_voca_words.known_words.size()));
     wordrep::write_to_disk(base_voca, new_voca_words.known_words, unseen_words_with_context,
                            output_h5store_name, factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
 
