@@ -104,7 +104,7 @@ int parse_column(std::string table, std::string column, std::string index_col){
     return 0;
 }
 
-int dump_column(std::string table, std::string column, std::string index_col){
+int dump_column(std::string table, std::string column, std::string index_col, std::string dump_path){
     try {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
         std::cerr << "Connected to " << C.dbname() << std::endl;
@@ -118,11 +118,15 @@ int dump_column(std::string table, std::string column, std::string index_col){
         for(decltype(n)i = 0; i!=n; ++i){
             auto row = body[i];
             std::string raw_text = row[0].c_str();
-            if(raw_text.size()<6) {
-                //auto index = row[1];
-                //auto row_full_name=fmt::format("{}.{}.{}.{}", table, column, index_col, index);
-                //fmt::print(std::cerr, "{} is empty.\n", row_full_name);
+            auto index = row[1];
+            auto row_full_name=fmt::format("{}.{}.{}.{}", table, column, index_col, index);
+            if(util::string::isspace(raw_text)) {
+                fmt::print(std::cerr, "Is it empty?? : {} is empty.\n", row_full_name);
                 continue;
+            }
+            if(!dump_path.empty()){
+                auto dump_full_path=fmt::format("{}/{}", dump_path, row_full_name);
+                util::string::write_whole(dump_full_path, raw_text);
             }
             std::cout << raw_text << std::endl;
         }
@@ -144,14 +148,14 @@ void parse_psql(std::string cols_to_exports){
         parse_column(table, column, index_col);
     }
 }
-void dump_psql(std::string cols_to_exports){
+void dump_psql(std::string cols_to_exports, std::string dump_path){
     YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
         auto table = db.table(col_uid);
         auto column = db.column(col_uid);
         auto index_col = db.index_col(col_uid);
         std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
-        dump_column(table, column, index_col);
+        dump_column(table, column, index_col, dump_path);
     }
 }
 

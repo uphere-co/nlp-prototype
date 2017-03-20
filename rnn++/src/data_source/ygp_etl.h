@@ -7,9 +7,8 @@
 namespace data {
 namespace ygp {
 
-
-int dump_column(std::string table, std::string column, std::string index_col);
-void dump_psql(std::string cols_to_exports);
+int dump_column(std::string table, std::string column, std::string index_col, std::string dump_path="");
+void dump_psql(std::string cols_to_exports, std::string dump_path);
 int parse_column(std::string table, std::string column, std::string index_col);
 void parse_psql(std::string cols_to_exports);
 
