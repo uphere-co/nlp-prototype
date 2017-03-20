@@ -1,14 +1,16 @@
 { pkgs ? (import <nixpkgs>{})
+, uphere-nix-overlay
 }:
 
 with pkgs;
 
 let 
-    hsconfig1 = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
-    hsconfig2 = self: super: { 
-      query-common = self.callPackage (import ./default.nix) {};
-    };
-    hsconfig = self: super: (hsconfig1 self super // hsconfig2 self super); 
-    newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
+
+  hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-ghc-8.0.x.nix") { inherit pkgs; };
+  newhaskellPackages = haskellPackages.override {
+    overrides = self: super: hsconfig self super // { query-common = self.callPackage (import ./default.nix) {}; };
+  };
     
-in newhaskellPackages.query-common
+in
+
+newhaskellPackages.query-common

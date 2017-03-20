@@ -1,4 +1,5 @@
 { pkgs
+, uphere-nix-overlay
 , hdf5_cpp
 , tbb
 , rnnpp
@@ -14,7 +15,7 @@
 }:
 
 let
-  hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
+  hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-ghc-8.0.x.nix") { inherit pkgs; };
 
   queryBindingSrc = import ../query-binding {
     inherit pkgs;
