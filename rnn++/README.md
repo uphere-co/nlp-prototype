@@ -98,10 +98,11 @@ sort -R ygp.corenlp | head -n 10000 > aaa
   2. Either use eixsting one or build custum word embedding from it(See "Incremental word2vec training" section for details).
 - Index the dataset with them
 ```
-# Parse HTML dumps to extract texts
-find /opt/NYT.dump/ -type f | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/NYT.text/
+# Parse HTML dumps to extract texts:
+# Note that as more dumps are added to the dataset, index will be changed because ordering of the new files and old files are mixed up.
+find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/RSS.text/
 # Depenency parsing of the texts
-find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/NYT.json/
+find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/RSS.json/
 # Indexing to build HDF5 store file.
 find /opt/NYT.dump/ -type f -printf "%f\n" > nyt_hashes
 find /opt/NYT.json/ -type f > nyt_jsons
