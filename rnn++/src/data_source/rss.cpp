@@ -20,7 +20,6 @@ namespace data{
 namespace rss{
 
 void write_column_indexes(util::json_t const &config,
-                          std::string dumpfile_hashes,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
                           std::string output_filename){
@@ -57,7 +56,6 @@ void write_column_indexes(util::json_t const &config,
 
 
 void annotation_on_result(util::json_t const& config, util::json_t &answers){
-    auto dumpfile_hashes = util::get_str(config,"row_hashes");
     auto rawtext_dir     = util::get_str(config,"rawtext_dir");
     Columns rssdb{config["column_uids_dump"].get<std::string>()};
     for(auto &answer : answers){

@@ -20,7 +20,6 @@ namespace data{
 namespace rss{
 
 void write_column_indexes(util::json_t const &config,
-                          std::string dumpfile_hashes,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
                           std::string output_filename);

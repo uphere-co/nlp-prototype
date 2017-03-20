@@ -103,11 +103,9 @@ sort -R ygp.corenlp | head -n 10000 > aaa
 find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/RSS.text/
 # Depenency parsing of the texts
 find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/RSS.json/
-# Indexing to build HDF5 store file.
-find /opt/NYT.dump/ -type f -printf "%f\n" > nyt_hashes
+# Indexing to build HDF5 store file. The "1" is a minor version of the indexed dataset. 
 find /opt/NYT.json/ -type f > nyt_jsons
-# "1" is a minor version of the indexed dataset. 
-./rss_dump config.rss.json nyt_hashes nyt_jsons 1
+./rss_dump config.rss.json nyt_jsons 1
 ```
 
 ## Run an app as a network daemon
