@@ -19,25 +19,7 @@ using wordrep::Sentence;
 namespace data{
 namespace rss{
 
-RSSRowFilePath::RSSRowFilePath(std::string full_path) {
-    using util::string::split;
-    auto path_tokens = split(full_path, "/");
-    auto n = path_tokens.size();
-    table = split(path_tokens[n-2], ".")[0];
-    auto tokens = split(path_tokens[n-1], ".");
-    assert(tokens.size()==3&&tokens[2]=="corenlp");
-    column = tokens[1];
-    hash   = tokens[0];
-}
-
-HashIndexer::HashIndexer(std::string filename)
-        : idx2hash{util::string::readlines(filename)} {
-    HashIndex idx{-1};
-    for(auto const& hash : idx2hash) hash2idx[hash] = ++idx;
-}
-
 void write_column_indexes(util::json_t const &config,
-                          std::string dumpfile_hashes,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
                           std::string output_filename){
@@ -45,7 +27,6 @@ void write_column_indexes(util::json_t const &config,
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
 
-    HashIndexer hash2idx{dumpfile_hashes};
     Columns rssdb{config["column_uids_dump"].get<std::string>()};
 
     RowUID row_uid{};
@@ -58,7 +39,7 @@ void write_column_indexes(util::json_t const &config,
             continue;
         }
         auto col_uid = rssdb.col_uid(row.column);
-        RowIndex row_idx{hash2idx.idx(row.hash).val};
+        RowIndex row_idx{row.index};
 
         col_uids.push_back(col_uid);
         row_idxs.push_back(row_idx);
@@ -75,10 +56,8 @@ void write_column_indexes(util::json_t const &config,
 
 
 void annotation_on_result(util::json_t const& config, util::json_t &answers){
-    auto dumpfile_hashes = util::get_str(config,"row_hashes");
     auto rawtext_dir     = util::get_str(config,"rawtext_dir");
     Columns rssdb{config["column_uids_dump"].get<std::string>()};
-    HashIndexer hash2idx{dumpfile_hashes};
     for(auto &answer : answers){
         auto col_uids = answer["result_column_uid"];
         auto row_idxs = answer["result_row_idx"];
@@ -89,12 +68,10 @@ void annotation_on_result(util::json_t const& config, util::json_t &answers){
             RowIndex  row_idx{row_idxs[i].get<RowIndex::val_t>()};
             auto offset_beg = offsets[i][0].get<int64_t>();
             auto offset_end = offsets[i][1].get<int64_t>();
-
-            auto hash = hash2idx.hash(HashIndex{row_idx.val});
-            auto column = rssdb.column(col_uid);
-
-            //TODO: make the path configurable
-            auto row_str = util::string::read_whole(fmt::format("{}/{}.{}", rawtext_dir, hash, column));
+            auto table_name  = rssdb.table(col_uid);
+            auto column_name = rssdb.column(col_uid);
+            auto file_name = get_row_filename(table_name, column_name, row_idx.val);
+            auto row_str = util::string::read_whole(fmt::format("{}/{}", rawtext_dir, file_name));
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);

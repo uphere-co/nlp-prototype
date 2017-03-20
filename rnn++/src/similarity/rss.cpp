@@ -16,10 +16,6 @@ Columns Factory::db() const{
     return {config.common.value("column_uids_dump")};
 };
 
-HashIndexer Factory::hash_indexer() const{
-    return {config.rss.value("row_hashes")};
-}
-
 DBInfo::DBInfo(Factory const& factory)
         :db{factory.db()},
          indexer{factory.common.db_indexer()}

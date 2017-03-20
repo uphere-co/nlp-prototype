@@ -474,31 +474,6 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
 }
 
 template<typename T>
-json_t QueryEngineT<T>::ask_sents_content(json_t const &ask) const{
-    json_t output{};
-    for(int64_t uid : ask["sents"]) {
-        //TODO: do not assume uid is from db. It may come from queries.
-        auto sent = db.uid2sent[SentUID{uid}];
-        auto chunk_idx = db.tokens.chunk_idx(sent.front());
-        auto col_uid = dbinfo.indexer.column_uid(chunk_idx);
-        auto row_idx = dbinfo.indexer.row_idx(chunk_idx);
-
-        data::rss::HashIndexer hash2idx{"/home/jihuni/word2vec/nyt/nyt.raw"};
-        auto hash = hash2idx.hash(data::rss::HashIndex{row_idx.val});
-        auto column = dbinfo.db.column(col_uid);
-
-        auto offset_beg = sent.beg_offset().val;
-        auto offset_end = sent.end_offset().val;
-
-        auto row_str = util::string::read_whole(fmt::format("/home/jihuni/word2vec/parsed/{}.{}", hash, column));
-        auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
-        output["sents"].push_back(substr);
-    };
-    return output;
-
-}
-
-template<typename T>
 json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
     auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
     fmt::print(std::cerr, "{} cutoff phrase.\n", phrase_cutoff);
