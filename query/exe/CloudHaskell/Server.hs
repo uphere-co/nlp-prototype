@@ -1,13 +1,24 @@
 module CloudHaskell.Server where
 
 import           Control.Concurrent                (forkIO)
-import           Control.Concurrent.STM
-import           Control.Distributed.Process
+import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
+import           Control.Distributed.Process       (ProcessId, Process, spawnLocal)
 import           Control.Monad                     (void)
+import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.HashMap.Strict         as HM
+import qualified Network.Simple.TCP          as NS
 --
-import           Broadcast
 import           Network.Util
+
+
+broadcastProcessId :: TMVar ProcessId -> String -> IO ()
+broadcastProcessId pidref port = do
+  NS.serve NS.HostAny port $ \(sock,addr) -> do
+    putStrLn $ "TCP connection established from " ++ show addr
+    pid <- atomically (takeTMVar pidref) 
+    packAndSend sock pid
+
 
 serve :: LogLock -> TMVar ProcessId -> (LogLock -> Process ()) -> Process ()
 serve lock pidref action = do
