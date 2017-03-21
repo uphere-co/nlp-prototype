@@ -27,7 +27,6 @@ Executable query
   hs-source-dirs:       exe
   other-modules:       
   ghc-options:          -Wall -O2
-                        -Werror
                         -threaded
                         -funbox-strict-fields
                         -fno-warn-unused-do-bind
