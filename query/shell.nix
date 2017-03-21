@@ -1,4 +1,5 @@
 { pkgs ? import <nixpkgs> {}
+, uphere-nix-overlay
 , rnnpp ? import ../rnn++ {}
 }:
 
@@ -7,7 +8,7 @@ with pkgs;
 let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 
     config = import ./config.nix {
-               inherit pkgs;
+               inherit pkgs uphere-nix-overlay;
                hdf5_cpp = hdf5-cpp;
                inherit (toolz_cpp) json fmt xxhashct backwardcpp variant msgsl; 
                inherit tbb rnnpp libpqxx elfutils spdlog;
