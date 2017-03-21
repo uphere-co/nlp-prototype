@@ -15,18 +15,13 @@ import qualified Data.ByteString.Char8               as B
 import qualified Data.ByteString.Lazy.Char8          as BL
 import           Data.ByteString.Unsafe                    (unsafePackCString)
 import qualified Data.HashMap.Strict                 as HM
-import           Data.Maybe                                (listToMaybe)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T
 import qualified Data.Text.Encoding                  as TE
-import qualified Data.Text.IO                        as TIO
 import           Foreign.C.String
-import           Foreign.ForeignPtr
 import           System.IO
 --
 import           Query.Binding
-import           Query.Binding.EngineWrapper
-import           Query.Binding.Json_t
 import           QueryServer.Type
 import           CoreNLP
 
