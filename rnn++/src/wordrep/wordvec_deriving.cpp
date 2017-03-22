@@ -89,7 +89,7 @@ guess_word_embedding_from_context(VocaInfo const& base, std::vector<ContextCount
 }
 
 
-DerivedVoca split_words(VocaInfo const& base_voca, std::vector<WordUID> const& new_words){
+DerivedVoca split_unseen_words(VocaInfo const &base_voca, std::vector<WordUID> const &new_words){
     auto base_words = base_voca.indexmap.all_words();
     tbb::parallel_sort(base_words.begin(), base_words.end());
 

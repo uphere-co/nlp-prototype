@@ -46,7 +46,7 @@ struct ConfigKeys{
 using Config = util::ConfigT<ConfigKeys>;
 
 struct SubmoduleFactory{
-    SubmoduleFactory(Config const& config) : config{config} {}
+    SubmoduleFactory(Config const& config);
 
     data::CoreNLPwebclient corenlp_webclient() const;
     wordrep::WordUIDindex word_uid_index() const;

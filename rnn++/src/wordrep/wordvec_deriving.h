@@ -38,7 +38,7 @@ std::vector<ContextCount> get_ngram_contexts(IndexedTexts const &texts,
 std::vector<VocaInfo::val_t>
 guess_word_embedding_from_context(VocaInfo const& base, std::vector<ContextCount> const& words);
 
-DerivedVoca split_words(VocaInfo const& base_voca, std::vector<WordUID> const& new_words);
+DerivedVoca split_unseen_words(VocaInfo const &base_voca, std::vector<WordUID> const &new_words);
 
 auto derive_word_embedding(VocaInfo const& base_voca,
                            std::vector<WordUID> const& known_words,

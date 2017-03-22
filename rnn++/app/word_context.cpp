@@ -40,7 +40,7 @@ int main(int argc, char** argv){
     auto base_voca = factory.voca_info();
     timer.here_then_reset(fmt::format("Load and sort base voca of {} words.", base_voca.indexmap.size()));
 
-    auto new_voca_words = wordrep::split_words(base_voca, words_for_new_voca);
+    auto new_voca_words = wordrep::split_unseen_words(base_voca, words_for_new_voca);
     auto unseen_words_with_context = get_ngram_contexts(texts, new_voca_words.unseen_words);
 
     assert(unseen_words_with_context.size()==new_voca_words.unseen_words.size());

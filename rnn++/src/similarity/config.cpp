@@ -9,6 +9,10 @@
 
 namespace engine{
 
+SubmoduleFactory::SubmoduleFactory(Config const& config)
+        : config{config}
+{}
+
 data::CoreNLPwebclient SubmoduleFactory::corenlp_webclient() const {
     return {config.value("corenlp_client_script")};
 }
