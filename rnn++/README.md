@@ -81,8 +81,10 @@ cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words
 #Collect JSON dumps of YGP DB row elements. 
 #Beware the `-name` option to not include a directory itself.
 find ~/word2vec/ygp.corenlp/  -name '*.*.*.*' > ygp.corenlp
-#Run indexer with config JSON file.
-make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp
+# Run indexer with config JSON file. It generates file specified in "dep_parsed_store" field of the config file.
+# CAUSTION : set MINOR_VERSION larger than existing one; othervise, it emits error "File already exists."
+# MINOR_VERSION : integer
+make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp MINOR_VERSION
 #Test with phrases_in_sentence to see if everything works well
 make -j20 && ./nndep_reader config.ygptest.json query.0
 
