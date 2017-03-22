@@ -91,15 +91,21 @@ void evaluation(int argc, char** argv){
     //assert(argc>1);
     auto config = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config}};
-    util::MockTimer timer;
+    util::Timer timer;
+    auto voca = factory.voca_info();
+    auto wordUIDs = factory.word_uid_index();
 
     std::string text_store  = util::get_latest_version(factory.config.value("dep_parsed_store")).fullname;
     std::string text_prefix = factory.config.value("dep_parsed_prefix");
-    IndexedTexts texts{util::io::h5read(text_store), text_prefix};
+    IndexedTexts texts{util::io::h5read(text_store), text_prefix, voca.indexmap};
 
-    auto voca = factory.voca_info();
-    auto wordUIDs = factory.word_uid_index();
-    word2vec::UnigramDist unigram{util::io::h5read("unigram.h5"), voca.indexmap};
+
+
+    std::map<wordrep::VocaIndex, int64_t> counts;
+    for(auto w : texts.words) ++counts[w];
+    timer.here_then_reset(fmt::format("Word counts : {} words.", counts.size()));
+    word2vec::UnigramDist unigram{counts};
+//    word2vec::UnigramDist unigram{util::io::h5read("unigram.h5"), voca.indexmap};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
 
     using WordBlock = wordrep::WordBlock_base<VocaInfo::val_t,100>;

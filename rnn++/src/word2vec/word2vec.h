@@ -1,6 +1,7 @@
 #pragma once
 
 #include <random>
+#include <map>
 #include "wordrep/indexes.h"
 
 //TODO:Remove following header.
@@ -22,9 +23,10 @@ namespace word2vec {
 struct UnigramDist {
     using WordUID = wordrep::WordUID;
     using VocaIndex = wordrep::VocaIndex;
-    using float_t = double;
+    using float_t = float;
     UnigramDist(util::io::H5file const &h5store,
                 wordrep::VocaIndexMap const& voca);
+    UnigramDist(std::map<VocaIndex,int64_t> const& counts);
 
     float_t get_prob(VocaIndex idx) const;
     std::vector<std::pair<VocaIndex,float_t>> get_neg_sample_dist(float_t pow) const;
