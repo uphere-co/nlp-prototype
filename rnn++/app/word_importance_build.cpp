@@ -87,8 +87,8 @@ void test_all(int argc, char** argv){
 int main(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-//    engine::build_word_importance();
+    engine::build_word_importance();
 //    show_old_foramt_word_importance(config);
-    set_zero_importance_on_country_name(config);
+//    set_zero_importance_on_country_name(config);
     return 0;
 }
