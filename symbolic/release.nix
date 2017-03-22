@@ -1,9 +1,11 @@
-{ pkgs ? (import <nixpkgs>{}) }:
+{ pkgs ? (import <nixpkgs>{})
+, uphere-nix-overlay
+}:
 
 with pkgs;
 
 let 
-    hsconfig1 = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inherit pkgs; };
+    hsconfig1 = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-ghc-8.0.x.nix") { inherit pkgs; };
     hsconfig2 = self: super: { 
       symbolic = self.callPackage (import ./default.nix) {};
     };
