@@ -26,8 +26,8 @@ import           CloudHaskell.Server
 import           Network.Util
 import           Worker
 
-start :: EngineWrapper -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogLock -> Process () 
-start engine resultref lock = do
+start :: String -> EngineWrapper -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogLock -> Process () 
+start corenlp_server engine resultref lock = do
   them :: ProcessId <- expect
   atomicLog lock ("got client pid : " ++ show them)
   withHeartBeat lock them $ spawnLocal $ do
@@ -37,13 +37,14 @@ start engine resultref lock = do
     forever $ do
       (q,sc') <- receiveChan rc
       liftIO $ hPutStrLn stderr (show q)
-      spawnLocal (queryWorker resultref sc' engine q)
+      spawnLocal (queryWorker corenlp_server resultref sc' engine q)
 
 
 data ServerOption = ServerOption { _port :: Int
                                  , _hostg :: String
                                  , _hostl :: String
                                  , _config :: String
+                                 , _corenlp :: String
                                  }
 
 pOptions :: Parser ServerOption
@@ -51,19 +52,14 @@ pOptions = ServerOption <$> option auto (long "port" <> short 'p' <> help "Port 
                         <*> strOption (long "global-ip" <> short 'g' <> help "Global IP address")
                         <*> strOption (long "local-ip"  <> short 'l' <> help "Local IP address")
                         <*> strOption (long "config-file" <> short 'c' <> help "Config file")
+                        <*> strOption (long "corenlp" <> short 'n' <> help "CoreNLP server address")
 
 
-queryServerOption = info pOptions ( fullDesc <> progDesc "Query server daemon" <> header "options are port, global-ip, local-ip")
+queryServerOption = info pOptions ( fullDesc <> progDesc "Query server daemon" <> header "options are port, global-ip, local-ip, config-file, corenlp")
 
   
 main :: IO ()
 main = do
-  {- 
-  port <- getEnv "PORT"
-  let portnum :: Int = read port
-      port' = show (portnum+1)
-  [hostg,hostl,config] <- getArgs
-  let dhpp = DHPP (hostg,port') (hostl,port') -}
   opt <- execParser queryServerOption
 
   let portnum = _port opt 
@@ -72,6 +68,7 @@ main = do
       hostg = _hostg opt
       hostl = _hostl opt
       config = _config opt
+      corenlp_server = _corenlp opt
       dhpp = DHPP (hostg,port') (hostl,port')
   
   etransport <- createTransport dhpp defaultTCPParameters
@@ -81,7 +78,7 @@ main = do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
         engine <- newEngineWrapper configfile
-        runProcess node (server port start  engine)
+        runProcess node (server port (start corenlp_server) engine)
         deleteEngineWrapper engine
 
 

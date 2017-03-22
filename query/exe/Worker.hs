@@ -25,10 +25,10 @@ import           Query.Binding
 import           QueryServer.Type
 import           CoreNLP
 
-registerText :: (MonadIO m) => EngineWrapper -> Text -> MaybeT m RegisteredSentences
-registerText engine txt = do
+registerText :: (MonadIO m) => String -> EngineWrapper -> Text -> MaybeT m RegisteredSentences
+registerText corenlp_server engine txt = do
   guard ((not . T.null) txt)
-  bstr_nlp0 <- (liftIO . runCoreNLP . TE.encodeUtf8) txt
+  bstr_nlp0 <- (liftIO . runCoreNLP corenlp_server . TE.encodeUtf8) txt
   guard ((not . B.null) bstr_nlp0)
   bstr0 <- liftIO $
     B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
@@ -36,7 +36,7 @@ registerText engine txt = do
         B.hPutStrLn stderr "step1"
         bstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean >>= B.packCString
         B.hPutStrLn stderr "step2"
-        bstr_nlp2 <- runCoreNLP bstr_nlp1        
+        bstr_nlp2 <- runCoreNLP corenlp_server bstr_nlp1        
         B.useAsCString bstr_nlp1 $ \cstr_nlp1 -> do
           -- bstr_nlp1 <- packCString cstr_nlp1
           B.useAsCString bstr_nlp2 $ \cstr_nlp2 ->
@@ -67,12 +67,13 @@ failed :: BL.ByteString
 failed = encode Null
 
 
-queryWorker :: TMVar (HM.HashMap Text ([Int],[Text]))
+queryWorker :: String   -- ^ corenlp server
+            -> TMVar (HM.HashMap Text ([Int],[Text]))
             -> SendPort ResultBstr
             -> EngineWrapper
             -> Query
             -> Process ()
-queryWorker resultref sc engine QueryText {..} = do
+queryWorker corenlp_server resultref sc engine QueryText {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_text m of
     Just (ids,countries) -> do
@@ -86,7 +87,7 @@ queryWorker resultref sc engine QueryText {..} = do
     Nothing -> do
       r' <- runMaybeT $ do
         liftIO $ putStrLn "before registerText"
-        r <- registerText engine query_text
+        r <- registerText corenlp_server engine query_text
         liftIO $ print r 
         liftIO $ putStrLn "after registerText"
         resultbstr <- liftIO (queryRegisteredSentences engine 
@@ -100,7 +101,7 @@ queryWorker resultref sc engine QueryText {..} = do
         Nothing         -> do
           liftIO $ atomically $ putTMVar resultref m
           sendChan sc failed
-queryWorker resultref sc engine QueryRegister {..} = do
+queryWorker corenlp_server resultref sc engine QueryRegister {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_register m of
     Just (ids,countries) -> do
@@ -111,7 +112,7 @@ queryWorker resultref sc engine QueryRegister {..} = do
                                 , rs_max_clip_len = Nothing}
     Nothing -> do
       r' <- runMaybeT $ do
-        r <- registerText engine query_register
+        r <- registerText corenlp_server engine query_register
         let resultbstr = encode r
         return (r,resultbstr)
       case r' of
@@ -135,7 +136,7 @@ queryWorker ref sc QueryById {..} =
     Just resultbstr -> sendChan sc resultbstr
     Nothing         -> sendChan sc failed 
 -}
-queryWorker resultref sc engine QuerySuggest {..} = do
+queryWorker corenlp_server resultref sc engine QuerySuggest {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   resultbstr <- liftIO (querySuggestion engine query_ideas)
   liftIO $ atomically $ putTMVar resultref m

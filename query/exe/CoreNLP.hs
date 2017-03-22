@@ -36,9 +36,9 @@ instance FromJSON Token where
   parseJSON (Object o) = Token <$> o .: "word"
   parseJSON invalid = typeMismatch "Token" invalid
 
-runCoreNLP :: ByteString -> IO ByteString
-runCoreNLP body = do
-  corenlp_server <- getEnv "CORENLPSERVER"
+runCoreNLP :: String -> ByteString -> IO ByteString
+runCoreNLP corenlp_server body = do
+  -- corenlp_server <- getEnv "CORENLPSERVER"
   lbstr <- simpleHttpClient False methodPost (corenlp_server ++"/?properties={%22annotators%22%3A%22depparse%2Cpos%22%2C%22outputFormat%22%3A%22json%22}") (Just body)
   let r_bstr = BL.toStrict lbstr
   let Just c' = do
