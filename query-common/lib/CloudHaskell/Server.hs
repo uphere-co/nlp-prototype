@@ -31,17 +31,17 @@ withHeartBeat lock them action = do
 
 
 
-broadcastProcessId :: TMVar ProcessId -> String -> IO ()
-broadcastProcessId pidref port = do
+broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
+broadcastProcessId lock pidref port = do
   NS.serve NS.HostAny port $ \(sock,addr) -> do
-    putStrLn $ "TCP connection established from " ++ show addr
+    atomicLog lock ("TCP connection established from " ++ show addr)
     pid <- atomically (takeTMVar pidref) 
     packAndSend sock pid
 
 
 serve :: LogLock -> TMVar ProcessId -> (LogLock -> Process ()) -> Process ()
 serve lock pidref action = do
-  atomicLog lock ("waiting a new client")
+  atomicLog lock ("waiting a new client!")
   pid <- spawnLocal (action lock)
   atomicLog lock (show pid)
   liftIO (atomically (putTMVar pidref pid))
@@ -50,9 +50,10 @@ serve lock pidref action = do
 
 server :: String -> (p -> TMVar (HM.HashMap k v)  -> LogLock -> Process ()) -> p -> Process ()
 server port action p = do
-  pidref <- liftIO newEmptyTMVarIO 
-  void . liftIO $ forkIO (broadcastProcessId pidref port)
+  pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   resultref <- liftIO $ newTMVarIO HM.empty
   lock <- newLogLock 0 
+  
+  void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   serve lock pidref (action p resultref)
