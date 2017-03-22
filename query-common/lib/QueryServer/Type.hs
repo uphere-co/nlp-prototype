@@ -55,14 +55,6 @@ instance ToJSON RegisteredSentences where
                             ]
                             ++ maybe [] (\x -> ["max_clip_len" .= x]) rs_max_clip_len
 
-
-
-data HeartBeat = HB { heartBeat :: Int }
-
-instance Bi.Binary HeartBeat where
-  put (HB n) = Bi.put n
-  get = HB <$> Bi.get
-  
   
 
 

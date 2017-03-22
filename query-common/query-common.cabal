@@ -33,6 +33,7 @@ Library
                         bytestring,
                         distributed-process,
                         hashable,
+                        monad-loops,
                         network-simple,
                         stm,
                         text,

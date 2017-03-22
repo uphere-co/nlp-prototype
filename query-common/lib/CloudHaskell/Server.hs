@@ -3,13 +3,32 @@ module CloudHaskell.Server where
 import           Control.Concurrent                (forkIO)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process       (ProcessId, Process, spawnLocal)
+import           Control.Distributed.Process       (ProcessId, Process, expectTimeout, kill, send, spawnLocal)
 import           Control.Monad                     (void)
+import           Control.Monad.Loops               (whileJust_)
 import           Control.Monad.IO.Class            (liftIO)
+import qualified Data.Binary                 as Bi
 import qualified Data.HashMap.Strict         as HM
 import qualified Network.Simple.TCP          as NS
 --
 import           Network.Util
+
+data HeartBeat = HB { heartBeat :: Int }
+
+instance Bi.Binary HeartBeat where
+  put (HB n) = Bi.put n
+  get = HB <$> Bi.get
+  
+withHeartBeat :: LogLock -> ProcessId -> Process ProcessId -> Process ()
+withHeartBeat lock them action = do
+  pid <- action                                            -- main process launch
+  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
+    atomicLog lock ("heartbeat: " ++ show n)
+    send them (HB n)
+      
+  atomicLog lock "heartbeat failed: reload"     -- when fail, it prints messages  
+  kill pid "connection closed"                             -- and start over the whole process.
+
 
 
 broadcastProcessId :: TMVar ProcessId -> String -> IO ()
