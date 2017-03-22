@@ -432,9 +432,10 @@ int process_ygp_dump(int argc, char** argv){
     auto config = util::load_json(argv[1]);
     util::Timer timer;
 
-    auto json_dump_path = util::get_str(config,"corenlp_dumps");
-    auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
+    std::string json_dump_path = argv[2];
+    int minor_version          = std::stoi(argv[3]);
 
+    auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
     data::CoreNLPoutputParser dump_parser{config};
     auto json_dumps = util::string::readlines(json_dump_path);
     timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
@@ -446,13 +447,13 @@ int process_ygp_dump(int argc, char** argv){
     timer.here_then_reset("Parsing is finished. ");
 
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, 0};
+                                               DepParsedTokens::major_version, minor_version};
     tokens.write_to_disk(output_filename.fullname);
     std::vector<std::string> non_null_dumps;
     for(auto i : non_null_idxs) non_null_dumps.push_back(json_dumps[i]);
     data::ygp::write_column_indexes(config, non_null_dumps);
     auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
-                                                   DepParsedTokens::major_version, 0};
+                                                   DepParsedTokens::major_version, minor_version};
     data::ygp::write_country_code(config);
     return 0;
 }
