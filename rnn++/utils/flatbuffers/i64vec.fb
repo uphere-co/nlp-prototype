@@ -1,0 +1,6 @@
+namespace util.flatbuffer;
+table I64Vector {  vals:[long]; }
+
+file_identifier "I64V";
+file_extension "i64v";
+root_type I64Vector;

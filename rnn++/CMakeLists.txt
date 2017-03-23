@@ -140,6 +140,11 @@ target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param  ${util_files} ${wordrep_files})
 target_link_libraries(hdf5io stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
+add_executable(benchmark_fileio app/benchmark_fileio
+        ${util_files})
+target_link_libraries(benchmark_fileio stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
+
+
 #add_executable(gsl boilerplate/gsl)
 #add_executable(string boilerplate/string)
 #add_executable(math boilerplate/math)
