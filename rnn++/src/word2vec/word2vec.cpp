@@ -23,6 +23,14 @@ UnigramDist::UnigramDist(util::io::H5file const &h5store,
     }
     std::sort(weights.begin(),weights.end(), [](auto x, auto y){return x.first<y.first;});
 }
+UnigramDist::UnigramDist(std::map<VocaIndex,int64_t> const& counts){
+    int64_t sum;
+    for(auto& elm : counts) sum+=elm.second;
+    auto norm = 1.0/sum;
+    weights.reserve(counts.size());
+    for(auto& elm : counts) weights.push_back({elm.first, elm.second*norm});
+    std::sort(weights.begin(),weights.end(), [](auto x, auto y){return x.first<y.first;});
+}
 
 UnigramDist::float_t UnigramDist::get_prob(VocaIndex idx) const{
     auto it = util::binary_find(weights,
@@ -37,7 +45,7 @@ UnigramDist::get_neg_sample_dist(float_t pow) const {
 }
 
 SubSampler::SubSampler(float_t rate, UnigramDist const &unigram)
-    : unigram{unigram}, rate_inv{1.0/rate} {}
+    : unigram{unigram}, rate_inv{1.0f/rate} {}
 
 bool SubSampler::is_sampled(float_t p_word, float_t ran) const {
     if(p_word<0.0) return false;

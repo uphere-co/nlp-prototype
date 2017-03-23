@@ -145,8 +145,8 @@ int process_rss_dump(int argc, char** argv){
 }
 
 int main(int argc, char** argv){
-    data::rss::test::test_all(argc,argv);
-    return 0;
+//    data::rss::test::test_all(argc,argv);
+//    return 0;
 
     process_rss_dump(argc, argv);
     return 0;

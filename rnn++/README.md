@@ -50,7 +50,6 @@ Example usages
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | ./word_count_collect words.h5
 #Get lists of words
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | cut -d' ' -f1
-
 ```
 ## Getting word importance scores:
 The executable `word_importance_build` takes no input parameters. 
@@ -112,10 +111,10 @@ sort -R ygp.corenlp | head -n 10000 > aaa
 # Note that as more dumps are added to the dataset, index will be changed because ordering of the new files and old files are mixed up.
 find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/RSS.text/
 # Depenency parsing of the texts
-find /opt/NYT.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/RSS.json/
+find /opt/RSS.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/RSS.json/
 # Indexing to build HDF5 store file. The "1" is a minor version of the indexed dataset. 
-find /opt/NYT.json/ -type f > nyt_jsons
-./rss_dump config.rss.json nyt_jsons 1
+find /opt/RSS.json/ -type f > rss_jsons
+./rss_dump config.rss.json rss_jsons 1
 ```
 
 ## Run an app as a network daemon
@@ -163,18 +162,18 @@ ls answers/*output | python ../rnn++/tests/query_engine_acceptance.py
 
 # Get words in a dataset
 ## YGP case:
-./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
+find /opt/YGP.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
 cat ygp.text.ptb | ./word_count | awk '$2>9{print}' > ygp.text.ptb.counts
 cat ygp.text.ptb.counts | awk '{print $1}' > ygp.text.ptb.words
 ## RSS case:
-find /opt/NYT.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > nyt.text.ptb
-cat nyt.text.ptb | ./word_count | awk '$2>9{print}' > nyt.text.ptb.counts
-cat nyt.text.ptb.counts | awk '{print $1}' > nyt.text.ptb.words
+find /opt/RSS.text/ -type f | xargs awk '{print}' | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > rss.text.ptb
+cat rss.text.ptb | ./word_count | awk '$2>9{print}' > rss.text.ptb.counts
+cat rss.text.ptb.counts | awk '{print $1}' > rss.text.ptb.words
 
 # Pipe new words in a new dataset to get their word embedding and store it to new HDF5 store "test.h5"
-cat nyt.text.ptb.words | ./word_context config.rss.json test.h5
+cat rss.text.ptb.words | ./word_context config.rss.json test.h5
 # Build unigram distribution for the new dataset
-cat nyt.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
+cat rss.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
 # Evaluate quality of word embedding.
 ./word2vec_eval config.rssw2v.json unigram.h5
 ```

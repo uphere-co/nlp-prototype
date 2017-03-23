@@ -52,6 +52,7 @@ struct PersistentVector{
     T back()  const {return vals.back();}
     void push_back(T const& val){vals.push_back(val);}
     void push_back(T&& val){vals.push_back(val);}
+    void reserve(size_t n) {vals.reserve(n);}
     std::vector<T> get() const{ return vals;}
     std::vector<T>& get() { return vals;}
     std::string get_name() const {return name;}

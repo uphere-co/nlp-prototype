@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wordrep/indexes.h"
+#include "wordrep/voca.h"
 
 #include "utils/persistent_vector.h"
 
@@ -15,11 +16,12 @@ struct IndexedTexts{
               words_uid {file,prefix+".word_uid"},
               words {file,prefix+".word"}
     {}
+    IndexedTexts(util::io::H5file const &file, std::string prefix, VocaIndexMap const& vmap);
     WordUID   word_uid(Index n) const {return words_uid[n.val];}
     VocaIndex word(Index n) const {return words[n.val];}
     ChunkIndex chunk_idx(Index n) const {return chunks_idx[n.val];}
     SentUID   sent_uid(Index n) const {return sents_uid[n.val];}
-    size_t   size() const {return words.size();}
+    size_t    size() const {return words.size();}
 
     util::TypedPersistentVector<ChunkIndex> chunks_idx;
     util::TypedPersistentVector<SentUID> sents_uid;

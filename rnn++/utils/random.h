@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <random>
+
 #include "utils/algorithm.h"
 
 namespace util{
@@ -19,7 +20,9 @@ struct Sampler{
     KEY sample(WEIGHT ran) const {
         //10~20 % speed up. Check if no bias.
 //        if(ran<n_low) return binary_find_cell(beg,it_low, [ran](auto x){return ran<x.second;}).value()->first;
-        return binary_find_cell(cdf, [ran](auto x){return ran<x.second;}).value()->first;
+        auto mv = binary_find_cell(cdf, [ran](auto x){return ran<x.second;});
+        if(!mv) return cdf.back().first;
+        return mv.value()->first;
     }
     auto total_weight() const { return cdf.back().second; }
 

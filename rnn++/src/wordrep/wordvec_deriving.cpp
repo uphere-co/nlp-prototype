@@ -1,4 +1,5 @@
 #include <fmt/printf.h>
+#include <fmt/format.h>
 
 #include "wordrep/wordvec_deriving.h"
 
@@ -10,6 +11,13 @@
 #include "utils/linear_algebra.h"
 
 namespace wordrep{
+
+std::ostream& operator<<(std::ostream& os, ContextCountRepr const& src){
+    for(auto elm : src.self.count){
+        os << fmt::format("{} {} : {}\n", src.wordUIDs[src.self.word], src.wordUIDs[elm.first], elm.second);
+    }
+    return os;
+}
 
 std::vector<ContextCount> get_ngram_contexts(IndexedTexts const &texts,
                                              std::vector<WordUID> const &words,
@@ -81,7 +89,7 @@ guess_word_embedding_from_context(VocaInfo const& base, std::vector<ContextCount
 }
 
 
-DerivedVoca split_words(VocaInfo const& base_voca, std::vector<WordUID> const& new_words){
+DerivedVoca split_unseen_words(VocaInfo const &base_voca, std::vector<WordUID> const &new_words){
     auto base_words = base_voca.indexmap.all_words();
     tbb::parallel_sort(base_words.begin(), base_words.end());
 

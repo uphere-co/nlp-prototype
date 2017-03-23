@@ -101,8 +101,9 @@ int main(int /*argc*/, char** argv) {
         uid.push_back(x.first);
         count.push_back(x.second);
     }
-    auto file = util::io::h5replace(dumpfile);
-    fmt::print("Total {} words after filtering.\n", util::math::sum(count.get()));
+    auto file = util::io::h5rw_exist(dumpfile);
+    fmt::print("Total number of words  : {}.\n", count.size());
+    fmt::print("Total number of tokens : {}.\n", util::math::sum(count.get()));
     uid.write(file,   prefix);
     count.write(file, prefix);
     return 0;
