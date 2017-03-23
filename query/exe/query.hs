@@ -8,7 +8,7 @@ import           Control.Concurrent.STM
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Loops                       (whileJust_)
-import           Control.Distributed.Process
+import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
@@ -26,12 +26,12 @@ import           CloudHaskell.Server
 import           Network.Util
 import           Worker
 
-start :: String -> EngineWrapper -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogLock -> Process () 
-start corenlp_server engine resultref lock = do
+start :: String -> EngineWrapper -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogProcess () 
+start corenlp_server engine resultref = do
   them :: ProcessId <- expect
-  atomicLog lock ("got client pid : " ++ show them)
-  withHeartBeat lock them $ spawnLocal $ do
-    (sc,rc) <- newChan :: Process (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+  tellLog ("got client pid : " ++ show them)
+  withHeartBeat them $ spawnLocal $ do
+    (sc,rc) <- newChan :: LogProcess (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
     liftIO $ hPutStrLn stderr "connected"  
     forever $ do

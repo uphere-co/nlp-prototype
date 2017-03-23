@@ -47,6 +47,7 @@ Executable query
                         containers,
                         directory,
                         distributed-process,
+                        distributed-process-lifted,
                         fficxx-runtime,
                         filepath,
                         http-client,

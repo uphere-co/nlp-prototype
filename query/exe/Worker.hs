@@ -6,7 +6,7 @@
 module Worker where
 
 import           Control.Concurrent.STM
-import           Control.Distributed.Process
+import           Control.Distributed.Process.Lifted
 import           Control.Monad
 import           Control.Monad.IO.Class                    (MonadIO(liftIO))
 import           Control.Monad.Trans.Maybe                 (MaybeT(MaybeT,runMaybeT))
@@ -21,6 +21,7 @@ import qualified Data.Text.Encoding                  as TE
 import           Foreign.C.String
 import           System.IO
 --
+import           CloudHaskell.Server
 import           Query.Binding
 import           QueryServer.Type
 import           CoreNLP
@@ -72,7 +73,7 @@ queryWorker :: String   -- ^ corenlp server
             -> SendPort ResultBstr
             -> EngineWrapper
             -> Query
-            -> Process ()
+            -> LogProcess ()
 queryWorker corenlp_server resultref sc engine QueryText {..} = do
   m <- liftIO $ atomically $ takeTMVar resultref
   case HM.lookup query_text m of
