@@ -1,15 +1,14 @@
-{ nixpkgs }:
+{ nixpkgs, uphere-nix-overlay }:
 
 let pkgs = import nixpkgs {};
     toolz_cpp = pkgs.callPackage ../nix/default-cpp.nix {};
 in
 rec {
-  "autoencode"   = import ../autoencode/release.nix { inherit pkgs; };
-  "symbolic"     = import ../symbolic/release.nix { inherit pkgs; };
-  "query-common" = import ../query-common/release.nix {
-                   }; 
+  "autoencode"   = import ../autoencode/release.nix { inherit pkgs uphere-nix-overlay; };
+  "symbolic"     = import ../symbolic/release.nix { inherit pkgs uphere-nix-overlay; };
+  "query-common" = import ../query-common/release.nix { inherit pkgs uphere-nix-overlay; }; 
   "query"        = import ../query/release.nix {
-                     inherit pkgs;
+                     inherit pkgs uphere-nix-overlay;
                      hdf5_cpp    = pkgs.hdf5-cpp;
                      tbb         = pkgs.tbb;
                      inherit rnnpp;

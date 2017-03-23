@@ -8,7 +8,6 @@ import           Control.Applicative    ((<|>))
 import           Data.Aeson
 import           Data.Aeson.Types       (typeMismatch)
 import qualified Data.Binary      as Bi
-import           Data.Hashable
 import           Data.Text              (Text)
 
 data Query = QueryText { query_text :: Text, query_tables :: [Text] }

@@ -4,38 +4,24 @@
 
 module Main where
 
-import           Control.Concurrent                        (forkIO,threadDelay)
 import           Control.Concurrent.STM
-import           Control.Exception                         (throwIO)
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Loops                       (whileJust_)
-import           Control.Monad.Trans.Class                 (lift)
-import           Control.Monad.Trans.Maybe
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
-import           Data.Aeson
-import qualified Data.Binary                         as Bi (decode,encode)
-import qualified Data.ByteString.Base64.Lazy         as B64
-import qualified Data.ByteString.Char8               as B
-import qualified Data.ByteString.Lazy.Char8          as BL
 import qualified Data.HashMap.Strict                 as HM
-import qualified Data.Map                            as M
+import           Data.Text                                 (Text)
 import           Foreign.C.String
-import           Network.HTTP.Types                        (methodGet)
-import           Network.Transport                         (Transport(..))
 import           Network.Transport.UpHere    (createTransport,defaultTCPParameters
                                              ,DualHostPortPair(..))
 import           System.Environment
-import           System.FilePath
 import           System.IO                                 (hPutStrLn, stderr)
 --
 import           Query.Binding.EngineWrapper
-import           Query.Binding.Json_t
 import           QueryServer.Type
 --
-import           Broadcast
-import           Network
+import           CloudHaskell.Server
 import           Network.Util
 import           Worker
 
@@ -49,26 +35,9 @@ withHeartBeat lock them action = do
   atomicLog lock "heartbeat failed: reload"     -- when fail, it prints messages  
   kill pid "connection closed"                             -- and start over the whole process.
 
-  
-server :: String -> EngineWrapper -> Process ()
-server port engine = do
-  pidref <- liftIO newEmptyTMVarIO 
-  void . liftIO $ forkIO (broadcastProcessId pidref port)
-  liftIO $ putStrLn "server started"
-  resultref <- liftIO $ newTMVarIO HM.empty
-  lock <- newLogLock 0 
-  serve lock pidref (start engine resultref)
 
 
-
-serve lock pidref action = do
-  atomicLog lock ("waiting a new client")
-  pid <- spawnLocal (action lock)
-  atomicLog lock (show pid)
-  liftIO (atomically (putTMVar pidref pid))
-  serve (incClientNum lock) pidref action
-
-
+start :: EngineWrapper -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogLock -> Process () 
 start engine resultref lock = do
   them :: ProcessId <- expect
   atomicLog lock ("got client pid : " ++ show them)
@@ -96,10 +65,7 @@ main = do
       node <- newLocalNode transport initRemoteTable
       withCString config $ \configfile -> do
         engine <- newEngineWrapper configfile
-             {- case typ of
-                    "ygp" -> newEngineWrapper 0 configfile
-                    "rss" -> newEngineWrapper 1 configfile -}
-        runProcess node (server port engine)
+        runProcess node (server port start  engine)
         deleteEngineWrapper engine
 
 

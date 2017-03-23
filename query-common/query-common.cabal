@@ -31,12 +31,15 @@ Library
                         aeson,
                         binary,
                         bytestring,
+                        distributed-process,
                         hashable,
                         network-simple,
                         stm,
-                        text
+                        text,
+                        unordered-containers
 
   Exposed-modules:
+                        CloudHaskell.Server
                         QueryServer.Type
                         Network.Util
                   

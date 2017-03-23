@@ -52,8 +52,9 @@ Example usages
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines | ./word_count | cut -d' ' -f1
 ```
 ## Getting word importance scores:
-It has hard coded parameters to specify which column is for "summary" of which column. 
-Thus, the executable takes no input parameters. 
+The executable `word_importance_build` takes no input parameters. 
+Instead, it has hard coded parameters to specify which column is for "summary" of which column;
+it refers the file specified in "column_uids_dump" field of config files for that.
 Output filename is also fixed : `prob.h5`. Generate it and place it appreciatively.
 ```bash
 #First, place config.rss.json and config.ygp.json to present directory.
