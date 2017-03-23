@@ -3,13 +3,16 @@ module CloudHaskell.Server where
 import           Control.Concurrent                (forkIO)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process       ( ProcessId, Process, expectTimeout
+{- import           Control.Distributed.Process       ( ProcessId, Process, expectTimeout
                                                    , kill, send, spawnLocal
                                                    , getSelfPid
-                                                   )
+                                                   ) -}
+import           Control.Distributed.Process.Lifted                  
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (whileJust_)
 import           Control.Monad.IO.Class            (liftIO)
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Reader
 import qualified Data.Binary                 as Bi
 import qualified Data.HashMap.Strict         as HM
 import qualified Network.Simple.TCP          as NS
@@ -21,14 +24,20 @@ data HeartBeat = HB { heartBeat :: Int }
 instance Bi.Binary HeartBeat where
   put (HB n) = Bi.put n
   get = HB <$> Bi.get
-  
-withHeartBeat :: LogLock -> ProcessId -> Process ProcessId -> Process ()
-withHeartBeat lock them action = do
+
+type LogProcess = ReaderT LogLock Process
+
+tellLog msg = do
+  lock <- ask
+  atomicLog lock msg
+                  
+withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
+withHeartBeat them action = do
   pid <- action                                            -- main process launch
   whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
-    atomicLog lock ("heartbeat: " ++ show n)
+    tellLog ("heartbeat: " ++ show n)
     send them (HB n)
-  atomicLog lock "heartbeat failed: reload"                -- when fail, it prints messages  
+  tellLog "heartbeat failed: reload"                -- when fail, it prints messages  
   kill pid "connection closed"                             -- and start over the whole process.
 
 
@@ -40,21 +49,21 @@ broadcastProcessId lock pidref port = do
     packAndSend sock pid
 
 
-serve :: LogLock -> TMVar ProcessId -> (LogLock -> Process ()) -> Process ()
-serve lock pidref action = do
+serve :: TMVar ProcessId -> LogProcess () -> LogProcess ()
+serve pidref action = do
   pid <-  spawnLocal $ do
-    action lock
-    atomicLog lock ("action finished")
+    action 
+    tellLog "action finished"
 
-  atomicLog lock ("prepartion mode")
-  atomicLog lock (show pid)
+  tellLog "prepartion mode"
+  tellLog (show pid)
   liftIO (atomically (putTMVar pidref pid))
-  atomicLog lock ("wait mode")
+  tellLog "wait mode"
 
-  serve (incClientNum lock) pidref action
+  local incClientNum $ serve pidref action
 
 
-server :: String -> (p -> TMVar (HM.HashMap k v)  -> LogLock -> Process ()) -> p -> Process ()
+server :: String -> (p -> TMVar (HM.HashMap k v)  -> LogProcess ()) -> p -> Process ()
 server port action p = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
@@ -62,4 +71,5 @@ server port action p = do
   lock <- newLogLock 0 
   
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
-  serve (incClientNum lock) pidref (action p resultref)
+  flip runReaderT lock $ 
+    local incClientNum $ serve pidref (action p resultref)
