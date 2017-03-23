@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include <fmt/printf.h>
+#include <tbb/task_group.h>
 
 #include "wordrep/indexed_text.h"
 
@@ -38,33 +39,50 @@ void hdf5_to_flatbuffers(){
     timer.here_then_reset("Write to the binary file.");
 }
 
-void load_binary_file(){
+template<typename T>
+void load_binary_file(std::string filename, T& vec){
+    std::ifstream input_file (filename, std::ios::binary);
+    flatbuffers::uoffset_t read_size;
+    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
+    auto data = std::make_unique<char[]>(read_size);
+    input_file.read(data.get(), read_size);
+
+    auto rbuf = fb::GetI64Vector(data.get());
+    vec.reserve(rbuf->vals()->size());
+    for(auto v : *rbuf->vals()) vec.push_back(v);
+}
+
+template<typename T, typename T2>
+bool vector_equal(T const& lhs, T2 const& rhs){
+    if(lhs.size()!=rhs.size()) return false;
+    auto n = lhs.size();
+    for(decltype(n)i=0;i!=n;++i)
+        if(lhs[i]!=rhs[i]) return false;
+    return true;
+}
+
+void hdf5_vs_flatbuffer_benchmark(){
     util::Timer timer;
     auto hdf5_file=util::io::h5read("/home/jihuni/word2vec/rss/nyt.h5.5.3");
     wordrep::IndexedTexts texts{hdf5_file, "nyt"};
     timer.here_then_reset("Load nyt.h5");
 
-    flatbuffers::FlatBufferBuilder builder{1000000};
-
-    std::ifstream input_file ("nyt.chunks_idx.i64v", std::ios::binary);
-    flatbuffers::uoffset_t read_size;
-    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
-    auto data = std::make_unique<char[]>(read_size);
-    input_file.read(data.get(), read_size);
-    auto rbuf = fb::GetI64Vector(data.get());
-    timer.here_then_reset("Load nyt.chunks_idx.i64v");
-    std::vector<wordrep::ChunkIndex> vec2;
-    auto beg = rbuf->vals()->begin();
-    auto end = rbuf->vals()->end();
-    vec2.reserve(end-beg);
-    std::copy(beg,end,std::back_inserter(vec2));
-    timer.here_then_reset("Complete to load data structure from nyt.chunks_idx.i64v");
-
-    auto& vec0 = texts.chunks_idx;
-    assert(vec0.size()==vec2.size());
-    auto n = vec0.size();
-    for(decltype(n)i=0;i!=n;++i)
-        assert(vec0[i]==vec2[i]);
+    tbb::task_group g;
+    std::vector<wordrep::ChunkIndex> chunks_idx;
+    std::vector<wordrep::SentUID> sents_uid;
+    std::vector<wordrep::VocaIndex> words;
+    std::vector<wordrep::WordUID> words_uid;
+    g.run([&chunks_idx](){load_binary_file("nyt.chunks_idx.i64v", chunks_idx);});
+    g.run([&sents_uid](){load_binary_file("nyt.sents_uid.i64v", sents_uid);});
+    g.run([&words](){load_binary_file("nyt.words.i64v", words);});
+    g.run([&words_uid](){load_binary_file("nyt.words_uid.i64v", words_uid);});
+    g.wait();
+    timer.here_then_reset("Complete to load data structure from .i64v files");
+    assert(vector_equal(texts.chunks_idx,chunks_idx));
+    assert(vector_equal(texts.sents_uid, sents_uid));
+    assert(vector_equal(texts.words,     words));
+    assert(vector_equal(texts.words_uid, words_uid));
+    timer.here_then_reset("Test success.");
 }
 
 void binary_file_io(){
@@ -96,17 +114,12 @@ void binary_file_io(){
     auto beg = rbuf->vals()->begin();
     auto end = rbuf->vals()->end();
     vec2.reserve(end-beg);
-    assert(end-beg==vec0.size());
     std::copy(beg,end,std::back_inserter(vec2));
-
-    assert(vec0.size()==vec2.size());
-    auto n = vec0.size();
-    for(decltype(n)i=0;i!=n;++i)
-        assert(vec0[i]==vec2[i]);
+    assert(vector_equal(vec0, vec2));
 }
 int main(){
 //    binary_file_io();
     //hdf5_to_flatbuffers();
-    load_binary_file();
+    hdf5_vs_flatbuffer_benchmark();
     return 0;
 }
