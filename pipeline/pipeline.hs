@@ -10,7 +10,7 @@ import           GHC.Generics
 import           System.Directory           (createDirectoryIfMissing)
 import           System.Process
 
-data ConfigYGP = ConfigYGP
+data ConfigYGP' = ConfigYGP'
   { _engine_type             :: String
   , _corenlp_client_script   :: String
   , _word_uids_dump          :: String
@@ -32,7 +32,7 @@ data ConfigYGP = ConfigYGP
   , _named_entity_uids       :: String
   } deriving (Show, Generic)
 
-data ConfigRSS = ConfigRSS
+data ConfigRSS' = ConfigRSS'
   { _engine_type             :: String
   , _corenlp_client_script   :: String
   , _word_uids_dump          :: String
@@ -55,50 +55,93 @@ data ConfigRSS = ConfigRSS
   } deriving (Show, Generic)
 
 
+data ConfigYGP = ConfigYGP
+  { engine_type             :: String
+  , corenlp_client_script   :: String
+  , word_uids_dump          :: String
+  , pos_uids_dump           :: String
+  , arclabel_uids_dump      :: String
+  , column_uids_dump        :: String
+  , country_uids_dump       :: String
+  , word_prob_dump          :: String
+  , corenlp_dumps           :: String
+  , dep_parsed_store        :: String
+  , dep_parsed_prefix       :: String
+  , wordvec_store           :: String
+  , voca_name               :: String
+  , w2vmodel_name           :: String
+  , w2v_float_t             :: String
+  , wikidata_entities       :: String
+  , wikidata_uids           :: String
+  , wikidata_properties     :: String
+  , named_entity_uids       :: String
+  } deriving (Show, Generic)
+
+data ConfigRSS = ConfigRSS
+  { engine_type             :: String
+  , corenlp_client_script   :: String
+  , word_uids_dump          :: String
+  , pos_uids_dump           :: String
+  , arclabel_uids_dump      :: String
+  , column_uids_dump        :: String
+  , word_prob_dump          :: String
+  , row_hashes              :: String
+  , corenlp_dumps           :: String
+  , dep_parsed_store        :: String
+  , dep_parsed_prefix       :: String
+  , wordvec_store           :: String
+  , voca_name               :: String
+  , w2vmodel_name           :: String
+  , w2v_float_t             :: String
+  , wikidata_entities       :: String
+  , wikidata_uids           :: String
+  , wikidata_properties     :: String
+  , named_entity_uids       :: String
+  } deriving (Show, Generic)
 
 defYGP :: ConfigYGP
-defYGP = ConfigYGP { _engine_type             = "ygp"
-                   , _corenlp_client_script   = "../rnn++/scripts/corenlp.py"
-                   , _word_uids_dump          = "/data/groups/uphere/similarity_test/all_words"
-                   , _pos_uids_dump           = "/data/groups/uphere/similarity_test/poss.uid"
-                   , _arclabel_uids_dump      = "/data/groups/uphere/similarity_test/dep.uid"
-                   , _column_uids_dump        = "/data/groups/uphere/similarity_test/column.uid"
-                   , _country_uids_dump       = "/data/groups/uphere/similarity_test/country.uid"
-                   , _word_prob_dump          = "/data/groups/uphere/similarity_test/prob.h5"
-                   , _corenlp_dumps           = "/data/groups/uphere/similarity_test/ygp.corenlp"
-                   , _dep_parsed_store        = "/data/groups/uphere/similarity_test/ygp.h5"
-                   , _dep_parsed_prefix       = "ygp"
-                   , _wordvec_store           = "/data/groups/uphere/similarity_test/news.h5"
-                   , _voca_name               = "news.en.uids"
-                   , _w2vmodel_name           = "news.en.vecs"
-                   , _w2v_float_t             = "float32"
-                   , _wikidata_entities       = "/home/jihuni/word2vec/rss/wikidata.all_entities"
-                   , _wikidata_uids           = "/home/jihuni/word2vec/rss/wikidata.uid"
-                   , _wikidata_properties     = "/home/jihuni/word2vec/rss/wikidata.properties"
-                   , _named_entity_uids       = "/home/jihuni/word2vec/rss/wikidata.uid.ne"
+defYGP = ConfigYGP { engine_type             = "ygp"
+                   , corenlp_client_script   = "../rnn++/scripts/corenlp.py"
+                   , word_uids_dump          = "/data/groups/uphere/similarity_test/all_words"
+                   , pos_uids_dump           = "/data/groups/uphere/similarity_test/poss.uid"
+                   , arclabel_uids_dump      = "/data/groups/uphere/similarity_test/dep.uid"
+                   , column_uids_dump        = "/data/groups/uphere/similarity_test/column.uid"
+                   , country_uids_dump       = "/data/groups/uphere/similarity_test/country.uid"
+                   , word_prob_dump          = "/data/groups/uphere/similarity_test/prob.h5"
+                   , corenlp_dumps           = "/data/groups/uphere/similarity_test/ygp.corenlp"
+                   , dep_parsed_store        = "/data/groups/uphere/similarity_test/ygp.h5"
+                   , dep_parsed_prefix       = "ygp"
+                   , wordvec_store           = "/data/groups/uphere/similarity_test/news.h5"
+                   , voca_name               = "news.en.uids"
+                   , w2vmodel_name           = "news.en.vecs"
+                   , w2v_float_t             = "float32"
+                   , wikidata_entities       = "/home/jihuni/word2vec/rss/wikidata.all_entities"
+                   , wikidata_uids           = "/home/jihuni/word2vec/rss/wikidata.uid"
+                   , wikidata_properties     = "/home/jihuni/word2vec/rss/wikidata.properties"
+                   , named_entity_uids       = "/home/jihuni/word2vec/rss/wikidata.uid.ne"
                    }
 
 defRSS :: ConfigRSS
 defRSS = ConfigRSS
-  { _engine_type                              = "rss"
-  , _corenlp_client_script                    = "../rnn++/scripts/corenlp.py"
-  , _word_uids_dump                           = "/data/groups/uphere/engine.rss/all_words"
-  , _pos_uids_dump                            = "/data/groups/uphere/engine.rss/poss.uid"
-  , _arclabel_uids_dump                       = "/data/groups/uphere/engine.rss/dep.uid"
-  , _column_uids_dump                         = "/data/groups/uphere/engine.rss/column.uid"
-  , _word_prob_dump                           = "/data/groups/uphere/engine.rss/prob.h5"
-  , _row_hashes                               = "/data/groups/uphere/engine.rss/article.hashes"
-  , _corenlp_dumps                            = "/data/groups/uphere/engine.rss/article.corenlp"
-  , _dep_parsed_store                         = "/data/groups/uphere/engine.rss/nyt.h5"
-  , _dep_parsed_prefix                        = "nyt"
-  , _wordvec_store                            = "/data/groups/uphere/engine.rss/news.h5"
-  , _voca_name                                = "news.en.uids"
-  , _w2vmodel_name                            = "news.en.vecs"
-  , _w2v_float_t                              = "float32"
-  , _wikidata_entities                        = "/data/groups/uphere/engine.rss/wikidata.all_entities"
-  , _wikidata_uids                            = "/data/groups/uphere/engine.rss/wikidata.uid"
-  , _wikidata_properties                      = "/data/groups/uphere/engine.rss/wikidata.properties"
-  , _named_entity_uids                        = "/data/groups/uphere/engine.rss/wikidata.uid.ne"
+  { engine_type                              = "rss"
+  , corenlp_client_script                    = "../rnn++/scripts/corenlp.py"
+  , word_uids_dump                           = "/data/groups/uphere/engine.rss/all_words"
+  , pos_uids_dump                            = "/data/groups/uphere/engine.rss/poss.uid"
+  , arclabel_uids_dump                       = "/data/groups/uphere/engine.rss/dep.uid"
+  , column_uids_dump                         = "/data/groups/uphere/engine.rss/column.uid"
+  , word_prob_dump                           = "/data/groups/uphere/engine.rss/prob.h5"
+  , row_hashes                               = "/data/groups/uphere/engine.rss/article.hashes"
+  , corenlp_dumps                            = "/data/groups/uphere/engine.rss/article.corenlp"
+  , dep_parsed_store                         = "/data/groups/uphere/engine.rss/nyt.h5"
+  , dep_parsed_prefix                        = "nyt"
+  , wordvec_store                            = "/data/groups/uphere/engine.rss/news.h5"
+  , voca_name                                = "news.en.uids"
+  , w2vmodel_name                            = "news.en.vecs"
+  , w2v_float_t                              = "float32"
+  , wikidata_entities                        = "/data/groups/uphere/engine.rss/wikidata.all_entities"
+  , wikidata_uids                            = "/data/groups/uphere/engine.rss/wikidata.uid"
+  , wikidata_properties                      = "/data/groups/uphere/engine.rss/wikidata.properties"
+  , named_entity_uids                        = "/data/groups/uphere/engine.rss/wikidata.uid.ne"
   }
 
 
@@ -126,7 +169,7 @@ main = do
   callProcess "cmake" ["../rnn++"]
   -- callProcess "make" ["-j20"]
   
-  runCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
+  -- runCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
   runCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
   runCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
   runCommand "./word_importance_build dummy"
@@ -136,7 +179,7 @@ main = do
   runCommand "pigz -c wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count"
   runCommand "pigz -c wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count"
   runCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $3 \"\t\" $1}'> items.uid"
-  runCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};{print "WIKIDATAITEM_" $1 \"\t\" $NF}' > wikidata.ner_input"
+  runCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};{print \"WIKIDATAITEM_\" $1 \"\t\" $NF}' > wikidata.ner_input"
   -- runCommand "java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner"
   
   putStrLn "Pipeline finished!"
