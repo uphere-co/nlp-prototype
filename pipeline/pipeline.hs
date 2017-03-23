@@ -167,9 +167,9 @@ main = do
   createDirectoryIfMissing True "build"
   
   callProcess "cmake" ["../rnn++"]
-  -- callProcess "make" ["-j20"]
+  callProcess "make" ["-j20"]
   
-  -- runCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
+  runCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
   runCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
   runCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
   runCommand "./word_importance_build dummy"
@@ -181,5 +181,22 @@ main = do
   runCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $3 \"\t\" $1}'> items.uid"
   runCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};{print \"WIKIDATAITEM_\" $1 \"\t\" $NF}' > wikidata.ner_input"
   -- runCommand "java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner"
-  
+
+  runCommand "ghc -o count ../corenlp/wiki/count.hs ../corenlp/wiki/wikidata.hs"
+  runCommand "ghc -o corenlp_ner ../corenlp/wiki/corenlp_ner.hs ../corenlp/wiki/corenlp.hs ../corenlp/wiki/wikidata.hs"
+  runCommand "ghc -o ne_by_property ../corenlp/wiki/ne_by_property.hs ../corenlp/wiki/wikidata.hs"
+  runCommand "ghc -o wikidata_ner ../corenlp/wiki/wikidata_ner.hs ../corenlp/wiki/wikidata.hs"
+
+  runCommand "./count > items.by_p31"
+  runCommand "./corenlp_ner  > wikidata.is_sfne"
+  runCommand "cat wikidata.is_sfne | awk 'BEGIN {FS=\"\t\"};{print $1 \"\t\" $NF}' > wikidata.uid.is_sfne"
+  runCommand "./ne_by_property > wikidata.p31.is_ne"
+  runCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $1 \"\t\" $3  \"\t\" $NF}' > wikidata.names"
+  runCommand "./wikidata_ner > wikidata.nes"
+
+  runCommand "cat wikidata.nes | awk -F '\t' '$2==\"True\"{print $1}' > wikidata.uid.ne"
+  runCommand "cat wikidata.items | awk -F '\t' 'NF==5{print $1}' > wikidata.uid"
+  runCommand "cat wikidata.items | awk -F '\t' '{print $1 \"\t\" $NF}' > wikidata.all_entities"
+  runCommand "cat wikidata.items | awk -F '\t' 'NF==5{print $1 \"\t\" $3}' > wikidata.properties"
+
   putStrLn "Pipeline finished!"
