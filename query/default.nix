@@ -7,6 +7,7 @@
 , unix, unordered-containers, uuid, vector
 , fficxx-runtime
 , query-binding
+, optparse-applicative
 }:
 mkDerivation {
   pname = "query";
@@ -22,6 +23,7 @@ mkDerivation {
     transformers unix unordered-containers uuid vector
     fficxx-runtime
     query-binding
+    optparse-applicative
   ];
   executableSystemDepends = [ ];
   homepage = "https://github.com/uphere-co/nlp-prototype";

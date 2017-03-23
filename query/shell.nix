@@ -29,6 +29,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 	      fficxx-runtime
 	      fficxx
               query-binding
+              optparse-applicative
             ]);
 in stdenv.mkDerivation {
   name = "query-dev";
