@@ -3,7 +3,10 @@ module CloudHaskell.Server where
 import           Control.Concurrent                (forkIO)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process       (ProcessId, Process, expectTimeout, kill, send, spawnLocal)
+import           Control.Distributed.Process       ( ProcessId, Process, expectTimeout
+                                                   , kill, send, spawnLocal
+                                                   , getSelfPid
+                                                   )
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (whileJust_)
 import           Control.Monad.IO.Class            (liftIO)
@@ -25,10 +28,8 @@ withHeartBeat lock them action = do
   whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
     atomicLog lock ("heartbeat: " ++ show n)
     send them (HB n)
-      
-  atomicLog lock "heartbeat failed: reload"     -- when fail, it prints messages  
+  atomicLog lock "heartbeat failed: reload"                -- when fail, it prints messages  
   kill pid "connection closed"                             -- and start over the whole process.
-
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -41,10 +42,15 @@ broadcastProcessId lock pidref port = do
 
 serve :: LogLock -> TMVar ProcessId -> (LogLock -> Process ()) -> Process ()
 serve lock pidref action = do
-  atomicLog lock ("waiting a new client!")
-  pid <- spawnLocal (action lock)
+  pid <-  spawnLocal $ do
+    action lock
+    atomicLog lock ("action finished")
+
+  atomicLog lock ("prepartion mode")
   atomicLog lock (show pid)
   liftIO (atomically (putTMVar pidref pid))
+  atomicLog lock ("wait mode")
+
   serve (incClientNum lock) pidref action
 
 
@@ -56,4 +62,4 @@ server port action p = do
   lock <- newLogLock 0 
   
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
-  serve lock pidref (action p resultref)
+  serve (incClientNum lock) pidref (action p resultref)
