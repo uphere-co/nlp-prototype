@@ -7,6 +7,8 @@ import           Data.Aeson.Types
 import qualified Data.ByteString.Lazy as BL
 import           Data.Text                  (Text)
 import           GHC.Generics
+import           System.Directory           (createDirectoryIfMissing)
+import           System.Process
 
 data ConfigYGP = ConfigYGP
   { _engine_type             :: String
@@ -119,4 +121,22 @@ instance FromJSON ConfigRSS where
 main = do
   BL.writeFile "config.ygp.json" (encode defYGP)
   BL.writeFile "config.rss.json" (encode defRSS)
-  putStrLn "pipeline"
+  createDirectoryIfMissing True "build"
+  
+  callProcess "cmake" ["../rnn++"]
+  -- callProcess "make" ["-j20"]
+  
+  runCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
+  runCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
+  runCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
+  runCommand "./word_importance_build dummy"
+  runCommand "pigz -dc /opt/wikidata-20170206-all.json.gz | ./wikidata_etl config.ygp.json >wikidata.items"
+  runCommand "pigz -c wikidata.items | awk -F $'\t' 'NF==5{print $3}' > wikidata.items.P31"
+  runCommand "pigz -c wikidata.items | awk -F $'\t' 'NF==5{print $4}' > wikidata.items.P279"
+  runCommand "pigz -c wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count"
+  runCommand "pigz -c wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count"
+  runCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $3 \"\t\" $1}'> items.uid"
+  runCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};{print "WIKIDATAITEM_" $1 \"\t\" $NF}' > wikidata.ner_input"
+  -- runCommand "java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner"
+  
+  putStrLn "Pipeline finished!"
