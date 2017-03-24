@@ -58,6 +58,9 @@ data::DBIndexer SubmoduleFactory::db_indexer() const {
             config.value("dep_parsed_prefix")};
 };
 
+wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
+    return {config.value("wikidata_uids")};
+}
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
     return {config.value("word_uids_dump"),
             config.value("pos_uids_dump"),

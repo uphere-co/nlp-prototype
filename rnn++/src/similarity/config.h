@@ -57,6 +57,7 @@ struct SubmoduleFactory{
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
 
+    wordrep::WikidataUIDindex wikientity_uid_index() const;
     wikidata::EntityModule wikientity_module() const;
 
     Dataset empty_dataset() const;

@@ -9,6 +9,6 @@ entities:[Entity];
 names:[long];
 }
 
-file_identifier "enti";
-file_extension "enti";
+file_identifier "ufwe";
+file_extension "ufwe";
 root_type Entities;
