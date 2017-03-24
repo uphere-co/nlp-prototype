@@ -84,8 +84,12 @@ void SortedEntities::to_file(std::string filename) const{
     std::vector<flatbuffers::Offset<fb::Entity>> es;
     std::vector<int64_t> names;
     names.reserve(entities.size()*5);
+    size_t name_beg=0;
+    size_t name_end=0;
     for(auto& e : entities){
-        auto entity = fb::CreateEntity(builder, e.uid.val, static_cast<uint16_t>(e.words.size()));
+        name_end = name_beg+e.words.size();
+        auto entity = fb::CreateEntity(builder, e.uid.val, name_beg,name_end);
+        name_beg = name_end;
         es.push_back(entity);
         for(auto w : e.words) names.push_back(w.val);
     }
@@ -113,24 +117,24 @@ SortedEntities SortedEntities ::from_file(std::string filename){
     timer.here_then_reset("Read file.");
 
     auto rbuf = fb::GetEntities(data.get());
-    auto beg = rbuf->entities()->begin();
-    auto end = rbuf->entities()->end();
-    auto it_name = rbuf->names()->begin();
+    auto n = rbuf->entities()->size();
     SortedEntities entities;
-    entities.entities.reserve(end-beg);
+    entities.entities.reserve(n);
     timer.here_then_reset("Prepare construction.");
 
-    for(auto it=beg; it!=end; ++it){
+    auto& entities_buf = *rbuf->entities();
+    auto& names_buf = *rbuf->names();
+    tbb::concurrent_vector<wordrep::wiki::Entity> es(n,{-1,{}});
+    tbb::parallel_for(decltype(n){0}, n, [&names_buf,&entities_buf,&es](auto i){
+        auto it=entities_buf[i];
         std::vector<wordrep::WordUID> words;
-        auto len = it->len_name();
-        for(decltype(len)i=0; i!=len; ++i){
-            words.push_back(*it_name);
-            ++it_name;
-        }
-        wordrep::wiki::Entity entity = {it->uid(), std::move(words)};
-        entities.entities.push_back(entity);
-    }
-    timer.here_then_reset("Construct entities.");
+        for(auto j=it->name_beg(); j!=it->name_end();++j) words.push_back(names_buf[j]);
+        es[i]={it->uid(), std::move(words)};
+    });
+
+    timer.here_then_reset("Construct temporal entities");
+    for(auto&& e : es) entities.entities.push_back(std::move(e));
+    timer.here_then_reset("Construct SortedEntities");
     return entities;
 }
 
@@ -172,6 +176,7 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
     timer.here_then_reset("Sorted items.");
     std::vector<wordrep::wiki::Entity> entities;
     for(auto&& item : items) entities.push_back(std::move(item));
+    timer.here_then_reset("Build SortedEntities.");
     return SortedEntities{std::move(entities)};
 }
 

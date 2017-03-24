@@ -768,13 +768,13 @@ void load_wikidata_entities(int argc, char** argv){
     timer.here_then_reset("Load wordUIDs");
     auto wikiUIDs = factory.wikientity_uid_index();
     timer.here_then_reset("Load wikiUIDs");
-    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
-//    auto entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
+//    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
+    auto entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
     timer.here_then_reset("Load wiki entities.");
 
-//    for(auto& entity : entities.entities){
-//        fmt::print("{}\t{}\n", wikiUIDs[entity.uid], entity.words.repr(wordUIDs));
-//    }
+    for(auto& entity : entities.entities){
+        fmt::print("{}\t{}\n", wikiUIDs[entity.uid], entity.words.repr(wordUIDs));
+    }
 }
 int main(int argc, char** argv){
     util::Timer timer;

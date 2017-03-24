@@ -16,18 +16,23 @@ struct Entities;
 struct Entity FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_UID = 4,
-    VT_LEN_NAME = 6
+    VT_NAME_BEG = 6,
+    VT_NAME_END = 8
   };
   int64_t uid() const {
     return GetField<int64_t>(VT_UID, 0);
   }
-  int16_t len_name() const {
-    return GetField<int16_t>(VT_LEN_NAME, 0);
+  int64_t name_beg() const {
+    return GetField<int64_t>(VT_NAME_BEG, 0);
+  }
+  int64_t name_end() const {
+    return GetField<int64_t>(VT_NAME_END, 0);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int64_t>(verifier, VT_UID) &&
-           VerifyField<int16_t>(verifier, VT_LEN_NAME) &&
+           VerifyField<int64_t>(verifier, VT_NAME_BEG) &&
+           VerifyField<int64_t>(verifier, VT_NAME_END) &&
            verifier.EndTable();
   }
 };
@@ -38,8 +43,11 @@ struct EntityBuilder {
   void add_uid(int64_t uid) {
     fbb_.AddElement<int64_t>(Entity::VT_UID, uid, 0);
   }
-  void add_len_name(int16_t len_name) {
-    fbb_.AddElement<int16_t>(Entity::VT_LEN_NAME, len_name, 0);
+  void add_name_beg(int64_t name_beg) {
+    fbb_.AddElement<int64_t>(Entity::VT_NAME_BEG, name_beg, 0);
+  }
+  void add_name_end(int64_t name_end) {
+    fbb_.AddElement<int64_t>(Entity::VT_NAME_END, name_end, 0);
   }
   EntityBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -47,7 +55,7 @@ struct EntityBuilder {
   }
   EntityBuilder &operator=(const EntityBuilder &);
   flatbuffers::Offset<Entity> Finish() {
-    const auto end = fbb_.EndTable(start_, 2);
+    const auto end = fbb_.EndTable(start_, 3);
     auto o = flatbuffers::Offset<Entity>(end);
     return o;
   }
@@ -56,10 +64,12 @@ struct EntityBuilder {
 inline flatbuffers::Offset<Entity> CreateEntity(
     flatbuffers::FlatBufferBuilder &_fbb,
     int64_t uid = 0,
-    int16_t len_name = 0) {
+    int64_t name_beg = 0,
+    int64_t name_end = 0) {
   EntityBuilder builder_(_fbb);
+  builder_.add_name_end(name_end);
+  builder_.add_name_beg(name_beg);
   builder_.add_uid(uid);
-  builder_.add_len_name(len_name);
   return builder_.Finish();
 }
 
