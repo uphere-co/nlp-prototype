@@ -32,11 +32,13 @@ Library
                         binary,
                         bytestring,
                         distributed-process,
+                        distributed-process-lifted,
                         hashable,
                         monad-loops,
                         network-simple,
                         stm,
                         text,
+                        transformers,
                         unordered-containers
 
   Exposed-modules:

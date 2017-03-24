@@ -17,8 +17,7 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
 
     newHaskellPackages = haskellPackages.override { overrides = config; };
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
-              distributed-process
-	      #network-transport-zeromq
+              distributed-process distributed-process-lifted
 	      network-transport-uphere
 	      monad-loops uuid aeson
 	      cabal-install conduit conduit-extra

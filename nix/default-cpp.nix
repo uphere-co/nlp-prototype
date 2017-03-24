@@ -231,9 +231,19 @@ rec {
         mkdir -p $out
         cp -a include/ $out/
       '';
-
-
     };
+    flatbuffers = stdenv.mkDerivation rec {
+      name = "flatbuffers";
+      version = "1.6.0";
+      src = fetchgit {
+        url = "https://github.com/google/flatbuffers.git";
+        rev = "cebdad4";
+        sha256 = "0jwyrkqq2lkpifaiyfx2w8gasbv0l6qlnmrkdkn3bm5gxjl8rfj3";
+      };
+      buildInputs = [ cmake ];
+      enableParallelBuilding = true;
+    };
+
 
 
 
