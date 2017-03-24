@@ -37,7 +37,7 @@ withHeartBeat them action = do
   whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
     tellLog ("heartbeat: " ++ show n)
     send them (HB n)
-  tellLog "heartbeat failed: reload"                -- when fail, it prints messages  
+  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages  
   kill pid "connection closed"                             -- and start over the whole process.
 
 
@@ -51,9 +51,7 @@ broadcastProcessId lock pidref port = do
 
 serve :: TMVar ProcessId -> LogProcess () -> LogProcess ()
 serve pidref action = do
-  pid <-  spawnLocal $ do
-    action 
-    tellLog "action finished"
+  pid <-  spawnLocal $ action >> tellLog "action finished"
 
   tellLog "prepartion mode"
   tellLog (show pid)
