@@ -2,8 +2,8 @@ namespace wikidata.io;
 
 table Entity {
 uid:long;
-name_beg:long;
-name_end:long;
+name_beg:uint;
+name_end:uint;
 }
 
 table Entities{

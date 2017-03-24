@@ -22,17 +22,17 @@ struct Entity FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   int64_t uid() const {
     return GetField<int64_t>(VT_UID, 0);
   }
-  int64_t name_beg() const {
-    return GetField<int64_t>(VT_NAME_BEG, 0);
+  uint32_t name_beg() const {
+    return GetField<uint32_t>(VT_NAME_BEG, 0);
   }
-  int64_t name_end() const {
-    return GetField<int64_t>(VT_NAME_END, 0);
+  uint32_t name_end() const {
+    return GetField<uint32_t>(VT_NAME_END, 0);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int64_t>(verifier, VT_UID) &&
-           VerifyField<int64_t>(verifier, VT_NAME_BEG) &&
-           VerifyField<int64_t>(verifier, VT_NAME_END) &&
+           VerifyField<uint32_t>(verifier, VT_NAME_BEG) &&
+           VerifyField<uint32_t>(verifier, VT_NAME_END) &&
            verifier.EndTable();
   }
 };
@@ -43,11 +43,11 @@ struct EntityBuilder {
   void add_uid(int64_t uid) {
     fbb_.AddElement<int64_t>(Entity::VT_UID, uid, 0);
   }
-  void add_name_beg(int64_t name_beg) {
-    fbb_.AddElement<int64_t>(Entity::VT_NAME_BEG, name_beg, 0);
+  void add_name_beg(uint32_t name_beg) {
+    fbb_.AddElement<uint32_t>(Entity::VT_NAME_BEG, name_beg, 0);
   }
-  void add_name_end(int64_t name_end) {
-    fbb_.AddElement<int64_t>(Entity::VT_NAME_END, name_end, 0);
+  void add_name_end(uint32_t name_end) {
+    fbb_.AddElement<uint32_t>(Entity::VT_NAME_END, name_end, 0);
   }
   EntityBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -64,12 +64,12 @@ struct EntityBuilder {
 inline flatbuffers::Offset<Entity> CreateEntity(
     flatbuffers::FlatBufferBuilder &_fbb,
     int64_t uid = 0,
-    int64_t name_beg = 0,
-    int64_t name_end = 0) {
+    uint32_t name_beg = 0,
+    uint32_t name_end = 0) {
   EntityBuilder builder_(_fbb);
+  builder_.add_uid(uid);
   builder_.add_name_end(name_end);
   builder_.add_name_beg(name_beg);
-  builder_.add_uid(uid);
   return builder_.Finish();
 }
 

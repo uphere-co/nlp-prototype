@@ -84,8 +84,8 @@ void SortedEntities::to_file(std::string filename) const{
     std::vector<flatbuffers::Offset<fb::Entity>> es;
     std::vector<int64_t> names;
     names.reserve(entities.size()*5);
-    size_t name_beg=0;
-    size_t name_end=0;
+    uint32_t name_beg=0;
+    uint32_t name_end=0;
     for(auto& e : entities){
         name_end = name_beg+e.words.size();
         auto entity = fb::CreateEntity(builder, e.uid.val, name_beg,name_end);
