@@ -90,8 +90,8 @@ queryProcess sc (i,q) = do
   (sc',rc') <- newChan :: LogProcess (SendPort BL.ByteString, ReceivePort BL.ByteString)
   sendChan sc (q,sc')
   bstr <- receiveChan rc'
-  bstr `seq` tellLog (BL.unpack bstr)
-
+  -- bstr `seq` tellLog (BL.unpack bstr)
+  liftIO $ BL.putStrLn bstr
 
 retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
 retrieveQueryServerPid lock opt = do
