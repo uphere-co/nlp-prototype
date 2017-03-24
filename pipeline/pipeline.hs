@@ -8,6 +8,7 @@ import qualified Data.ByteString.Lazy as BL
 import           Data.Text                  (Text)
 import           GHC.Generics
 import           System.Directory           (createDirectoryIfMissing)
+import           System.Environment
 import           System.Process
 
 data ConfigYGP' = ConfigYGP'
@@ -109,7 +110,7 @@ defYGP = ConfigYGP { engine_type             = "ygp"
                    , country_uids_dump       = "/data/groups/uphere/similarity_test/country.uid"
                    , word_prob_dump          = "/data/groups/uphere/similarity_test/prob.h5"
                    , corenlp_dumps           = "/data/groups/uphere/similarity_test/ygp.corenlp"
-                   , dep_parsed_store        = "/data/groups/uphere/similarity_test/ygp.h5"
+                   , dep_parsed_store        = "ygp.h5" -- "/data/groups/uphere/similarity_test/ygp.h5"
                    , dep_parsed_prefix       = "ygp"
                    , wordvec_store           = "/data/groups/uphere/similarity_test/news.h5"
                    , voca_name               = "news.en.uids"
@@ -167,36 +168,49 @@ main = do
   createDirectoryIfMissing True "build"
   
   callProcess "cmake" ["../rnn++"]
-  callProcess "make" ["-j20"]
-  
+  callProcess "make" ["-j20"]  
   callCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
   callCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
   callCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
   callCommand "./word_importance_build dummy"
   callCommand "pigz -dc /opt/wikidata-20170206-all.json.gz | ./wikidata_etl config.ygp.json >wikidata.items"
-  callCommand "pigz -c wikidata.items | awk -F $'\t' 'NF==5{print $3}' > wikidata.items.P31"
-  callCommand "pigz -c wikidata.items | awk -F $'\t' 'NF==5{print $4}' > wikidata.items.P279"
-  callCommand "pigz -c wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count"
-  callCommand "pigz -c wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count"
-  callCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $3 \"\t\" $1}'> items.uid"
-  callCommand "pigz -c wikidata.items | awk 'BEGIN {FS=\"\t\"};{print \"WIKIDATAITEM_\" $1 \"\t\" $NF}' > wikidata.ner_input"
-  callCommand "java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model $CORENLP/classifiers/english.all.3class.distsim.crf.ser.gz,$CORENLP/classifiers/english.conll.4class.distsim.crf.ser.gz,$CORENLP/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner"
+  callCommand "cat wikidata.items | awk -F $'\t' 'NF==5{print $3}' > wikidata.items.P31"
+  callCommand "cat wikidata.items | awk -F $'\t' 'NF==5{print $4}' > wikidata.items.P279"
+  callCommand "cat wikidata.items.P31 | tr ' ' '_' | ./word_count > wikidata.items.P31.count"
+  callCommand "cat wikidata.items.P279 | tr ' ' '_' | ./word_count > wikidata.items.P279.count"
+  callCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $3 \"\t\" $1}'> items.uid"
+  callCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};{print \"WIKIDATAITEM_\" $1 \"\t\" $NF}' > wikidata.ner_input" -}
+
+  -- corenlpEnv <- getEnv "CORENLP"
+  let corenlpEnv = "/data/groups/uphere/parsers/corenlp"
+  -- callCommand $ "java -mx48g edu.stanford.nlp.ie.NERClassifierCombiner -ner.model "++ corenlpEnv ++"/classifiers/english.all.3class.distsim.crf.ser.gz,"++ corenlpEnv ++"/classifiers/english.conll.4class.distsim.crf.ser.gz,"++ corenlpEnv ++"/classifiers/english.muc.7class.distsim.crf.ser.gz -textFile wikidata.ner_input > wikidata.ner" -- very time-consuming
 
   callCommand "ghc -o count ../corenlp/wiki/count.hs ../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o corenlp_ner ../corenlp/wiki/corenlp_ner.hs ../corenlp/wiki/corenlp.hs ../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o ne_by_property ../corenlp/wiki/ne_by_property.hs ../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o wikidata_ner ../corenlp/wiki/wikidata_ner.hs ../corenlp/wiki/wikidata.hs"
 
-  callCommand "./count > items.by_p31"
   callCommand "./corenlp_ner  > wikidata.is_sfne"
   callCommand "cat wikidata.is_sfne | awk 'BEGIN {FS=\"\t\"};{print $1 \"\t\" $NF}' > wikidata.uid.is_sfne"
   callCommand "./ne_by_property > wikidata.p31.is_ne"
   callCommand "cat wikidata.items | awk 'BEGIN {FS=\"\t\"};NF==5{print $1 \"\t\" $3  \"\t\" $NF}' > wikidata.names"
   callCommand "./wikidata_ner > wikidata.nes"
+  -- callCommand "./count > items.by_p31"
 
   callCommand "cat wikidata.nes | awk -F '\t' '$2==\"True\"{print $1}' > wikidata.uid.ne"
   callCommand "cat wikidata.items | awk -F '\t' 'NF==5{print $1}' > wikidata.uid"
   callCommand "cat wikidata.items | awk -F '\t' '{print $1 \"\t\" $NF}' > wikidata.all_entities"
   callCommand "cat wikidata.items | awk -F '\t' 'NF==5{print $1 \"\t\" $3}' > wikidata.properties"
+
+  -- callCommand "find /opt/YGP.text/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py YGP {} /opt/RSS.text/"
+  createDirectoryIfMissing True "YGP.json"
+  -- callCommand "find /opt/YGP.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} YGP.json/" -- time-consuming
+  callCommand "find YGP.json/  -name '*.*.*.*' > ygp.corenlp"
+  let minorVersion = ("0" :: String)
+  callCommand "make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp " ++ minorVersion
+
+  
+  -- callCommand "find YGP.json/ -type f > ygp_jsons" -- for RSS
+  -- callCommand "./ygp_dump config.ygp.json ygp_jsons 1" -- for RSS
 
   putStrLn "Pipeline finished!"

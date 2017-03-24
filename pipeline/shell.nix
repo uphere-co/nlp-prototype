@@ -47,6 +47,7 @@ stdenv.mkDerivation {
                    linuxPackages.perf
                    toolz_cpp.msgsl
                    toolz_cpp.spdlog
+                   toolz_cpp.flatbuffers
                    toolz_cpp.fmt
                    toolz_cpp.json
                    toolz_cpp.csv
