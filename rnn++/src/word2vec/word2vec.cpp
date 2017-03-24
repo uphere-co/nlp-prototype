@@ -24,7 +24,7 @@ UnigramDist::UnigramDist(util::io::H5file const &h5store,
     std::sort(weights.begin(),weights.end(), [](auto x, auto y){return x.first<y.first;});
 }
 UnigramDist::UnigramDist(std::map<VocaIndex,int64_t> const& counts){
-    int64_t sum;
+    int64_t sum{0};
     for(auto& elm : counts) sum+=elm.second;
     auto norm = 1.0/sum;
     weights.reserve(counts.size());
