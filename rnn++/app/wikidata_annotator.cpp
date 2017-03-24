@@ -704,12 +704,88 @@ void test_all(int argc, char** argv){
 }//namespace wordrep::test
 }//namespace wordrep
 
+void annotate_sentences(int argc, char** argv){
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+
+    auto voca = factory.voca_info();
+    auto word_importance = factory.word_importance();
+    wikidata::EntityModule wiki{factory.wikientity_module()};
+    wordrep::Scoring scoring{word_importance, voca.wvecs};
+    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
+
+    std::vector<wordrep::Sentence> orig_sents;
+    tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
+
+    auto n = orig_sents.size();
+    tbb::parallel_for(decltype(n){0}, n, [&wiki,&scoring,&scoring_preprocessor,&orig_sents,&sents](auto i) {
+        auto& sent = orig_sents[i];
+        auto tagged_sent = wiki.annotator.annotate(sent);
+        auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
+        sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
+
+        for(auto& e : sent_to_scored.entities){
+            std::vector<wordrep::WikidataUID> instances;
+            for(auto uid : e.uid.candidates)
+                util::append(instances, wiki.prop_dict.get_p31_properties(uid));
+            for (auto uid : instances) {
+                //TODO: don't know why m_synonyms can be empty.
+                auto m_synonyms = wiki.entity_reprs.find(uid);
+                if(!m_synonyms) continue;
+                auto synonyms = m_synonyms.value();
+                auto repr = scoring.max_score_repr(synonyms);
+                e.candidates.push_back({uid, scoring.phrase(repr)});
+                e.uid.candidates.push_back(uid);
+            }
+        }
+        sents.push_back(sent_to_scored);
+    });
+}
+
+void save_wikidata_entities(int argc, char** argv){
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+
+    util::Timer timer;
+    auto wordUIDs = factory.word_uid_index();
+    auto wikiUIDs = factory.wikientity_uid_index();
+    timer.here_then_reset("Load UID indexes.");
+    auto entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
+    timer.here_then_reset("Load wikidata entities.");
+    entities.to_file("wikidata.entities.bin");
+    timer.here_then_reset("Save to binary files.");
+}
+
+void load_wikidata_entities(int argc, char** argv){
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+
+    util::Timer timer;
+    auto wordUIDs = factory.word_uid_index();
+    timer.here_then_reset("Load wordUIDs");
+    auto wikiUIDs = factory.wikientity_uid_index();
+    timer.here_then_reset("Load wikiUIDs");
+    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
+//    auto entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
+    timer.here_then_reset("Load wiki entities.");
+
+//    for(auto& entity : entities.entities){
+//        fmt::print("{}\t{}\n", wikiUIDs[entity.uid], entity.words.repr(wordUIDs));
+//    }
+}
 int main(int argc, char** argv){
     util::Timer timer;
-
-    wikidata::test::test_all(argc, argv);
-//    wordrep::test::test_all(argc,argv);
+//    save_wikidata_entities(argc,argv);
+    load_wikidata_entities(argc,argv);
+//    annotate_sentences(argc,argv);
     return 0;
+
+//    wikidata::test::test_all(argc, argv);
+//    wordrep::test::test_all(argc,argv);
+//    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -722,7 +798,7 @@ int main(int argc, char** argv){
     wordrep::WikidataUIDindex wikidataUIDs{"wikidata.uid"};
     timer.here_then_reset("Load Wikidata UIDs.");
     wordrep::WikidataUIDindex is_ne{"wikidata.uid.ne"};
-    timer.here_then_reset("Load Wikidata UIDs.");
+    timer.here_then_reset("Load Wikidata named entity UIDs.");
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
