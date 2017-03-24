@@ -16,8 +16,10 @@ void write_column(std::vector<int64_t> rows, std::string filename,
                   std::string prefix, std::string colname);
 void overwrite_column(std::vector<int64_t> rows, std::string filename,
                       std::string prefix, std::string colname);
-void write_country_code(util::json_t const &config);
-void write_column_indexes(util::json_t const &config,
+void write_country_code(util::json_t const &config, int minor_version);
+void write_column_indexes(std::string output_filename,
+                          std::string cols_to_exports,
+                          std::string prefix,
                           std::vector<std::string> corenlp_outputs);
 
 }//namespace data::ygp
