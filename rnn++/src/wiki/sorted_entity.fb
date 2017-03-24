@@ -1,0 +1,16 @@
+namespace wikidata.io;
+
+table Entity {
+uid:long;
+len_name:short;
+}
+
+table Entities{
+entities:[Entity];
+names:[long];
+}
+
+file_identifier "wfse";
+file_extension "wfse";
+root_type Entities;
+
