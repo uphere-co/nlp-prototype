@@ -1,14 +1,20 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import           Control.Concurrent                       (threadDelay)
 import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node
 import qualified Control.Exception                  as Ex
-import           Control.Monad                            (void)
+import           Control.Monad                            (void,join)
+import           Control.Monad.Loops
+import           Control.Monad.Trans.Class                (lift)
 import           Control.Monad.Trans.Reader               (ask,runReaderT)
 import qualified Data.ByteString.Lazy.Char8         as BL
+import qualified Data.Text                          as T
 import qualified Network.Simple.TCP                 as NS
 import           Options.Applicative
+import           System.Console.Haskeline
+import           System.Console.Haskeline.MonadException
 --
 import           CloudHaskell.Server
 import           Network.Transport.UpHere       ( createTransport
@@ -18,6 +24,8 @@ import           Network.Util
 import           QueryServer.Type
 -- import           QueryQueue
 
+instance MonadException Process where
+  controlIO f = join . liftIO $ f (RunIO return) 
 
 
 data ClientOption = ClientOption { port :: Int
@@ -36,12 +44,12 @@ pOptions = ClientOption <$> option auto (long "port" <> short 'p' <> help "Port 
 
 clientOption = info pOptions (fullDesc <> progDesc "Client")
 
-initProcess :: {- QQVar -> -} ProcessId -> LogProcess ()
-initProcess {- qqvar -} them = do
+initProcess :: ProcessId -> LogProcess ()
+initProcess them = do
   us <- getSelfPid
   tellLog ("we are " ++ show us)
   send them us
-  void (mainProcess them {-  qqvar -})
+  void (mainProcess them)
 
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
@@ -57,57 +65,33 @@ pingHeartBeat p1 them n = do
       kill p1 "heartbeat dead"
 
 
+consoleServer sc = do
+  runInputT defaultSettings $
+    whileJust_ (getInputLine "% ") $ \input' -> do
+      lift $ queryProcess sc (0,QueryText (T.pack input') [])
+      
 
-mainProcess :: ProcessId {- -> QQVar -} -> LogProcess ()
-mainProcess them {- qqvar -} = do
+mainProcess :: ProcessId -> LogProcess ()
+mainProcess them = do
   tellLog "mainProcess started"
   msc :: Maybe (SendPort (Query,SendPort BL.ByteString)) <- expectTimeout 5000000
-
- 
-
   case msc of
     Nothing -> tellLog "cannot receive query port"
     Just sc -> do
       tellLog "connection stablished to query server"
       lock <- ask
-      p1 <- spawnLocal $ do
-        liftIO $ print "p1"
-{-       p1 <- spawnLocal $ liftIO (garbageCollector lock qqvar) 
-      p2 <- spawnLocal $ do
-        forever $ do
-          (i,q)  <- liftIO $ atomically $ do
-                      qq <- readTVar qqvar
-                      case next qq of
-                        Nothing -> retry
-                        Just (i,q) -> do
-                          let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
-                          writeTVar qqvar qq'
-                          return (i,q)
-          tellLog ("query start: " ++ show (i,q))
-          spawnLocal $ queryProcess qqvar sc (i,q)
-      -}
+      p1 <- spawnLocal (consoleServer sc)
       void $ pingHeartBeat p1 them 0   
 
-{- 
-queryProcess :: QQVar -> SendPort (Query, SendPort ResultBstr) -> (Int,Query) -> LogProcess ()
-queryProcess qqvar sc (i,q) = do
-  (sc',rc') <- newChan :: LogProcess (SendPort ResultBstr, ReceivePort ResultBstr)
+
+queryProcess :: SendPort (Query, SendPort BL.ByteString)
+             -> (Int,Query) -> LogProcess ()
+queryProcess sc (i,q) = do
+  (sc',rc') <- newChan :: LogProcess (SendPort BL.ByteString, ReceivePort BL.ByteString)
   sendChan sc (q,sc')
   bstr <- receiveChan rc'
-  bstr `seq` do
-    tellLog (BL.unpack bstr)
-    liftIO $ atomically $ 
-      modifyTVar' qqvar (IM.update (\_ -> Just (Answered q bstr)) i)
+  bstr `seq` tellLog (BL.unpack bstr)
 
-
-retrieveQueryServerPid :: LogLock -> QueryConf -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock qconf = do
-  let qserver = T.unpack (queryIP qconf)    -- "QUERYSERVERIP"
-      port    = T.unpack (queryPort qconf)  -- "QUERYSERVERPORT"
-  NS.connect qserver port $ \(sock,addr) -> do
-    atomicLog lock ("connection established to " ++ show addr)
-    recvAndUnpack sock
--}
 
 retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
 retrieveQueryServerPid lock opt = do
