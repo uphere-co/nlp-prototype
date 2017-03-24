@@ -764,16 +764,30 @@ void load_wikidata_entities(int argc, char** argv){
     engine::SubmoduleFactory factory{{config_json}};
 
     util::Timer timer;
-    auto wordUIDs = factory.word_uid_index();
-    timer.here_then_reset("Load wordUIDs");
-    auto wikiUIDs = factory.wikientity_uid_index();
-    timer.here_then_reset("Load wikiUIDs");
-//    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
-    auto entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
-    timer.here_then_reset("Load wiki entities.");
+    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
+    std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
+    wikidata::SortedEntities entities;
+
+
+    //Concurrent version: ~4s
+    tbb::task_group g;
+    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
+    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
+    g.run([&entities](){entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");});
+    g.wait();
+    timer.here_then_reset("Load data.");
+
+//   //Serial version: ~7s
+//    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
+//    timer.here_then_reset("Load wordUIDs");
+//    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
+//    timer.here_then_reset("Load wikiUIDs");
+////    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
+//    entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
+//    timer.here_then_reset("Load wiki entities.");
 
     for(auto& entity : entities.entities){
-        fmt::print("{}\t{}\n", wikiUIDs[entity.uid], entity.words.repr(wordUIDs));
+        fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
     }
 }
 int main(int argc, char** argv){
