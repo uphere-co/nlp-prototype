@@ -160,7 +160,7 @@ void dump_psql(std::string cols_to_exports, std::string dump_path){
 }
 
 
-void write_country_code(util::json_t const &config) {
+void write_country_code(util::json_t const &config, int minor_version) {
     namespace ygp = data::ygp;
 
     VocaInfo voca{config["wordvec_store"], config["voca_name"],
@@ -168,7 +168,7 @@ void write_country_code(util::json_t const &config) {
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
 
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, 0}.fullname;
+                                               DepParsedTokens::major_version, minor_version}.fullname;
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
     auto cols_to_exports = config["column_uids_dump"].get<std::string>();
 
@@ -220,7 +220,7 @@ void write_country_code(util::json_t const &config) {
     }
 
     auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
-                                                   DepParsedTokens::major_version, 0}.fullname;
+                                                   DepParsedTokens::major_version, minor_version}.fullname;
     std::ofstream country_list{country_output_name};
     for(auto x : rows_by_country) country_list << x.first << std::endl;
     for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
@@ -240,18 +240,15 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
     file.overwriteRawData(H5name{prefix+colname}, rows);
 }
 
-void write_column_indexes(util::json_t const &config,
+void write_column_indexes(std::string output_filename,
+                          std::string cols_to_exports,
+                          std::string prefix,
                           std::vector<std::string> corenlp_outputs){
-    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, 0}.fullname;
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
 
     RowUID row_uid{};
-    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
     YGPdb db{cols_to_exports};
     for(auto dumpfile_path : corenlp_outputs){
         RowDumpFilePath row{dumpfile_path};

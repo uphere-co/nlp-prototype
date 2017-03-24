@@ -71,18 +71,6 @@ std::string YGPdb::raw_text(ColumnUID col_uid, RowIndex idx) const{
     return body[0][0].c_str();
 }
 
-RowDumpFilePath::RowDumpFilePath(std::string path) {
-    using util::string::split;
-    auto tokens = split(split(path, "/").back(), ".");
-    auto n = tokens.size();
-    index     = std::stoi(tokens[n-1]);
-    index_col = tokens[n-2];
-    column    = tokens[n-3];
-    table     = tokens[n-4];
-}
-std::string RowDumpFilePath::full_column_name() const{
-    return util::string::join({table, column, index_col}, ".");
-}
 void annotation_on_result(util::json_t const &config, util::json_t &answers){
     YGPdb ygpdb{config["column_uids_dump"].get<std::string>()};
     for(auto &answer : answers){
