@@ -9,6 +9,8 @@
 #include "wordrep/dep_parsed.h"
 
 #include "utils/flatbuffers/i64vec_generated.h"
+#include "utils/flatbuffers/entity_generated.h"
+
 #include "utils/profiling.h"
 
 namespace fb = util::flatbuffer;
@@ -66,6 +68,7 @@ void hdf5_dep_parsed_to_flatbuffers(){
 
 template<typename T>
 void load_binary_file(std::string filename, T& vec){
+    assert(vec.empty());
     util::MockTimer timer;
     std::ifstream input_file (filename, std::ios::binary);
     flatbuffers::uoffset_t read_size;
@@ -145,10 +148,11 @@ void binary_file_io(){
     auto size = builder.GetSize();
     fmt::print("{} bytes\n", size);
 
-    std::ofstream myFile ("data.bin", std::ios::binary);
-    myFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    myFile.write(reinterpret_cast<const char*>(buf), size);
-
+    {
+        std::ofstream myFile ("data.bin", std::ios::binary);
+        myFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+        myFile.write(reinterpret_cast<const char*>(buf), size);
+    }
 
     std::ifstream input_file ("data.bin", std::ios::binary);
     flatbuffers::uoffset_t read_size;
@@ -163,10 +167,78 @@ void binary_file_io(){
     std::copy(beg,end,std::back_inserter(vec2));
     assert(vector_equal(vec0, vec2));
 }
+
+struct Foo{
+    int64_t id;
+    std::vector<int64_t> vs;
+    int16_t len() const {return static_cast<int16_t>(vs.size());}
+    friend bool operator==(Foo const& lhs, Foo const& rhs){
+        return lhs.id==rhs.id && lhs.vs==rhs.vs;
+    }
+    friend bool operator!=(Foo const& lhs, Foo const& rhs){
+        return !(lhs==rhs);
+    }
+//    fb::Entity serialize() const{
+//        return {id, len()};
+//    }
+};
+
+void test_complex_data_io(){
+    std::vector<Foo> fs = {{1,{11,12,13}}, {2,{21,22}}, {3,{31}}, {4,{}}, {5,{1,2,3,4}}};
+    flatbuffers::FlatBufferBuilder builder{1000000};
+
+    std::vector<flatbuffers::Offset<fb::Entity>> es;
+    std::vector<int64_t> names;
+    for(auto& foo : fs){
+        auto entity = fb::CreateEntity(builder, foo.id, foo.len());
+        es.push_back(entity);
+        util::append(names, foo.vs);
+    }
+
+    auto names_serialized = builder.CreateVector(names);
+    auto entities_serialized = builder.CreateVector(es);
+    auto entities = fb::CreateEntities(builder, entities_serialized, names_serialized);
+    builder.Finish(entities);
+
+    auto *buf = builder.GetBufferPointer();
+    auto size = builder.GetSize();
+    fmt::print("{} bytes\n", size);
+
+    {
+        std::ofstream myFile("data.bin", std::ios::binary);
+        myFile.write(reinterpret_cast<const char *>(&size), sizeof(size));
+        myFile.write(reinterpret_cast<const char *>(buf), size);
+    }
+
+    std::ifstream input_file ("data.bin", std::ios::binary);
+    flatbuffers::uoffset_t read_size;
+    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
+    auto data = std::make_unique<char[]>(read_size);
+    input_file.read(data.get(), read_size);
+    auto rbuf = fb::GetEntities(data.get());
+    auto beg = rbuf->entities()->begin();
+    auto end = rbuf->entities()->end();
+    auto it_name = rbuf->names()->begin();
+    std::vector<Foo> vec2;
+    fmt::print("Read data.bin\n");
+
+    for(auto it=beg; it!=end; ++it){
+        Foo foo = {it->uid(), {}};
+        auto len = it->len_name();
+        for(decltype(len)i=0; i!=len; ++i){
+            foo.vs.push_back(*it_name);
+            ++it_name;
+        }
+        vec2.push_back(foo);
+    }
+    assert(vector_equal(fs,vec2));
+}
+
 int main(){
 //    binary_file_io();
-    //hdf5_to_flatbuffers();
+//    hdf5_to_flatbuffers();
 //    hdf5_dep_parsed_to_flatbuffers();
-    hdf5_vs_flatbuffer_benchmark();
+//    hdf5_vs_flatbuffer_benchmark();
+    test_complex_data_io();
     return 0;
 }
