@@ -6,6 +6,7 @@
 , json
 , libpqxx
 , elfutils
+, flatbuffers
 , fmt
 , msgsl
 , spdlog
@@ -28,7 +29,7 @@ let
     "query-binding" = self.callPackage
       ({ mkDerivation, base, fficxx, fficxx-runtime, stdenv
        , template-haskell, rnnpp, json, hdf5_cpp, msgsl, tbb
-       , fmt, pqxx
+       , flatbuffers, fmt, pqxx
        , variant
        , elfutils
        }:
@@ -40,10 +41,10 @@ let
            base fficxx fficxx-runtime template-haskell
          ];
          librarySystemDepends = [
-           rnnpp json hdf5_cpp msgsl tbb variant fmt pqxx elfutils
+           rnnpp json hdf5_cpp msgsl tbb variant flatbuffers fmt pqxx elfutils
          ];
          license = stdenv.lib.licenses.bsd3;
-       }) { inherit rnnpp json hdf5_cpp msgsl tbb variant fmt;
+       }) { inherit rnnpp json hdf5_cpp msgsl tbb variant flatbuffers fmt;
             pqxx = libpqxx;
           };
   };
