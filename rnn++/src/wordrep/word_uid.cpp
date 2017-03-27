@@ -100,7 +100,7 @@ UIDIndex<TUID> UIDIndex<TUID>::from_file(std::string filename){
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset("Read file.");
+    timer.here_then_reset(fmt::format("wordrep::UIDIndex<TUID>: Read file {}.", filename));
 
     flatbuffers::FlatBufferBuilder builder;
     std::vector<fb::UID> es;
@@ -119,10 +119,11 @@ UIDIndex<TUID> UIDIndex<TUID>::from_file(std::string filename){
         for(auto j=beg; j!=end;++j) word.push_back(chars_buf[j]);
         pairs[i]={it->uid(), word};
     });
-    timer.here_then_reset("Construct temporal UIDs");
+    timer.here_then_reset("wordrep::UIDIndex<TUID>: Construct temporal UIDs");
     std::vector<std::pair<uid_t,std::string>> uids;
+    uids.reserve(pairs.size());
     for(auto&& e : pairs) uids.push_back(std::move(e));
-    timer.here_then_reset("Construct SortedUIDs");
+    timer.here_then_reset("wordrep::UIDIndex<TUID>: Construct SortedUIDs");
     return {std::move(uids)};
 };
 
