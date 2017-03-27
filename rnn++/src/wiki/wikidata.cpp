@@ -107,7 +107,7 @@ void SortedEntities::to_file(std::string filename) const{
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
 
-SortedEntities SortedEntities ::from_file(std::string filename){
+SortedEntities SortedEntities::from_file(std::string filename){
     util::Timer timer;
     std::ifstream input_file (filename, std::ios::binary);
     namespace fb = wikidata::io;
