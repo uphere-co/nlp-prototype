@@ -1,17 +1,16 @@
 namespace wikidata.io;
 
-table Entity {
+struct Entity {
 uid:long;
 name_beg:uint;
 name_end:uint;
 }
 
-table Entities{
+table SortedEntities{
 entities:[Entity];
 names:[long];
 }
 
 file_identifier "wfse";
 file_extension "wfse";
-root_type Entities;
-
+root_type SortedEntities;

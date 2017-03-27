@@ -1,5 +1,5 @@
 #include "wiki/wikidata.h"
-#include "wiki/sorted_entity_generated.h"
+#include "wiki/io.h"
 
 #include <sstream>
 #include <fstream>
@@ -78,25 +78,25 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
 }//nameless namespace
 
 namespace wikidata{
+
 void SortedEntities::to_file(std::string filename) const{
     flatbuffers::FlatBufferBuilder builder;
     namespace fb = wikidata::io;
-    std::vector<flatbuffers::Offset<fb::Entity>> es;
+    std::vector<fb::Entity> es;
     std::vector<int64_t> names;
     names.reserve(entities.size()*5);
     uint32_t name_beg=0;
     uint32_t name_end=0;
     for(auto& e : entities){
         name_end = name_beg+e.words.size();
-        auto entity = fb::CreateEntity(builder, e.uid.val, name_beg,name_end);
-        name_beg = name_end;
-        es.push_back(entity);
+        es.push_back({e.uid.val, name_beg,name_end});
         for(auto w : e.words) names.push_back(w.val);
+        name_beg = name_end;
     }
 
     auto names_serialized = builder.CreateVector(names);
-    auto es_serialized = builder.CreateVector(es);
-    auto entities = fb::CreateEntities(builder, es_serialized, names_serialized);
+    auto es_serialized = builder.CreateVectorOfStructs(es);
+    auto entities = fb::CreateSortedEntities(builder, es_serialized, names_serialized);
     builder.Finish(entities);
 
     auto *buf = builder.GetBufferPointer();
@@ -106,6 +106,7 @@ void SortedEntities::to_file(std::string filename) const{
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
+
 SortedEntities SortedEntities ::from_file(std::string filename){
     util::Timer timer;
     std::ifstream input_file (filename, std::ios::binary);
@@ -116,7 +117,7 @@ SortedEntities SortedEntities ::from_file(std::string filename){
     input_file.read(data.get(), read_size);
     timer.here_then_reset("Read file.");
 
-    auto rbuf = fb::GetEntities(data.get());
+    auto rbuf = fb::GetSortedEntities(data.get());
     auto n = rbuf->entities()->size();
     SortedEntities entities;
     entities.entities.reserve(n);
