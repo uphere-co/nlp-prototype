@@ -27,7 +27,9 @@ import           QueryServer.Type
 import           Client
 import           Type
 
-examples = [ "Start-up that google bought"
+examples =
+  take 1000 $
+    cycle  [ "Start-up that google bought"
            , "China fire regulation"
            , "China RoHS"  
            , "What is the start-up company that values most in 2016?"
