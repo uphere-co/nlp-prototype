@@ -47,11 +47,11 @@ pingHeartBeat p1 them n = do
       tellLog ("heartbeat failed!")
       kill p1 "heartbeat dead"
 
-consoleServer :: SendPort (Query, SendPort BL.ByteString) -> LogProcess ()
-consoleServer sc = do
+consoleClient :: SendPort (Query, SendPort BL.ByteString) -> LogProcess ()
+consoleClient sc = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' -> do
-      lift $ queryProcess sc (QueryText (T.pack input') [])
+      lift $ queryProcess sc (QueryText (T.pack input') []) (liftIO . BL.putStrLn)
       
 
 mainProcess :: ProcessId -> LogProcess ()
@@ -63,16 +63,15 @@ mainProcess them = do
     Just sc -> do
       tellLog "connection stablished to query server"
       -- lock <- ask
-      p1 <- spawnLocal (consoleServer sc)
+      p1 <- spawnLocal (consoleClient sc)
       void $ pingHeartBeat p1 them 0   
 
 
-queryProcess :: SendPort (Query, SendPort BL.ByteString) -> Query -> LogProcess ()
-queryProcess sc q = do
+queryProcess :: SendPort (Query, SendPort BL.ByteString) -> Query -> (BL.ByteString -> LogProcess a) -> LogProcess a
+queryProcess sc q f = do
   (sc',rc') <- newChan :: LogProcess (SendPort BL.ByteString, ReceivePort BL.ByteString)
   sendChan sc (q,sc')
-  bstr <- receiveChan rc'
-  liftIO $ BL.putStrLn bstr
+  f =<< receiveChan rc'
 
 retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
 retrieveQueryServerPid lock opt = do
