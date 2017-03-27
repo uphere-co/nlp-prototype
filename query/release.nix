@@ -6,6 +6,7 @@
 , json
 , libpqxx
 , elfutils
+, flatbuffers
 , fmt
 , msgsl
 , spdlog
@@ -17,7 +18,7 @@
 with pkgs;
 
 let
-    config = import ./config.nix { inherit pkgs uphere-nix-overlay hdf5_cpp tbb rnnpp json libpqxx elfutils fmt msgsl spdlog xxhashct backwardcpp variant; };
+    config = import ./config.nix { inherit pkgs uphere-nix-overlay hdf5_cpp tbb rnnpp json libpqxx elfutils flatbuffers fmt msgsl spdlog xxhashct backwardcpp variant; };
     newhaskellPackages = haskellPackages.override { overrides = config; };
     
 in newhaskellPackages.query
