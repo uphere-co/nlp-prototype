@@ -758,18 +758,18 @@ void save_wikidata_entities(int argc, char** argv){
     timer.here_then_reset("Save to binary files.");
 }
 
-void load_wikidata_entities(int argc, char** argv){
+void concurrent_load_wikidata_entities(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
     util::Timer timer;
+    timer.here_then_reset("Start test : concurrent_load_wikidata_entities.");
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
     wikidata::SortedEntities entities;
 
-
-    //Concurrent version: ~4s
+    //Concurrent version: ~3.2s
     tbb::task_group g;
     g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
     g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
@@ -777,23 +777,44 @@ void load_wikidata_entities(int argc, char** argv){
     g.wait();
     timer.here_then_reset("Load data.");
 
-//   //Serial version: ~7s
-//    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
-//    timer.here_then_reset("Load wordUIDs");
-//    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
-//    timer.here_then_reset("Load wikiUIDs");
-////    wikidata::SortedEntities entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
-//    entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
-//    timer.here_then_reset("Load wiki entities.");
-
+    int i=0;
     for(auto& entity : entities.entities){
         fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
+        if(++i>100) break;
     }
 }
+void serial_load_wikidata_entities(int argc, char** argv){
+    assert(argc>2);
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+
+    util::Timer timer;
+    timer.here_then_reset("Start test : serial_load_wikidata_entities.");
+    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
+    std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
+    wikidata::SortedEntities entities;
+
+   //Serial version: ~7s = 1.7+2.8+2.2
+    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
+    timer.here_then_reset("Load wordUIDs");
+    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
+    timer.here_then_reset("Load wikiUIDs");
+    entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
+    timer.here_then_reset("Load wiki entities.");
+
+    int i=0;
+    for(auto& entity : entities.entities){
+        fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
+        if(++i>100) break;
+    }
+}
+
+
 int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
-    load_wikidata_entities(argc,argv);
+    concurrent_load_wikidata_entities(argc,argv);
+//    serial_load_wikidata_entities(argc,argv);
 //    annotate_sentences(argc,argv);
     return 0;
 
