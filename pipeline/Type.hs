@@ -81,3 +81,6 @@ getDefRSS = do
   case mv of
     Nothing -> error "JSON is not valid."
     Just  v -> return v
+
+
+data EngineType = YGP | RSS
