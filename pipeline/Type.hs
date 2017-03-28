@@ -63,3 +63,5 @@ instance ToJSON ConfigRSS where
 
 instance FromJSON ConfigRSS where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 1 }
+
+
