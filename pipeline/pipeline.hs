@@ -5,6 +5,7 @@ module Main where
 
 import           Data.Aeson
 import           Data.Aeson.Types
+import Control.Applicative                  ((<$>), (<*>))
 import qualified Data.ByteString.Lazy as BL
 import           Data.Text                  (Text)
 import           GHC.Generics
@@ -14,58 +15,29 @@ import           System.Process
 --
 import           Type
 
+getDefYGP :: IO ConfigYGP
+getDefYGP = do
+  ygp <- BL.readFile "../config.ygp.json.default"
+  let mv =  decode ygp
+  case mv of
+    Nothing -> error "JSON is not valid."
+    Just  v -> return v
 
-defYGP :: ConfigYGP
-defYGP = ConfigYGP
-  { _engine_type             = "ygp"
-  , _corenlp_client_script   = "../../rnn++/scripts/corenlp.py"
-  , _word_uids_dump          = "/home/modori/repo/src/nlp-prototype/pipeline/build/all_words" -- "/data/groups/uphere/similarity_test/all_words"
-  , _pos_uids_dump           = "/data/groups/uphere/similarity_test/poss.uid"
-  , _arclabel_uids_dump      = "/data/groups/uphere/similarity_test/dep.uid"
-  , _column_uids_dump        = "/data/groups/uphere/similarity_test/column.uid"
-  , _country_uids_dump       = "/data/groups/uphere/similarity_test/country.uid"
-  , _word_prob_dump          = "/home/modori/repo/src/nlp-prototype/pipeline/build/prob.h5" -- "/data/groups/uphere/similarity_test/prob.h5"
-  , _corenlp_dumps           = "/home/modori/repo/src/nlp-prototype/pipeline/build/ygp.corenlp" -- "/data/groups/uphere/similarity_test/ygp.corenlp"
-  , _dep_parsed_store        = "/home/modori/repo/src/nlp-prototype/pipeline/build/ygp.h5" -- "/data/groups/uphere/similarity_test/ygp.h5"
-  , _dep_parsed_prefix       = "ygp"
-  , _wordvec_store           = "/data/groups/uphere/similarity_test/news.h5"
-  , _voca_name               = "news.en.uids"
-  , _w2vmodel_name           = "news.en.vecs"
-  , _w2v_float_t             = "float32"
-  , _wikidata_entities       = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.all_entities" -- "/home/jihuni/word2vec/rss/wikidata.all_entities"
-  , _wikidata_uids           = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.uid" -- "/home/jihuni/word2vec/rss/wikidata.uid"
-  , _wikidata_properties     = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.properties" -- "/home/jihuni/word2vec/rss/wikidata.properties"
-  , _named_entity_uids       = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.uid.ne" -- "/home/jihuni/word2vec/rss/wikidata.uid.ne"
-  }
-
-defRSS :: ConfigRSS
-defRSS = ConfigRSS
-  { _engine_type                              = "rss"
-  , _corenlp_client_script                    = "../rnn++/scripts/corenlp.py"
-  , _word_uids_dump                           = "/data/groups/uphere/engine.rss/all_words"
-  , _pos_uids_dump                            = "/data/groups/uphere/engine.rss/poss.uid"
-  , _arclabel_uids_dump                       = "/data/groups/uphere/engine.rss/dep.uid"
-  , _column_uids_dump                         = "/data/groups/uphere/engine.rss/column.uid"
-  , _word_prob_dump                           = "/home/modori/repo/src/nlp-prototype/pipeline/build/prob2.h5" -- "/data/groups/uphere/engine.rss/prob.h5"
-  , _row_hashes                               = "/data/groups/uphere/engine.rss/article.hashes"
-  , _corenlp_dumps                            = "/data/groups/uphere/engine.rss/article.corenlp"
-  , _dep_parsed_store                         = "/data/groups/uphere/engine.rss/nyt.h5"
-  , _dep_parsed_prefix                        = "nyt"
-  , _wordvec_store                            = "/data/groups/uphere/engine.rss/news.h5"
-  , _voca_name                                = "news.en.uids"
-  , _w2vmodel_name                            = "news.en.vecs"
-  , _w2v_float_t                              = "float32"
-  , _wikidata_entities                        = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.all_entities" -- "/data/groups/uphere/engine.rss/wikidata.all_entities"
-  , _wikidata_uids                            = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.uid" -- "/data/groups/uphere/engine.rss/wikidata.uid"
-  , _wikidata_properties                      = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.properties" -- "/data/groups/uphere/engine.rss/wikidata.properties"
-  , _named_entity_uids                        = "/home/modori/repo/src/nlp-prototype/pipeline/build/wikidata.uid.ne" -- "/data/groups/uphere/engine.rss/wikidata.uid.ne"
-  }
-
+getDefRSS :: IO ConfigRSS
+getDefRSS = do
+  rss <- BL.readFile "../config.rss.json.default"
+  let mv =  decode rss
+  case mv of
+    Nothing -> error "JSON is not valid."
+    Just  v -> return v
 
 
 runYGP :: IO ()
 runYGP = do  
   -- Write JSON config files.
+  defYGP <- getDefYGP
+  defRSS <- getDefRSS
+  
   BL.writeFile "config.ygp.json" (encode defYGP)
   BL.writeFile "config.rss.json" (encode defRSS)
   
