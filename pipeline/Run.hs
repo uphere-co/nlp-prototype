@@ -1,36 +1,13 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-module Main where
+module Run where
 
 import           Data.Aeson
 import           Data.Aeson.Types
-import Control.Applicative                  ((<$>), (<*>))
 import qualified Data.ByteString.Lazy as BL
-import           Data.Text                  (Text)
-import           GHC.Generics
 import           System.Directory           (createDirectoryIfMissing)
 import           System.Environment
 import           System.Process
 --
-import           Type
-
-getDefYGP :: IO ConfigYGP
-getDefYGP = do
-  ygp <- BL.readFile "../config.ygp.json.default"
-  let mv =  decode ygp
-  case mv of
-    Nothing -> error "JSON is not valid."
-    Just  v -> return v
-
-getDefRSS :: IO ConfigRSS
-getDefRSS = do
-  rss <- BL.readFile "../config.rss.json.default"
-  let mv =  decode rss
-  case mv of
-    Nothing -> error "JSON is not valid."
-    Just  v -> return v
-
+import      Type
 
 runYGP :: IO ()
 runYGP = do  
@@ -106,10 +83,3 @@ runYGP = do
   callCommand "./word_importance_build"
 
   putStrLn "Pipeline finished!"
-
-
-
-
-main :: IO ()
-main = do
-  runYGP
