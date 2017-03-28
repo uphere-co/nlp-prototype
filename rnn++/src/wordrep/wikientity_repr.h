@@ -89,7 +89,7 @@ struct EntityReprs{
         std::vector<OpAmbiguousEntityCompare> ops;
     };
 
-    EntityReprs(std::vector<Entity> entities);
+    EntityReprs(SortedEntities const& entities);
     OpCompare get_comparison_operator() const{
         return {*this};
     }
@@ -113,8 +113,7 @@ struct EntityReprs{
     Synonyms get_synonyms(WikidataUID uid) const;
     std::optional<Synonyms> find(WikidataUID uid) const;
 private:
-    std::vector<Entity> dict;
-    //wordrep::SortedEntities dict;
+    SortedEntities const& dict;
 };
 
 }//namespace wordrep::wiki

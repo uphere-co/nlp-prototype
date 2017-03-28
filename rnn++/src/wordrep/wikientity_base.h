@@ -41,7 +41,8 @@ struct SortedEntities{
     auto cend() const {return entities.cend();}
     void to_file(std::string filename) const;
     static SortedEntities from_file(std::string filename);
-    std::vector<wordrep::wiki::Entity> entities;
+
+    std::vector<Entity> entities;
 };
 
 

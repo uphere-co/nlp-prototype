@@ -33,7 +33,7 @@ struct UnittestDataset{
       annotator{entities},
       p_dict{"../rnn++/tests/data/wikidata.test.properties"},
       wordUIDs{factory.word_uid_index()},
-      entity_reprs{entities.entities},
+      entity_reprs{entities},
       op_acronym{wordUIDs},
       op_named_entity{"../rnn++/tests/data/wikidata.test.uid.named_entities",
                       wordUIDs, entity_reprs} {
@@ -108,7 +108,7 @@ void greedy_matching() {
     std::sort(items.begin(), items.end());
     wordrep::wiki::SortedEntities entities{items};
     std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    wordrep::wiki::EntityReprs entity_reprs{entities};
     fmt::print("Entities :\n");
     for (auto &item : entities.entities)
         fmt::print("{}\n", item);
@@ -166,7 +166,7 @@ void compare_wordUIDs_and_WikidataUID(util::json_t const& config_json,
 
     auto words = util::string::split(query, " ");
     std::vector<WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    wordrep::wiki::EntityReprs entity_reprs{entities};
     GreedyAnnotator annotator{entities};
 
     timer.here_then_reset("Build data structures.");
@@ -427,7 +427,8 @@ void block_binary_search(){
     assert(diff(find(7))==1);
     assert(diff(find(8))==2);
     assert(diff(find(10))==1);
-    wordrep::wiki::EntityReprs entity_reprs{items};
+    wordrep::wiki::SortedEntities entities{items};
+    wordrep::wiki::EntityReprs entity_reprs{entities};
     auto op=entity_reprs.get_comparison_operator(1);
     assert(op.exact_match({1,2}));
 }
@@ -706,7 +707,7 @@ void test_all(int argc, char** argv){
 }//namespace wordrep
 
 void annotate_sentences(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -747,7 +748,7 @@ void annotate_sentences(int argc, char** argv){
 using wordrep::UIDIndexBinary;
 
 void save_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -766,7 +767,7 @@ void save_wikidata_entities(int argc, char** argv){
 }
 
 void concurrent_load_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -794,7 +795,7 @@ void concurrent_load_wikidata_entities(int argc, char** argv){
     }
 }
 void serial_load_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -849,7 +850,7 @@ int main(int argc, char** argv){
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    wordrep::wiki::EntityReprs entity_reprs{entities};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
