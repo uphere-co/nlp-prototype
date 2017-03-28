@@ -36,6 +36,30 @@ struct Entity {
 
 std::ostream &operator<<(std::ostream &os, Entity const &a);
 
+
+struct UIDSortedEntities{
+    UIDSortedEntities(std::vector<Entity> items) {
+        entities.reserve(items.size());
+        for(auto& item : items) entities.push_back(item);
+        tbb::parallel_sort(entities.begin(), entities.end(), [](auto x, auto y){return x.uid<y.uid;});
+    }
+    UIDSortedEntities(tbb::concurrent_vector<Entity> items)
+            :  entities{std::move(items)} {
+        tbb::parallel_sort(entities.begin(), entities.end(), [](auto x, auto y){return x.uid<y.uid;});
+    }
+    UIDSortedEntities(tbb::concurrent_vector<Entity>&& items)
+            :  entities{std::move(items)}
+    {}
+    auto cbegin() const {return entities.cbegin();}
+    auto cend() const {return entities.cend();}
+    auto begin() const {return entities.cbegin();}
+    auto end() const {return entities.cend();}
+
+private:
+    tbb::concurrent_vector<Entity> entities;
+};
+
+
 struct SortedEntities{
     struct Binary{
         std::string filename;
@@ -51,13 +75,17 @@ struct SortedEntities{
     {}
     auto cbegin() const {return entities.cbegin();}
     auto cend() const {return entities.cend();}
-    auto begin() {return entities.begin();}
-    auto end() {return entities.end();}
+    auto begin() const {return entities.begin();}
+    auto end() const {return entities.end();}
     void to_file(Binary file) const;
+    UIDSortedEntities to_uid_sorted() const{
+        return {entities};
+    }
 
 private:
     tbb::concurrent_vector<Entity> entities;
 };
+
 
 
 struct AmbiguousUID {

@@ -5,11 +5,13 @@
 namespace wordrep{
 namespace wiki {
 
-EntityReprs::EntityReprs(SortedEntities const& entities)
+EntityReprs::EntityReprs(UIDSortedEntities const& entities)
         : dict{entities}
 {}
 Entity EntityReprs::operator[](WikidataUID uid) const {
-    auto synonym = find(uid).value();
+    auto ms = find(uid);
+    assert(ms);
+    auto synonym = ms.value();
     return {synonym.uid, synonym.reprs.front()};
 }
 
