@@ -9,7 +9,11 @@ import           Run
 
 main :: IO ()
 main = do
+  writeJSON YGP
+  writeJSON RSS
   mkRnnApp
   mkCoreNLPApp
+  doWikidataAnalysis
   runYGP
   runRSS
+  calculateWI

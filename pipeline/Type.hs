@@ -84,3 +84,5 @@ getDefRSS = do
 
 
 data EngineType = YGP | RSS
+
+type MinorVersion = Int
