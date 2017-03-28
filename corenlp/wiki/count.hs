@@ -56,7 +56,7 @@ parseNE   _           = ("_ERROR_", "ERROR")
 
 main = do
   itemsByP31 <- readItemsByKey itemFile
-  nesStr <- T.IO.readFile neFile  
+  -- nesStr <- T.IO.readFile neFile  
   let 
       toTexts   = map (\(W.Name name)-> name)
       printable = map (\(W.P31 p31, names) -> p31 <> "\t" <> T.intercalate " " (toTexts names)) (serialize itemsByP31)
