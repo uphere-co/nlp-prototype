@@ -1,6 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
+
+module Main where
 
 import           Data.Aeson
 import           Data.Aeson.Types
@@ -10,50 +11,9 @@ import           GHC.Generics
 import           System.Directory           (createDirectoryIfMissing)
 import           System.Environment
 import           System.Process
+--
+import           Type
 
-data ConfigYGP = ConfigYGP
-  { _engine_type             :: String
-  , _corenlp_client_script   :: String
-  , _word_uids_dump          :: String
-  , _pos_uids_dump           :: String
-  , _arclabel_uids_dump      :: String
-  , _column_uids_dump        :: String
-  , _country_uids_dump       :: String
-  , _word_prob_dump          :: String
-  , _corenlp_dumps           :: String
-  , _dep_parsed_store        :: String
-  , _dep_parsed_prefix       :: String
-  , _wordvec_store           :: String
-  , _voca_name               :: String
-  , _w2vmodel_name           :: String
-  , _w2v_float_t             :: String
-  , _wikidata_entities       :: String
-  , _wikidata_uids           :: String
-  , _wikidata_properties     :: String
-  , _named_entity_uids       :: String
-  } deriving (Show, Generic)
-
-data ConfigRSS = ConfigRSS
-  { _engine_type             :: String
-  , _corenlp_client_script   :: String
-  , _word_uids_dump          :: String
-  , _pos_uids_dump           :: String
-  , _arclabel_uids_dump      :: String
-  , _column_uids_dump        :: String
-  , _word_prob_dump          :: String
-  , _row_hashes              :: String
-  , _corenlp_dumps           :: String
-  , _dep_parsed_store        :: String
-  , _dep_parsed_prefix       :: String
-  , _wordvec_store           :: String
-  , _voca_name               :: String
-  , _w2vmodel_name           :: String
-  , _w2v_float_t             :: String
-  , _wikidata_entities       :: String
-  , _wikidata_uids           :: String
-  , _wikidata_properties     :: String
-  , _named_entity_uids       :: String
-  } deriving (Show, Generic)
 
 defYGP :: ConfigYGP
 defYGP = ConfigYGP
@@ -102,27 +62,9 @@ defRSS = ConfigRSS
   }
 
 
-  
-instance ToJSON ConfigYGP where
-    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 1 }
-
-instance FromJSON ConfigYGP where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 1 }
-
-instance ToJSON ConfigRSS where
-    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 1 }
-
-instance FromJSON ConfigRSS where
-    parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 1 }
-
-
-main :: IO ()
-main = do
-  runYGP
 
 runYGP :: IO ()
-runYGP = do
-  
+runYGP = do  
   -- Write JSON config files.
   BL.writeFile "config.ygp.json" (encode defYGP)
   BL.writeFile "config.rss.json" (encode defRSS)
@@ -192,3 +134,10 @@ runYGP = do
   callCommand "./word_importance_build"
 
   putStrLn "Pipeline finished!"
+
+
+
+
+main :: IO ()
+main = do
+  runYGP
