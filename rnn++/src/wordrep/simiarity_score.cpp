@@ -81,4 +81,11 @@ void Scoring::SentenceToScored::filter_false_named_entity(wiki::OpNamedEntity co
     }
 }
 
+std::string Scoring::SentenceToScored::repr(WordUIDindex const& wordUIDs) const{
+    std::stringstream ss;
+    for(auto& entity : entities) ss << fmt::format("[{}] ", entity.repr(*orig.dict, wordUIDs));
+    for(auto& word : words) ss << fmt::format("({}) ", word.repr(wordUIDs));
+    return ss.str();
+}
+
 }//namespace wordrep

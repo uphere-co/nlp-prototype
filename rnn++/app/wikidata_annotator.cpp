@@ -714,16 +714,29 @@ void annotate_sentences(int argc, char** argv){
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
-    auto voca = factory.voca_info();
+    util::Timer timer;
     auto word_importance = factory.word_importance();
+    timer.here_then_reset("Load word_importance.");
+    auto wordUIDs = factory.word_uid_index();
+    timer.here_then_reset("Load wordUIDs.");
     wikidata::EntityModule wiki{factory.wikientity_module()};
+    timer.here_then_reset("Load wikidata::EntityModule.");
+    auto voca = factory.voca_info();
+    timer.here_then_reset("Load voca_info.");
     wordrep::Scoring scoring{word_importance, voca.wvecs};
+    timer.here_then_reset("Load wordrep::Scoring.");
     wordrep::Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
+    timer.here_then_reset("Load wordrep::Scoring::Preprocess.");
 
-    std::vector<wordrep::Sentence> orig_sents;
+    timer.here_then_reset("Load all data.");
+    return;
+
+    auto tokens = factory.dep_parsed_tokens();
+    std::vector<wordrep::Sentence> orig_sents = tokens.IndexSentences();
+    timer.here_then_reset("Load texts.");
     tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
-
     auto n = orig_sents.size();
+    if(n>100) n=100;
     tbb::parallel_for(decltype(n){0}, n, [&wiki,&scoring,&scoring_preprocessor,&orig_sents,&sents](auto i) {
         auto& sent = orig_sents[i];
         auto tagged_sent = wiki.annotator.annotate(sent);
@@ -746,6 +759,8 @@ void annotate_sentences(int argc, char** argv){
         }
         sents.push_back(sent_to_scored);
     });
+    for(auto& sent : sents)
+        fmt::print("{}\n", sent.repr(wordUIDs));
 }
 
 using wordrep::UIDIndexBinary;
@@ -832,9 +847,9 @@ void serial_load_wikidata_entities(int argc, char** argv){
 int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
-    concurrent_load_wikidata_entities(argc,argv);
+//    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
-//    annotate_sentences(argc,argv);
+    annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
