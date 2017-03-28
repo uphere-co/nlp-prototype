@@ -36,6 +36,15 @@ struct Entity {
 
 std::ostream &operator<<(std::ostream &os, Entity const &a);
 
+struct SortedEntities{
+    auto cbegin() const {return entities.cbegin();}
+    auto cend() const {return entities.cend();}
+    void to_file(std::string filename) const;
+    static SortedEntities from_file(std::string filename);
+    std::vector<wordrep::wiki::Entity> entities;
+};
+
+
 struct AmbiguousUID {
     std::vector<WikidataUID> candidates;
 };

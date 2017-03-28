@@ -114,6 +114,7 @@ struct EntityReprs{
     std::optional<Synonyms> find(WikidataUID uid) const;
 private:
     std::vector<Entity> dict;
+    //wordrep::SortedEntities dict;
 };
 
 }//namespace wordrep::wiki

@@ -18,12 +18,6 @@ struct DepParsedTokens;
 
 namespace wikidata{
 
-struct SortedEntities{
-    void to_file(std::string filename) const;
-    static SortedEntities from_file(std::string filename);
-    std::vector<wordrep::wiki::Entity> entities;
-};
-
 struct TaggedEntity{
     size_t offset;
     size_t len;
@@ -59,23 +53,20 @@ struct AnnotatedToken{
     }
 };
 
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
 
 
 
 struct GreedyAnnotator{
-    GreedyAnnotator(SortedEntities&& entities)
-            : entities{std::move(entities.entities)} {
-    }
-    GreedyAnnotator(SortedEntities const& entities)
-            : entities{entities.entities} {
+    GreedyAnnotator(wordrep::wiki::SortedEntities const& entities)
+            : entities{entities} {
     }
 
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const;
     wordrep::AnnotatedSentence annotate(wordrep::Sentence const& sent) const;
-
-    std::vector<wordrep::wiki::Entity> entities;
+private:
+    wordrep::wiki::SortedEntities const& entities;
 };
 
 //OP is one of OpCompare, OpEntityCompare and OpAmbiguousEntityCompare.
@@ -131,7 +122,7 @@ struct EntityModule{
     {}
     wordrep::WordUIDindex wordUIDs;
     wordrep::POSUIDindex posUIDs;
-    SortedEntities entities;
+    wordrep::wiki::SortedEntities entities;
     GreedyAnnotator annotator;
     PropertyTable  prop_dict;
     wordrep::wiki::EntityReprs entity_reprs;
