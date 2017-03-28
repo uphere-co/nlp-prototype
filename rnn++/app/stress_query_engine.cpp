@@ -78,7 +78,7 @@ void stress_did_you_mean(int argc, char** argv){
     auto did_you_mean = factory.word_case_corrector(word_importance);
 
     std::vector<std::string> queries;
-    for(int i=0; i<500000; ++i)
+    for(int i=0; i<50000; ++i)
         queries.push_back(fmt::format("some meaningful company in recent {} years", i));
     data::CoreNLPwebclient corenlp_client{util::get_str(config,"corenlp_client_script")};
     timer.here_then_reset("Data loaded.");
@@ -100,8 +100,9 @@ void stress_did_you_mean(int argc, char** argv){
 
 }
 int main(int argc, char** argv){
-    stress_did_you_mean(argc,argv);
-    return 0;
+//    stress_preprocess_query(argc,argv);
+//    stress_did_you_mean(argc,argv);
+//    return 0;
 //    assert(argc>2);
     auto config = util::load_json(argv[1]);
     //auto queries = util::string::readlines(argv[2]);
