@@ -6,4 +6,4 @@ CoreNLP-parsing for wikidata part is currently commented out. You can revert it,
 > nix-shell shell.nix
 > sh build.sh (This will make build directory)
 > cd build
-> ./pipeline
+> ./Pipeline
