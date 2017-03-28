@@ -755,7 +755,11 @@ void save_wikidata_entities(int argc, char** argv){
     auto entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
     timer.here_then_reset("Load wikidata entities.");
     entities.to_file("wikidata.entities.bin");
-    timer.here_then_reset("Save to binary files.");
+    timer.here_then_reset("Save to binary file : wikidata.entities.bin");
+    wordUIDs.to_file("words.uid.bin");
+    timer.here_then_reset("Save to binary file : words.uid.bin");
+    wikiUIDs.to_file("wikidata.uid.bin");
+    timer.here_then_reset("Save to binary file : wikidata.uid.bin");
 }
 
 void concurrent_load_wikidata_entities(int argc, char** argv){
@@ -764,18 +768,21 @@ void concurrent_load_wikidata_entities(int argc, char** argv){
     engine::SubmoduleFactory factory{{config_json}};
 
     util::Timer timer;
-    timer.here_then_reset("Start test : concurrent_load_wikidata_entities.");
+    timer.here_then_reset("concurrent_load_wikidata_entities: Start test : concurrent_load_wikidata_entities.");
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
     wikidata::SortedEntities entities;
 
-    //Concurrent version: ~3.2s
+//    Concurrent version: ~3.2s
+    //1762.78
     tbb::task_group g;
-    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
-    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
+//    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
+//    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
+    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(wordrep::WordUIDindex::from_file("words.uid.bin"));});
+    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wordrep::WikidataUIDindex::from_file("wikidata.uid.bin"));});
     g.run([&entities](){entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");});
     g.wait();
-    timer.here_then_reset("Load data.");
+    timer.here_then_reset("concurrent_load_wikidata_entities: Load data.");
 
     int i=0;
     for(auto& entity : entities.entities){
@@ -789,18 +796,21 @@ void serial_load_wikidata_entities(int argc, char** argv){
     engine::SubmoduleFactory factory{{config_json}};
 
     util::Timer timer;
-    timer.here_then_reset("Start test : serial_load_wikidata_entities.");
+    timer.here_then_reset("serial_load_wikidata_entities: Start test : serial_load_wikidata_entities.");
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
     wikidata::SortedEntities entities;
 
    //Serial version: ~7s = 1.7+2.8+2.2
-    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
-    timer.here_then_reset("Load wordUIDs");
-    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
-    timer.here_then_reset("Load wikiUIDs");
+//    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
+    wordUIDs = std::make_unique<wordrep::WordUIDindex>(wordrep::WordUIDindex::from_file("words.uid.bin"));
+    timer.here_then_reset("serial_load_wikidata_entities: Load wordUIDs");
+//    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
+    wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wordrep::WikidataUIDindex::from_file("wikidata.uid.bin"));
+    timer.here_then_reset("serial_load_wikidata_entities: Load wikiUIDs");
+//    entities = wikidata::read_wikidata_entities(*wordUIDs, factory.config.value("wikidata_entities"));
     entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
-    timer.here_then_reset("Load wiki entities.");
+    timer.here_then_reset("serial_load_wikidata_entities: Load wiki entities.");
 
     int i=0;
     for(auto& entity : entities.entities){

@@ -1,0 +1,17 @@
+namespace wordrep.io;
+
+struct UID{
+uid:long;
+name_beg:uint;
+name_end:uint;
+}
+
+table SortedUIDs{
+uids:[UID];
+chars:[ubyte];
+}
+
+file_identifier "wfsu";
+file_extension "wfsu";
+
+root_type SortedUIDs;

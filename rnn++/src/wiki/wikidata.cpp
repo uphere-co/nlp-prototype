@@ -115,13 +115,13 @@ SortedEntities SortedEntities ::from_file(std::string filename){
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset("Read file.");
+    timer.here_then_reset(fmt::format("wiki::SortedEntities::from_file: Read file. {}", filename));
 
     auto rbuf = fb::GetSortedEntities(data.get());
     auto n = rbuf->entities()->size();
     SortedEntities entities;
     entities.entities.reserve(n);
-    timer.here_then_reset("Prepare construction.");
+    timer.here_then_reset("wiki::SortedEntities::from_file: Prepare construction.");
 
     auto& entities_buf = *rbuf->entities();
     auto& names_buf = *rbuf->names();
@@ -133,9 +133,9 @@ SortedEntities SortedEntities ::from_file(std::string filename){
         es[i]={it->uid(), std::move(words)};
     });
 
-    timer.here_then_reset("Construct temporal entities");
+    timer.here_then_reset("wiki::SortedEntities::from_file: Construct temporal entities");
     for(auto&& e : es) entities.entities.push_back(std::move(e));
-    timer.here_then_reset("Construct SortedEntities");
+    timer.here_then_reset("wiki::SortedEntities::from_file: Construct SortedEntities");
     return entities;
 }
 
