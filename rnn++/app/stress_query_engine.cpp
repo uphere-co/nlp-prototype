@@ -35,7 +35,7 @@ util::json_t preprocess_query(wordrep::WordCaseCorrector const& did_you_mean, ut
     return answer;
 }
 
-void stress_did_you_mean(int argc, char** argv){
+void stress_preprocess_query(int argc, char** argv){
     assert(argc>1);
     util::Timer timer{};
     auto config = util::load_json(argv[1]);
@@ -62,6 +62,37 @@ void stress_did_you_mean(int argc, char** argv){
             query_json["query_str"] = query_str;
             std::ofstream infile{fmt::format("answers/{}.input", i)};
             infile << query_json.dump(4);
+        });
+    }
+    g.wait();
+    timer.here_then_reset("All queries are answered.");
+
+}
+
+void stress_did_you_mean(int argc, char** argv){
+    assert(argc>1);
+    util::Timer timer{};
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
+    auto word_importance = factory.word_importance();
+    auto did_you_mean = factory.word_case_corrector(word_importance);
+
+    std::vector<std::string> queries;
+    for(int i=0; i<500000; ++i)
+        queries.push_back(fmt::format("some meaningful company in recent {} years", i));
+    data::CoreNLPwebclient corenlp_client{util::get_str(config,"corenlp_client_script")};
+    timer.here_then_reset("Data loaded.");
+
+    tbb::task_group g;
+    auto n = queries.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        g.run([i,&queries,&corenlp_client,&did_you_mean](){
+            auto raw_query_str = queries[i];
+            auto original_words = util::string::split(raw_query_str);
+            auto corrected_words = util::map(original_words, [&did_you_mean](auto word){return did_you_mean.try_correct(word);});
+            auto corrected_query = util::string::join(corrected_words, " ");
+            std::ofstream infile{fmt::format("answers/{}.input", i)};
+            infile << corrected_query;
         });
     }
     g.wait();
