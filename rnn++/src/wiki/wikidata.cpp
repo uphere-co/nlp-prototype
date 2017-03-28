@@ -112,10 +112,7 @@ wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const
     timer.here_then_reset("Read all items.");
     tbb::parallel_sort(items.begin(), items.end());
     timer.here_then_reset("Sorted items.");
-    std::vector<wordrep::wiki::Entity> entities;
-    for(auto&& item : items) entities.push_back(std::move(item));
-    timer.here_then_reset("Build SortedEntities.");
-    return {std::move(entities)};
+    return {std::move(items)};
 }
 
 wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file){

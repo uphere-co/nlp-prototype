@@ -19,7 +19,7 @@ Synonyms EntityReprs::get_synonyms(WikidataUID uid) const {
 std::optional<Synonyms> EntityReprs::find(WikidataUID uid) const {
     auto less = [uid](auto& rhs){return uid <rhs.uid;};
     auto eq   = [uid](auto& rhs){return uid==rhs.uid;};
-    auto mit= util::binary_find_block(dict.entities, eq, less);
+    auto mit= util::binary_find_block(dict.cbegin(), dict.cend(), eq, less);
     if(!mit) return {};
     auto it = mit.value();
     Synonyms synonyms{uid,{}};

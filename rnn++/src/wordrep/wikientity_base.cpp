@@ -39,7 +39,7 @@ std::ostream &operator<<(std::ostream &os, Entity const &a) {
 }
 
 
-void SortedEntities::to_file(std::string filename) const{
+void SortedEntities::to_file(Binary file) const{
     flatbuffers::FlatBufferBuilder builder;
     namespace fb = wordrep::wiki::io;
     std::vector<fb::Entity> es;
@@ -62,41 +62,35 @@ void SortedEntities::to_file(std::string filename) const{
     auto *buf = builder.GetBufferPointer();
     auto size = builder.GetSize();
 
-    std::ofstream outfile(filename, std::ios::binary);
+    std::ofstream outfile(file.filename, std::ios::binary);
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
 
-SortedEntities SortedEntities::from_file(std::string filename){
+SortedEntities::SortedEntities(Binary file){
     util::Timer timer;
-    std::ifstream input_file (filename, std::ios::binary);
+    std::ifstream input_file (file.filename, std::ios::binary);
     namespace fb = wordrep::wiki::io;
     flatbuffers::uoffset_t read_size;
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("wiki::SortedEntities::from_file: Read file. {}", filename));
+    timer.here_then_reset(fmt::format("wiki::SortedEntities::SortedEntities: Read file. {}", file.filename));
 
     auto rbuf = fb::GetSortedEntities(data.get());
     auto n = rbuf->entities()->size();
-    SortedEntities entities;
-    entities.entities.reserve(n);
-    timer.here_then_reset("wiki::SortedEntities::from_file: Prepare construction.");
+    entities.resize(n,{-1,{}});
+    timer.here_then_reset("wiki::SortedEntities::SortedEntities: Prepare construction.");
 
     auto& entities_buf = *rbuf->entities();
     auto& names_buf = *rbuf->names();
-    tbb::concurrent_vector<wordrep::wiki::Entity> es(n,{-1,{}});
-    tbb::parallel_for(decltype(n){0}, n, [&names_buf,&entities_buf,&es](auto i){
+    tbb::parallel_for(decltype(n){0}, n, [&names_buf,&entities_buf,this](auto i){
         auto it=entities_buf[i];
         std::vector<wordrep::WordUID> words;
         for(auto j=it->name_beg(); j!=it->name_end();++j) words.push_back(names_buf[j]);
-        es[i]={it->uid(), std::move(words)};
+        this->entities[i]={it->uid(), std::move(words)};
     });
-
-    timer.here_then_reset("wiki::SortedEntities::from_file: Construct temporal entities");
-    for(auto&& e : es) entities.entities.push_back(std::move(e));
-    timer.here_then_reset("wiki::SortedEntities::from_file: Construct SortedEntities");
-    return entities;
+    timer.here_then_reset("wiki::SortedEntities::SortedEntities: Construct temporal entities");
 }
 
 

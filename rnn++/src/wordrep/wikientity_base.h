@@ -37,12 +37,26 @@ struct Entity {
 std::ostream &operator<<(std::ostream &os, Entity const &a);
 
 struct SortedEntities{
+    struct Binary{
+        std::string filename;
+    };
+    SortedEntities(Binary file);
+    SortedEntities(std::vector<Entity> items) {
+        entities.reserve(items.size());
+        for(auto& item : items) entities.push_back(item);
+        tbb::parallel_sort(entities.begin(), entities.end());
+    }
+    SortedEntities(tbb::concurrent_vector<Entity>&& items)
+    :  entities{std::move(items)}
+    {}
     auto cbegin() const {return entities.cbegin();}
     auto cend() const {return entities.cend();}
-    void to_file(std::string filename) const;
-    static SortedEntities from_file(std::string filename);
+    auto begin() {return entities.begin();}
+    auto end() {return entities.end();}
+    void to_file(Binary file) const;
 
-    std::vector<Entity> entities;
+private:
+    tbb::concurrent_vector<Entity> entities;
 };
 
 
