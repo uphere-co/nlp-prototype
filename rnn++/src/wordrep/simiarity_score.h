@@ -79,66 +79,9 @@ struct Scoring{
         SentenceToScored(Sentence const& sent)
                 : orig{sent}, entities{}, words{}
         {}
-        std::vector<wiki::AmbiguousUID> all_named_entities() const{
-            std::vector<wiki::AmbiguousUID> uids;
-            for(auto& entity : entities)
-                uids.push_back(entity.uid);
-            return uids;
-        }
+        std::vector<wiki::AmbiguousUID> all_named_entities() const;
         void filter_false_named_entity(wiki::OpNamedEntity const &op,
-                                       POSUIDindex const& posUIDs){
-            for(auto it=entities.begin(); it<entities.end();){
-                auto& entity = *it;
-                if(entity.idxs.size()!=1) {
-                    for(auto iit = entity.uid.candidates.begin();iit!=entity.uid.candidates.end();){
-                        auto& uid=*iit;
-                        if(!op.is_named_entity(uid)){
-                            std::swap(uid, entity.uid.candidates.back());
-                            entity.uid.candidates.pop_back();
-                            continue;
-                        } else{
-                            ++iit;
-                        }
-                    }
-                    for(auto iit = entity.candidates.begin();iit!=entity.candidates.end();){
-                        auto& elm=*iit;
-                        if(!op.is_named_entity(elm.uid)){
-                            std::swap(elm, entity.candidates.back());
-                            entity.candidates.pop_back();
-                            continue;
-                        } else{
-                            ++iit;
-                        }
-                    }
-                    if(entity.candidates.empty()){
-                        for(auto idx : entity.idxs){
-                            words.push_back({orig,idx});
-                        }
-                        std::swap(entity, entities.back());
-                        entities.pop_back();
-                    } else{
-                        ++it;
-                    }
-                } else{
-                    auto idx = entity.idxs.front();
-                    auto is_noun = [&posUIDs](auto pos){
-                        auto NN = posUIDs["NN"];
-                        auto NNS = posUIDs["NNS"];
-                        auto NNP = posUIDs["NNP"];
-                        auto NNPS = posUIDs["NNPS"];
-                        return pos==NN||pos==NNS||pos==NNP||pos==NNPS;
-                    };
-                    auto pos = this->orig.dict->pos(idx);
-                    if(is_noun(pos)) {
-                        ++it;
-                    } else{
-                        words.push_back({orig,idx});
-                        std::swap(entity, entities.back());
-                        entities.pop_back();
-                    }
-                }
-            }
-        }
+                                       POSUIDindex const& posUIDs);
         Sentence const& orig;
         std::vector<AmbiguousEntity> entities;
         std::vector<DepPair> words;

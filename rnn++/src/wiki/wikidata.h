@@ -19,6 +19,8 @@ struct DepParsedTokens;
 namespace wikidata{
 
 struct SortedEntities{
+    void to_file(std::string filename) const;
+    static SortedEntities from_file(std::string filename);
     std::vector<wordrep::wiki::Entity> entities;
 };
 

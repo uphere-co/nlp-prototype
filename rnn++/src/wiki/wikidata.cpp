@@ -1,4 +1,5 @@
-#include "src/wiki/wikidata.h"
+#include "wiki/wikidata.h"
+#include "wiki/io.h"
 
 #include <sstream>
 #include <fstream>
@@ -78,6 +79,66 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
 
 namespace wikidata{
 
+void SortedEntities::to_file(std::string filename) const{
+    flatbuffers::FlatBufferBuilder builder;
+    namespace fb = wikidata::io;
+    std::vector<fb::Entity> es;
+    std::vector<int64_t> names;
+    names.reserve(entities.size()*5);
+    uint32_t name_beg=0;
+    uint32_t name_end=0;
+    for(auto& e : entities){
+        name_end = name_beg+e.words.size();
+        es.push_back({e.uid.val, name_beg,name_end});
+        for(auto w : e.words) names.push_back(w.val);
+        name_beg = name_end;
+    }
+
+    auto names_serialized = builder.CreateVector(names);
+    auto es_serialized = builder.CreateVectorOfStructs(es);
+    auto entities = fb::CreateSortedEntities(builder, es_serialized, names_serialized);
+    builder.Finish(entities);
+
+    auto *buf = builder.GetBufferPointer();
+    auto size = builder.GetSize();
+
+    std::ofstream outfile(filename, std::ios::binary);
+    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    outfile.write(reinterpret_cast<const char *>(buf), size);
+}
+
+SortedEntities SortedEntities ::from_file(std::string filename){
+    util::Timer timer;
+    std::ifstream input_file (filename, std::ios::binary);
+    namespace fb = wikidata::io;
+    flatbuffers::uoffset_t read_size;
+    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
+    auto data = std::make_unique<char[]>(read_size);
+    input_file.read(data.get(), read_size);
+    timer.here_then_reset("Read file.");
+
+    auto rbuf = fb::GetSortedEntities(data.get());
+    auto n = rbuf->entities()->size();
+    SortedEntities entities;
+    entities.entities.reserve(n);
+    timer.here_then_reset("Prepare construction.");
+
+    auto& entities_buf = *rbuf->entities();
+    auto& names_buf = *rbuf->names();
+    tbb::concurrent_vector<wordrep::wiki::Entity> es(n,{-1,{}});
+    tbb::parallel_for(decltype(n){0}, n, [&names_buf,&entities_buf,&es](auto i){
+        auto it=entities_buf[i];
+        std::vector<wordrep::WordUID> words;
+        for(auto j=it->name_beg(); j!=it->name_end();++j) words.push_back(names_buf[j]);
+        es[i]={it->uid(), std::move(words)};
+    });
+
+    timer.here_then_reset("Construct temporal entities");
+    for(auto&& e : es) entities.entities.push_back(std::move(e));
+    timer.here_then_reset("Construct SortedEntities");
+    return entities;
+}
+
 std::string AnnotatedToken::repr(wordrep::wiki::EntityReprs const& entity_reprs,
                  wordrep::WikidataUIDindex const& wikidataUIDs,
                  wordrep::WordUIDindex const& wordUIDs) const {
@@ -116,6 +177,7 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
     timer.here_then_reset("Sorted items.");
     std::vector<wordrep::wiki::Entity> entities;
     for(auto&& item : items) entities.push_back(std::move(item));
+    timer.here_then_reset("Build SortedEntities.");
     return SortedEntities{std::move(entities)};
 }
 

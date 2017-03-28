@@ -131,7 +131,7 @@ inline const util::flatbuffer::Entities *GetEntities(const void *buf) {
 }
 
 inline const char *EntitiesIdentifier() {
-  return "enti";
+  return "ufwe";
 }
 
 inline bool EntitiesBufferHasIdentifier(const void *buf) {
@@ -145,7 +145,7 @@ inline bool VerifyEntitiesBuffer(
 }
 
 inline const char *EntitiesExtension() {
-  return "enti";
+  return "ufwe";
 }
 
 inline void FinishEntitiesBuffer(

@@ -42,23 +42,29 @@ typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::get_uid(std::string const &word) 
     return uid_t::from_unsigned(hash(word));
 }
 
-//using WordUIDindex = UIDIndex<WordUID>;
 template<typename TUID>
-typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::operator[] (std::string const &word) const {
+typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::uid(std::string const &word) const {
     return get_uid(word);
 }
 template<typename TUID>
-std::string UIDIndex<TUID>::operator[](uid_t uid) const {
+std::string UIDIndex<TUID>::str(uid_t uid) const {
     auto eq   = [uid](auto x){return uid==x.first;};
     auto less = [uid](auto x){return uid<x.first;};
     auto mit = util::binary_find(uid2word, eq, less);
     if(!mit) return the_unknown_word();
     auto it = mit.value();
     return it->second;
-//    auto it=uid2word.find(uid.val);
-//    if(it==uid2word.cend()) return the_unknown_word();
-//    return it->second;
 }
+
+template<typename TUID>
+typename UIDIndex<TUID>::uid_t UIDIndex<TUID>::operator[] (std::string const &word) const {
+    return this->uid(word);
+}
+template<typename TUID>
+std::string UIDIndex<TUID>::operator[](uid_t uid) const {
+    return this->str(uid);
+}
+
 template<typename TUID>
 void UIDIndex<TUID>::write_to_disk(std::string filename) const {
     std::ofstream file;

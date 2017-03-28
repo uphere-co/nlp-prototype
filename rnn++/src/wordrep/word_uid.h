@@ -16,6 +16,8 @@ public:
     bool isin(uid_t uid) const;
     uid_t operator[] (std::string const &word) const;
     std::string operator[](uid_t uid) const;
+    uid_t uid(std::string const &word) const;
+    std::string str(uid_t uid) const;
     void write_to_disk (std::string filename) const;
     auto size() const {return uid2word.size();}
     std::vector<uid_t> get_uids() const;

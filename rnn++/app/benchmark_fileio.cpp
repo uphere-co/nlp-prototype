@@ -178,9 +178,6 @@ struct Foo{
     friend bool operator!=(Foo const& lhs, Foo const& rhs){
         return !(lhs==rhs);
     }
-//    fb::Entity serialize() const{
-//        return {id, len()};
-//    }
 };
 
 void test_complex_data_io(){
