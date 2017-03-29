@@ -1,64 +1,41 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
+module Run where
 
-module Main where
-
+import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Types
-import Control.Applicative                  ((<$>), (<*>))
 import qualified Data.ByteString.Lazy as BL
-import           Data.Text                  (Text)
-import           GHC.Generics
 import           System.Directory           (createDirectoryIfMissing)
 import           System.Environment
 import           System.Process
 --
-import           Type
+import      Type
 
-getDefYGP :: IO ConfigYGP
-getDefYGP = do
-  ygp <- BL.readFile "../config.ygp.json.default"
-  let mv =  decode ygp
-  case mv of
-    Nothing -> error "JSON is not valid."
-    Just  v -> return v
-
-getDefRSS :: IO ConfigRSS
-getDefRSS = do
-  rss <- BL.readFile "../config.rss.json.default"
-  let mv =  decode rss
-  case mv of
-    Nothing -> error "JSON is not valid."
-    Just  v -> return v
-
-
-runYGP :: IO ()
-runYGP = do  
-  -- Write JSON config files.
-  defYGP <- getDefYGP
-  defRSS <- getDefRSS
-  
-  BL.writeFile "config.ygp.json" (encode defYGP)
-  BL.writeFile "config.rss.json" (encode defRSS)
-  
+mkRnnApp :: IO ()
+mkRnnApp = do
   -- Build apps in rnn++.
   callProcess "cmake" ["../../rnn++"]
   callProcess "make" ["-j20"]
   putStrLn "rnn++ app build completed"
-  
+
+mkCoreNLPApp :: IO ()
+mkCoreNLPApp = do
   -- Build apps in corenlp.
   callCommand "ghc -o count ../../corenlp/wiki/count.hs ../../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o corenlp_ner ../../corenlp/wiki/corenlp_ner.hs ../../corenlp/wiki/corenlp.hs ../../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o ne_by_property ../../corenlp/wiki/ne_by_property.hs ../../corenlp/wiki/wikidata.hs"
   callCommand "ghc -o wikidata_ner ../../corenlp/wiki/wikidata_ner.hs ../../corenlp/wiki/wikidata.hs"
   putStrLn "corenlp app build completed"
-  
-  -- Dump the YGP DB, and produce all_words
-  callCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
-  callCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
-  callCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
-  putStrLn "all_words produced"
 
+-- Write JSON config files.
+writeJSON :: EngineType -> IO ()
+writeJSON typ = do
+  case typ of
+    YGP -> getDefYGP >>= (\x -> BL.writeFile "config.ygp.json" (encode x))
+    RSS -> getDefRSS >>= (\x -> BL.writeFile "config.rss.json" (encode x))
+
+
+doWikidataAnalysis :: IO ()
+doWikidataAnalysis = do
   -- From Wikidata JSON dump, produces wikidata.items which is the first source of all wikidata data
   callCommand "pigz -dc /opt/wikidata-20170206-all.json.gz | ./wikidata_etl config.ygp.json >wikidata.items"
   putStrLn "wikidata.items produced"
@@ -91,25 +68,55 @@ runYGP = do
   callCommand "cat wikidata.items | awk -F '\t' 'NF==5{print $1 \"\t\" $3}' > wikidata.properties"
 
   putStrLn "wikidata items produced"
-
-
-  createDirectoryIfMissing True "YGP.json"
-  -- callCommand "find /opt/YGP.text -type f | xargs -P20 -I {} python ../../rnn++/scripts/corenlp.py {} YGP.json/" -- time-consuming
-  putStrLn "corenlp parsing for YGP completed"
-
-  -- callCommand "find YGP.json/  -name '*.*.*.*' > ygp.corenlp" -- This is original command
-  callCommand "find /opt/YGP.json/  -name '*.*.*.*' > ygp.corenlp"
-  let minorVersion = ("0" :: String)
-  callCommand $ "make -j20 && time ./ygpdb_etl config.ygp.json ygp.corenlp " ++ minorVersion
-  putStrLn "indexing YGP completed"
   
+
+dumpYGPDB :: IO ()
+dumpYGPDB = do
+  -- Dump the YGP DB, and produce all_words
+  callCommand "./ygpdb_dump /data/groups/uphere/similarity_test/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb"
+  callCommand "cat ygp.text.ptb | ./word_count | awk '{print $1}' >> all_words.duplicate"
+  callCommand "cat all_words.duplicate | ./word_count | awk '{print $1}' >> all_words"
+  putStrLn "all_words produced"
+
+parseCoreNLP :: EngineType -> MinorVersion -> IO ()
+parseCoreNLP typ ver = do
+  case typ of
+    YGP -> do
+      createDirectoryIfMissing True "YGP"
+      createDirectoryIfMissing True "YGP.json"
+
+      -- callCommand "find /opt/YGP.text -type f | xargs -P20 -I {} python ../../rnn++/scripts/corenlp.py {} YGP.json/" -- time-consuming
+      putStrLn "corenlp parsing for YGP completed"
+      -- callCommand "find YGP.json/  -name '*.*.*.*' > ygp.corenlp" -- This is original command
+      callCommand "find /opt/YGP.json/  -name '*.*.*.*' > ygp.corenlp"
+      callCommand $ "time ./ygpdb_etl config.ygp.json ygp.corenlp " ++ (show ver)
+      putStrLn "indexing YGP completed"
+    RSS -> do
+      createDirectoryIfMissing True "RSS"      
+      createDirectoryIfMissing True "RSS.text"
+      createDirectoryIfMissing True "RSS.json"
+
+      -- callCommand "find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../../rss_crawler/parse_article.py NYT {} RSS.text/" -- time-consuming
+      -- callCommand "find RSS.text -type f | xargs -P20 -I {} python ../../rnn++/scripts/corenlp.py {} RSS.json/" -- time-consuming
+      -- callCommand $ "find RSS.json/ -type f > rss_jsons" -- This is original command
+      callCommand $ "find /opt/RSS.json/ -type f > rss_jsons"
+      callCommand $ "time ./rss_dump config.rss.json rss_jsons " ++ (show ver)
+      putStrLn "indexing RSS completed"
+
+
+
+-- Word Importance !! You should run this function after pipeline processing for YGP and RSS is finished.
+calculateWI :: IO ()
+calculateWI = do
   callCommand "./word_importance_build"
+  
+runYGP :: IO ()
+runYGP = do  
+  dumpYGPDB  
+  parseCoreNLP YGP 0
+  putStrLn "YGP Pipeline Finished!"
 
-  putStrLn "Pipeline finished!"
-
-
-
-
-main :: IO ()
-main = do
-  runYGP
+runRSS :: IO ()
+runRSS = do
+  parseCoreNLP RSS 0
+  putStrLn "RSS Pipeline Finished!"

@@ -3,6 +3,7 @@
 
 module Type where
 
+import qualified Data.ByteString.Lazy as BL
 import           Data.Aeson
 import           Data.Aeson.Types
 import           GHC.Generics
@@ -65,3 +66,23 @@ instance FromJSON ConfigRSS where
     parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 1 }
 
 
+getDefYGP :: IO ConfigYGP
+getDefYGP = do
+  ygp <- BL.readFile "../config.ygp.json.default"
+  let mv =  decode ygp
+  case mv of
+    Nothing -> error "JSON is not valid."
+    Just  v -> return v
+
+getDefRSS :: IO ConfigRSS
+getDefRSS = do
+  rss <- BL.readFile "../config.rss.json.default"
+  let mv =  decode rss
+  case mv of
+    Nothing -> error "JSON is not valid."
+    Just  v -> return v
+
+
+data EngineType = YGP | RSS
+
+type MinorVersion = Int
