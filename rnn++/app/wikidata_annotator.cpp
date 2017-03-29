@@ -18,7 +18,6 @@
 #include "utils/string.h"
 #include "utils/json.h"
 
-
 #include "wordrep/io.h"
 //using util::get_str;
 //using util::find;
@@ -845,6 +844,52 @@ void serial_load_wikidata_entities(int argc, char** argv){
     }
 }
 
+
+void test_property_table(){
+    using util::io::fb::deserialize_pairs;
+    using util::io::fb::load_binary_file;
+
+    std::string properties_filename = "wikidata.P31.e2p.bin";
+    std::string instances_filename = "wikidata.P31.p2e.bin";
+    util::Timer timer;
+    auto wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});
+    timer.here_then_reset("Load WikiUIDs.");
+
+
+    auto data = util::io::fb::load_binary_file(properties_filename);
+    timer.here_then_reset(fmt::format("Read file. {}", properties_filename));
+    auto properties = deserialize_pairs<wikidata::EntityProperty>(std::move(data));
+    timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
+    auto instances  = deserialize_pairs<wikidata::PropertyEntity>(load_binary_file(instances_filename));
+    timer.here_then_reset(fmt::format("Construct {} instance values.", instances.size()));
+    wikidata::PropertyTable table{std::move(properties), std::move(instances)};
+    timer.here_then_reset("Load PropertyTable.");
+
+    auto entity = wikiUIDs->uid("Q419");
+    for(auto uid : table.get_p31_properties(entity))
+        fmt::print("{} : {}\n", wikiUIDs->str(entity), wikiUIDs->str(uid));
+
+    entity = wikiUIDs->uid("Q95");
+    for(auto uid : table.get_p31_properties(entity))
+        fmt::print("{} : {}\n", wikiUIDs->str(entity), wikiUIDs->str(uid));
+
+    assert(table.get_p31_properties(wikiUIDs->uid("Q09832broken333333333")).empty());
+    assert(!table.get_p31_properties(wikiUIDs->uid("Q419")).empty());
+    {
+        util::Timer timer;
+        wikidata::PropertyTable table{"/home/jihuni/word2vec/rss/wikidata.properties"};
+        timer.here_then_reset("Load PropertyTable.");
+
+        auto entity = wikiUIDs->uid("Q419");
+        for(auto uid : table.get_p31_properties(entity))
+            fmt::print("{} : {}\n", wikiUIDs->str(entity), wikiUIDs->str(uid));
+
+        entity = wikiUIDs->uid("Q95");
+        for(auto uid : table.get_p31_properties(entity))
+            fmt::print("{} : {}\n", wikiUIDs->str(entity), wikiUIDs->str(uid));
+    }
+}
+
 namespace util{
 namespace io{
 namespace fb{
@@ -875,10 +920,7 @@ void test_all(){
 }//namespace util
 
 
-struct PropertyEdge{
-    wordrep::WikidataUID entity;
-    wordrep::WikidataUID property;
-};
+
 
 
 void proptext_to_binary_file(){
@@ -888,7 +930,7 @@ void proptext_to_binary_file(){
     std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
     std::ifstream is{wikidata_properties};
     tbb::task_group g;
-    tbb::concurrent_vector<PropertyEdge> items;
+    tbb::concurrent_vector<wikidata::EntityProperty> items;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
         auto& chars =  buffer.value();
         g.run([&items,chars{std::move(chars)}](){
@@ -897,6 +939,8 @@ void proptext_to_binary_file(){
             auto lines = util::string::readlines(std::move(ss));
             for(auto& line : lines){
                 wikidata::PropertiesTriple ps{line};
+                auto p31 = wordrep::WikidataUIDindex::get_uid("P31");
+                if(ps.property_type != p31) continue;
                 for(auto p : ps.properties)
                     items.push_back({ps.entity, p});
             }
@@ -918,32 +962,6 @@ void proptext_to_binary_file(){
     util::io::fb::to_file(entity2property, "wikidata.P31.e2p.bin");
     util::io::fb::to_file(property2entity, "wikidata.P31.p2e.bin");
     timer.here_then_reset("Write files.");
-}
-
-void from_property_file(){
-    namespace fb = util::io::fb;
-
-    std::string filename = "wikidata.P31.e2p.bin";
-    util::Timer timer;
-    std::ifstream input_file (filename, std::ios::binary);
-    flatbuffers::uoffset_t read_size;
-    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
-    auto data = std::make_unique<char[]>(read_size);
-    input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("Read file. {}", filename));
-
-    auto rbuf = fb::GetPairs(data.get());
-    auto& properties_buf = *rbuf->vals();
-    auto n = properties_buf.size();
-    tbb::concurrent_vector<PropertyEdge> properties;
-    properties.resize(n,{-1,-1});
-    timer.here_then_reset("Prepare construction.");
-
-    tbb::parallel_for(decltype(n){0},n, [&properties_buf,&properties](auto i) {
-        auto it=properties_buf[i];
-        properties[i]={it->key(), it->value()};
-    });
-    timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
 }
 
 void bar(){
@@ -992,8 +1010,8 @@ int main(int argc, char** argv){
 //    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
 
-    proptext_to_binary_file();
-    from_property_file();
+//    proptext_to_binary_file();
+    test_property_table();
 
     //annotate_sentences(argc,argv);
 
