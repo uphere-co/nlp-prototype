@@ -6,10 +6,10 @@ namespace util {
 namespace io {
 namespace fb {
 
-inline bool operator<(Pair const& x, Pair const& y) {
+inline bool operator<(Pair x, Pair y) {
     return x.key() < y.key();
 }
-inline bool operator==(Pair const& x, Pair const& y) {
+inline bool operator==(Pair x, Pair y) {
     return x.key() == y.key();
 }
 
