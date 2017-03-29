@@ -946,7 +946,43 @@ void from_property_file(){
     timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
 }
 
+void bar(){
+    std::string pos_uids  = "/home/jihuni/word2vec/rss/poss.uid";
+    wordrep::POSUIDindex posUIDs{pos_uids};
+    posUIDs.to_file({"poss.uid.bin"});
 
+    std::string wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid";
+    wordrep::WikidataUIDindex wikiUIDs{wikidata_uids};
+    wikiUIDs.to_file({"wikidata.uid.bin"});
+
+    std::string named_entity_wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid.ne";
+    wordrep::WikidataUIDindex wikiNEUIDs{named_entity_wikidata_uids};
+    wikiNEUIDs.to_file({"wikidata.uid.ne.bin"});
+}
+void foo(){
+    util::Timer timer;
+    using wordrep::wiki::SortedEntities;
+    using wordrep::UIDIndexBinary;
+    UIDIndexBinary word_uids{"words.uid.bin"};
+    UIDIndexBinary pos_uids{"poss.uid.bin"};
+    SortedEntities::Binary wikidata_entities{"wikidata.entities.bin"};
+    std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
+    UIDIndexBinary named_entity_wikidata_uids{"wikidata.uid.ne.bin"};
+    UIDIndexBinary wikidata_uids{"wikidata.uid.bin"};
+
+    std::unique_ptr<wordrep::WordUIDindex>        wordUIDs;
+    std::unique_ptr<wordrep::POSUIDindex>         posUIDs;
+    std::unique_ptr<wordrep::wiki::SortedEntities>    entities;
+    std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
+    std::unique_ptr<wikidata::GreedyAnnotator>    annotator;
+    std::unique_ptr<wikidata::PropertyTable>      prop_dict;
+    std::unique_ptr<wordrep::wiki::EntityReprs>   entity_reprs;
+    std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
+    std::unique_ptr<wordrep::WikidataUIDindex>    entityUIDs;
+    timer.here_then_reset("Ready.");
+    prop_dict = std::make_unique<wikidata::PropertyTable>(wikidata_properties);
+    timer.here_then_reset("Construct wikidata::PropertyTable");
+}
 
 int main(int argc, char** argv){
     util::Timer timer;
