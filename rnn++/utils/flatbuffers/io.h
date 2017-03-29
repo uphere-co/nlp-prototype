@@ -9,6 +9,10 @@ namespace util {
 namespace io {
 namespace fb {
 
+struct PairsBinary{
+    std::string name;
+};
+
 inline bool operator<(Pair x, Pair y) {
     return x.key() < y.key();
 }
@@ -16,8 +20,8 @@ inline bool operator==(Pair x, Pair y) {
     return x.key() == y.key();
 }
 
-void to_file(std::vector<Pair> const& vals, std::string filename);
-std::unique_ptr<char[]> load_binary_file(std::string filename);
+void to_file(std::vector<Pair> const& vals, PairsBinary file);
+std::unique_ptr<char[]> load_binary_file(PairsBinary file);
 
 template<typename T>
 tbb::concurrent_vector<T> deserialize_pairs(std::unique_ptr<char[]> data){
