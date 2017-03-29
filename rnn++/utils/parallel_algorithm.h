@@ -59,6 +59,14 @@ auto binary_find_block(tbb::concurrent_vector<T> const &vs, TE const& eq, TL con
     auto end = vs.cend();
     return binary_find_block(beg,end,eq, less);
 }
+template<typename T>
+auto binary_find_block(tbb::concurrent_vector<T> const &vs, T val){
+    auto eq   = [val](auto x){return val==x;};
+    auto less = [val](auto x){return val<x;};
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find_block(beg,end,eq, less);
+}
 
 
 }//namespace util

@@ -18,6 +18,8 @@
 #include "utils/string.h"
 #include "utils/json.h"
 
+
+#include "wordrep/io.h"
 //using util::get_str;
 //using util::find;
 //using util::has_key;
@@ -715,12 +717,12 @@ void annotate_sentences(int argc, char** argv){
     engine::SubmoduleFactory factory{{config_json}};
 
     util::Timer timer;
+    wikidata::EntityModule wiki{factory.wikientity_module()};
+    timer.here_then_reset("Load wikidata::EntityModule.");
     auto word_importance = factory.word_importance();
     timer.here_then_reset("Load word_importance.");
     auto wordUIDs = factory.word_uid_index();
     timer.here_then_reset("Load wordUIDs.");
-    wikidata::EntityModule wiki{factory.wikientity_module()};
-    timer.here_then_reset("Load wikidata::EntityModule.");
     auto voca = factory.voca_info();
     timer.here_then_reset("Load voca_info.");
     wordrep::Scoring scoring{word_importance, voca.wvecs};
@@ -843,13 +845,43 @@ void serial_load_wikidata_entities(int argc, char** argv){
     }
 }
 
+namespace util{
+namespace io{
+namespace fb{
+namespace test{
+
+void ordered_pair(){
+    std::cerr<< "util::io::fb::test::ordered_pair" <<std::endl;
+    std::vector<Pair> vals = {{1,1},{0,2},{1,3},{4,2},{5,2},{3,4},{2,4},{2,1},{4,5},{1,3}};
+    std::sort(vals.begin(), vals.end());
+    auto beg = vals.begin();
+
+    auto b = util::binary_find_block(vals, Pair{1,-1}).value();
+    assert(b.first==beg+1);
+    assert(b.second==beg+4);
+
+    auto b2 = util::binary_find_block(vals, Pair{2,-1}).value();
+    assert(b2.first==beg+4);
+    assert(b2.second==beg+6);
+}
+
+void test_all(){
+    ordered_pair();
+}
+
+}//namespace util::io::fb::test
+}//namespace util::io::fb
+}//namespace util::io
+}//namespace util
 
 int main(int argc, char** argv){
     util::Timer timer;
+    util::io::fb::test::test_all();
+
 //    save_wikidata_entities(argc,argv);
 //    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
-    annotate_sentences(argc,argv);
+    //annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
