@@ -1,5 +1,4 @@
 #include "wiki/wikidata.h"
-#include "wiki/io.h"
 
 #include <sstream>
 #include <fstream>
@@ -16,14 +15,12 @@
 
 namespace{
 using namespace wikidata;
-template<typename TI>
-std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> const& entities, TI sent_beg, TI sent_end) {
+template<typename TE, typename TI>
+std::vector<AnnotatedToken> greedy_annotate(TE beg, TE end, TI sent_beg, TI sent_end) {
     std::vector<AnnotatedToken> tokens;
     auto to_reverse = [](auto it){return std::reverse_iterator<decltype(it)>{it};};
     size_t offset=0;
     size_t i = 0;
-    auto beg = entities.cbegin();
-    auto end = entities.cend();
     auto pbeg = beg;
     auto pend = end;
 
@@ -79,66 +76,6 @@ std::vector<AnnotatedToken> greedy_annotate(std::vector<wordrep::wiki::Entity> c
 
 namespace wikidata{
 
-void SortedEntities::to_file(std::string filename) const{
-    flatbuffers::FlatBufferBuilder builder;
-    namespace fb = wikidata::io;
-    std::vector<fb::Entity> es;
-    std::vector<int64_t> names;
-    names.reserve(entities.size()*5);
-    uint32_t name_beg=0;
-    uint32_t name_end=0;
-    for(auto& e : entities){
-        name_end = name_beg+e.words.size();
-        es.push_back({e.uid.val, name_beg,name_end});
-        for(auto w : e.words) names.push_back(w.val);
-        name_beg = name_end;
-    }
-
-    auto names_serialized = builder.CreateVector(names);
-    auto es_serialized = builder.CreateVectorOfStructs(es);
-    auto entities = fb::CreateSortedEntities(builder, es_serialized, names_serialized);
-    builder.Finish(entities);
-
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-
-    std::ofstream outfile(filename, std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
-}
-
-SortedEntities SortedEntities ::from_file(std::string filename){
-    util::Timer timer;
-    std::ifstream input_file (filename, std::ios::binary);
-    namespace fb = wikidata::io;
-    flatbuffers::uoffset_t read_size;
-    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
-    auto data = std::make_unique<char[]>(read_size);
-    input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("wiki::SortedEntities::from_file: Read file. {}", filename));
-
-    auto rbuf = fb::GetSortedEntities(data.get());
-    auto n = rbuf->entities()->size();
-    SortedEntities entities;
-    entities.entities.reserve(n);
-    timer.here_then_reset("wiki::SortedEntities::from_file: Prepare construction.");
-
-    auto& entities_buf = *rbuf->entities();
-    auto& names_buf = *rbuf->names();
-    tbb::concurrent_vector<wordrep::wiki::Entity> es(n,{-1,{}});
-    tbb::parallel_for(decltype(n){0}, n, [&names_buf,&entities_buf,&es](auto i){
-        auto it=entities_buf[i];
-        std::vector<wordrep::WordUID> words;
-        for(auto j=it->name_beg(); j!=it->name_end();++j) words.push_back(names_buf[j]);
-        es[i]={it->uid(), std::move(words)};
-    });
-
-    timer.here_then_reset("wiki::SortedEntities::from_file: Construct temporal entities");
-    for(auto&& e : es) entities.entities.push_back(std::move(e));
-    timer.here_then_reset("wiki::SortedEntities::from_file: Construct SortedEntities");
-    return entities;
-}
-
 std::string AnnotatedToken::repr(wordrep::wiki::EntityReprs const& entity_reprs,
                  wordrep::WikidataUIDindex const& wikidataUIDs,
                  wordrep::WordUIDindex const& wordUIDs) const {
@@ -156,7 +93,7 @@ std::string AnnotatedToken::repr(wordrep::wiki::EntityReprs const& entity_reprs,
 }
 
 
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is){
     tbb::task_group g;
     tbb::concurrent_vector<wordrep::wiki::Entity> items;
 
@@ -175,13 +112,10 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
     timer.here_then_reset("Read all items.");
     tbb::parallel_sort(items.begin(), items.end());
     timer.here_then_reset("Sorted items.");
-    std::vector<wordrep::wiki::Entity> entities;
-    for(auto&& item : items) entities.push_back(std::move(item));
-    timer.here_then_reset("Build SortedEntities.");
-    return SortedEntities{std::move(entities)};
+    return {std::move(items)};
 }
 
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file){
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file){
     return read_wikidata_entities(wordUIDs, std::ifstream{entity_file});
 }
 
@@ -189,7 +123,7 @@ SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std
 
 
 std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID> const& text) const{
-    auto tokens = greedy_annotate(entities, text.begin(), text.end());
+    auto tokens = greedy_annotate(entities.cbegin(), entities.cend(), text.begin(), text.end());
 //    fmt::print("Annotator returns {} tokens.", tokens.size());
     std::vector<TaggedEntity> tagged;
     for(auto token : tokens){
@@ -206,7 +140,7 @@ std::vector<TaggedEntity> GreedyAnnotator::annotate(std::vector<wordrep::WordUID
 }
 
 wordrep::AnnotatedSentence GreedyAnnotator::annotate(wordrep::Sentence const& sent) const{
-    auto tokens = greedy_annotate(entities, sent.iter_words().begin(), sent.iter_words().end());
+    auto tokens = greedy_annotate(entities.cbegin(), entities.cend(), sent.iter_words().begin(), sent.iter_words().end());
 
     wordrep::AnnotatedSentence annoted_sent = {sent, util::map(tokens, [&sent](auto& t){return t.to_sent_token(sent);})};
     return annoted_sent;

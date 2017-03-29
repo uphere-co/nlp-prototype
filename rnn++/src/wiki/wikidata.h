@@ -18,12 +18,6 @@ struct DepParsedTokens;
 
 namespace wikidata{
 
-struct SortedEntities{
-    void to_file(std::string filename) const;
-    static SortedEntities from_file(std::string filename);
-    std::vector<wordrep::wiki::Entity> entities;
-};
-
 struct TaggedEntity{
     size_t offset;
     size_t len;
@@ -59,23 +53,20 @@ struct AnnotatedToken{
     }
 };
 
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
-SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::istream&& is);
+wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const& wordUIDs, std::string entity_file);
 
 
 
 struct GreedyAnnotator{
-    GreedyAnnotator(SortedEntities&& entities)
-            : entities{std::move(entities.entities)} {
-    }
-    GreedyAnnotator(SortedEntities const& entities)
-            : entities{entities.entities} {
+    GreedyAnnotator(wordrep::wiki::SortedEntities const& entities)
+            : entities{entities} {
     }
 
     std::vector<TaggedEntity> annotate(std::vector<wordrep::WordUID> const& text) const;
     wordrep::AnnotatedSentence annotate(wordrep::Sentence const& sent) const;
-
-    std::vector<wordrep::wiki::Entity> entities;
+private:
+    wordrep::wiki::SortedEntities const& entities;
 };
 
 //OP is one of OpCompare, OpEntityCompare and OpAmbiguousEntityCompare.
@@ -113,9 +104,10 @@ struct EntityModule{
             : wordUIDs{word_uids},
               posUIDs{pos_uids},
               entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
+              entities_by_uid{entities.to_uid_sorted()},
               annotator{entities},
               prop_dict{wikidata_properties},
-              entity_reprs{entities.entities},
+              entity_reprs{entities_by_uid},
               op_named_entity{named_entity_wikidata_uids, wordUIDs, entity_reprs},
               entityUIDs{wikidata_uids}
     {}
@@ -123,15 +115,17 @@ struct EntityModule{
             : wordUIDs{std::move(orig.wordUIDs)},
               posUIDs{std::move(orig.posUIDs)},
               entities{std::move(orig.entities)},
+              entities_by_uid{std::move(orig.entities_by_uid)},
               annotator{entities},
               prop_dict{std::move(orig.prop_dict)},
-              entity_reprs{entities.entities},
+              entity_reprs{entities_by_uid},
               op_named_entity{std::move(orig.op_named_entity.named_entities),wordUIDs, entity_reprs},
               entityUIDs{std::move(orig.entityUIDs)}
     {}
     wordrep::WordUIDindex wordUIDs;
     wordrep::POSUIDindex posUIDs;
-    SortedEntities entities;
+    wordrep::wiki::SortedEntities entities;
+    wordrep::wiki::UIDSortedEntities entities_by_uid;
     GreedyAnnotator annotator;
     PropertyTable  prop_dict;
     wordrep::wiki::EntityReprs entity_reprs;

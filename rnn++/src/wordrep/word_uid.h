@@ -4,16 +4,28 @@
 #include <unordered_map>
 #include <vector>
 
+#include "utils/parallel.h"
+
 #include "wordrep/indexes.h"
 
 namespace wordrep {
+
+struct UIDIndexBinary{
+    std::string val;
+};
 
 template<typename TUID>
 class UIDIndex{
 public:
     using uid_t = TUID;
     UIDIndex(std::string file);
-    UIDIndex(std::vector<std::pair<uid_t,std::string>> &&pairs);
+    UIDIndex(UIDIndexBinary filename);
+    UIDIndex(UIDIndex &&org)
+            : uid2word{std::move(org.uid2word)}
+    {}
+    UIDIndex(UIDIndex const& org)
+            : uid2word{org.uid2word}
+    {}
     bool isin(uid_t uid) const;
     uid_t operator[] (std::string const &word) const;
     std::string operator[](uid_t uid) const;
@@ -25,11 +37,10 @@ public:
 
     static uid_t get_uid(std::string const &word);
 
-    static UIDIndex from_file(std::string filename);
-    void to_file(std::string filename) const;
+    void to_file(UIDIndexBinary filename) const;
 
 private:
-    std::vector<std::pair<uid_t,std::string>> uid2word;
+    tbb::concurrent_vector<std::pair<uid_t,std::string>> uid2word;
 };
 
 //forward declarations.

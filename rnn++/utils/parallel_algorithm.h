@@ -39,5 +39,27 @@ auto to_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
     return out;
 }
 
+
+template<typename T>
+auto binary_find(tbb::concurrent_vector<T> const &vs, T val){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find(beg,end,val);
+}
+
+template<typename T, typename TE, typename TL>
+auto binary_find(tbb::concurrent_vector<T> const &vs, TE const& eq, TL const& less){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find(beg,end,eq, less);
+}
+template<typename T, typename TE, typename TL>
+auto binary_find_block(tbb::concurrent_vector<T> const &vs, TE const& eq, TL const& less){
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find_block(beg,end,eq, less);
+}
+
+
 }//namespace util
 

@@ -1,4 +1,4 @@
-namespace wikidata.io;
+namespace wordrep.wiki.io;
 
 struct Entity {
 uid:long;

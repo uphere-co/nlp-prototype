@@ -22,6 +22,7 @@
 //using util::find;
 //using util::has_key;
 
+
 namespace wikidata{
 namespace test {
 
@@ -29,10 +30,11 @@ struct UnittestDataset{
     UnittestDataset(engine::Config const& config)
     : factory{config},
       entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
+      entities_by_uid{entities.to_uid_sorted()},
       annotator{entities},
       p_dict{"../rnn++/tests/data/wikidata.test.properties"},
       wordUIDs{factory.word_uid_index()},
-      entity_reprs{entities.entities},
+      entity_reprs{entities_by_uid},
       op_acronym{wordUIDs},
       op_named_entity{"../rnn++/tests/data/wikidata.test.uid.named_entities",
                       wordUIDs, entity_reprs} {
@@ -48,7 +50,8 @@ struct UnittestDataset{
         sents = tokens.IndexSentences();
     }
     engine::SubmoduleFactory factory;
-    SortedEntities entities;
+    wordrep::wiki::SortedEntities entities;
+    wordrep::wiki::UIDSortedEntities entities_by_uid;
     GreedyAnnotator annotator;
     PropertyTable p_dict;
     wordrep::WordUIDindex wordUIDs;
@@ -104,12 +107,12 @@ void greedy_matching() {
              {8,   {5, 6, 8}},
              {9,   {9}},
              {10,  {9,10}}};
-    std::sort(items.begin(), items.end());
-    SortedEntities entities{items};
+    wordrep::wiki::SortedEntities entities{items};
     std::vector<wordrep::WordUID> text = {1, 2, 3, 4, 8, 9, 5, 2, 3, 4, 2, 3, 8, 9, 3, 4, 5, 6, 7};
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    auto entities_by_uid = entities.to_uid_sorted();
+    wordrep::wiki::EntityReprs entity_reprs{entities_by_uid};
     fmt::print("Entities :\n");
-    for (auto &item : entities.entities)
+    for (auto &item : entities)
         fmt::print("{}\n", item);
     fmt::print("Text :");
     for (auto t : text)
@@ -165,7 +168,8 @@ void compare_wordUIDs_and_WikidataUID(util::json_t const& config_json,
 
     auto words = util::string::split(query, " ");
     std::vector<WordUID> text = util::map(words, [&wordUIDs](auto x){return wordUIDs[x];});
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    auto entities_by_uid = entities.to_uid_sorted();
+    wordrep::wiki::EntityReprs entity_reprs{entities_by_uid};
     GreedyAnnotator annotator{entities};
 
     timer.here_then_reset("Build data structures.");
@@ -207,7 +211,7 @@ void annotate_sentence(util::json_t const& config_json){
     timer.here_then_reset("Prepare test data.");
 
     fmt::print(std::cerr, "List of Wikidata entities:\n");
-    for(auto entity : testset.entities.entities)
+    for(auto entity : testset.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
     for (auto sent : testset.sents) {
         fmt::print(std::cerr, "{}\n", sent.repr(wordUIDs));
@@ -231,7 +235,7 @@ void operation_wikiuid_on_sentence(util::json_t const& config_json){
     auto nlp = wikidataUIDs["Q2"];
     auto google = wikidataUIDs["Q3"];
     fmt::print(std::cerr, "List of Wikidata entities:\n");
-    for(auto entity : testset.entities.entities)
+    for(auto entity : testset.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
 
     auto op= entity_reprs.get_comparison_operator();
@@ -426,7 +430,8 @@ void block_binary_search(){
     assert(diff(find(7))==1);
     assert(diff(find(8))==2);
     assert(diff(find(10))==1);
-    wordrep::wiki::EntityReprs entity_reprs{items};
+    wordrep::wiki::UIDSortedEntities entities{items};
+    wordrep::wiki::EntityReprs entity_reprs{entities};
     auto op=entity_reprs.get_comparison_operator(1);
     assert(op.exact_match({1,2}));
 }
@@ -676,7 +681,7 @@ void scoring_words(util::json_t const& config_json){
     timer.here_then_reset("Check sentences contain all named entities in query.");
     auto op_query_similarity = scoring.op_sentence_similarity(sent_to_scored2);
     auto m_scored_sent1 = op_query_similarity.score(sent_to_scored1);
-    assert(!m_scored_sent1);
+    assert(m_scored_sent1);
     auto scored_sent1 = m_scored_sent1.value();
     for(auto entity : scored_sent1.entities){
         if(!entity.second) continue;
@@ -705,7 +710,7 @@ void test_all(int argc, char** argv){
 }//namespace wordrep
 
 void annotate_sentences(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -743,8 +748,10 @@ void annotate_sentences(int argc, char** argv){
     });
 }
 
+using wordrep::UIDIndexBinary;
+
 void save_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -754,66 +761,68 @@ void save_wikidata_entities(int argc, char** argv){
     timer.here_then_reset("Load UID indexes.");
     auto entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
     timer.here_then_reset("Load wikidata entities.");
-    entities.to_file("wikidata.entities.bin");
+    entities.to_file(wordrep::wiki::SortedEntities::Binary{"wikidata.entities.bin"});
     timer.here_then_reset("Save to binary file : wikidata.entities.bin");
-    wordUIDs.to_file("words.uid.bin");
+    wordUIDs.to_file(UIDIndexBinary{"words.uid.bin"});
     timer.here_then_reset("Save to binary file : words.uid.bin");
-    wikiUIDs.to_file("wikidata.uid.bin");
+    wikiUIDs.to_file(UIDIndexBinary{"wikidata.uid.bin"});
     timer.here_then_reset("Save to binary file : wikidata.uid.bin");
 }
 
 void concurrent_load_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
+    using wordrep::wiki::SortedEntities;
 
     util::Timer timer;
     timer.here_then_reset("concurrent_load_wikidata_entities: Start test : concurrent_load_wikidata_entities.");
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
-    wikidata::SortedEntities entities;
+    std::unique_ptr<SortedEntities> entities;
 
 //    Concurrent version: ~3.2s
     //1762.78
     tbb::task_group g;
 //    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
 //    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
-    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(wordrep::WordUIDindex::from_file("words.uid.bin"));});
-    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wordrep::WikidataUIDindex::from_file("wikidata.uid.bin"));});
-    g.run([&entities](){entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");});
+    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(UIDIndexBinary{"words.uid.bin"});});
+    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});});
+    g.run([&entities](){entities = std::make_unique<SortedEntities>(SortedEntities::Binary{"wikidata.entities.bin"});});
     g.wait();
-    timer.here_then_reset("concurrent_load_wikidata_entities: Load data.");
+    timer.here_then_reset("concurrent_load_wikidata_entities: Load all data.");
 
     int i=0;
-    for(auto& entity : entities.entities){
+    for(auto& entity : *entities){
         fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
         if(++i>100) break;
     }
 }
 void serial_load_wikidata_entities(int argc, char** argv){
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
+    using wordrep::wiki::SortedEntities;
 
     util::Timer timer;
     timer.here_then_reset("serial_load_wikidata_entities: Start test : serial_load_wikidata_entities.");
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
-    wikidata::SortedEntities entities;
+    std::unique_ptr<SortedEntities> entities;
 
-   //Serial version: ~7s = 1.7+2.8+2.2
 //    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
-    wordUIDs = std::make_unique<wordrep::WordUIDindex>(wordrep::WordUIDindex::from_file("words.uid.bin"));
+    wordUIDs = std::make_unique<wordrep::WordUIDindex>(UIDIndexBinary{"words.uid.bin"});
     timer.here_then_reset("serial_load_wikidata_entities: Load wordUIDs");
 //    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
-    wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wordrep::WikidataUIDindex::from_file("wikidata.uid.bin"));
+    wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});
     timer.here_then_reset("serial_load_wikidata_entities: Load wikiUIDs");
 //    entities = wikidata::read_wikidata_entities(*wordUIDs, factory.config.value("wikidata_entities"));
-    entities = wikidata::SortedEntities::from_file("wikidata.entities.bin");
+    //entities = wordrep::wiki::SortedEntities::from_file("wikidata.entities.bin");
+    entities = std::make_unique<SortedEntities>(SortedEntities::Binary{"wikidata.entities.bin"});
     timer.here_then_reset("serial_load_wikidata_entities: Load wiki entities.");
 
     int i=0;
-    for(auto& entity : entities.entities){
+    for(auto& entity : *entities){
         fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
         if(++i>100) break;
     }
@@ -826,11 +835,10 @@ int main(int argc, char** argv){
     concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
 //    annotate_sentences(argc,argv);
-    return 0;
 
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
-//    return 0;
+    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
@@ -847,7 +855,8 @@ int main(int argc, char** argv){
 
     auto entities = wikidata::read_wikidata_entities(wordUIDs, std::move(std::cin));
     timer.here_then_reset("Read items.");
-    wordrep::wiki::EntityReprs entity_reprs{entities.entities};
+    auto entities_by_uid = entities.to_uid_sorted();
+    wordrep::wiki::EntityReprs entity_reprs{entities_by_uid};
     timer.here_then_reset("Build data structures.");
     wikidata::GreedyAnnotator annotator{std::move(entities)}; //Move. It took a few seconds, otherwise.
     timer.here_then_reset("Build data structures.");
