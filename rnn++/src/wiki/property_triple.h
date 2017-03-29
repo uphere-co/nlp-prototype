@@ -18,8 +18,8 @@
 
 namespace wikidata{
 
-struct PropertyTriple{
-    PropertyTriple(std::string line){
+struct PropertiesTriple{
+    PropertiesTriple(std::string line){
         auto tokens = util::string::split(line, "\t");
         if (tokens.size() != 2) {
             fmt::print("{}\n", line);
@@ -42,7 +42,7 @@ struct PropertyTable{
     PropertyTable(std::string file){
         std::ifstream is{file};
         tbb::task_group g;
-        tbb::concurrent_vector<PropertyTriple> items;
+        tbb::concurrent_vector<PropertiesTriple> items;
         while (auto buffer=util::string::read_chunk(is, 2000000)) {
             auto& chars =  buffer.value();
             g.run([&items, chars{std::move(chars)}](){
@@ -56,7 +56,7 @@ struct PropertyTable{
         g.wait();
 
         auto p31 = wordrep::WikidataUIDindex::get_uid("P31");
-        for(PropertyTriple item : items){
+        for(PropertiesTriple item : items){
             if(item.property_type == p31) {
                 p31_properties[item.entity] = item.properties;
                 for (auto property : item.properties)

@@ -874,6 +874,78 @@ void test_all(){
 }//namespace util::io
 }//namespace util
 
+
+struct PropertyEdge{
+    wordrep::WikidataUID entity;
+    wordrep::WikidataUID property;
+};
+
+
+void proptext_to_binary_file(){
+    namespace fb = util::io::fb;
+
+    util::Timer timer;
+    std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
+    std::ifstream is{wikidata_properties};
+    tbb::task_group g;
+    tbb::concurrent_vector<PropertyEdge> items;
+    while (auto buffer=util::string::read_chunk(is, 2000000)) {
+        auto& chars =  buffer.value();
+        g.run([&items,chars{std::move(chars)}](){
+            std::stringstream ss;
+            ss.str(chars.data());
+            auto lines = util::string::readlines(std::move(ss));
+            for(auto& line : lines){
+                wikidata::PropertiesTriple ps{line};
+                for(auto p : ps.properties)
+                    items.push_back({ps.entity, p});
+            }
+        });
+    }
+    g.wait();
+    timer.here_then_reset(fmt::format("Load file : {} items.", items.size()));
+
+    std::vector<fb::Pair> entity2property;
+    std::vector<fb::Pair> property2entity;
+    entity2property.reserve(items.size());
+    property2entity.reserve(items.size());
+    for(auto item : items) entity2property.push_back({item.entity.val, item.property.val});
+    for(auto item : items) property2entity.push_back({item.property.val, item.entity.val});
+    timer.here_then_reset("Copy data.");
+    tbb::parallel_sort(entity2property.begin(),entity2property.end());
+    tbb::parallel_sort(property2entity.begin(),property2entity.end());
+    timer.here_then_reset("Sort data.");
+    util::io::fb::to_file(entity2property, "wikidata.P31.e2p.bin");
+    util::io::fb::to_file(property2entity, "wikidata.P31.p2e.bin");
+    timer.here_then_reset("Write files.");
+}
+
+void from_property_file(){
+    namespace fb = util::io::fb;
+
+    std::string filename = "wikidata.P31.e2p.bin";
+    util::Timer timer;
+    std::ifstream input_file (filename, std::ios::binary);
+    flatbuffers::uoffset_t read_size;
+    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
+    auto data = std::make_unique<char[]>(read_size);
+    input_file.read(data.get(), read_size);
+    timer.here_then_reset(fmt::format("Read file. {}", filename));
+
+    auto rbuf = fb::GetPairs(data.get());
+    auto& properties_buf = *rbuf->vals();
+    auto n = properties_buf.size();
+    tbb::concurrent_vector<PropertyEdge> properties;
+    properties.resize(n,{-1,-1});
+    timer.here_then_reset("Prepare construction.");
+
+    tbb::parallel_for(decltype(n){0},n, [&properties_buf,&properties](auto i) {
+        auto it=properties_buf[i];
+        properties[i]={it->key(), it->value()};
+    });
+    timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
+}
+
 int main(int argc, char** argv){
     util::Timer timer;
     util::io::fb::test::test_all();
@@ -881,6 +953,10 @@ int main(int argc, char** argv){
 //    save_wikidata_entities(argc,argv);
 //    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
+
+    proptext_to_binary_file();
+    from_property_file();
+
     //annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);
