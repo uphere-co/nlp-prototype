@@ -860,9 +860,9 @@ void test_property_table(){
     auto data = util::io::fb::load_binary_file(properties_file);
     timer.here_then_reset(fmt::format("Read file. {}", properties_file.name));
     auto properties = deserialize_pairs<wikidata::EntityProperty>(std::move(data));
-    timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
+    timer.here_then_reset(fmt::format("Construct {} property values.", properties->size()));
     auto instances  = deserialize_pairs<wikidata::PropertyEntity>(load_binary_file(instances_file));
-    timer.here_then_reset(fmt::format("Construct {} instance values.", instances.size()));
+    timer.here_then_reset(fmt::format("Construct {} instance values.", instances->size()));
     wikidata::PropertyTable table{std::move(properties), std::move(instances)};
     timer.here_then_reset("Construct PropertyTable.");
 
@@ -980,6 +980,7 @@ void foo(){
     using wordrep::wiki::SortedEntities;
     using wordrep::UIDIndexBinary;
     using util::io::fb::PairsBinary;
+
     UIDIndexBinary word_uids{"words.uid.bin"};
     UIDIndexBinary pos_uids{"poss.uid.bin"};
     SortedEntities::Binary wikidata_entities{"wikidata.entities.bin"};
@@ -990,16 +991,16 @@ void foo(){
 
     std::unique_ptr<wordrep::WordUIDindex>        wordUIDs;
     std::unique_ptr<wordrep::POSUIDindex>         posUIDs;
+    std::unique_ptr<wordrep::WikidataUIDindex>    wikiUIDs;
+    std::unique_ptr<wordrep::WikidataUIDindex>    wneUIDs;
     std::unique_ptr<wordrep::wiki::SortedEntities>    entities;
     std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
     std::unique_ptr<wikidata::GreedyAnnotator>    annotator;
     std::unique_ptr<wikidata::PropertyTable>      prop_dict;
     std::unique_ptr<wordrep::wiki::EntityReprs>   entity_reprs;
     std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
-    std::unique_ptr<wordrep::WikidataUIDindex>    entityUIDs;
+    
     timer.here_then_reset("Ready.");
-    prop_dict = std::make_unique<wikidata::PropertyTable>(wikidata_properties);
-    timer.here_then_reset("Construct wikidata::PropertyTable");
 }
 
 int main(int argc, char** argv){
@@ -1011,8 +1012,8 @@ int main(int argc, char** argv){
 //    serial_load_wikidata_entities(argc,argv);
 
 //    proptext_to_binary_file();
-    test_property_table();
-
+//    test_property_table();
+    foo();
     //annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);

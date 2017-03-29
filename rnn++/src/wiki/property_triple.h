@@ -53,7 +53,9 @@ struct PropertyEntity{
 };
 
 struct PropertyTable{
-    PropertyTable(std::string file){
+    PropertyTable(std::string file)
+    : p31_properties{std::make_unique<tbb::concurrent_vector<EntityProperty>>()},
+      p31_instances{std::make_unique<tbb::concurrent_vector<PropertyEntity>>()} {
         std::ifstream is{file};
         tbb::task_group g;
         while (auto buffer=util::string::read_chunk(is, 2000000)) {
@@ -67,18 +69,18 @@ struct PropertyTable{
                     auto p31 = wordrep::WikidataUIDindex::get_uid("P31");
                     if(ps.property_type != p31) continue;
                     for(auto p : ps.properties){
-                        this->p31_properties.push_back({ps.entity, p});
-                        this->p31_instances.push_back({p, ps.entity});
+                        this->p31_properties->push_back({ps.entity, p});
+                        this->p31_instances->push_back({p, ps.entity});
                     }
                 }
             });
         }
         g.wait();
-        tbb::parallel_sort(p31_properties.begin(),p31_properties.end());
-        tbb::parallel_sort(p31_instances.begin(), p31_instances.end());
+        tbb::parallel_sort(p31_properties->begin(),p31_properties->end());
+        tbb::parallel_sort(p31_instances->begin(), p31_instances->end());
     }
-    PropertyTable(tbb::concurrent_vector<EntityProperty>&& p31_properties,
-                  tbb::concurrent_vector<PropertyEntity>&& p31_instances)
+    PropertyTable(std::unique_ptr<tbb::concurrent_vector<EntityProperty>>&& p31_properties,
+                  std::unique_ptr<tbb::concurrent_vector<PropertyEntity>>&& p31_instances)
             : p31_properties(std::move(p31_properties)),
               p31_instances(std::move(p31_instances))
     {}
@@ -90,7 +92,7 @@ struct PropertyTable{
     };
 
     std::vector<wordrep::WikidataUID> get_instance_uids(wordrep::WikidataUID property) const{
-        auto m_ps = util::binary_find_block(p31_instances, {property,-1});
+        auto m_ps = util::binary_find_block(*p31_instances, {property,-1});
         if(!m_ps) return {};
         std::vector<wordrep::WikidataUID> uids;
         auto ps = m_ps.value();
@@ -98,7 +100,7 @@ struct PropertyTable{
         return uids;
     }
     std::vector<wordrep::WikidataUID> get_p31_properties(wordrep::WikidataUID entity) const{
-        auto m_ps = util::binary_find_block(p31_properties, {entity,-1});
+        auto m_ps = util::binary_find_block(*p31_properties, {entity,-1});
         if(!m_ps) return {};
         std::vector<wordrep::WikidataUID> uids;
         auto ps = m_ps.value();
@@ -108,8 +110,8 @@ struct PropertyTable{
     OpInstanceOf get_op_instance_of(wordrep::WikidataUID property) const{
         return {get_instance_uids(property)};
     }
-    tbb::concurrent_vector<EntityProperty> p31_properties; //P31 properties of entities
-    tbb::concurrent_vector<PropertyEntity> p31_instances; // instances of P31 properties
+    std::unique_ptr<tbb::concurrent_vector<EntityProperty>> p31_properties; //P31 properties of entities
+    std::unique_ptr<tbb::concurrent_vector<PropertyEntity>> p31_instances; // instances of P31 properties
 };
 
 }//namespace wikidata
