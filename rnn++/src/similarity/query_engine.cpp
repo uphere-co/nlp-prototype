@@ -231,7 +231,7 @@ struct ProcessQuerySent{
         for(auto& e : query_sent_to_scored.entities){
             fmt::print(std::cerr, "{} :", e.idxs.repr(*query_sent_to_scored.orig.dict, wiki.word_uid()));
             for(auto uid : e.uid.candidates)
-                fmt::print(std::cerr, " {}", wiki.entityUIDs[uid]);
+                fmt::print(std::cerr, " {}", wiki.wiki_uid()[uid]);
             fmt::print(std::cerr, "\n");
         }
         fmt::print(std::cerr, "WORDS IN QUERY:\n");
@@ -508,7 +508,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     util::Timer timer;
     fmt::print(std::cerr, "Query : {}\n\n",query.repr(wiki.word_uid()));
     auto tagged_query = wiki.annotator().annotate(query);
-    fmt::print(std::cerr, "Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_repr(), wiki.entityUIDs, wiki.word_uid()));
+    fmt::print(std::cerr, "Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_repr(), wiki.wiki_uid(), wiki.word_uid()));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
 
     for(auto e : query_to_scored.entities)
@@ -520,7 +520,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
 
     auto tagged_sent = wiki.annotator().annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-    fmt::print(std::cerr, "Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_repr(), wiki.entityUIDs, wiki.word_uid()));
+    fmt::print(std::cerr, "Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_repr(), wiki.wiki_uid(), wiki.word_uid()));
     for(auto e : sent_to_scored.entities)
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.word_uid()));
     for(auto e : sent_to_scored.words)
@@ -532,7 +532,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
         std::stringstream ss;
         ss << fmt::format("{} :", e.idxs.repr(*query_to_scored.orig.dict, wiki.word_uid()));
         for(auto uid : e.uid.candidates)
-            ss << fmt::format(" {}", wiki.entityUIDs[uid]);
+            ss << fmt::format(" {}", wiki.wiki_uid()[uid]);
         out["wiki_entities_in_query"].push_back(ss.str());
     }
 

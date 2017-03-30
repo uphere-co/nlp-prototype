@@ -104,42 +104,44 @@ struct EntityModule{
                  std::string wikidata_uids)
             : wordUIDs{std::make_unique<wordrep::WordUIDindex>(word_uids)},
               posUIDs{std::make_unique<wordrep::POSUIDindex>(pos_uids)},
+              entityUIDs{std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids)},
+              prop_dict{std::make_unique<PropertyTable>(wikidata_properties)},
               entities{std::make_unique<wordrep::wiki::SortedEntities>(read_wikidata_entities(*wordUIDs, wikidata_entities))},
               entities_by_uid{std::make_unique<wordrep::wiki::UIDSortedEntities>(entities->to_uid_sorted())},
               greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
-              prop_dict{std::make_unique<PropertyTable>(wikidata_properties)},
               entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
-              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(named_entity_wikidata_uids, *wordUIDs, *entity_reprs)},
-              entityUIDs{wikidata_uids}
+              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(named_entity_wikidata_uids, *wordUIDs, *entity_reprs)}
     {}
     EntityModule(EntityModule &&orig)
             : wordUIDs{std::move(orig.wordUIDs)},
               posUIDs{std::move(orig.posUIDs)},
+              entityUIDs{std::move(orig.entityUIDs)},
+              prop_dict{std::move(orig.prop_dict)},
               entities{std::move(orig.entities)},
               entities_by_uid{std::move(orig.entities_by_uid)},
               greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
-              prop_dict{std::move(orig.prop_dict)},
               entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
-              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(std::move(orig.op_named_entity->named_entities),*wordUIDs, *entity_reprs)},
-              entityUIDs{std::move(orig.entityUIDs)}
+              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(std::move(orig.op_named_entity->named_entities),*wordUIDs, *entity_reprs)}
     {}
     wordrep::WordUIDindex const& word_uid() const {return *wordUIDs;}
     wordrep::POSUIDindex const& pos_uid() const {return *posUIDs;}
+    wordrep::WikidataUIDindex const& wiki_uid() const {return *entityUIDs;}
     GreedyAnnotator const& annotator() const{return *greedy_annotator;}
     PropertyTable const& properties() const{return *prop_dict;}
     wordrep::wiki::EntityReprs const& entity_repr() const {return *entity_reprs;}
     wordrep::wiki::OpNamedEntity const& get_op_named_entity() const{return *op_named_entity;}
 //    wordrep::wiki::SortedEntities const& entities_sorted() const {return *entities;}
 
+private:
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::POSUIDindex> posUIDs;
+    std::unique_ptr<wordrep::WikidataUIDindex> entityUIDs;
+    std::unique_ptr<PropertyTable> prop_dict;
     std::unique_ptr<wordrep::wiki::SortedEntities> entities;
     std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
     std::unique_ptr<GreedyAnnotator> greedy_annotator;
-    std::unique_ptr<PropertyTable> prop_dict;
     std::unique_ptr<wordrep::wiki::EntityReprs> entity_reprs;
     std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
-    wordrep::WikidataUIDindex entityUIDs;
 //    wordrep::Scoring scoring{word_importance, voca.wvecs}
 //    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
 };
