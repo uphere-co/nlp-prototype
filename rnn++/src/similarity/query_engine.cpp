@@ -218,7 +218,7 @@ struct ProcessQuerySent{
         op_word_sim.build_lookup_cache(vidxs);
         timer.here_then_reset("Build word sim caches.");
 
-        auto tagged_query_sent = wiki.annotator.annotate(query_sent);
+        auto tagged_query_sent = wiki.annotator().annotate(query_sent);
         timer.here_then_reset("Annotate a query sentence.");
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
@@ -507,7 +507,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
 
     util::Timer timer;
     fmt::print(std::cerr, "Query : {}\n\n",query.repr(wiki.word_uid()));
-    auto tagged_query = wiki.annotator.annotate(query);
+    auto tagged_query = wiki.annotator().annotate(query);
     fmt::print(std::cerr, "Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.word_uid()));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
 
@@ -518,7 +518,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     query_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
     timer.here_then_reset("Annotate a query sentence.");
 
-    auto tagged_sent = wiki.annotator.annotate(sent);
+    auto tagged_sent = wiki.annotator().annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
     fmt::print(std::cerr, "Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.word_uid()));
     for(auto e : sent_to_scored.entities)
