@@ -917,16 +917,12 @@ void proptext_to_binary_file(){
 
 int main(int argc, char** argv){
     util::Timer timer;
-//    util::io::fb::test::test_all();
 //    save_wikidata_entities(argc,argv);
-//    concurrent_load_wikidata_entities(argc,argv);
-//    serial_load_wikidata_entities(argc,argv);
-
 //    proptext_to_binary_file();
-//    test_property_table();
-//    foo();
 //    annotate_sentences(argc,argv);
 
+//    test_property_table();
+//    util::io::fb::test::test_all();
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
 //    return 0;
