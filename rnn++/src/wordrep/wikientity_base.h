@@ -38,6 +38,10 @@ std::ostream &operator<<(std::ostream &os, Entity const &a);
 
 
 struct UIDSortedEntities{
+    struct Binary{
+        std::string filename;
+    };
+    UIDSortedEntities(Binary file);
     UIDSortedEntities(std::vector<Entity> items) {
         entities.reserve(items.size());
         for(auto& item : items) entities.push_back(item);
@@ -54,6 +58,7 @@ struct UIDSortedEntities{
     auto cend() const {return entities.cend();}
     auto begin() const {return entities.cbegin();}
     auto end() const {return entities.cend();}
+    void to_file(Binary file) const;
 
 private:
     tbb::concurrent_vector<Entity> entities;
