@@ -62,12 +62,15 @@ wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
     return {config.value("wikidata_uids")};
 }
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
-    return {config.value("word_uids_dump"),
-            config.value("pos_uids_dump"),
-            config.value("wikidata_entities"),
-            config.value("wikidata_properties"),
-            config.value("named_entity_uids"),
-            config.value("wikidata_uids")};
+    return wikidata::EntityModuleBuilder{}.build(
+            {config.value("word_uid_bin")},
+            {config.value("pos_uid_bin")},
+            {config.value("wikidata_entities_by_name")},
+            {config.value("wikidata_entities_by_uid")},
+            {config.value("wikidata_properties")},
+            {config.value("wikidata_instances")},
+            {config.value("named_entity_uids")},
+            {config.value("wikidata_uids")});
 }
 
 }//namespace engine

@@ -109,6 +109,7 @@ struct EntityModule{
               wikiUIDs{std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids)},
               wiki_ne_UIDs{std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids)},
               prop_dict{std::make_unique<PropertyTable>(wikidata_properties)},
+              //TODO: remove wordUIDs dependency.
               entities{std::make_unique<wordrep::wiki::SortedEntities>(read_wikidata_entities(*wordUIDs, wikidata_entities))},
               entities_by_uid{std::make_unique<wordrep::wiki::UIDSortedEntities>(entities->to_uid_sorted())},
               greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
