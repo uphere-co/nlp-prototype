@@ -103,7 +103,7 @@ struct EntityModule{
                  std::string named_entity_wikidata_uids,
                  std::string wikidata_uids)
             : wordUIDs{std::make_unique<wordrep::WordUIDindex>(word_uids)},
-              posUIDs{pos_uids},
+              posUIDs{std::make_unique<wordrep::POSUIDindex>(pos_uids)},
               entities{read_wikidata_entities(*wordUIDs, wikidata_entities)},
               entities_by_uid{entities.to_uid_sorted()},
               annotator{entities},
@@ -124,8 +124,10 @@ struct EntityModule{
               entityUIDs{std::move(orig.entityUIDs)}
     {}
     wordrep::WordUIDindex const& word_uid() const {return *wordUIDs;}
+    wordrep::POSUIDindex const& pos_uid() const {return *posUIDs;}
+
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
-    wordrep::POSUIDindex posUIDs;
+    std::unique_ptr<wordrep::POSUIDindex> posUIDs;
     wordrep::wiki::SortedEntities entities;
     wordrep::wiki::UIDSortedEntities entities_by_uid;
     GreedyAnnotator annotator;

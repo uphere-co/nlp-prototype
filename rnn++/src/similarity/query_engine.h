@@ -47,7 +47,7 @@ struct PreprocessedSent{
             auto& sent = orig_sents[i];
             auto tagged_sent = wiki.annotator.annotate(sent);
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-            sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.posUIDs);
+            sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
 
             for(auto& e : sent_to_scored.entities){
                 std::vector<wordrep::WikidataUID> instances;
