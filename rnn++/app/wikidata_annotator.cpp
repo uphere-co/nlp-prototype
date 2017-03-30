@@ -18,6 +18,8 @@
 #include "utils/string.h"
 #include "utils/json.h"
 
+
+#include "wordrep/io.h"
 //using util::get_str;
 //using util::find;
 //using util::has_key;
@@ -714,16 +716,29 @@ void annotate_sentences(int argc, char** argv){
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
-    auto voca = factory.voca_info();
-    auto word_importance = factory.word_importance();
+    util::Timer timer;
     wikidata::EntityModule wiki{factory.wikientity_module()};
+    timer.here_then_reset("Load wikidata::EntityModule.");
+    auto word_importance = factory.word_importance();
+    timer.here_then_reset("Load word_importance.");
+    auto wordUIDs = factory.word_uid_index();
+    timer.here_then_reset("Load wordUIDs.");
+    auto voca = factory.voca_info();
+    timer.here_then_reset("Load voca_info.");
     wordrep::Scoring scoring{word_importance, voca.wvecs};
+    timer.here_then_reset("Load wordrep::Scoring.");
     wordrep::Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
+    timer.here_then_reset("Load wordrep::Scoring::Preprocess.");
 
-    std::vector<wordrep::Sentence> orig_sents;
+    timer.here_then_reset("Load all data.");
+    return;
+
+    auto tokens = factory.dep_parsed_tokens();
+    std::vector<wordrep::Sentence> orig_sents = tokens.IndexSentences();
+    timer.here_then_reset("Load texts.");
     tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
-
     auto n = orig_sents.size();
+    if(n>100) n=100;
     tbb::parallel_for(decltype(n){0}, n, [&wiki,&scoring,&scoring_preprocessor,&orig_sents,&sents](auto i) {
         auto& sent = orig_sents[i];
         auto tagged_sent = wiki.annotator.annotate(sent);
@@ -746,6 +761,8 @@ void annotate_sentences(int argc, char** argv){
         }
         sents.push_back(sent_to_scored);
     });
+    for(auto& sent : sents)
+        fmt::print("{}\n", sent.repr(wordUIDs));
 }
 
 using wordrep::UIDIndexBinary;
@@ -828,13 +845,157 @@ void serial_load_wikidata_entities(int argc, char** argv){
     }
 }
 
+namespace util{
+namespace io{
+namespace fb{
+namespace test{
+
+void ordered_pair(){
+    std::cerr<< "util::io::fb::test::ordered_pair" <<std::endl;
+    std::vector<Pair> vals = {{1,1},{0,2},{1,3},{4,2},{5,2},{3,4},{2,4},{2,1},{4,5},{1,3}};
+    std::sort(vals.begin(), vals.end());
+    auto beg = vals.begin();
+
+    auto b = util::binary_find_block(vals, Pair{1,-1}).value();
+    assert(b.first==beg+1);
+    assert(b.second==beg+4);
+
+    auto b2 = util::binary_find_block(vals, Pair{2,-1}).value();
+    assert(b2.first==beg+4);
+    assert(b2.second==beg+6);
+}
+
+void test_all(){
+    ordered_pair();
+}
+
+}//namespace util::io::fb::test
+}//namespace util::io::fb
+}//namespace util::io
+}//namespace util
+
+
+struct PropertyEdge{
+    wordrep::WikidataUID entity;
+    wordrep::WikidataUID property;
+};
+
+
+void proptext_to_binary_file(){
+    namespace fb = util::io::fb;
+
+    util::Timer timer;
+    std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
+    std::ifstream is{wikidata_properties};
+    tbb::task_group g;
+    tbb::concurrent_vector<PropertyEdge> items;
+    while (auto buffer=util::string::read_chunk(is, 2000000)) {
+        auto& chars =  buffer.value();
+        g.run([&items,chars{std::move(chars)}](){
+            std::stringstream ss;
+            ss.str(chars.data());
+            auto lines = util::string::readlines(std::move(ss));
+            for(auto& line : lines){
+                wikidata::PropertiesTriple ps{line};
+                for(auto p : ps.properties)
+                    items.push_back({ps.entity, p});
+            }
+        });
+    }
+    g.wait();
+    timer.here_then_reset(fmt::format("Load file : {} items.", items.size()));
+
+    std::vector<fb::Pair> entity2property;
+    std::vector<fb::Pair> property2entity;
+    entity2property.reserve(items.size());
+    property2entity.reserve(items.size());
+    for(auto item : items) entity2property.push_back({item.entity.val, item.property.val});
+    for(auto item : items) property2entity.push_back({item.property.val, item.entity.val});
+    timer.here_then_reset("Copy data.");
+    tbb::parallel_sort(entity2property.begin(),entity2property.end());
+    tbb::parallel_sort(property2entity.begin(),property2entity.end());
+    timer.here_then_reset("Sort data.");
+    util::io::fb::to_file(entity2property, "wikidata.P31.e2p.bin");
+    util::io::fb::to_file(property2entity, "wikidata.P31.p2e.bin");
+    timer.here_then_reset("Write files.");
+}
+
+void from_property_file(){
+    namespace fb = util::io::fb;
+
+    std::string filename = "wikidata.P31.e2p.bin";
+    util::Timer timer;
+    std::ifstream input_file (filename, std::ios::binary);
+    flatbuffers::uoffset_t read_size;
+    input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
+    auto data = std::make_unique<char[]>(read_size);
+    input_file.read(data.get(), read_size);
+    timer.here_then_reset(fmt::format("Read file. {}", filename));
+
+    auto rbuf = fb::GetPairs(data.get());
+    auto& properties_buf = *rbuf->vals();
+    auto n = properties_buf.size();
+    tbb::concurrent_vector<PropertyEdge> properties;
+    properties.resize(n,{-1,-1});
+    timer.here_then_reset("Prepare construction.");
+
+    tbb::parallel_for(decltype(n){0},n, [&properties_buf,&properties](auto i) {
+        auto it=properties_buf[i];
+        properties[i]={it->key(), it->value()};
+    });
+    timer.here_then_reset(fmt::format("Construct {} property values.", properties.size()));
+}
+
+void bar(){
+    std::string pos_uids  = "/home/jihuni/word2vec/rss/poss.uid";
+    wordrep::POSUIDindex posUIDs{pos_uids};
+    posUIDs.to_file({"poss.uid.bin"});
+
+    std::string wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid";
+    wordrep::WikidataUIDindex wikiUIDs{wikidata_uids};
+    wikiUIDs.to_file({"wikidata.uid.bin"});
+
+    std::string named_entity_wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid.ne";
+    wordrep::WikidataUIDindex wikiNEUIDs{named_entity_wikidata_uids};
+    wikiNEUIDs.to_file({"wikidata.uid.ne.bin"});
+}
+void foo(){
+    util::Timer timer;
+    using wordrep::wiki::SortedEntities;
+    using wordrep::UIDIndexBinary;
+    UIDIndexBinary word_uids{"words.uid.bin"};
+    UIDIndexBinary pos_uids{"poss.uid.bin"};
+    SortedEntities::Binary wikidata_entities{"wikidata.entities.bin"};
+    std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
+    UIDIndexBinary named_entity_wikidata_uids{"wikidata.uid.ne.bin"};
+    UIDIndexBinary wikidata_uids{"wikidata.uid.bin"};
+
+    std::unique_ptr<wordrep::WordUIDindex>        wordUIDs;
+    std::unique_ptr<wordrep::POSUIDindex>         posUIDs;
+    std::unique_ptr<wordrep::wiki::SortedEntities>    entities;
+    std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
+    std::unique_ptr<wikidata::GreedyAnnotator>    annotator;
+    std::unique_ptr<wikidata::PropertyTable>      prop_dict;
+    std::unique_ptr<wordrep::wiki::EntityReprs>   entity_reprs;
+    std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
+    std::unique_ptr<wordrep::WikidataUIDindex>    entityUIDs;
+    timer.here_then_reset("Ready.");
+    prop_dict = std::make_unique<wikidata::PropertyTable>(wikidata_properties);
+    timer.here_then_reset("Construct wikidata::PropertyTable");
+}
 
 int main(int argc, char** argv){
     util::Timer timer;
+    util::io::fb::test::test_all();
+
 //    save_wikidata_entities(argc,argv);
-    concurrent_load_wikidata_entities(argc,argv);
+//    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
-//    annotate_sentences(argc,argv);
+
+    proptext_to_binary_file();
+    from_property_file();
+
+    //annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);

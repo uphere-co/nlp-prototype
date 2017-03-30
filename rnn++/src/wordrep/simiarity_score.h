@@ -82,6 +82,8 @@ struct Scoring{
         std::vector<wiki::AmbiguousUID> all_named_entities() const;
         void filter_false_named_entity(wiki::OpNamedEntity const &op,
                                        POSUIDindex const& posUIDs);
+        std::string repr(WordUIDindex const& wordUIDs) const;
+
         Sentence const& orig;
         std::vector<AmbiguousEntity> entities;
         std::vector<DepPair> words;

@@ -109,9 +109,9 @@ wordrep::wiki::SortedEntities read_wikidata_entities(wordrep::WordUIDindex const
         });
     }
     g.wait();
-    timer.here_then_reset("Read all items.");
+    timer.here_then_reset("wikidata::read_wikidata_entities: Read all items.");
     tbb::parallel_sort(items.begin(), items.end());
-    timer.here_then_reset("Sorted items.");
+    timer.here_then_reset("wikidata::read_wikidata_entities: Sorted items.");
     return {std::move(items)};
 }
 

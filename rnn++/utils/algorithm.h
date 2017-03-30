@@ -253,6 +253,15 @@ auto binary_find_block(std::vector<T> const &vs, TE const& eq, TL const& less){
     return binary_find_block(beg,end,eq, less);
 }
 
+template<typename T>
+auto binary_find_block(std::vector<T> const &vs, T val){
+    auto eq   = [val](auto x){return val==x;};
+    auto less = [val](auto x){return val<x;};
+    auto beg = vs.cbegin();
+    auto end = vs.cend();
+    return binary_find_block(beg,end,eq, less);
+}
+
 template<typename TK, typename TV>
 auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
     return binary_find(pairs,

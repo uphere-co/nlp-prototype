@@ -1,0 +1,15 @@
+namespace util.io.fb;
+
+struct Pair{
+key:long;
+value:long;
+}
+
+table Pairs{
+vals:[Pair];
+}
+
+file_identifier "uifp";
+file_extension "uifp";
+
+root_type Pairs;

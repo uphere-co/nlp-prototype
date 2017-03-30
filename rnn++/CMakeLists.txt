@@ -33,7 +33,7 @@ FILE(GLOB wordrep_files src/wordrep/*cpp)
 FILE(GLOB word2vec_files src/word2vec/*cpp)
 FILE(GLOB similarity_files src/similarity/*cpp)
 FILE(GLOB wiki_files src/wiki/*cpp)
-FILE(GLOB util_files utils/*cpp)
+FILE(GLOB util_files utils/*cpp utils/flatbuffers/*cpp)
 
 FILE(GLOB test_files tests/*cpp)
 
