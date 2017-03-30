@@ -8,11 +8,14 @@ namespace wiki {
 EntityReprs::EntityReprs(UIDSortedEntities const& entities)
         : dict{entities}
 {}
-Entity EntityReprs::operator[](WikidataUID uid) const {
+Entity EntityReprs::at(WikidataUID uid) const{
     auto ms = find(uid);
     assert(ms);
     auto synonym = ms.value();
     return {synonym.uid, synonym.reprs.front()};
+}
+Entity EntityReprs::operator[](WikidataUID uid) const {
+    return at(uid);
 }
 
 Synonyms EntityReprs::get_synonyms(WikidataUID uid) const {

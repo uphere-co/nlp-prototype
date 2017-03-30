@@ -999,8 +999,25 @@ void foo(){
     std::unique_ptr<wikidata::PropertyTable>      prop_dict;
     std::unique_ptr<wordrep::wiki::EntityReprs>   entity_reprs;
     std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
-    
+
+    tbb::task_group g;
+    g.run([&wordUIDs,&word_uids](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
+    g.run([&posUIDs,&pos_uids](){posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
+    g.run([&wikiUIDs,&wikidata_uids](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);});
+    g.run([&wneUIDs,&named_entity_wikidata_uids](){wneUIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);});
+    g.run([&entities,&wikidata_entities](){entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
+    g.run([&prop_dict,&wikidata_properties,&wikidata_instances](){
+        using util::io::fb::deserialize_pairs;
+        using util::io::fb::load_binary_file;
+        auto properties = deserialize_pairs<wikidata::EntityProperty>(load_binary_file(wikidata_properties));
+        auto instances  = deserialize_pairs<wikidata::PropertyEntity>(load_binary_file(wikidata_instances));
+        prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
+          });
+    g.wait();
     timer.here_then_reset("Ready.");
+    auto entity = wikiUIDs->uid("Q95");
+    for(auto uid : prop_dict->get_p31_properties(entity))
+        fmt::print("{} : {}\n", entity_reprs->at(entity).repr(*wikiUIDs, *wordUIDs), wikiUIDs->str(uid));
 }
 
 int main(int argc, char** argv){

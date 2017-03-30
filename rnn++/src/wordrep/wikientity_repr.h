@@ -109,6 +109,7 @@ struct EntityReprs{
         for(auto uid : uids) op.ops.push_back(get_comparison_operator(uid));
         return op;
     }
+    Entity at(WikidataUID uid) const;
     Entity operator[](WikidataUID uid) const;
     Synonyms get_synonyms(WikidataUID uid) const;
     std::optional<Synonyms> find(WikidataUID uid) const;
