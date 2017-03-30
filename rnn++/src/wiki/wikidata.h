@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <memory>
 
 #include "wiki/property_triple.h"
 
@@ -101,14 +102,14 @@ struct EntityModule{
                  std::string wikidata_properties,
                  std::string named_entity_wikidata_uids,
                  std::string wikidata_uids)
-            : wordUIDs{word_uids},
+            : wordUIDs{std::make_unique<wordrep::WordUIDindex>(word_uids)},
               posUIDs{pos_uids},
-              entities{read_wikidata_entities(wordUIDs, wikidata_entities)},
+              entities{read_wikidata_entities(*wordUIDs, wikidata_entities)},
               entities_by_uid{entities.to_uid_sorted()},
               annotator{entities},
               prop_dict{wikidata_properties},
               entity_reprs{entities_by_uid},
-              op_named_entity{named_entity_wikidata_uids, wordUIDs, entity_reprs},
+              op_named_entity{named_entity_wikidata_uids, *wordUIDs, entity_reprs},
               entityUIDs{wikidata_uids}
     {}
     EntityModule(EntityModule &&orig)
@@ -119,10 +120,11 @@ struct EntityModule{
               annotator{entities},
               prop_dict{std::move(orig.prop_dict)},
               entity_reprs{entities_by_uid},
-              op_named_entity{std::move(orig.op_named_entity.named_entities),wordUIDs, entity_reprs},
+              op_named_entity{std::move(orig.op_named_entity.named_entities),*wordUIDs, entity_reprs},
               entityUIDs{std::move(orig.entityUIDs)}
     {}
-    wordrep::WordUIDindex wordUIDs;
+    wordrep::WordUIDindex const& word_uid() const {return *wordUIDs;}
+    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     wordrep::POSUIDindex posUIDs;
     wordrep::wiki::SortedEntities entities;
     wordrep::wiki::UIDSortedEntities entities_by_uid;

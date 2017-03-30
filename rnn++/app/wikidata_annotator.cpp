@@ -718,6 +718,7 @@ void annotate_sentences(int argc, char** argv){
     util::Timer timer;
     wikidata::EntityModule wiki{factory.wikientity_module()};
     timer.here_then_reset("Load wikidata::EntityModule.");
+    return;
     auto word_importance = factory.word_importance();
     timer.here_then_reset("Load word_importance.");
     auto wordUIDs = factory.word_uid_index();
@@ -1022,16 +1023,15 @@ void foo(){
 
 int main(int argc, char** argv){
     util::Timer timer;
-    util::io::fb::test::test_all();
-
+//    util::io::fb::test::test_all();
 //    save_wikidata_entities(argc,argv);
 //    concurrent_load_wikidata_entities(argc,argv);
 //    serial_load_wikidata_entities(argc,argv);
 
 //    proptext_to_binary_file();
 //    test_property_table();
-    foo();
-    //annotate_sentences(argc,argv);
+//    foo();
+    annotate_sentences(argc,argv);
 
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
