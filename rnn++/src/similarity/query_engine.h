@@ -47,15 +47,15 @@ struct PreprocessedSent{
             auto& sent = orig_sents[i];
             auto tagged_sent = wiki.annotator().annotate(sent);
             auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-            sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
+            sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
 
             for(auto& e : sent_to_scored.entities){
                 std::vector<wordrep::WikidataUID> instances;
                 for(auto uid : e.uid.candidates)
-                    util::append(instances, wiki.prop_dict.get_p31_properties(uid));
+                    util::append(instances, wiki.properties().get_p31_properties(uid));
                 for (auto uid : instances) {
                     //TODO: don't know why m_synonyms can be empty.
-                    auto m_synonyms = wiki.entity_reprs.find(uid);
+                    auto m_synonyms = wiki.entity_repr().find(uid);
                     if(!m_synonyms) continue;
                     auto synonyms = m_synonyms.value();
                     auto repr = scoring.max_score_repr(synonyms);

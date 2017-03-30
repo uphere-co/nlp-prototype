@@ -220,9 +220,9 @@ struct ProcessQuerySent{
 
         auto tagged_query_sent = wiki.annotator().annotate(query_sent);
         timer.here_then_reset("Annotate a query sentence.");
-        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
+        Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_repr()};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
-        query_sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
+        query_sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
 
         auto named_entities = query_sent_to_scored.all_named_entities();
         timer.here_then_reset("A query sentence is ready to be compared.");
@@ -295,7 +295,7 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   queries{factory.common.empty_dataset()},
   wiki{factory.common.wikientity_module()},
   scoring{word_importance,db.voca.wvecs},
-  scoring_preprocessor{scoring, wiki.entity_reprs},
+  scoring_preprocessor{scoring, wiki.entity_repr()},
   data_sents{wiki, scoring, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
 {
@@ -319,7 +319,7 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   queries{std::move(engine.queries)},
   wiki{std::move(engine.wiki)},
   scoring{word_importance,db.voca.wvecs},
-  scoring_preprocessor{scoring, wiki.entity_reprs},
+  scoring_preprocessor{scoring, wiki.entity_repr()},
   data_sents{wiki, scoring, scoring_preprocessor, db.sents},
   dists_cache{db.voca}
 {
@@ -503,29 +503,29 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
     if(query_sents.size()<2) return out;
     auto query = query_sents[0];
     auto sent  = query_sents[1];
-    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_reprs};
+    Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_repr()};
 
     util::Timer timer;
     fmt::print(std::cerr, "Query : {}\n\n",query.repr(wiki.word_uid()));
     auto tagged_query = wiki.annotator().annotate(query);
-    fmt::print(std::cerr, "Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.word_uid()));
+    fmt::print(std::cerr, "Annoted Query : {}\n\n",tagged_query.repr(wiki.entity_repr(), wiki.entityUIDs, wiki.word_uid()));
     auto query_to_scored = scoring_preprocessor.sentence(tagged_query);
 
     for(auto e : query_to_scored.entities)
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.word_uid()));
     for(auto e : query_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.word_uid()));
-    query_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
+    query_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
     timer.here_then_reset("Annotate a query sentence.");
 
     auto tagged_sent = wiki.annotator().annotate(sent);
     auto sent_to_scored = scoring_preprocessor.sentence(tagged_sent);
-    fmt::print(std::cerr, "Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_reprs, wiki.entityUIDs, wiki.word_uid()));
+    fmt::print(std::cerr, "Annoted Sent : {}\n\n",tagged_sent.repr(wiki.entity_repr(), wiki.entityUIDs, wiki.word_uid()));
     for(auto e : sent_to_scored.entities)
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.word_uid()));
     for(auto e : sent_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.word_uid()));
-    sent_to_scored.filter_false_named_entity(wiki.op_named_entity, wiki.pos_uid());
+    sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
     timer.here_then_reset("Annotate a sentence.");
 
     for(auto e : query_to_scored.entities){

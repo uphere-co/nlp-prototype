@@ -107,9 +107,9 @@ struct EntityModule{
               entities{std::make_unique<wordrep::wiki::SortedEntities>(read_wikidata_entities(*wordUIDs, wikidata_entities))},
               entities_by_uid{std::make_unique<wordrep::wiki::UIDSortedEntities>(entities->to_uid_sorted())},
               greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
-              prop_dict{wikidata_properties},
-              entity_reprs{*entities_by_uid},
-              op_named_entity{named_entity_wikidata_uids, *wordUIDs, entity_reprs},
+              prop_dict{std::make_unique<PropertyTable>(wikidata_properties)},
+              entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
+              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(named_entity_wikidata_uids, *wordUIDs, *entity_reprs)},
               entityUIDs{wikidata_uids}
     {}
     EntityModule(EntityModule &&orig)
@@ -119,13 +119,16 @@ struct EntityModule{
               entities_by_uid{std::move(orig.entities_by_uid)},
               greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
               prop_dict{std::move(orig.prop_dict)},
-              entity_reprs{*entities_by_uid},
-              op_named_entity{std::move(orig.op_named_entity.named_entities),*wordUIDs, entity_reprs},
+              entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
+              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(std::move(orig.op_named_entity->named_entities),*wordUIDs, *entity_reprs)},
               entityUIDs{std::move(orig.entityUIDs)}
     {}
     wordrep::WordUIDindex const& word_uid() const {return *wordUIDs;}
     wordrep::POSUIDindex const& pos_uid() const {return *posUIDs;}
     GreedyAnnotator const& annotator() const{return *greedy_annotator;}
+    PropertyTable const& properties() const{return *prop_dict;}
+    wordrep::wiki::EntityReprs const& entity_repr() const {return *entity_reprs;}
+    wordrep::wiki::OpNamedEntity const& get_op_named_entity() const{return *op_named_entity;}
 //    wordrep::wiki::SortedEntities const& entities_sorted() const {return *entities;}
 
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
@@ -133,9 +136,9 @@ struct EntityModule{
     std::unique_ptr<wordrep::wiki::SortedEntities> entities;
     std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
     std::unique_ptr<GreedyAnnotator> greedy_annotator;
-    PropertyTable  prop_dict;
-    wordrep::wiki::EntityReprs entity_reprs;
-    wordrep::wiki::OpNamedEntity op_named_entity;
+    std::unique_ptr<PropertyTable> prop_dict;
+    std::unique_ptr<wordrep::wiki::EntityReprs> entity_reprs;
+    std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
     wordrep::WikidataUIDindex entityUIDs;
 //    wordrep::Scoring scoring{word_importance, voca.wvecs}
 //    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs, op_named_entity};
