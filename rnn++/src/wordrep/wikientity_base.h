@@ -42,7 +42,7 @@ struct UIDSortedEntities{
     struct Binary{
         std::string filename;
     };
-    UIDSortedEntities(std::vector<Entity> items) {
+    UIDSortedEntities(std::vector<Entity> const& items) {
         entities->reserve(items.size());
         for(auto& item : items) entities->push_back(item);
         tbb::parallel_sort(entities->begin(), entities->end(), [](auto x, auto y){return x.uid<y.uid;});

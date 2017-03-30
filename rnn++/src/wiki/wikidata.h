@@ -98,24 +98,6 @@ std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const&
 struct EntityModuleBuilder;
 
 struct EntityModule{
-    EntityModule(std::string word_uids,
-                 std::string pos_uids,
-                 std::string wikidata_entities,
-                 std::string wikidata_properties,
-                 std::string named_entity_wikidata_uids,
-                 std::string wikidata_uids)
-            : wordUIDs{std::make_unique<wordrep::WordUIDindex>(word_uids)},
-              posUIDs{std::make_unique<wordrep::POSUIDindex>(pos_uids)},
-              wikiUIDs{std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids)},
-              wiki_ne_UIDs{std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids)},
-              prop_dict{std::make_unique<PropertyTable>(wikidata_properties)},
-              //TODO: remove wordUIDs dependency.
-              entities{std::make_unique<wordrep::wiki::SortedEntities>(read_wikidata_entities(*wordUIDs, wikidata_entities))},
-              entities_by_uid{std::make_unique<wordrep::wiki::UIDSortedEntities>(entities->to_uid_sorted())},
-              greedy_annotator{std::make_unique<GreedyAnnotator>(*entities)},
-              entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
-              op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(*wiki_ne_UIDs,*wordUIDs, *entity_reprs)}
-    {}
     EntityModule(EntityModule &&orig)
             : wordUIDs{std::move(orig.wordUIDs)},
               posUIDs{std::move(orig.posUIDs)},
@@ -152,6 +134,7 @@ private:
     std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
 };
 
+
 struct EntityModuleBuilder {
     EntityModule build(wordrep::UIDIndexBinary word_uids,
                         wordrep::UIDIndexBinary pos_uids,
@@ -175,7 +158,9 @@ struct EntityModuleBuilder {
             f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
         });
         g.run([&f,&wikidata_entities](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
-        g.run([&f,&wikidata_entities_by_uid](){f.entities_by_uid  = std::make_unique<wordrep::wiki::UIDSortedEntities>(wikidata_entities_by_uid);});
+        g.run([&f,&wikidata_entities_by_uid](){
+            f.entities_by_uid  = std::make_unique<wordrep::wiki::UIDSortedEntities>(wordrep::wiki::read_binary_file(wikidata_entities_by_uid));
+        });
         g.wait();
         f.greedy_annotator = std::make_unique<GreedyAnnotator>(*f.entities);
         f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);

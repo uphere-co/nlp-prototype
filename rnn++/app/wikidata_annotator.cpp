@@ -769,13 +769,24 @@ using wordrep::UIDIndexBinary;
 void save_wikidata_entities(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config_json}};
+    engine::Config config{config_json};
 
     util::Timer timer;
-    auto wordUIDs = factory.word_uid_index();
-    auto wikiUIDs = factory.wikientity_uid_index();
+    std::string word_uids     = config.value("word_uids_dump");
+    std::string pos_uids      = config.value("pid_uids_dump");
+    std::string wikidata_uids = config.value("wikidata_uids");
+    std::string wikidata_entities          = config.value("wikidata_entities");
+    std::string named_entity_wikidata_uids = config.value("named_entity_uids");
+    std::string wikidata_properties        = config.value("wikidata_properties");
+
+    wordrep::WordUIDindex wordUIDs{word_uids};
+    wordrep::POSUIDindex posUIDs{pos_uids};
+    wordrep::WikidataUIDindex wikiUIDs{wikidata_uids};
+    wordrep::WikidataUIDindex wiki_ne_UIDs{named_entity_wikidata_uids};
     timer.here_then_reset("Load UID indexes.");
-    auto entities = wikidata::read_wikidata_entities(wordUIDs, factory.config.value("wikidata_entities"));
+    wikidata::PropertyTable prop_dict{wikidata_properties};
+    timer.here_then_reset("Load PropertyTable.");
+    auto entities = wikidata::read_wikidata_entities(wordUIDs, wikidata_entities);
     auto entities_by_uid = entities.to_uid_sorted();
     timer.here_then_reset("Load wikidata entities.");
     entities.to_file({"wikidata.entities.by_name.bin"});
@@ -786,66 +797,6 @@ void save_wikidata_entities(int argc, char** argv){
     wikiUIDs.to_file(UIDIndexBinary{"wikidata.uid.bin"});
     timer.here_then_reset("Save to binary file : wikidata.uid.bin");
 }
-
-void concurrent_load_wikidata_entities(int argc, char** argv){
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config_json}};
-    using wordrep::wiki::SortedEntities;
-
-    util::Timer timer;
-    timer.here_then_reset("concurrent_load_wikidata_entities: Start test : concurrent_load_wikidata_entities.");
-    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
-    std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
-    std::unique_ptr<SortedEntities> entities;
-
-//    Concurrent version: ~3.2s
-    //1762.78
-    tbb::task_group g;
-//    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());});
-//    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());});
-    g.run([&wordUIDs,&factory](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(UIDIndexBinary{"words.uid.bin"});});
-    g.run([&wikiUIDs,&factory](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});});
-    g.run([&entities](){entities = std::make_unique<SortedEntities>(SortedEntities::Binary{"wikidata.entities.bin"});});
-    g.wait();
-    timer.here_then_reset("concurrent_load_wikidata_entities: Load all data.");
-
-    int i=0;
-    for(auto& entity : *entities){
-        fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
-        if(++i>100) break;
-    }
-}
-void serial_load_wikidata_entities(int argc, char** argv){
-    assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config_json}};
-    using wordrep::wiki::SortedEntities;
-
-    util::Timer timer;
-    timer.here_then_reset("serial_load_wikidata_entities: Start test : serial_load_wikidata_entities.");
-    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
-    std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;
-    std::unique_ptr<SortedEntities> entities;
-
-//    wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.word_uid_index());
-    wordUIDs = std::make_unique<wordrep::WordUIDindex>(UIDIndexBinary{"words.uid.bin"});
-    timer.here_then_reset("serial_load_wikidata_entities: Load wordUIDs");
-//    wikiUIDs  = std::make_unique<wordrep::WikidataUIDindex>(factory.wikientity_uid_index());
-    wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});
-    timer.here_then_reset("serial_load_wikidata_entities: Load wikiUIDs");
-//    entities = wikidata::read_wikidata_entities(*wordUIDs, factory.config.value("wikidata_entities"));
-    //entities = wordrep::wiki::SortedEntities::from_file("wikidata.entities.bin");
-    entities = std::make_unique<SortedEntities>(SortedEntities::Binary{"wikidata.entities.bin"});
-    timer.here_then_reset("serial_load_wikidata_entities: Load wiki entities.");
-
-    int i=0;
-    for(auto& entity : *entities){
-        fmt::print("{}\t{}\n", wikiUIDs->str(entity.uid), entity.words.repr(*wordUIDs));
-        if(++i>100) break;
-    }
-}
-
 
 void test_property_table(){
     using util::io::fb::PairsBinary;
@@ -962,64 +913,6 @@ void proptext_to_binary_file(){
     util::io::fb::to_file(entity2property, {"wikidata.P31.e2p.bin"});
     util::io::fb::to_file(property2entity, {"wikidata.P31.p2e.bin"});
     timer.here_then_reset("Write files.");
-}
-
-void bar(){
-    std::string pos_uids  = "/home/jihuni/word2vec/rss/poss.uid";
-    wordrep::POSUIDindex posUIDs{pos_uids};
-    posUIDs.to_file({"poss.uid.bin"});
-
-    std::string wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid";
-    wordrep::WikidataUIDindex wikiUIDs{wikidata_uids};
-    wikiUIDs.to_file({"wikidata.uid.bin"});
-
-    std::string named_entity_wikidata_uids = "/home/jihuni/word2vec/rss/wikidata.uid.ne";
-    wordrep::WikidataUIDindex wikiNEUIDs{named_entity_wikidata_uids};
-    wikiNEUIDs.to_file({"wikidata.uid.ne.bin"});
-}
-void foo(){
-    util::Timer timer;
-    using wordrep::wiki::SortedEntities;
-    using wordrep::UIDIndexBinary;
-    using util::io::fb::PairsBinary;
-
-    UIDIndexBinary word_uids{"words.uid.bin"};
-    UIDIndexBinary pos_uids{"poss.uid.bin"};
-    SortedEntities::Binary wikidata_entities{"wikidata.entities.bin"};
-    PairsBinary wikidata_properties{"wikidata.P31.e2p.bin"};
-    PairsBinary wikidata_instances{"wikidata.P31.p2e.bin"};
-    UIDIndexBinary named_entity_wikidata_uids{"wikidata.uid.ne.bin"};
-    UIDIndexBinary wikidata_uids{"wikidata.uid.bin"};
-
-    std::unique_ptr<wordrep::WordUIDindex>        wordUIDs;
-    std::unique_ptr<wordrep::POSUIDindex>         posUIDs;
-    std::unique_ptr<wordrep::WikidataUIDindex>    wikiUIDs;
-    std::unique_ptr<wordrep::WikidataUIDindex>    wneUIDs;
-    std::unique_ptr<wordrep::wiki::SortedEntities>    entities;
-    std::unique_ptr<wordrep::wiki::UIDSortedEntities> entities_by_uid;
-    std::unique_ptr<wikidata::GreedyAnnotator>    annotator;
-    std::unique_ptr<wikidata::PropertyTable>      prop_dict;
-    std::unique_ptr<wordrep::wiki::EntityReprs>   entity_reprs;
-    std::unique_ptr<wordrep::wiki::OpNamedEntity> op_named_entity;
-
-    tbb::task_group g;
-    g.run([&wordUIDs,&word_uids](){wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
-    g.run([&posUIDs,&pos_uids](){posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
-    g.run([&wikiUIDs,&wikidata_uids](){wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);});
-    g.run([&wneUIDs,&named_entity_wikidata_uids](){wneUIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);});
-    g.run([&entities,&wikidata_entities](){entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
-    g.run([&prop_dict,&wikidata_properties,&wikidata_instances](){
-        using util::io::fb::deserialize_pairs;
-        using util::io::fb::load_binary_file;
-        auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(wikidata_properties));
-        auto instances  = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(wikidata_instances));
-        prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
-          });
-    g.wait();
-    timer.here_then_reset("Ready.");
-    auto entity = wikiUIDs->uid("Q95");
-    for(auto uid : prop_dict->get_p31_properties(entity))
-        fmt::print("{} : {}\n", entity_reprs->at(entity).repr(*wikiUIDs, *wordUIDs), wikiUIDs->str(uid));
 }
 
 int main(int argc, char** argv){
