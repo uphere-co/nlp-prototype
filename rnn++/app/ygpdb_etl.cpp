@@ -451,10 +451,14 @@ int process_ygp_dump(int argc, char** argv){
     tokens.write_to_disk(output_filename.fullname);
     std::vector<std::string> non_null_dumps;
     for(auto i : non_null_idxs) non_null_dumps.push_back(json_dumps[i]);
-    data::ygp::write_column_indexes(config, non_null_dumps);
+    data::ygp::write_column_indexes(output_filename.fullname,
+                                    util::get_str(config,"column_uids_dump"),
+                                    util::get_str(config,"dep_parsed_prefix"),
+                                    non_null_dumps);
+
     auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
                                                    DepParsedTokens::major_version, minor_version};
-    data::ygp::write_country_code(config);
+    data::ygp::write_country_code(config, minor_version);
     return 0;
 }
 

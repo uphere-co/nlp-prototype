@@ -10,15 +10,14 @@ let toolz_cpp = callPackage ../nix/default-cpp.nix {};
     config = import ./config.nix {
                inherit pkgs uphere-nix-overlay;
                hdf5_cpp = hdf5-cpp;
-               inherit (toolz_cpp) json fmt xxhashct backwardcpp variant msgsl; 
+               inherit (toolz_cpp) json flatbuffers fmt xxhashct backwardcpp variant msgsl; 
                inherit tbb rnnpp libpqxx elfutils spdlog;
 
              };
 
     newHaskellPackages = haskellPackages.override { overrides = config; };
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
-              distributed-process
-	      #network-transport-zeromq
+              distributed-process distributed-process-lifted
 	      network-transport-uphere
 	      monad-loops uuid aeson
 	      cabal-install conduit conduit-extra
@@ -35,7 +34,8 @@ in stdenv.mkDerivation {
   name = "query-dev";
   buildInputs = [ hsenv hdf5-cpp liblbfgs cppzmq zeromq libpqxx elfutils
 		  rnnpp tbb
-		  toolz_cpp.fmt
+          toolz_cpp.flatbuffers
+          toolz_cpp.fmt
                   toolz_cpp.msgsl
 		  toolz_cpp.json
                   toolz_cpp.spdlog

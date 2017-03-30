@@ -25,7 +25,7 @@ struct WordCaseCorrector{
 
     std::map<WordNormalizedForm,std::string> to_original_form;
     WordUIDindex wordUIDs;
-    WordImportance const& importance;
+    WordImportance importance;
 };
 
 }

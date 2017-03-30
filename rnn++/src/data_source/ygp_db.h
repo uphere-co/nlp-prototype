@@ -8,8 +8,9 @@
 
 #include "data_source/db.h"
 #include "data_source/db_query.h"
-#include "wordrep/dep_parsed.h"
+#include "data_source/ygp_row_filepath.h"
 
+#include "wordrep/dep_parsed.h"
 #include "wordrep/indexes.h"
 
 #include "utils/hdf5.h"
@@ -78,16 +79,6 @@ struct YGPdb{
     std::vector<std::string> columns;
     std::vector<std::string> index_cols;
     std::vector<std::string> full_names;
-};
-
-struct RowDumpFilePath{
-    RowDumpFilePath(std::string path);
-    std::string full_column_name() const;
-
-    std::string table;
-    std::string column;
-    std::string index_col;
-    int64_t index;
 };
 
 struct CountryColumn {
