@@ -859,9 +859,9 @@ void test_property_table(){
 
     auto data = util::io::fb::load_binary_file(properties_file);
     timer.here_then_reset(fmt::format("Read file. {}", properties_file.name));
-    auto properties = deserialize_pairs<wikidata::EntityProperty>(std::move(data));
+    auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(std::move(data));
     timer.here_then_reset(fmt::format("Construct {} property values.", properties->size()));
-    auto instances  = deserialize_pairs<wikidata::PropertyEntity>(load_binary_file(instances_file));
+    auto instances  = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(instances_file));
     timer.here_then_reset(fmt::format("Construct {} instance values.", instances->size()));
     wikidata::PropertyTable table{std::move(properties), std::move(instances)};
     timer.here_then_reset("Construct PropertyTable.");
@@ -928,7 +928,7 @@ void proptext_to_binary_file(){
     std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
     std::ifstream is{wikidata_properties};
     tbb::task_group g;
-    tbb::concurrent_vector<wikidata::EntityProperty> items;
+    tbb::concurrent_vector<wikidata::PropertyOfEntity> items;
     while (auto buffer=util::string::read_chunk(is, 2000000)) {
         auto& chars =  buffer.value();
         g.run([&items,chars{std::move(chars)}](){
