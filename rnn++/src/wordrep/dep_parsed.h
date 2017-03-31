@@ -89,7 +89,7 @@ struct DepParsedTokens{
     }
     size_t n_tokens() const { return chunks_idx.size();}
 
-private:
+//private:
     vec_t<SentUID>      sents_uid;
     vec_t<ChunkIndex>   chunks_idx;
     vec_t<SentIndex>    sents_idx;

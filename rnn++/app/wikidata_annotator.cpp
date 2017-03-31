@@ -761,6 +761,7 @@ void load_binary_file(std::string filename, T& vec){
     fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
 };
 
+//TODO: remove temporal changes on DepParsedTokens and EntityModule.
 void load_query_engine(int argc, char** argv) {
     assert(argc>1);
     namespace fb = util::io::fb;
@@ -774,19 +775,7 @@ void load_query_engine(int argc, char** argv) {
     std::vector<WordUID> vidx_wuids;
     std::vector<float> wvecs_raw;
 
-    std::vector<SentUID>      sents_uid;
-    std::vector<ChunkIndex>   chunks_idx;
-    std::vector<SentIndex>    sents_idx;
-    std::vector<VocaIndex>    words;
-    std::vector<WordUID>      words_uid;
-    std::vector<WordPosition> words_pidx;
-    std::vector<VocaIndex>    head_words;
-    std::vector<WordUID>      heads_uid;
-    std::vector<WordPosition> heads_pidx;
-    std::vector<CharOffset>   words_beg;
-    std::vector<CharOffset>   words_end;
-    std::vector<POSUID>       poss;
-    std::vector<ArcLabelUID>  arclabels;
+    wordrep::DepParsedTokens texts{};
 
     wordrep::UIDIndexBinary word_uids{conf("word_uid_bin")};
     wordrep::UIDIndexBinary pos_uids{conf("pos_uid_bin")};
@@ -803,19 +792,19 @@ void load_query_engine(int argc, char** argv) {
     g.run([&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);});
     g.run([&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);});
 
-    g.run([&sents_uid](){load_binary_file("nyt.sents_uid.i64v", sents_uid);});
-    g.run([&chunks_idx](){load_binary_file("nyt.chunks_idx.i64v", chunks_idx);});
-    g.run([&sents_idx](){load_binary_file("nyt.sents_idx.i64v", sents_idx);});
-    g.run([&words](){load_binary_file("nyt.words.i64v", words);});
-    g.run([&words_uid](){load_binary_file("nyt.words_uid.i64v", words_uid);});
-    g.run([&words_pidx](){load_binary_file("nyt.words_pidx.i64v", words_pidx);});
-    g.run([&head_words](){load_binary_file("nyt.head_words.i64v", head_words);});
-    g.run([&heads_uid](){load_binary_file("nyt.heads_uid.i64v", heads_uid);});
-    g.run([&heads_pidx](){load_binary_file("nyt.heads_pidx.i64v", heads_pidx);});
-    g.run([&words_beg](){load_binary_file("nyt.words_beg.i64v", words_beg);});
-    g.run([&words_end](){load_binary_file("nyt.words_end.i64v", words_end);});
-    g.run([&poss](){load_binary_file("nyt.poss.i64v", poss);});
-    g.run([&arclabels](){load_binary_file("nyt.arclabels.i64v", arclabels);});
+    g.run([&texts](){load_binary_file("nyt.sents_uid.i64v",  texts.sents_uid);});
+    g.run([&texts](){load_binary_file("nyt.chunks_idx.i64v", texts.chunks_idx);});
+    g.run([&texts](){load_binary_file("nyt.sents_idx.i64v",  texts.sents_idx);});
+    g.run([&texts](){load_binary_file("nyt.words.i64v",      texts.words);});
+    g.run([&texts](){load_binary_file("nyt.words_uid.i64v",  texts.words_uid);});
+    g.run([&texts](){load_binary_file("nyt.words_pidx.i64v", texts.words_pidx);});
+    g.run([&texts](){load_binary_file("nyt.head_words.i64v", texts.head_words);});
+    g.run([&texts](){load_binary_file("nyt.heads_uid.i64v",  texts.heads_uid);});
+    g.run([&texts](){load_binary_file("nyt.heads_pidx.i64v", texts.heads_pidx);});
+    g.run([&texts](){load_binary_file("nyt.words_beg.i64v",  texts.words_beg);});
+    g.run([&texts](){load_binary_file("nyt.words_end.i64v",  texts.words_end);});
+    g.run([&texts](){load_binary_file("nyt.poss.i64v",       texts.poss);});
+    g.run([&texts](){load_binary_file("nyt.arclabels.i64v",  texts.arclabels);});
 
     g.run([&f,&word_uids](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
     g.run([&f,&pos_uids](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
@@ -834,8 +823,9 @@ void load_query_engine(int argc, char** argv) {
     });
 
     g.wait();
-
     timer.here_then_reset("Concurrent loading of binary files");
+    auto sents = texts.IndexSentences();
+    timer.here_then_reset("Post processing of indexed texts.");
 
     f.greedy_annotator = std::make_unique<wikidata::GreedyAnnotator>(*f.entities);
     f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);
@@ -844,6 +834,8 @@ void load_query_engine(int argc, char** argv) {
     wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
     wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
     timer.here_then_reset("Complete to load data structures.");
+
+
 }
 
 void annotate_sentences(int argc, char** argv){

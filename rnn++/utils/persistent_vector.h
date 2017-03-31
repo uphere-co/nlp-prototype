@@ -55,6 +55,7 @@ struct PersistentVector{
     void reserve(size_t n) {vals.reserve(n);}
     std::vector<T> get() const{ return vals;}
     std::vector<T>& get() { return vals;}
+    bool empty() const {return vals.empty();}
     std::string get_name() const {return name;}
 
     void write(io::H5file &store, std::string prefix="") const {
