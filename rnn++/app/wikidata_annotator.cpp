@@ -755,6 +755,97 @@ void load_voca_info(int argc, char** argv){
     timer.here_then_reset("Construct a voca info object.");
 }
 
+template<typename T>
+void load_binary_file(std::string filename, T& vec){
+    namespace fb = util::io::fb;
+    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
+};
+
+void load_query_engine(int argc, char** argv) {
+    assert(argc>1);
+    namespace fb = util::io::fb;
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+    auto conf = [&factory](auto x){return factory.config.value(x);};
+
+    using namespace wordrep;
+    util::Timer timer;
+
+    std::vector<WordUID> vidx_wuids;
+    std::vector<float> wvecs_raw;
+
+    std::vector<SentUID>      sents_uid;
+    std::vector<ChunkIndex>   chunks_idx;
+    std::vector<SentIndex>    sents_idx;
+    std::vector<VocaIndex>    words;
+    std::vector<WordUID>      words_uid;
+    std::vector<WordPosition> words_pidx;
+    std::vector<VocaIndex>    head_words;
+    std::vector<WordUID>      heads_uid;
+    std::vector<WordPosition> heads_pidx;
+    std::vector<CharOffset>   words_beg;
+    std::vector<CharOffset>   words_end;
+    std::vector<POSUID>       poss;
+    std::vector<ArcLabelUID>  arclabels;
+
+    wordrep::UIDIndexBinary word_uids{conf("word_uid_bin")};
+    wordrep::UIDIndexBinary pos_uids{conf("pos_uid_bin")};
+    wordrep::wiki::SortedEntities::Binary wikidata_entities{conf("wikidata_entities_by_name")};
+    wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid{conf("wikidata_entities_by_uid")};
+    util::io::fb::PairsBinary wikidata_properties{conf("wikidata_properties")};
+    util::io::fb::PairsBinary wikidata_instances{conf("wikidata_instances")};
+    wordrep::UIDIndexBinary named_entity_wikidata_uids{conf("named_entity_uids")};
+    wordrep::UIDIndexBinary wikidata_uids{conf("wikidata_uids")};
+    wikidata::EntityModule f{};
+
+    tbb::task_group g;
+
+    g.run([&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);});
+    g.run([&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);});
+
+    g.run([&sents_uid](){load_binary_file("nyt.sents_uid.i64v", sents_uid);});
+    g.run([&chunks_idx](){load_binary_file("nyt.chunks_idx.i64v", chunks_idx);});
+    g.run([&sents_idx](){load_binary_file("nyt.sents_idx.i64v", sents_idx);});
+    g.run([&words](){load_binary_file("nyt.words.i64v", words);});
+    g.run([&words_uid](){load_binary_file("nyt.words_uid.i64v", words_uid);});
+    g.run([&words_pidx](){load_binary_file("nyt.words_pidx.i64v", words_pidx);});
+    g.run([&head_words](){load_binary_file("nyt.head_words.i64v", head_words);});
+    g.run([&heads_uid](){load_binary_file("nyt.heads_uid.i64v", heads_uid);});
+    g.run([&heads_pidx](){load_binary_file("nyt.heads_pidx.i64v", heads_pidx);});
+    g.run([&words_beg](){load_binary_file("nyt.words_beg.i64v", words_beg);});
+    g.run([&words_end](){load_binary_file("nyt.words_end.i64v", words_end);});
+    g.run([&poss](){load_binary_file("nyt.poss.i64v", poss);});
+    g.run([&arclabels](){load_binary_file("nyt.arclabels.i64v", arclabels);});
+
+    g.run([&f,&word_uids](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
+    g.run([&f,&pos_uids](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
+    g.run([&f,&wikidata_uids](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);});
+    g.run([&f,&named_entity_wikidata_uids](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);});
+    g.run([&f,&wikidata_properties,&wikidata_instances](){
+        using util::io::fb::deserialize_pairs;
+        using util::io::fb::load_binary_file;
+        auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(wikidata_properties));
+        auto instances  = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(wikidata_instances));
+        f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
+    });
+    g.run([&f,&wikidata_entities](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
+    g.run([&f,&wikidata_entities_by_uid](){
+        f.entities_by_uid  = std::make_unique<wordrep::wiki::UIDSortedEntities>(wordrep::wiki::read_binary_file(wikidata_entities_by_uid));
+    });
+
+    g.wait();
+
+    timer.here_then_reset("Concurrent loading of binary files");
+
+    f.greedy_annotator = std::make_unique<wikidata::GreedyAnnotator>(*f.entities);
+    f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);
+    f.op_named_entity  = std::make_unique<wordrep::wiki::OpNamedEntity>(*f.wiki_ne_UIDs, *f.wordUIDs, *f.entity_reprs);
+
+    wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
+    wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
+    timer.here_then_reset("Complete to load data structures.");
+}
+
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -964,7 +1055,8 @@ int main(int argc, char** argv){
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
     //convert_voca_info(argc,argv);
-    load_voca_info(argc,argv);
+//    load_voca_info(argc,argv);
+    load_query_engine(argc,argv);
     return 0;
     annotate_sentences(argc,argv);
 
