@@ -18,7 +18,7 @@
 #include "utils/string.h"
 #include "utils/json.h"
 
-#include "wordrep/io.h"
+#include "wordrep/flatbuffers/io.h"
 //using util::get_str;
 //using util::find;
 //using util::has_key;
@@ -840,6 +840,7 @@ void load_query_engine(int argc, char** argv) {
 
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
+    namespace fb = wordrep::wiki::io;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -864,7 +865,7 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset("Load texts.");
     tbb::concurrent_vector<wordrep::Scoring::SentenceToScored> sents;
     auto n = orig_sents.size();
-    if(n>100) n=100;
+//    if(n>100) n=10000;
     tbb::parallel_for(decltype(n){0}, n, [&wiki,&scoring,&scoring_preprocessor,&orig_sents,&sents](auto i) {
         auto& sent = orig_sents[i];
         auto tagged_sent = wiki.annotator().annotate(sent);
@@ -887,8 +888,43 @@ void annotate_sentences(int argc, char** argv){
         }
         sents.push_back(sent_to_scored);
     });
-    for(auto& sent : sents)
-        fmt::print("{}\n", sent.repr(wordUIDs));
+
+    timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
+
+    std::vector<fb::CandidateEntity> candidates;
+    std::vector<fb::AmbiguousEntity> ambiguous_entities;
+    std::vector<fb::DepPair> dep_pairs;
+    std::vector<fb::Sentence> sent_uids;
+    for(auto& sent : sents){
+        for(auto& entity : sent.entities){
+            for(auto& candidate : entity.candidates){
+                candidates.push_back({entity.idxs.idx.val, candidate.uid.val, candidate.score});
+            }
+            ambiguous_entities.push_back({entity.idxs.idx.val, entity.idxs.len, entity.word_gov.val, entity.gov.val});
+        }
+        for(auto& pair : sent.words){
+            dep_pairs.push_back({pair.word_gov.val, pair.word_dep.val, pair.gov.val, pair.dep.val, pair.idx.val});
+        }
+        sent_uids.push_back({sent.orig.uid.val, sent.entities.size(), sent.words.size()});
+    }
+    timer.here_then_reset("Serialize annotated sentences.");
+    flatbuffers::FlatBufferBuilder builder;
+
+    auto candidates_serialized = builder.CreateVectorOfStructs(candidates);
+    auto ambiguous_entities_serialized = builder.CreateVectorOfStructs(ambiguous_entities);
+    auto dep_pairs_serialized = builder.CreateVectorOfStructs(dep_pairs);
+    auto sent_uids_serialized = builder.CreateVectorOfStructs(sent_uids);
+    auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, ambiguous_entities_serialized,
+                                              dep_pairs_serialized, sent_uids_serialized);
+    builder.Finish(entities);
+
+    auto *buf = builder.GetBufferPointer();
+    auto size = builder.GetSize();
+    std::ofstream outfile("nyt.sents.annotated.bin", std::ios::binary);
+    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    outfile.write(reinterpret_cast<const char *>(buf), size);
+    timer.here_then_reset("Write to binary files.");
+
 }
 
 using wordrep::UIDIndexBinary;
@@ -1048,9 +1084,9 @@ int main(int argc, char** argv){
 //    proptext_to_binary_file();
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
-    load_query_engine(argc,argv);
-    return 0;
+//    load_query_engine(argc,argv);
     annotate_sentences(argc,argv);
+    return 0;
 
 //    test_property_table();
 //    util::io::fb::test::test_all();
