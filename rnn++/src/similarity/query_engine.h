@@ -81,7 +81,7 @@ public:
     using output_t = std::vector<data::QueryResult>;
 
     QueryEngineT(typename T::factory_t const& factory);
-    QueryEngineT(json_t const& config);
+    QueryEngineT(json_t const& config, std::optional<int> data_minor_version={});
     QueryEngineT(QueryEngineT&& engine);
 
     json_t preprocess_query(json_t const &ask) const;

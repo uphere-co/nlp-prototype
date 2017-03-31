@@ -18,6 +18,7 @@
 #include "wiki/wikidata.h"
 
 #include "utils/json.h"
+#include "utils/optional.h"
 
 namespace engine{
 
@@ -51,7 +52,7 @@ struct ConfigKeys{
 using Config = util::ConfigT<ConfigKeys>;
 
 struct SubmoduleFactory{
-    SubmoduleFactory(Config const& config);
+    SubmoduleFactory(Config const& config, std::optional<int> data_minor_version={});
 
     data::CoreNLPwebclient corenlp_webclient() const;
     wordrep::WordUIDindex word_uid_index() const;
@@ -68,7 +69,9 @@ struct SubmoduleFactory{
     Dataset empty_dataset() const;
     Dataset load_dataset() const;
     data::DBIndexer db_indexer() const;
+
     Config config;
+    std::optional<int> data_minor_version;
 };
 
 

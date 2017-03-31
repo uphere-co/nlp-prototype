@@ -9,8 +9,8 @@
 
 namespace engine{
 
-SubmoduleFactory::SubmoduleFactory(Config const& config)
-        : config{config}
+SubmoduleFactory::SubmoduleFactory(Config const& config, std::optional<int> data_minor_version)
+        : config{config}, data_minor_version{data_minor_version}
 {}
 
 data::CoreNLPwebclient SubmoduleFactory::corenlp_webclient() const {
@@ -26,9 +26,13 @@ wordrep::ArcLabelUIDindex SubmoduleFactory::arclabel_uid_index() const {
     return {config.value("arclabel_uids_dump")};
 }
 wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
-    auto latest_version = util::get_latest_version(config.value("dep_parsed_store"));
-    fmt::print(std::cerr, "Read {}\n", latest_version.fullname);
-    return {latest_version, config.value("dep_parsed_prefix")};
+    auto name = util::get_latest_version(config.value("dep_parsed_store"));
+    if(data_minor_version){
+        auto minor_version = data_minor_version.value();
+        name = util::VersionedName{config.value("dep_parsed_store"), wordrep::DepParsedTokens::major_version, minor_version};
+    }
+    fmt::print(std::cerr, "Read {}\n", name .fullname);
+    return {name , config.value("dep_parsed_prefix")};
 }
 wordrep::WordImportance SubmoduleFactory::word_importance() const {
     return {util::io::h5read(config.value("word_prob_dump"))};

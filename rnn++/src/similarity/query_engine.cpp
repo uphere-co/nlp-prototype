@@ -303,8 +303,8 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
 }
 
 template<typename T>
-QueryEngineT<T>::QueryEngineT(json_t const &config)
-        : QueryEngineT<T>{typename T::factory_t{{config}}}
+QueryEngineT<T>::QueryEngineT(json_t const &config, std::optional<int> data_minor_version)
+        : QueryEngineT<T>{typename T::factory_t{{config}, data_minor_version}}
 {
     fmt::print(std::cerr, "Engine is constructed.\n");
 }
