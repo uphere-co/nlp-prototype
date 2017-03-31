@@ -189,7 +189,7 @@ cat wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 # IMPORTANT: Currently, only the P31 properties are used. It should be extended as the inference logic evolves
 cat wikidata.items | awk -F '\t' 'NF==5{print $1 "\t" $3}' > wikidata.properties
 # Test annotation
-cat wikidata.all_entities | ./wikidata_annotator config.rss.json QUERY_FILE
+./wikidata_annotator config.rss.json QUERY_FILE
 ```
 
 ## Build tests
