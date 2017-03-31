@@ -13,7 +13,7 @@
 
 #include "utils/profiling.h"
 
-namespace fb = util::flatbuffer;
+namespace fb = util::io::fb;
 
 template<typename T>
 void write_to_binary_file(std::vector<T> const& vec, std::string filename){

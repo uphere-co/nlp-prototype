@@ -712,6 +712,33 @@ void test_all(int argc, char** argv){
 }//namespace wordrep::test
 }//namespace wordrep
 
+void convert_voca_info(int argc, char** argv){
+    assert(argc>1);
+    namespace fb = util::io::fb;
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+    auto conf = [&factory](auto x){return factory.config.value(x);};
+    util::Timer timer;
+
+    util::io::H5file file{conf("wordvec_store"), util::io::hdf5::FileMode::read_exist};
+    assert(conf("w2v_float_t")=="float32");
+    auto wvecs = file.getRawData<float>(conf("w2vmodel_name"));
+    timer.here_then_reset("Load word vectors.");
+    auto voca_index_wuids =wordrep::load_voca(conf("wordvec_store"), conf("voca_name"));
+    timer.here_then_reset("Load voca indexes.");
+    std::vector<int64_t> voca_idxs = util::serialize(voca_index_wuids);
+    timer.here_then_reset("Serialize WordUIDs.");
+    fb::to_file(voca_idxs, {"news.en.uids.bin"});
+    fb::to_file(wvecs, {"news.en.vecs.bin"});
+    timer.here_then_reset("Write to binary files.");
+    wordrep::WordBlock_base<float,100> w{std::move(wvecs)};
+    timer.here_then_reset("Construct word vector matrix.");
+    wordrep::VocaIndexMap vmap{voca_index_wuids};
+    timer.here_then_reset("Construct voca index map.");
+    wordrep::VocaInfo voca_info{std::move(vmap), std::move(w)};
+    timer.here_then_reset("Construct a voca info object.");
+}
+
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -919,13 +946,15 @@ int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
-//    annotate_sentences(argc,argv);
+    convert_voca_info(argc,argv);
+    return 0;
+    annotate_sentences(argc,argv);
 
 //    test_property_table();
 //    util::io::fb::test::test_all();
 //    wikidata::test::test_all(argc, argv);
 //    wordrep::test::test_all(argc,argv);
-//    return 0;
+    return 0;
 
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
