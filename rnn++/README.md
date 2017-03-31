@@ -108,6 +108,8 @@ sort -R ygp.corenlp | head -n 10000 > aaa
 - Index the dataset with them
 ```
 # Parse HTML dumps to extract texts:
+# Get list of hashes for each table (i.e. source like "NYT", or others)
+find /opt/NYT.dump/ -type f -printf "%f\n" > NYT.hashes
 # Note that as more dumps are added to the dataset, index will be changed because ordering of the new files and old files are mixed up.
 find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/parse_article.py NYT {} /opt/RSS.text/
 # Depenency parsing of the texts

@@ -17,8 +17,9 @@ RSSRowFilePath::RSSRowFilePath(std::string full_path) {
     auto tokens = util::string::split(filename, ".");
     table = tokens[0];
     index   = std::stoi(tokens[1]);
-    column = tokens[2];
-    assert(tokens.size()==4&&tokens[3]=="corenlp");
+    //tokens[2] is a hash of the article's URL
+    column = tokens[3];
+    assert(tokens.size()==4&&tokens[4]=="corenlp");
 }
 
 std::string get_row_filename(std::string table, std::string column, int64_t index){
