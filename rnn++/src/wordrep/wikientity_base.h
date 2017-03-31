@@ -2,6 +2,7 @@
 
 #include <map>
 #include <vector>
+#include <memory>
 
 #include "wordrep/indexes.h"
 #include "wordrep/words.h"
@@ -38,26 +39,32 @@ std::ostream &operator<<(std::ostream &os, Entity const &a);
 
 
 struct UIDSortedEntities{
-    UIDSortedEntities(std::vector<Entity> items) {
-        entities.reserve(items.size());
-        for(auto& item : items) entities.push_back(item);
-        tbb::parallel_sort(entities.begin(), entities.end(), [](auto x, auto y){return x.uid<y.uid;});
+    struct Binary{
+        std::string filename;
+    };
+    UIDSortedEntities(std::vector<Entity> const& items)
+    : entities{std::make_unique<tbb::concurrent_vector<Entity>>()} {
+        entities->reserve(items.size());
+        for(auto& item : items) entities->push_back(item);
+        tbb::parallel_sort(entities->begin(), entities->end(), [](auto x, auto y){return x.uid<y.uid;});
     }
     UIDSortedEntities(tbb::concurrent_vector<Entity> items)
-            :  entities{std::move(items)} {
-        tbb::parallel_sort(entities.begin(), entities.end(), [](auto x, auto y){return x.uid<y.uid;});
+            :  entities{std::make_unique<tbb::concurrent_vector<Entity>>(std::move(items))} {
+        tbb::parallel_sort(entities->begin(), entities->end(), [](auto x, auto y){return x.uid<y.uid;});
     }
-    UIDSortedEntities(tbb::concurrent_vector<Entity>&& items)
-            :  entities{std::move(items)}
+    UIDSortedEntities(std::unique_ptr<tbb::concurrent_vector<Entity>> entities)
+            :  entities{std::move(entities)}
     {}
-    auto cbegin() const {return entities.cbegin();}
-    auto cend() const {return entities.cend();}
-    auto begin() const {return entities.cbegin();}
-    auto end() const {return entities.cend();}
+    auto cbegin() const {return entities->cbegin();}
+    auto cend() const {return entities->cend();}
+    auto begin() const {return entities->cbegin();}
+    auto end() const {return entities->cend();}
+    void to_file(Binary file) const;
 
 private:
-    tbb::concurrent_vector<Entity> entities;
+    std::unique_ptr<tbb::concurrent_vector<Entity>> entities;
 };
+std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(UIDSortedEntities::Binary file);
 
 
 struct SortedEntities{

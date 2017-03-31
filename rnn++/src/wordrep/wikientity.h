@@ -44,17 +44,14 @@ struct OpAcronym{
 };
 
 struct OpNamedEntity{
-    OpNamedEntity(WikidataUIDindex&& named_entities, WordUIDindex const& wordUIDs, EntityReprs const& entity_reprs)
-            : named_entities{std::move(named_entities)}, op_acronym{wordUIDs}, entity_reprs{entity_reprs}
-    {}
-    OpNamedEntity(std::string ne_list, WordUIDindex const& word_uid, EntityReprs const& entity_reprs)
-            : named_entities{ne_list}, op_acronym{word_uid}, entity_reprs{entity_reprs}
+    OpNamedEntity(WikidataUIDindex const& named_entities, WordUIDindex const& wordUIDs, EntityReprs const& entity_reprs)
+            : named_entities{named_entities}, op_acronym{wordUIDs}, entity_reprs{entity_reprs}
     {}
     bool is_named_entity(wordrep::WikidataUID uid) const {
         return named_entities.isin(uid)
                || op_acronym.is_acronyms(entity_reprs.get_synonyms(uid));
     }
-    WikidataUIDindex named_entities;
+    WikidataUIDindex const& named_entities;
     OpAcronym op_acronym;
     EntityReprs const& entity_reprs;
 };

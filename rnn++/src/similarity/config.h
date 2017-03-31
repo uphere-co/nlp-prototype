@@ -26,7 +26,9 @@ struct ConfigKeys{
     std::vector<T> keys={{"engine_type"},
                          {"corenlp_client_script"},
                          {"word_uids_dump"},
+                         {"word_uid_bin"},
                          {"pos_uids_dump"},
+                         {"pos_uid_bin"},
                          {"arclabel_uids_dump"},
                          {"column_uids_dump"},
                          {"word_prob_dump"},
@@ -37,9 +39,12 @@ struct ConfigKeys{
                          {"voca_name"},
                          {"w2vmodel_name"},
                          {"w2v_float_t"},
+                         {"wikidata_entities_by_name"},
+                         {"wikidata_entities_by_uid"},
                          {"wikidata_entities"},
                          {"wikidata_uids"},
                          {"wikidata_properties"},
+                         {"wikidata_instances"},
                          {"named_entity_uids"}};
 };
 
