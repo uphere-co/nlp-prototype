@@ -731,11 +731,27 @@ void convert_voca_info(int argc, char** argv){
     fb::to_file(voca_idxs, {"news.en.uids.bin"});
     fb::to_file(wvecs, {"news.en.vecs.bin"});
     timer.here_then_reset("Write to binary files.");
-    wordrep::WordBlock_base<float,100> w{std::move(wvecs)};
+}
+
+void load_voca_info(int argc, char** argv){
+    assert(argc>1);
+    namespace fb = util::io::fb;
+
+    util::Timer timer;
+
+    std::vector<wordrep::WordUID> vidx_wuids;
+    std::vector<float> wvecs_raw;
+
+    fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);
+    timer.here_then_reset("Load word vector matrix file.");
+    wvecs_raw.resize(1000);
+    wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
     timer.here_then_reset("Construct word vector matrix.");
-    wordrep::VocaIndexMap vmap{voca_index_wuids};
+    fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);
+    timer.here_then_reset("Load voca index map file.");
+    wordrep::VocaIndexMap vmap{vidx_wuids};
     timer.here_then_reset("Construct voca index map.");
-    wordrep::VocaInfo voca_info{std::move(vmap), std::move(w)};
+    wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
     timer.here_then_reset("Construct a voca info object.");
 }
 
@@ -757,6 +773,7 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset("Load wordrep::Scoring.");
     wordrep::Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_repr()};
     timer.here_then_reset("Load wordrep::Scoring::Preprocess.");
+
     timer.here_then_reset("Load all data.");
 
     auto tokens = factory.dep_parsed_tokens();
@@ -946,7 +963,8 @@ int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
-    convert_voca_info(argc,argv);
+    //convert_voca_info(argc,argv);
+    load_voca_info(argc,argv);
     return 0;
     annotate_sentences(argc,argv);
 

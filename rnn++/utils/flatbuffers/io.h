@@ -40,6 +40,24 @@ inline std::unique_ptr<char[]> load_binary_file(PairsBinary file){
 };
 
 template<typename T>
+void deserialize_i64vector(std::unique_ptr<char[]> data, T& vec){
+    assert(vec.empty());
+//    static_assert(std::is_same<typename T::value_type, int64_t>::value, "");
+
+    auto rbuf = fb::GetI64Vector(data.get());
+    vec.reserve(rbuf->vals()->size());
+    for(auto v : *rbuf->vals()) vec.push_back(v);
+}
+template<typename T>
+void deserialize_f32vector(std::unique_ptr<char[]> data, T& vec){
+    assert(vec.empty());
+//    static_assert(std::is_same<typename T::value_type, float>::value, "");
+    auto rbuf = fb::GetF32Vector(data.get());
+    vec.reserve(rbuf->vals()->size());
+    for(auto v : *rbuf->vals()) vec.push_back(v);
+}
+
+template<typename T>
 void deserialize_pairs(std::unique_ptr<char[]> data, tbb::concurrent_vector<T>& pairs){
     namespace fb = util::io::fb;
     auto rbuf = fb::GetPairs(data.get());
