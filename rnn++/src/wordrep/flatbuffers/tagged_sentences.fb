@@ -1,0 +1,40 @@
+namespace wordrep.wiki.io;
+
+struct CandidateEntity{
+    idx:long;
+    uid:long;
+    score:double;
+}
+
+struct AmbiguousEntity{
+    idx:long;
+    len:ulong;
+    widx_gov:long;
+    vidx_gov:long;
+}
+
+struct DepPair{
+    word_gov:long;
+    word_dep:long;
+    vidx_gov:long;
+    vidx_dep:long;
+    idx:long;
+}
+
+struct Sentence{
+    uid:long;
+    n_entities:ulong;
+    n_words:ulong;
+}
+
+table TaggedSentences{
+    candidates:[CandidateEntity];
+    ambiguous_entities:[AmbiguousEntity];
+    dep_pairs:[DepPair];
+    sents:[Sentence];
+}
+
+file_identifier "wfts";
+file_extension "wfts";
+
+root_type TaggedSentences;
