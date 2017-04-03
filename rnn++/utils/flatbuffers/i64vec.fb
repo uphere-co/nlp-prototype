@@ -1,4 +1,4 @@
-namespace util.flatbuffer;
+namespace util.io.fb;
 table I64Vector {  vals:[long]; }
 
 file_identifier "I64V";

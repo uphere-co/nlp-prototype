@@ -34,7 +34,7 @@ struct Dataset{
     std::vector<wordrep::SentUID> append_chunk(data::CoreNLPjson const &ask);
 
     //TODO: clean up dependency on wordrep.
-    wordrep::VocaInfo const voca;
+    wordrep::VocaInfo voca;
     UIDmaps token2uid;
 
     wordrep::DepParsedTokens tokens{};

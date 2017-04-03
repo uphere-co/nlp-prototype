@@ -1,4 +1,4 @@
-namespace util.flatbuffer;
+namespace util.io.fb;
 table Entity {
 uid:long;
 len_name:short;

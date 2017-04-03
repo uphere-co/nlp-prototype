@@ -13,6 +13,10 @@ struct VocaInfo{
             : indexmap{load_voca(h5file, voca_name)},
               wvecs{load_raw_wvec(h5file, wvec_name, w2v_float_t)}
     {}
+    VocaInfo(VocaIndexMap&& indexmap, voca_vecs_t&& wvecs)
+            : indexmap{std::move(indexmap)},
+              wvecs{std::move(wvecs)}
+    {}
     VocaIndexMap indexmap;
     voca_vecs_t wvecs;
 };

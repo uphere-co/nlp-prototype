@@ -1,0 +1,6 @@
+namespace util.io.fb;
+table F32Vector {  vals:[float]; }
+
+file_identifier "F32V";
+file_extension "f32v";
+root_type F32Vector;

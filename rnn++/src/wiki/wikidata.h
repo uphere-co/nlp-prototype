@@ -119,9 +119,12 @@ struct EntityModule{
     wordrep::wiki::OpNamedEntity const& get_op_named_entity() const{return *op_named_entity;}
 
     friend struct EntityModuleBuilder;
-protected:
+
+//TODO:Restore following
+//private:
+public:
     EntityModule(){}
-private:
+
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::POSUIDindex> posUIDs;
     std::unique_ptr<wordrep::WikidataUIDindex> wikiUIDs;

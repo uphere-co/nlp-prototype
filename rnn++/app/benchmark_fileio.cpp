@@ -13,7 +13,7 @@
 
 #include "utils/profiling.h"
 
-namespace fb = util::flatbuffer;
+namespace fb = util::io::fb;
 
 template<typename T>
 void write_to_binary_file(std::vector<T> const& vec, std::string filename){
@@ -69,17 +69,23 @@ void hdf5_dep_parsed_to_flatbuffers(){
 template<typename T>
 void load_binary_file(std::string filename, T& vec){
     assert(vec.empty());
-    util::MockTimer timer;
+    util::Timer timer;
     std::ifstream input_file (filename, std::ios::binary);
     flatbuffers::uoffset_t read_size;
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("Read file : {}\n", filename));
+    timer.here_then_reset(fmt::format("load_binary_file: Read file : {}", filename));
     auto rbuf = fb::GetI64Vector(data.get());
     vec.reserve(rbuf->vals()->size());
     for(auto v : *rbuf->vals()) vec.push_back(v);
-    timer.here_then_reset(fmt::format("Load data : {}\n", filename));
+//    vec.resize(rbuf->vals()->size());
+//    auto n = vec.size();
+//    auto& vec_buf = *rbuf->vals();
+//    tbb::parallel_for(decltype(n){0},n, [&vec_buf,&vec](auto i) {
+//        vec[i]=vec_buf[i];
+//    });
+    timer.here_then_reset(fmt::format("load_binary_file: Load data : {}", filename));
 }
 
 template<typename T, typename T2>
@@ -98,7 +104,6 @@ void hdf5_vs_flatbuffer_benchmark(){
     wordrep::IndexedTexts texts{hdf5_file, "nyt"};
     timer.here_then_reset("Load nyt.h5");
 
-    tbb::task_group g;
     std::vector<SentUID>      sents_uid;
     std::vector<ChunkIndex>   chunks_idx;
     std::vector<SentIndex>    sents_idx;
@@ -112,6 +117,7 @@ void hdf5_vs_flatbuffer_benchmark(){
     std::vector<CharOffset>   words_end;
     std::vector<POSUID>       poss;
     std::vector<ArcLabelUID>  arclabels;
+    tbb::task_group g;
     g.run([&sents_uid](){load_binary_file("nyt.sents_uid.i64v", sents_uid);});
     g.run([&chunks_idx](){load_binary_file("nyt.chunks_idx.i64v", chunks_idx);});
     g.run([&sents_idx](){load_binary_file("nyt.sents_idx.i64v", sents_idx);});
@@ -235,7 +241,7 @@ int main(){
 //    binary_file_io();
 //    hdf5_to_flatbuffers();
 //    hdf5_dep_parsed_to_flatbuffers();
-//    hdf5_vs_flatbuffer_benchmark();
+    hdf5_vs_flatbuffer_benchmark();
     test_complex_data_io();
     return 0;
 }
