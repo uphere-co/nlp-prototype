@@ -110,13 +110,13 @@ calculateWI :: IO ()
 calculateWI = do
   callCommand "./word_importance_build"
   
-runYGP :: IO ()
-runYGP = do  
+runYGP :: Int -> IO ()
+runYGP n = do  
   dumpYGPDB  
-  parseCoreNLP YGP 0
+  parseCoreNLP YGP n
   putStrLn "YGP Pipeline Finished!"
 
-runRSS :: IO ()
-runRSS = do
-  parseCoreNLP RSS 0
+runRSS :: Int -> IO ()
+runRSS n = do
+  parseCoreNLP RSS n
   putStrLn "RSS Pipeline Finished!"
