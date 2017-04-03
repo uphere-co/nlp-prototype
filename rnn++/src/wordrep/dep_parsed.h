@@ -51,6 +51,7 @@ struct Sentences{
     std::map<SentUID,Sentence> uid2sent{};
 };
 
+DepParsedTokens load_indexed_texts(std::string prefix);
 
 struct DepParsedTokens{
     static constexpr int64_t major_version = 5;
@@ -89,7 +90,8 @@ struct DepParsedTokens{
     }
     size_t n_tokens() const { return chunks_idx.size();}
 
-//private:
+    friend DepParsedTokens load_indexed_texts(std::string prefix);
+private:
     vec_t<SentUID>      sents_uid;
     vec_t<ChunkIndex>   chunks_idx;
     vec_t<SentIndex>    sents_idx;
@@ -105,6 +107,7 @@ struct DepParsedTokens{
     vec_t<ArcLabelUID>  arclabels;
     ChunkIndex current_chunk_idx{ChunkIndex::val_t{0}};
 };
+
 
 }//namespace wordrep
 

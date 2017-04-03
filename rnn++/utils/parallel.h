@@ -9,8 +9,6 @@
 #include <tbb/blocked_range.h>
 #include <tbb/task_group.h>
 
-#include <fmt/printf.h>
-
 namespace util {
 
 template<typename T>
@@ -53,18 +51,15 @@ struct ConcurrentVector{
 
 template<typename T, typename F1>
 void parallel_invoke_impl(T& root, F1 const& f1) {
-    fmt::print("parallel_invoce_1\n");
     root.run_and_finish(f1);
 }
 template<typename T, typename F1, typename F2>
 void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2) {
-    fmt::print("parallel_invoce_2\n");
     root.add_children(f2);
     root.run_and_finish(f1);
 }
 template<typename T, typename F1, typename F2, typename F3>
 void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3) {
-    fmt::print("parallel_invoce_3\n");
     root.add_children(f3);
     root.add_children(f2);
     root.run_and_finish(f1);
@@ -72,7 +67,6 @@ void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3) {
 
 template<typename T, typename F1, typename F2, typename F3, typename... Args>
 void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3, Args&&... args) {
-    fmt::print("parallel_invoce_impl\n");
     root.add_children(f1,f2,f3);
     parallel_invoke_impl(root, std::forward<Args>(args)...);
 }
@@ -87,7 +81,6 @@ void parallel_invoke(Args&&... args) {
     tbb::internal::parallel_invoke_cleaner cleaner(n_pack, context);
     tbb::internal::parallel_invoke_helper& root = cleaner.root;
 
-    fmt::print("parallel_invoce\n");
     parallel_invoke_impl(root, std::forward<Args>(args)...);
 }
 

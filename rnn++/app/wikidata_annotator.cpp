@@ -755,21 +755,6 @@ void load_voca_info(int argc, char** argv){
     timer.here_then_reset("Construct a voca info object.");
 }
 
-template<typename T>
-void load_binary_file(std::string filename, T& vec){
-    namespace fb = util::io::fb;
-    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
-};
-
-template<typename F0, typename F1, typename F2, typename F3, typename F4,
-        typename F5, typename F6, typename F7, typename F8>
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     const F5& f5, const F6& f6, const F7& f7, const F8& f8)
-{
-    tbb::task_group_context context;
-    tbb::parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7, F8>(f0, f1, f2, f3, f4, f5, f6, f7, f8, context);
-}
-
 
 //TODO: remove temporal changes on DepParsedTokens and EntityModule.
 void load_query_engine(int argc, char** argv) {
@@ -792,21 +777,8 @@ void load_query_engine(int argc, char** argv) {
     wikidata::EntityModule f{};
 
     auto load_indexed_text=[&texts](){
-        util::parallel_invoke(
-                [&texts](){load_binary_file("nyt.sents_uid.i64v",  texts.sents_uid);},
-                [&texts](){load_binary_file("nyt.chunks_idx.i64v", texts.chunks_idx);},
-                [&texts](){load_binary_file("nyt.sents_idx.i64v",  texts.sents_idx);},
-                [&texts](){load_binary_file("nyt.words.i64v",      texts.words);},
-                [&texts](){load_binary_file("nyt.words_uid.i64v",  texts.words_uid);},
-                [&texts](){load_binary_file("nyt.words_pidx.i64v", texts.words_pidx);},
-                [&texts](){load_binary_file("nyt.head_words.i64v", texts.head_words);},
-                [&texts](){load_binary_file("nyt.heads_uid.i64v",  texts.heads_uid);},
-                [&texts](){load_binary_file("nyt.heads_pidx.i64v", texts.heads_pidx);},
-                [&texts](){load_binary_file("nyt.words_beg.i64v",  texts.words_beg);},
-                [&texts](){load_binary_file("nyt.words_end.i64v",  texts.words_end);},
-                [&texts](){load_binary_file("nyt.poss.i64v",       texts.poss);},
-                [&texts](){load_binary_file("nyt.arclabels.i64v",  texts.arclabels);}
-        );};
+        texts = wordrep::load_indexed_texts("nyt");
+    };
     auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
         util::parallel_invoke(
                 [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);},
@@ -831,6 +803,7 @@ void load_query_engine(int argc, char** argv) {
     wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
     wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
     timer.here_then_reset("Complete to load data structures.");
+    fmt::print("{} sentences", sents.size());
 }
 
 struct SerializedAnnotation{
