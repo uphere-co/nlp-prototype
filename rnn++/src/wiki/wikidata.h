@@ -98,7 +98,7 @@ std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const&
 struct EntityModuleBuilder;
 
 struct EntityModule{
-    EntityModule(EntityModule &&orig)
+    EntityModule(EntityModule&& orig)
             : wordUIDs{std::move(orig.wordUIDs)},
               posUIDs{std::move(orig.posUIDs)},
               wikiUIDs{std::move(orig.wikiUIDs)},
@@ -110,6 +110,19 @@ struct EntityModule{
               entity_reprs{std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid)},
               op_named_entity{std::make_unique<wordrep::wiki::OpNamedEntity>(*wiki_ne_UIDs,*wordUIDs,*entity_reprs)}
     {}
+    EntityModule& operator=(EntityModule&& orig){
+        wordUIDs     = std::move(orig.wordUIDs);
+        posUIDs      = std::move(orig.posUIDs);
+        wikiUIDs     = std::move(orig.wikiUIDs);
+        wiki_ne_UIDs = std::move(orig.wiki_ne_UIDs);
+        prop_dict    = std::move(orig.prop_dict);
+        entities     = std::move(orig.entities);
+        entities_by_uid  = std::move(orig.entities_by_uid);
+        greedy_annotator = std::make_unique<GreedyAnnotator>(*entities);
+        entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*entities_by_uid);
+        op_named_entity  = std::make_unique<wordrep::wiki::OpNamedEntity>(*wiki_ne_UIDs,*wordUIDs,*entity_reprs);
+        return *this;
+    }
     wordrep::WordUIDindex const& word_uid() const {return *wordUIDs;}
     wordrep::POSUIDindex const& pos_uid() const {return *posUIDs;}
     wordrep::WikidataUIDindex const& wiki_uid() const {return *wikiUIDs;}
@@ -139,32 +152,36 @@ public:
 
 
 struct EntityModuleBuilder {
-    EntityModule build(wordrep::UIDIndexBinary word_uids,
-                        wordrep::UIDIndexBinary pos_uids,
-                        wordrep::wiki::SortedEntities::Binary wikidata_entities,
-                        wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid,
-                        util::io::fb::PairsBinary wikidata_properties,
-                        util::io::fb::PairsBinary wikidata_instances,
-                        wordrep::UIDIndexBinary named_entity_wikidata_uids,
-                        wordrep::UIDIndexBinary wikidata_uids) const {
+    struct Param{
+        wordrep::UIDIndexBinary word_uids;
+        wordrep::UIDIndexBinary pos_uids;
+        wordrep::wiki::SortedEntities::Binary wikidata_entities;
+        wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid;
+        util::io::fb::PairsBinary wikidata_properties;
+        util::io::fb::PairsBinary wikidata_instances;
+        wordrep::UIDIndexBinary named_entity_wikidata_uids;
+        wordrep::UIDIndexBinary wikidata_uids;
+    };
+    EntityModule build(Param const& param) const {
         EntityModule f{};
-        tbb::task_group g;
-        g.run([&f,&word_uids](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
-        g.run([&f,&pos_uids](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
-        g.run([&f,&wikidata_uids](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);});
-        g.run([&f,&named_entity_wikidata_uids](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);});
-        g.run([&f,&wikidata_properties,&wikidata_instances](){
-            using util::io::fb::deserialize_pairs;
-            using util::io::fb::load_binary_file;
-            auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(wikidata_properties));
-            auto instances  = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(wikidata_instances));
-            f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
-        });
-        g.run([&f,&wikidata_entities](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
-        g.run([&f,&wikidata_entities_by_uid](){
-            f.entities_by_uid  = std::make_unique<wordrep::wiki::UIDSortedEntities>(wordrep::wiki::read_binary_file(wikidata_entities_by_uid));
-        });
-        g.wait();
+        util::parallel_invoke(
+                [&f,&param](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(param.word_uids);},
+                [&f,&param](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(param.pos_uids);},
+                [&f,&param](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(param.wikidata_uids);},
+                [&f,&param](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(param.named_entity_wikidata_uids);},
+                [&f,&param]() {
+                    using util::io::fb::deserialize_pairs;
+                    using util::io::fb::load_binary_file;
+                    auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(param.wikidata_properties));
+                    auto instances = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(param.wikidata_instances));
+                    f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties), std::move(instances));
+                },
+                [&f,&param](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(param.wikidata_entities);},
+                [&f,&param]() {
+                    f.entities_by_uid = std::make_unique<wordrep::wiki::UIDSortedEntities>(
+                            wordrep::wiki::read_binary_file(param.wikidata_entities_by_uid));
+                }
+        );
         f.greedy_annotator = std::make_unique<GreedyAnnotator>(*f.entities);
         f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);
         f.op_named_entity  = std::make_unique<wordrep::wiki::OpNamedEntity>(*f.wiki_ne_UIDs, *f.wordUIDs, *f.entity_reprs);

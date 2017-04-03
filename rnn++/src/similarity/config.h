@@ -51,6 +51,8 @@ struct ConfigKeys{
 
 using Config = util::ConfigT<ConfigKeys>;
 
+wikidata::EntityModuleBuilder::Param get_wikimoudle_param(Config const &config);
+
 struct SubmoduleFactory{
     SubmoduleFactory(Config const& config, std::optional<int> data_minor_version={});
 

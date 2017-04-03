@@ -777,7 +777,7 @@ void load_query_engine(int argc, char** argv) {
     namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-    auto conf = [&factory](auto x){return factory.config.value(x);};
+
 
     using namespace wordrep;
     util::Timer timer;
@@ -787,14 +787,8 @@ void load_query_engine(int argc, char** argv) {
 
     wordrep::DepParsedTokens texts{};
 
-    wordrep::UIDIndexBinary word_uids{conf("word_uid_bin")};
-    wordrep::UIDIndexBinary pos_uids{conf("pos_uid_bin")};
-    wordrep::wiki::SortedEntities::Binary wikidata_entities{conf("wikidata_entities_by_name")};
-    wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid{conf("wikidata_entities_by_uid")};
-    util::io::fb::PairsBinary wikidata_properties{conf("wikidata_properties")};
-    util::io::fb::PairsBinary wikidata_instances{conf("wikidata_instances")};
-    wordrep::UIDIndexBinary named_entity_wikidata_uids{conf("named_entity_uids")};
-    wordrep::UIDIndexBinary wikidata_uids{conf("wikidata_uids")};
+
+
     wikidata::EntityModule f{};
 
     auto load_indexed_text=[&texts](){
@@ -819,26 +813,8 @@ void load_query_engine(int argc, char** argv) {
                 [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);}
         );
     };
-    auto load_wiki_module = [&f,&word_uids,&pos_uids,&wikidata_uids,&named_entity_wikidata_uids,
-            &wikidata_properties,&wikidata_instances,&wikidata_entities,&wikidata_entities_by_uid](){
-        util::parallel_invoke(
-                [&f,&word_uids](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);},
-                [&f,&pos_uids](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);},
-                [&f,&wikidata_uids](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);},
-                [&f,&named_entity_wikidata_uids](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);},
-                [&f,&wikidata_properties,&wikidata_instances]() {
-                    using util::io::fb::deserialize_pairs;
-                    using util::io::fb::load_binary_file;
-                    auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(wikidata_properties));
-                    auto instances = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(wikidata_instances));
-                    f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties), std::move(instances));
-                },
-                [&f,&wikidata_entities](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);},
-                [&f,&wikidata_entities_by_uid]() {
-                    f.entities_by_uid = std::make_unique<wordrep::wiki::UIDSortedEntities>(
-                            wordrep::wiki::read_binary_file(wikidata_entities_by_uid));
-                }
-        );
+    auto load_wiki_module = [&f,&factory](){
+        f = factory.wikientity_module();
     };
     util::parallel_invoke(load_indexed_text,
                           load_wiki_module,
