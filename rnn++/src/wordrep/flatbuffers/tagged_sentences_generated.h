@@ -10,30 +10,26 @@ namespace wordrep {
 namespace wiki {
 namespace io {
 
-struct CandidateEntity;
+struct EntityCandidate;
 
 struct AmbiguousEntity;
 
-struct DepPair;
-
-struct Sentence;
-
 struct TaggedSentences;
 
-MANUALLY_ALIGNED_STRUCT(8) CandidateEntity FLATBUFFERS_FINAL_CLASS {
+MANUALLY_ALIGNED_STRUCT(8) EntityCandidate FLATBUFFERS_FINAL_CLASS {
  private:
   int64_t idx_;
   int64_t uid_;
   double score_;
 
  public:
-  CandidateEntity() {
-    memset(this, 0, sizeof(CandidateEntity));
+  EntityCandidate() {
+    memset(this, 0, sizeof(EntityCandidate));
   }
-  CandidateEntity(const CandidateEntity &_o) {
-    memcpy(this, &_o, sizeof(CandidateEntity));
+  EntityCandidate(const EntityCandidate &_o) {
+    memcpy(this, &_o, sizeof(EntityCandidate));
   }
-  CandidateEntity(int64_t _idx, int64_t _uid, double _score)
+  EntityCandidate(int64_t _idx, int64_t _uid, double _score)
       : idx_(flatbuffers::EndianScalar(_idx)),
         uid_(flatbuffers::EndianScalar(_uid)),
         score_(flatbuffers::EndianScalar(_score)) {
@@ -48,14 +44,12 @@ MANUALLY_ALIGNED_STRUCT(8) CandidateEntity FLATBUFFERS_FINAL_CLASS {
     return flatbuffers::EndianScalar(score_);
   }
 };
-STRUCT_END(CandidateEntity, 24);
+STRUCT_END(EntityCandidate, 24);
 
 MANUALLY_ALIGNED_STRUCT(8) AmbiguousEntity FLATBUFFERS_FINAL_CLASS {
  private:
   int64_t idx_;
   uint64_t len_;
-  int64_t widx_gov_;
-  int64_t vidx_gov_;
 
  public:
   AmbiguousEntity() {
@@ -64,11 +58,9 @@ MANUALLY_ALIGNED_STRUCT(8) AmbiguousEntity FLATBUFFERS_FINAL_CLASS {
   AmbiguousEntity(const AmbiguousEntity &_o) {
     memcpy(this, &_o, sizeof(AmbiguousEntity));
   }
-  AmbiguousEntity(int64_t _idx, uint64_t _len, int64_t _widx_gov, int64_t _vidx_gov)
+  AmbiguousEntity(int64_t _idx, uint64_t _len)
       : idx_(flatbuffers::EndianScalar(_idx)),
-        len_(flatbuffers::EndianScalar(_len)),
-        widx_gov_(flatbuffers::EndianScalar(_widx_gov)),
-        vidx_gov_(flatbuffers::EndianScalar(_vidx_gov)) {
+        len_(flatbuffers::EndianScalar(_len)) {
   }
   int64_t idx() const {
     return flatbuffers::EndianScalar(idx_);
@@ -76,103 +68,19 @@ MANUALLY_ALIGNED_STRUCT(8) AmbiguousEntity FLATBUFFERS_FINAL_CLASS {
   uint64_t len() const {
     return flatbuffers::EndianScalar(len_);
   }
-  int64_t widx_gov() const {
-    return flatbuffers::EndianScalar(widx_gov_);
-  }
-  int64_t vidx_gov() const {
-    return flatbuffers::EndianScalar(vidx_gov_);
-  }
 };
-STRUCT_END(AmbiguousEntity, 32);
-
-MANUALLY_ALIGNED_STRUCT(8) DepPair FLATBUFFERS_FINAL_CLASS {
- private:
-  int64_t word_gov_;
-  int64_t word_dep_;
-  int64_t vidx_gov_;
-  int64_t vidx_dep_;
-  int64_t idx_;
-
- public:
-  DepPair() {
-    memset(this, 0, sizeof(DepPair));
-  }
-  DepPair(const DepPair &_o) {
-    memcpy(this, &_o, sizeof(DepPair));
-  }
-  DepPair(int64_t _word_gov, int64_t _word_dep, int64_t _vidx_gov, int64_t _vidx_dep, int64_t _idx)
-      : word_gov_(flatbuffers::EndianScalar(_word_gov)),
-        word_dep_(flatbuffers::EndianScalar(_word_dep)),
-        vidx_gov_(flatbuffers::EndianScalar(_vidx_gov)),
-        vidx_dep_(flatbuffers::EndianScalar(_vidx_dep)),
-        idx_(flatbuffers::EndianScalar(_idx)) {
-  }
-  int64_t word_gov() const {
-    return flatbuffers::EndianScalar(word_gov_);
-  }
-  int64_t word_dep() const {
-    return flatbuffers::EndianScalar(word_dep_);
-  }
-  int64_t vidx_gov() const {
-    return flatbuffers::EndianScalar(vidx_gov_);
-  }
-  int64_t vidx_dep() const {
-    return flatbuffers::EndianScalar(vidx_dep_);
-  }
-  int64_t idx() const {
-    return flatbuffers::EndianScalar(idx_);
-  }
-};
-STRUCT_END(DepPair, 40);
-
-MANUALLY_ALIGNED_STRUCT(8) Sentence FLATBUFFERS_FINAL_CLASS {
- private:
-  int64_t uid_;
-  uint64_t n_entities_;
-  uint64_t n_words_;
-
- public:
-  Sentence() {
-    memset(this, 0, sizeof(Sentence));
-  }
-  Sentence(const Sentence &_o) {
-    memcpy(this, &_o, sizeof(Sentence));
-  }
-  Sentence(int64_t _uid, uint64_t _n_entities, uint64_t _n_words)
-      : uid_(flatbuffers::EndianScalar(_uid)),
-        n_entities_(flatbuffers::EndianScalar(_n_entities)),
-        n_words_(flatbuffers::EndianScalar(_n_words)) {
-  }
-  int64_t uid() const {
-    return flatbuffers::EndianScalar(uid_);
-  }
-  uint64_t n_entities() const {
-    return flatbuffers::EndianScalar(n_entities_);
-  }
-  uint64_t n_words() const {
-    return flatbuffers::EndianScalar(n_words_);
-  }
-};
-STRUCT_END(Sentence, 24);
+STRUCT_END(AmbiguousEntity, 16);
 
 struct TaggedSentences FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_CANDIDATES = 4,
-    VT_AMBIGUOUS_ENTITIES = 6,
-    VT_DEP_PAIRS = 8,
-    VT_SENTS = 10
+    VT_AMBIGUOUS_ENTITIES = 6
   };
-  const flatbuffers::Vector<const CandidateEntity *> *candidates() const {
-    return GetPointer<const flatbuffers::Vector<const CandidateEntity *> *>(VT_CANDIDATES);
+  const flatbuffers::Vector<const EntityCandidate *> *candidates() const {
+    return GetPointer<const flatbuffers::Vector<const EntityCandidate *> *>(VT_CANDIDATES);
   }
   const flatbuffers::Vector<const AmbiguousEntity *> *ambiguous_entities() const {
     return GetPointer<const flatbuffers::Vector<const AmbiguousEntity *> *>(VT_AMBIGUOUS_ENTITIES);
-  }
-  const flatbuffers::Vector<const DepPair *> *dep_pairs() const {
-    return GetPointer<const flatbuffers::Vector<const DepPair *> *>(VT_DEP_PAIRS);
-  }
-  const flatbuffers::Vector<const Sentence *> *sents() const {
-    return GetPointer<const flatbuffers::Vector<const Sentence *> *>(VT_SENTS);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -180,10 +88,6 @@ struct TaggedSentences FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.Verify(candidates()) &&
            VerifyField<flatbuffers::uoffset_t>(verifier, VT_AMBIGUOUS_ENTITIES) &&
            verifier.Verify(ambiguous_entities()) &&
-           VerifyField<flatbuffers::uoffset_t>(verifier, VT_DEP_PAIRS) &&
-           verifier.Verify(dep_pairs()) &&
-           VerifyField<flatbuffers::uoffset_t>(verifier, VT_SENTS) &&
-           verifier.Verify(sents()) &&
            verifier.EndTable();
   }
 };
@@ -191,17 +95,11 @@ struct TaggedSentences FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 struct TaggedSentencesBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_candidates(flatbuffers::Offset<flatbuffers::Vector<const CandidateEntity *>> candidates) {
+  void add_candidates(flatbuffers::Offset<flatbuffers::Vector<const EntityCandidate *>> candidates) {
     fbb_.AddOffset(TaggedSentences::VT_CANDIDATES, candidates);
   }
   void add_ambiguous_entities(flatbuffers::Offset<flatbuffers::Vector<const AmbiguousEntity *>> ambiguous_entities) {
     fbb_.AddOffset(TaggedSentences::VT_AMBIGUOUS_ENTITIES, ambiguous_entities);
-  }
-  void add_dep_pairs(flatbuffers::Offset<flatbuffers::Vector<const DepPair *>> dep_pairs) {
-    fbb_.AddOffset(TaggedSentences::VT_DEP_PAIRS, dep_pairs);
-  }
-  void add_sents(flatbuffers::Offset<flatbuffers::Vector<const Sentence *>> sents) {
-    fbb_.AddOffset(TaggedSentences::VT_SENTS, sents);
   }
   TaggedSentencesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -209,7 +107,7 @@ struct TaggedSentencesBuilder {
   }
   TaggedSentencesBuilder &operator=(const TaggedSentencesBuilder &);
   flatbuffers::Offset<TaggedSentences> Finish() {
-    const auto end = fbb_.EndTable(start_, 4);
+    const auto end = fbb_.EndTable(start_, 2);
     auto o = flatbuffers::Offset<TaggedSentences>(end);
     return o;
   }
@@ -217,13 +115,9 @@ struct TaggedSentencesBuilder {
 
 inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentences(
     flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<const CandidateEntity *>> candidates = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const AmbiguousEntity *>> ambiguous_entities = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const DepPair *>> dep_pairs = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const Sentence *>> sents = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<const EntityCandidate *>> candidates = 0,
+    flatbuffers::Offset<flatbuffers::Vector<const AmbiguousEntity *>> ambiguous_entities = 0) {
   TaggedSentencesBuilder builder_(_fbb);
-  builder_.add_sents(sents);
-  builder_.add_dep_pairs(dep_pairs);
   builder_.add_ambiguous_entities(ambiguous_entities);
   builder_.add_candidates(candidates);
   return builder_.Finish();
@@ -231,16 +125,12 @@ inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentences(
 
 inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentencesDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<const CandidateEntity *> *candidates = nullptr,
-    const std::vector<const AmbiguousEntity *> *ambiguous_entities = nullptr,
-    const std::vector<const DepPair *> *dep_pairs = nullptr,
-    const std::vector<const Sentence *> *sents = nullptr) {
+    const std::vector<const EntityCandidate *> *candidates = nullptr,
+    const std::vector<const AmbiguousEntity *> *ambiguous_entities = nullptr) {
   return wordrep::wiki::io::CreateTaggedSentences(
       _fbb,
-      candidates ? _fbb.CreateVector<const CandidateEntity *>(*candidates) : 0,
-      ambiguous_entities ? _fbb.CreateVector<const AmbiguousEntity *>(*ambiguous_entities) : 0,
-      dep_pairs ? _fbb.CreateVector<const DepPair *>(*dep_pairs) : 0,
-      sents ? _fbb.CreateVector<const Sentence *>(*sents) : 0);
+      candidates ? _fbb.CreateVector<const EntityCandidate *>(*candidates) : 0,
+      ambiguous_entities ? _fbb.CreateVector<const AmbiguousEntity *>(*ambiguous_entities) : 0);
 }
 
 inline const wordrep::wiki::io::TaggedSentences *GetTaggedSentences(const void *buf) {

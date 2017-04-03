@@ -891,31 +891,25 @@ void annotate_sentences(int argc, char** argv){
 
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
-    std::vector<fb::CandidateEntity> candidates;
+    std::vector<fb::EntityCandidate> candidates;
     std::vector<fb::AmbiguousEntity> ambiguous_entities;
-    std::vector<fb::DepPair> dep_pairs;
-    std::vector<fb::Sentence> sent_uids;
     for(auto& sent : sents){
         for(auto& entity : sent.entities){
             for(auto& candidate : entity.candidates){
                 candidates.push_back({entity.idxs.idx.val, candidate.uid.val, candidate.score});
             }
-            ambiguous_entities.push_back({entity.idxs.idx.val, entity.idxs.len, entity.word_gov.val, entity.gov.val});
+            ambiguous_entities.push_back({entity.idxs.idx.val, util::to_signed_positive(entity.idxs.len)});
+
         }
-        for(auto& pair : sent.words){
-            dep_pairs.push_back({pair.word_gov.val, pair.word_dep.val, pair.gov.val, pair.dep.val, pair.idx.val});
-        }
-        sent_uids.push_back({sent.orig.uid.val, sent.entities.size(), sent.words.size()});
     }
-    timer.here_then_reset("Serialize annotated sentences.");
+    timer.here_then_reset(fmt::format("Serialize annotated sentences : {} candidates among {} ambiguous entities.",
+                                      candidates.size(), ambiguous_entities.size()));
+
     flatbuffers::FlatBufferBuilder builder;
 
     auto candidates_serialized = builder.CreateVectorOfStructs(candidates);
     auto ambiguous_entities_serialized = builder.CreateVectorOfStructs(ambiguous_entities);
-    auto dep_pairs_serialized = builder.CreateVectorOfStructs(dep_pairs);
-    auto sent_uids_serialized = builder.CreateVectorOfStructs(sent_uids);
-    auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, ambiguous_entities_serialized,
-                                              dep_pairs_serialized, sent_uids_serialized);
+    auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, ambiguous_entities_serialized);
     builder.Finish(entities);
 
     auto *buf = builder.GetBufferPointer();
@@ -924,7 +918,6 @@ void annotate_sentences(int argc, char** argv){
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
     timer.here_then_reset("Write to binary files.");
-
 }
 
 using wordrep::UIDIndexBinary;
