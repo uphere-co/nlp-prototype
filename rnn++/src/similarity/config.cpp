@@ -80,7 +80,7 @@ wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
     return {config.value("wikidata_uids")};
 }
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
-    return wikidata::EntityModuleBuilder{}.build(get_wikimoudle_param(config));
+    return wikidata::EntityModuleBuilder{get_wikimoudle_param(config)}.build();
 }
 
 }//namespace engine

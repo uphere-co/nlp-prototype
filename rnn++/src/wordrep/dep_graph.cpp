@@ -133,22 +133,22 @@ std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& g
     return sub_heads;
 }
 
-DepParsedTokens load_indexed_texts(std::string prefix) {
+DepParsedTokens DepParsedTokensBuilder::build() const {
     wordrep::DepParsedTokens texts{};
     util::parallel_invoke(
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.sents_uid.i64v", prefix), texts.sents_uid); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",prefix), texts.chunks_idx); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.sents_idx.i64v", prefix), texts.sents_idx); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.words.i64v",     prefix), texts.words); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.words_uid.i64v", prefix), texts.words_uid); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.words_pidx.i64v",prefix), texts.words_pidx); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.head_words.i64v",prefix), texts.head_words); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.heads_uid.i64v", prefix), texts.heads_uid); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",prefix), texts.heads_pidx); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.words_beg.i64v", prefix), texts.words_beg); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.words_end.i64v", prefix), texts.words_end); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.poss.i64v",      prefix), texts.poss); },
-            [&texts,&prefix]() { load_binary_file(fmt::format("{}.arclabels.i64v", prefix), texts.arclabels); }
+            [&texts,this]() { load_binary_file(fmt::format("{}.sents_uid.i64v", this->param.prefix), texts.sents_uid); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",this->param.prefix), texts.chunks_idx); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.sents_idx.i64v", this->param.prefix), texts.sents_idx); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.words.i64v",     this->param.prefix), texts.words); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.words_uid.i64v", this->param.prefix), texts.words_uid); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.words_pidx.i64v",this->param.prefix), texts.words_pidx); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.head_words.i64v",this->param.prefix), texts.head_words); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.heads_uid.i64v", this->param.prefix), texts.heads_uid); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",this->param.prefix), texts.heads_pidx); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.words_beg.i64v", this->param.prefix), texts.words_beg); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.words_end.i64v", this->param.prefix), texts.words_end); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.poss.i64v",      this->param.prefix), texts.poss); },
+            [&texts,this]() { load_binary_file(fmt::format("{}.arclabels.i64v", this->param.prefix), texts.arclabels); }
     );
     return texts;
 }

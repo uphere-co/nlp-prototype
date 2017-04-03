@@ -771,13 +771,10 @@ void load_query_engine(int argc, char** argv) {
     std::vector<float> wvecs_raw;
 
     wordrep::DepParsedTokens texts{};
-
-
-
     wikidata::EntityModule f{};
 
     auto load_indexed_text=[&texts](){
-        texts = wordrep::load_indexed_texts("nyt");
+        texts = wordrep::DepParsedTokensBuilder{{"nyt"}}.build();
     };
     auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
         util::parallel_invoke(
@@ -795,10 +792,6 @@ void load_query_engine(int argc, char** argv) {
     timer.here_then_reset("Concurrent loading of binary files");
     auto sents = texts.IndexSentences();
     timer.here_then_reset("Post processing of indexed texts.");
-
-    f.greedy_annotator = std::make_unique<wikidata::GreedyAnnotator>(*f.entities);
-    f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);
-    f.op_named_entity  = std::make_unique<wordrep::wiki::OpNamedEntity>(*f.wiki_ne_UIDs, *f.wordUIDs, *f.entity_reprs);
 
     wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
     wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
