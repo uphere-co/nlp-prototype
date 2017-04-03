@@ -1,19 +1,20 @@
-namespace wordrep.wiki.io;
+namespace wordrep.io;
 
 struct EntityCandidate{
-    idx:long;
-    uid:long;
+    token_idx:long;
+    wiki_uid:long;
     score:double;
 }
 
-struct TaggedEntity{
-    idx:long;
-    len:ulong;
+struct TaggedToken{
+    sent_uid:long;
+    token_idx:long;
+    token_len:ulong;
 }
 
 table TaggedSentences{
     candidates:[EntityCandidate];
-    tagged_entities:[TaggedEntity];
+    tagged_tokens:[TaggedToken];
 }
 
 file_identifier "wfts";

@@ -842,16 +842,16 @@ struct SerializedAnnotation{
     struct Binary{
         std::string name;
     };
-    std::vector<wordrep::wiki::io::EntityCandidate> candidates;
-    std::vector<wordrep::wiki::io::TaggedEntity> tagged_entities;
+    std::vector<wordrep::io::EntityCandidate> candidates;
+    std::vector<wordrep::io::TaggedToken> tagged_tokens;
 
     void to_file(Binary file) const {
-        namespace fb = wordrep::wiki::io;
+        namespace fb = wordrep::io;
 
         flatbuffers::FlatBufferBuilder builder;
         auto candidates_serialized = builder.CreateVectorOfStructs(candidates);
-        auto tagged_entities_serialized = builder.CreateVectorOfStructs(tagged_entities);
-        auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, tagged_entities_serialized);
+        auto tokens_serialized = builder.CreateVectorOfStructs(tagged_tokens);
+        auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, tokens_serialized);
         builder.Finish(entities);
 
         auto *buf = builder.GetBufferPointer();
@@ -862,17 +862,18 @@ struct SerializedAnnotation{
     }
 };
 
-auto load_binary_file(SerializedAnnotation::Binary file){
+std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Binary file){
     auto data = util::io::fb::load_binary_file(file.name);
-    SerializedAnnotation block;
-    auto rbuf = wordrep::wiki::io::GetTaggedSentences(data.get());
-    block.candidates.reserve(rbuf->candidates()->size());
-    block.tagged_entities.reserve(rbuf->tagged_entities()->size());
+    auto block = std::make_unique<SerializedAnnotation>();
+    auto rbuf = wordrep::io::GetTaggedSentences(data.get());
+    block->candidates.reserve(rbuf->candidates()->size());
+    block->tagged_tokens.reserve(rbuf->tagged_tokens()->size());
 
     for(auto v : *rbuf->candidates())
-        block.candidates.push_back(*v);
-    for(auto v : *rbuf->tagged_entities())
-        block.tagged_entities.push_back(*v);
+        block->candidates.push_back(*v);
+    for(auto v : *rbuf->tagged_tokens())
+        block->tagged_tokens.push_back(*v);
+    return block;
 }
 
 void annotate_sentences(int argc, char** argv){
@@ -930,15 +931,17 @@ void annotate_sentences(int argc, char** argv){
     constexpr int n_output = 4;
     SerializedAnnotation blocks[n_output];
     for(auto& sent : sents){
-        auto output_hash = sent.orig.uid.val % n_output;
+        auto sent_uid = sent.orig.uid.val;
+        auto output_hash = sent_uid % n_output;
         auto& candidates = blocks[output_hash].candidates;
-        auto& tagged_entities = blocks[output_hash].tagged_entities;
+        auto& tagged_entities = blocks[output_hash].tagged_tokens;
         for(auto& entity : sent.entities){
-            for(auto& candidate : entity.candidates){
+            tagged_entities.push_back({sent.orig.uid.val, entity.idxs.idx.val, entity.idxs.len});
+            for(auto& candidate : entity.candidates)
                 candidates.push_back({entity.idxs.idx.val, candidate.uid.val, candidate.score});
-            }
-            tagged_entities.push_back({entity.idxs.idx.val, entity.idxs.len});
         }
+        for(auto& dep_pair : sent.words)
+            tagged_entities.push_back({sent.orig.uid.val, dep_pair.idx.val, 0});
     }
     timer.here_then_reset("Serialize annotated sentences.");
 
@@ -950,8 +953,28 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset("Write to binary files.");
 }
 
-using wordrep::UIDIndexBinary;
+void load_annotated_sentences(int argc, char** argv){
+    util::Timer timer;
+    auto block = load_binary_file(SerializedAnnotation::Binary{"nyt.sents.annotated.bin.0"});
+    timer.here_then_reset("Load files.");
+    int i=0;
+    tbb::concurrent_vector<wordrep::Scoring::AmbiguousEntity> a;
+    tbb::concurrent_vector<wordrep::DepPair> b;
+    for(auto& entity : block->tagged_tokens){
+        auto suid = entity.sent_uid();
+        auto idx =entity.token_idx();
+        auto len = entity.token_len();
+        fmt::print("{} {}\n", idx, len);
+        if(++i>50)break;
+    }
+    for(auto& candidate : block->candidates){
+        candidate.token_idx();
+        candidate.wiki_uid();
+        candidate.score();
+    }
+}
 
+using wordrep::UIDIndexBinary;
 void save_wikidata_entities(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -1108,7 +1131,8 @@ int main(int argc, char** argv){
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
 //    load_query_engine(argc,argv);
-    annotate_sentences(argc,argv);
+//    annotate_sentences(argc,argv);
+    load_annotated_sentences(argc,argv);
     return 0;
 
 //    test_property_table();
