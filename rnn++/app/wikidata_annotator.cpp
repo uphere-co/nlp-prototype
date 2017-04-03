@@ -838,9 +838,34 @@ void load_query_engine(int argc, char** argv) {
 
 }
 
+struct SerializedAnnotation{
+    struct Binary{
+        std::string name;
+    };
+    std::vector<wordrep::wiki::io::EntityCandidate> candidates;
+    std::vector<wordrep::wiki::io::AmbiguousEntity> tagged_entities;
+
+    void to_file(Binary file) const {
+        namespace fb = wordrep::wiki::io;
+
+        flatbuffers::FlatBufferBuilder builder;
+        auto candidates_serialized = builder.CreateVectorOfStructs(candidates);
+        auto tagged_entities_serialized = builder.CreateVectorOfStructs(tagged_entities);
+        auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, tagged_entities_serialized);
+        builder.Finish(entities);
+
+        auto *buf = builder.GetBufferPointer();
+        auto size = builder.GetSize();
+        std::ofstream outfile(file.name, std::ios::binary);
+        outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
+        outfile.write(reinterpret_cast<const char *>(buf), size);
+    }
+
+};
+
+
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
-    namespace fb = wordrep::wiki::io;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
 
@@ -891,32 +916,25 @@ void annotate_sentences(int argc, char** argv){
 
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
-    std::vector<fb::EntityCandidate> candidates;
-    std::vector<fb::AmbiguousEntity> ambiguous_entities;
+    constexpr int n_output = 4;
+    SerializedAnnotation blocks[n_output];
     for(auto& sent : sents){
+        auto output_hash = sent.orig.uid.val % n_output;
+        auto& candidates = blocks[output_hash].candidates;
+        auto& tagged_entities = blocks[output_hash].tagged_entities;
         for(auto& entity : sent.entities){
             for(auto& candidate : entity.candidates){
                 candidates.push_back({entity.idxs.idx.val, candidate.uid.val, candidate.score});
             }
-            ambiguous_entities.push_back({entity.idxs.idx.val, util::to_signed_positive(entity.idxs.len)});
-
+            tagged_entities.push_back({entity.idxs.idx.val, entity.idxs.len});
         }
     }
-    timer.here_then_reset(fmt::format("Serialize annotated sentences : {} candidates among {} ambiguous entities.",
-                                      candidates.size(), ambiguous_entities.size()));
+    timer.here_then_reset("Serialize annotated sentences.");
 
-    flatbuffers::FlatBufferBuilder builder;
-
-    auto candidates_serialized = builder.CreateVectorOfStructs(candidates);
-    auto ambiguous_entities_serialized = builder.CreateVectorOfStructs(ambiguous_entities);
-    auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, ambiguous_entities_serialized);
-    builder.Finish(entities);
-
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-    std::ofstream outfile("nyt.sents.annotated.bin", std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
+    for(auto const& block : blocks){
+        auto filename = fmt::format("nyt.sents.annotated.bin.{}",i);
+        block.to_file({filename});
+    }
     timer.here_then_reset("Write to binary files.");
 }
 
