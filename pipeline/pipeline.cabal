@@ -23,6 +23,7 @@ executable pipeline
                        aeson >=0.11 && <0.12,
                        bytestring >=0.10 && <0.11,
                        directory >=1.2 && <1.3,
+                       optparse-applicative,
                        process >=1.4 && <1.5
   -- hs-source-dirs:
   other-modules:       Type,
