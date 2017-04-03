@@ -843,7 +843,7 @@ struct SerializedAnnotation{
         std::string name;
     };
     std::vector<wordrep::wiki::io::EntityCandidate> candidates;
-    std::vector<wordrep::wiki::io::AmbiguousEntity> tagged_entities;
+    std::vector<wordrep::wiki::io::TaggedEntity> tagged_entities;
 
     void to_file(Binary file) const {
         namespace fb = wordrep::wiki::io;
@@ -860,9 +860,20 @@ struct SerializedAnnotation{
         outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
         outfile.write(reinterpret_cast<const char *>(buf), size);
     }
-
 };
 
+auto load_binary_file(SerializedAnnotation::Binary file){
+    auto data = util::io::fb::load_binary_file(file.name);
+    SerializedAnnotation block;
+    auto rbuf = wordrep::wiki::io::GetTaggedSentences(data.get());
+    block.candidates.reserve(rbuf->candidates()->size());
+    block.tagged_entities.reserve(rbuf->tagged_entities()->size());
+
+    for(auto v : *rbuf->candidates())
+        block.candidates.push_back(*v);
+    for(auto v : *rbuf->tagged_entities())
+        block.tagged_entities.push_back(*v);
+}
 
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
@@ -931,8 +942,9 @@ void annotate_sentences(int argc, char** argv){
     }
     timer.here_then_reset("Serialize annotated sentences.");
 
+    int i=0;
     for(auto const& block : blocks){
-        auto filename = fmt::format("nyt.sents.annotated.bin.{}",i);
+        auto filename = fmt::format("nyt.sents.annotated.bin.{}",i++);
         block.to_file({filename});
     }
     timer.here_then_reset("Write to binary files.");

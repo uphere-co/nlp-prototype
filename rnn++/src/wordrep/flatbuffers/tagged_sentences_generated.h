@@ -12,7 +12,7 @@ namespace io {
 
 struct EntityCandidate;
 
-struct AmbiguousEntity;
+struct TaggedEntity;
 
 struct TaggedSentences;
 
@@ -46,19 +46,19 @@ MANUALLY_ALIGNED_STRUCT(8) EntityCandidate FLATBUFFERS_FINAL_CLASS {
 };
 STRUCT_END(EntityCandidate, 24);
 
-MANUALLY_ALIGNED_STRUCT(8) AmbiguousEntity FLATBUFFERS_FINAL_CLASS {
+MANUALLY_ALIGNED_STRUCT(8) TaggedEntity FLATBUFFERS_FINAL_CLASS {
  private:
   int64_t idx_;
   uint64_t len_;
 
  public:
-  AmbiguousEntity() {
-    memset(this, 0, sizeof(AmbiguousEntity));
+  TaggedEntity() {
+    memset(this, 0, sizeof(TaggedEntity));
   }
-  AmbiguousEntity(const AmbiguousEntity &_o) {
-    memcpy(this, &_o, sizeof(AmbiguousEntity));
+  TaggedEntity(const TaggedEntity &_o) {
+    memcpy(this, &_o, sizeof(TaggedEntity));
   }
-  AmbiguousEntity(int64_t _idx, uint64_t _len)
+  TaggedEntity(int64_t _idx, uint64_t _len)
       : idx_(flatbuffers::EndianScalar(_idx)),
         len_(flatbuffers::EndianScalar(_len)) {
   }
@@ -69,25 +69,25 @@ MANUALLY_ALIGNED_STRUCT(8) AmbiguousEntity FLATBUFFERS_FINAL_CLASS {
     return flatbuffers::EndianScalar(len_);
   }
 };
-STRUCT_END(AmbiguousEntity, 16);
+STRUCT_END(TaggedEntity, 16);
 
 struct TaggedSentences FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_CANDIDATES = 4,
-    VT_AMBIGUOUS_ENTITIES = 6
+    VT_TAGGED_ENTITIES = 6
   };
   const flatbuffers::Vector<const EntityCandidate *> *candidates() const {
     return GetPointer<const flatbuffers::Vector<const EntityCandidate *> *>(VT_CANDIDATES);
   }
-  const flatbuffers::Vector<const AmbiguousEntity *> *ambiguous_entities() const {
-    return GetPointer<const flatbuffers::Vector<const AmbiguousEntity *> *>(VT_AMBIGUOUS_ENTITIES);
+  const flatbuffers::Vector<const TaggedEntity *> *tagged_entities() const {
+    return GetPointer<const flatbuffers::Vector<const TaggedEntity *> *>(VT_TAGGED_ENTITIES);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<flatbuffers::uoffset_t>(verifier, VT_CANDIDATES) &&
            verifier.Verify(candidates()) &&
-           VerifyField<flatbuffers::uoffset_t>(verifier, VT_AMBIGUOUS_ENTITIES) &&
-           verifier.Verify(ambiguous_entities()) &&
+           VerifyField<flatbuffers::uoffset_t>(verifier, VT_TAGGED_ENTITIES) &&
+           verifier.Verify(tagged_entities()) &&
            verifier.EndTable();
   }
 };
@@ -98,8 +98,8 @@ struct TaggedSentencesBuilder {
   void add_candidates(flatbuffers::Offset<flatbuffers::Vector<const EntityCandidate *>> candidates) {
     fbb_.AddOffset(TaggedSentences::VT_CANDIDATES, candidates);
   }
-  void add_ambiguous_entities(flatbuffers::Offset<flatbuffers::Vector<const AmbiguousEntity *>> ambiguous_entities) {
-    fbb_.AddOffset(TaggedSentences::VT_AMBIGUOUS_ENTITIES, ambiguous_entities);
+  void add_tagged_entities(flatbuffers::Offset<flatbuffers::Vector<const TaggedEntity *>> tagged_entities) {
+    fbb_.AddOffset(TaggedSentences::VT_TAGGED_ENTITIES, tagged_entities);
   }
   TaggedSentencesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -116,9 +116,9 @@ struct TaggedSentencesBuilder {
 inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentences(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<const EntityCandidate *>> candidates = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const AmbiguousEntity *>> ambiguous_entities = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<const TaggedEntity *>> tagged_entities = 0) {
   TaggedSentencesBuilder builder_(_fbb);
-  builder_.add_ambiguous_entities(ambiguous_entities);
+  builder_.add_tagged_entities(tagged_entities);
   builder_.add_candidates(candidates);
   return builder_.Finish();
 }
@@ -126,11 +126,11 @@ inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentences(
 inline flatbuffers::Offset<TaggedSentences> CreateTaggedSentencesDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<const EntityCandidate *> *candidates = nullptr,
-    const std::vector<const AmbiguousEntity *> *ambiguous_entities = nullptr) {
+    const std::vector<const TaggedEntity *> *tagged_entities = nullptr) {
   return wordrep::wiki::io::CreateTaggedSentences(
       _fbb,
       candidates ? _fbb.CreateVector<const EntityCandidate *>(*candidates) : 0,
-      ambiguous_entities ? _fbb.CreateVector<const AmbiguousEntity *>(*ambiguous_entities) : 0);
+      tagged_entities ? _fbb.CreateVector<const TaggedEntity *>(*tagged_entities) : 0);
 }
 
 inline const wordrep::wiki::io::TaggedSentences *GetTaggedSentences(const void *buf) {

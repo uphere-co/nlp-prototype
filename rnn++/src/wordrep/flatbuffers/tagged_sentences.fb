@@ -6,14 +6,14 @@ struct EntityCandidate{
     score:double;
 }
 
-struct AmbiguousEntity{
+struct TaggedEntity{
     idx:long;
     len:ulong;
 }
 
 table TaggedSentences{
     candidates:[EntityCandidate];
-    ambiguous_entities:[AmbiguousEntity];
+    tagged_entities:[TaggedEntity];
 }
 
 file_identifier "wfts";
