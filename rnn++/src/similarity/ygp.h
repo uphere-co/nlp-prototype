@@ -28,7 +28,8 @@ struct Config{
 };
 
 struct Factory{
-    Factory(Config const& config) : config{config}, common{config.common} {}
+    Factory(Config const& config,std::optional<int> data_minor_version={})
+            : config{config}, common{config.common, data_minor_version} {}
     YGPdb db() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;

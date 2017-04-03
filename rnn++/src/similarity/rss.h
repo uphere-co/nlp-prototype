@@ -27,7 +27,8 @@ struct Config{
     util::ConfigT<ConfigKeys> rss;
 };
 struct Factory{
-    Factory(Config const& config) : config{config}, common{config.common} {}
+    Factory(Config const& config, std::optional<int> data_minor_version={})
+            : config{config}, common{config.common, data_minor_version} {}
     Columns db() const;
 
     Config config;
