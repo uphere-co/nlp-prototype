@@ -1114,15 +1114,15 @@ void proptext_to_binary_file(){
 //}
 
 void test_parallel_invoke(){
-    assert(util::get_number_of_children(1)==1);
-    assert(util::get_number_of_children(2)==2);
-    assert(util::get_number_of_children(3)==3);
-    assert(util::get_number_of_children(4)==2);
-    assert(util::get_number_of_children(5)==3);
-    assert(util::get_number_of_children(6)==4);
-    assert(util::get_number_of_children(7)==3);
-    assert(util::get_number_of_children(8)==4);
-    assert(util::get_number_of_children(9)==5);
+    assert(util::tbb_detail::get_number_of_children(1)==1);
+    assert(util::tbb_detail::get_number_of_children(2)==2);
+    assert(util::tbb_detail::get_number_of_children(3)==3);
+    assert(util::tbb_detail::get_number_of_children(4)==2);
+    assert(util::tbb_detail::get_number_of_children(5)==3);
+    assert(util::tbb_detail::get_number_of_children(6)==4);
+    assert(util::tbb_detail::get_number_of_children(7)==3);
+    assert(util::tbb_detail::get_number_of_children(8)==4);
+    assert(util::tbb_detail::get_number_of_children(9)==5);
 
 }
 int main(int argc, char** argv){

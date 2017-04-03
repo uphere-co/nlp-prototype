@@ -1,5 +1,4 @@
 #pragma once
-
 #include <tbb/concurrent_vector.h>
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/task_group.h>
@@ -8,6 +7,40 @@
 #include <tbb/parallel_sort.h>
 #include <tbb/blocked_range.h>
 #include <tbb/task_group.h>
+#include <tbb/parallel_invoke.h>
+
+namespace util {
+namespace tbb_detail{
+
+template<typename T, typename F1>
+void parallel_invoke_impl(T& root, F1 const& f1) {
+    root.run_and_finish(f1);
+}
+template<typename T, typename F1, typename F2>
+void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2) {
+    root.add_children(f2);
+    root.run_and_finish(f1);
+}
+template<typename T, typename F1, typename F2, typename F3>
+void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3) {
+    root.add_children(f3);
+    root.add_children(f2);
+    root.run_and_finish(f1);
+}
+
+template<typename T, typename F1, typename F2, typename F3, typename... Args>
+void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3, Args&&... args) {
+    root.add_children(f1,f2,f3);
+    parallel_invoke_impl(root, std::forward<Args>(args)...);
+}
+
+inline constexpr int get_number_of_children(int n_args){
+    if(n_args<=3) return n_args;
+    return get_number_of_children(n_args-3) + 1;
+}
+
+}//namespace util::tbb_detail
+}//namespace util;
 
 namespace util {
 
@@ -48,44 +81,16 @@ struct ConcurrentVector{
     tbb::concurrent_vector<T> vec;
 };
 
-
-template<typename T, typename F1>
-void parallel_invoke_impl(T& root, F1 const& f1) {
-    root.run_and_finish(f1);
-}
-template<typename T, typename F1, typename F2>
-void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2) {
-    root.add_children(f2);
-    root.run_and_finish(f1);
-}
-template<typename T, typename F1, typename F2, typename F3>
-void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3) {
-    root.add_children(f3);
-    root.add_children(f2);
-    root.run_and_finish(f1);
-}
-
-template<typename T, typename F1, typename F2, typename F3, typename... Args>
-void parallel_invoke_impl(T& root, F1 const& f1, F2 const& f2, F3 const& f3, Args&&... args) {
-    root.add_children(f1,f2,f3);
-    parallel_invoke_impl(root, std::forward<Args>(args)...);
-}
-
-inline constexpr int get_number_of_children(int n_args){
-    if(n_args<=3) return n_args;
-    return get_number_of_children(n_args-3) + 1;
-}
-
 template<typename... Args>
 void parallel_invoke(Args&&... args) {
     tbb::task_group_context context;
     constexpr int n_args = sizeof...(args);
-    constexpr int n_pack = get_number_of_children(n_args);
+    constexpr int n_pack = tbb_detail::get_number_of_children(n_args);
 
     tbb::internal::parallel_invoke_cleaner cleaner(n_pack, context);
     tbb::internal::parallel_invoke_helper& root = cleaner.root;
 
-    parallel_invoke_impl(root, std::forward<Args>(args)...);
+    tbb_detail::parallel_invoke_impl(root, std::forward<Args>(args)...);
 }
 
 }//namespace util
