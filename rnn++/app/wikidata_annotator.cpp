@@ -1113,12 +1113,25 @@ void proptext_to_binary_file(){
 //    pp_impl(os, std::forward<Args>(args)...);
 //}
 
+void test_parallel_invoke(){
+    assert(util::get_number_of_children(1)==1);
+    assert(util::get_number_of_children(2)==2);
+    assert(util::get_number_of_children(3)==3);
+    assert(util::get_number_of_children(4)==2);
+    assert(util::get_number_of_children(5)==3);
+    assert(util::get_number_of_children(6)==4);
+    assert(util::get_number_of_children(7)==3);
+    assert(util::get_number_of_children(8)==4);
+    assert(util::get_number_of_children(9)==5);
+
+}
 int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
+    test_parallel_invoke();
     load_query_engine(argc,argv);
 //    annotate_sentences(argc,argv);
 //    load_annotated_sentences(argc,argv);
