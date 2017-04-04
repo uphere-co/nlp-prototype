@@ -762,16 +762,13 @@ void load_query_engine(int argc, char** argv) {
     namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-
-
-    using namespace wordrep;
     util::Timer timer;
 
-    std::vector<WordUID> vidx_wuids;
+    std::vector<wordrep::WordUID> vidx_wuids;
     std::vector<float> wvecs_raw;
 
     wordrep::DepParsedTokens texts{};
-    wikidata::EntityModule f{};
+    std::unique_ptr<wikidata::EntityModule> f{};
 
     auto load_indexed_text=[&texts](){
         texts = wordrep::DepParsedTokensBuilder{{"nyt"}}.build();
@@ -783,7 +780,7 @@ void load_query_engine(int argc, char** argv) {
         );
     };
     auto load_wiki_module = [&f,&factory](){
-        f = factory.wikientity_module();
+        f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
     };
     util::parallel_invoke(load_indexed_text,
                           load_wiki_module,

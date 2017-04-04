@@ -9,7 +9,7 @@
 
 namespace engine{
 
-wikidata::EntityModuleBuilder::Param get_wikimoudle_param(Config const &config){
+wikidata::EntityModule::InputParam get_wikimoudle_param(Config const &config){
     auto conf = [&config](auto x){return config.value(x);};
     return {
             wordrep::UIDIndexBinary{conf("word_uid_bin")},
@@ -80,7 +80,7 @@ wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
     return {config.value("wikidata_uids")};
 }
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
-    return wikidata::EntityModuleBuilder{get_wikimoudle_param(config)}.build();
+    return wikidata::EntityModule::factory(get_wikimoudle_param(config));
 }
 
 }//namespace engine
