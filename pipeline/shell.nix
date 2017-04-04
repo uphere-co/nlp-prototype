@@ -15,6 +15,7 @@ let toolz     = callPackage ../nix/default-python.nix {
           conduit-extra
 	      lens
           monad-loops
+          optparse-applicative
           split
 	      data-default
 	    ]);
