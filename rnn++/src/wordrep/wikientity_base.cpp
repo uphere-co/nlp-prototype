@@ -1,5 +1,5 @@
 #include "wordrep/wikientity_base.h"
-#include "wordrep/io.h"
+#include "wordrep/flatbuffers/io.h"
 
 #include <sstream>
 

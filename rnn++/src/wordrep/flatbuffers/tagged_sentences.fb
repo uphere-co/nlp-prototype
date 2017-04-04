@@ -1,0 +1,23 @@
+namespace wordrep.io;
+
+struct EntityCandidate{
+    token_idx:long;
+    wiki_uid:long;
+    score:double;
+}
+
+struct TaggedToken{
+    sent_uid:long;
+    token_idx:long;
+    token_len:ulong;
+}
+
+table TaggedSentences{
+    candidates:[EntityCandidate];
+    tagged_tokens:[TaggedToken];
+}
+
+file_identifier "wfts";
+file_extension "wfts";
+
+root_type TaggedSentences;
