@@ -755,11 +755,6 @@ void load_voca_info(int argc, char** argv){
     timer.here_then_reset("Construct a voca info object.");
 }
 
-template<typename T>
-void load_binary_file(std::string filename, T& vec){
-    namespace fb = util::io::fb;
-    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
-};
 
 //TODO: remove temporal changes on DepParsedTokens and EntityModule.
 void load_query_engine(int argc, char** argv) {
@@ -767,75 +762,38 @@ void load_query_engine(int argc, char** argv) {
     namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-    auto conf = [&factory](auto x){return factory.config.value(x);};
-
-    using namespace wordrep;
     util::Timer timer;
 
-    std::vector<WordUID> vidx_wuids;
+    std::vector<wordrep::WordUID> vidx_wuids;
     std::vector<float> wvecs_raw;
 
     wordrep::DepParsedTokens texts{};
+    std::unique_ptr<wikidata::EntityModule> f{};
 
-    wordrep::UIDIndexBinary word_uids{conf("word_uid_bin")};
-    wordrep::UIDIndexBinary pos_uids{conf("pos_uid_bin")};
-    wordrep::wiki::SortedEntities::Binary wikidata_entities{conf("wikidata_entities_by_name")};
-    wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid{conf("wikidata_entities_by_uid")};
-    util::io::fb::PairsBinary wikidata_properties{conf("wikidata_properties")};
-    util::io::fb::PairsBinary wikidata_instances{conf("wikidata_instances")};
-    wordrep::UIDIndexBinary named_entity_wikidata_uids{conf("named_entity_uids")};
-    wordrep::UIDIndexBinary wikidata_uids{conf("wikidata_uids")};
-    wikidata::EntityModule f{};
+    auto load_indexed_text=[&texts](){
+        texts = wordrep::DepParsedTokens::factory({"nyt"});
+    };
+    auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
+        util::parallel_invoke(
+                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);},
+                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);}
+        );
+    };
+    auto load_wiki_module = [&f,&factory](){
+        f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
+    };
+    util::parallel_invoke(load_indexed_text,
+                          load_wiki_module,
+                          load_word_embedding);
 
-    tbb::task_group g;
-
-    g.run([&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);});
-    g.run([&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);});
-
-    g.run([&texts](){load_binary_file("nyt.sents_uid.i64v",  texts.sents_uid);});
-    g.run([&texts](){load_binary_file("nyt.chunks_idx.i64v", texts.chunks_idx);});
-    g.run([&texts](){load_binary_file("nyt.sents_idx.i64v",  texts.sents_idx);});
-    g.run([&texts](){load_binary_file("nyt.words.i64v",      texts.words);});
-    g.run([&texts](){load_binary_file("nyt.words_uid.i64v",  texts.words_uid);});
-    g.run([&texts](){load_binary_file("nyt.words_pidx.i64v", texts.words_pidx);});
-    g.run([&texts](){load_binary_file("nyt.head_words.i64v", texts.head_words);});
-    g.run([&texts](){load_binary_file("nyt.heads_uid.i64v",  texts.heads_uid);});
-    g.run([&texts](){load_binary_file("nyt.heads_pidx.i64v", texts.heads_pidx);});
-    g.run([&texts](){load_binary_file("nyt.words_beg.i64v",  texts.words_beg);});
-    g.run([&texts](){load_binary_file("nyt.words_end.i64v",  texts.words_end);});
-    g.run([&texts](){load_binary_file("nyt.poss.i64v",       texts.poss);});
-    g.run([&texts](){load_binary_file("nyt.arclabels.i64v",  texts.arclabels);});
-
-    g.run([&f,&word_uids](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(word_uids);});
-    g.run([&f,&pos_uids](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(pos_uids);});
-    g.run([&f,&wikidata_uids](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wikidata_uids);});
-    g.run([&f,&named_entity_wikidata_uids](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(named_entity_wikidata_uids);});
-    g.run([&f,&wikidata_properties,&wikidata_instances](){
-        using util::io::fb::deserialize_pairs;
-        using util::io::fb::load_binary_file;
-        auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(wikidata_properties));
-        auto instances  = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(wikidata_instances));
-        f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties),std::move(instances));
-    });
-    g.run([&f,&wikidata_entities](){f.entities = std::make_unique<wordrep::wiki::SortedEntities>(wikidata_entities);});
-    g.run([&f,&wikidata_entities_by_uid](){
-        f.entities_by_uid  = std::make_unique<wordrep::wiki::UIDSortedEntities>(wordrep::wiki::read_binary_file(wikidata_entities_by_uid));
-    });
-
-    g.wait();
     timer.here_then_reset("Concurrent loading of binary files");
     auto sents = texts.IndexSentences();
     timer.here_then_reset("Post processing of indexed texts.");
 
-    f.greedy_annotator = std::make_unique<wikidata::GreedyAnnotator>(*f.entities);
-    f.entity_reprs     = std::make_unique<wordrep::wiki::EntityReprs>(*f.entities_by_uid);
-    f.op_named_entity  = std::make_unique<wordrep::wiki::OpNamedEntity>(*f.wiki_ne_UIDs, *f.wordUIDs, *f.entity_reprs);
-
     wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
     wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
     timer.here_then_reset("Complete to load data structures.");
-
-
+    fmt::print("{} sentences", sents.size());
 }
 
 struct SerializedAnnotation{
@@ -939,11 +897,11 @@ void annotate_sentences(int argc, char** argv){
 
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
-    constexpr size_t n_block = 4;
-    auto len_block = (sents.size() + n_block - 1)/n_block;
+    constexpr size_t n_block = 10;
+    auto len_block = (sents.size() + n_block - 1) / n_block;
     SerializedAnnotation blocks[n_block];
     for(auto& sent : sents){
-        auto block_idx      = sent.orig.uid.val / len_block;
+        auto block_idx        = sent.orig.uid.val / len_block;
         auto& candidates      = blocks[block_idx].candidates;
         auto& tagged_entities = blocks[block_idx].tagged_tokens;
         for(auto& entity : sent.entities){
@@ -1140,15 +1098,40 @@ void proptext_to_binary_file(){
     timer.here_then_reset("Write files.");
 }
 
+//
+//template<typename T, typename F1>
+//void pp_impl(T& os, F1 const& f1) {
+//    fmt::print(os, "{}\n", f1);
+//}
+//
+//template<typename T, typename F1, typename F2, typename... Args>
+//void pp_impl(T& os, F1 const& f1, F2 const& f2, Args&&... args) {
+//    fmt::print(os, "{} {} ", f1, f2);
+//    pp_impl(os, std::forward<Args>(args)...);
+//}
+
+void test_parallel_invoke(){
+    assert(util::tbb_detail::get_number_of_children(1)==1);
+    assert(util::tbb_detail::get_number_of_children(2)==2);
+    assert(util::tbb_detail::get_number_of_children(3)==3);
+    assert(util::tbb_detail::get_number_of_children(4)==2);
+    assert(util::tbb_detail::get_number_of_children(5)==3);
+    assert(util::tbb_detail::get_number_of_children(6)==4);
+    assert(util::tbb_detail::get_number_of_children(7)==3);
+    assert(util::tbb_detail::get_number_of_children(8)==4);
+    assert(util::tbb_detail::get_number_of_children(9)==5);
+
+}
 int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
-//    load_query_engine(argc,argv);
-    annotate_sentences(argc,argv);
-    load_annotated_sentences(argc,argv);
+    test_parallel_invoke();
+    load_query_engine(argc,argv);
+//    annotate_sentences(argc,argv);
+//    load_annotated_sentences(argc,argv);
     return 0;
 
 //    test_property_table();

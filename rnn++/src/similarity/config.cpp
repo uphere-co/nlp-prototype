@@ -9,6 +9,20 @@
 
 namespace engine{
 
+wikidata::EntityModule::InputParam get_wikimoudle_param(Config const &config){
+    auto conf = [&config](auto x){return config.value(x);};
+    return {
+            wordrep::UIDIndexBinary{conf("word_uid_bin")},
+            wordrep::UIDIndexBinary{conf("pos_uid_bin")},
+            wordrep::wiki::SortedEntities::Binary{conf("wikidata_entities_by_name")},
+            wordrep::wiki::UIDSortedEntities::Binary{conf("wikidata_entities_by_uid")},
+            util::io::fb::PairsBinary{conf("wikidata_properties")},
+            util::io::fb::PairsBinary{conf("wikidata_instances")},
+            wordrep::UIDIndexBinary{conf("named_entity_uids")},
+            wordrep::UIDIndexBinary{conf("wikidata_uids")}
+    };
+}
+
 SubmoduleFactory::SubmoduleFactory(Config const& config, std::optional<int> data_minor_version)
         : config{config}, data_minor_version{data_minor_version}
 {}
@@ -66,15 +80,7 @@ wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
     return {config.value("wikidata_uids")};
 }
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
-    return wikidata::EntityModuleBuilder{}.build(
-            {config.value("word_uid_bin")},
-            {config.value("pos_uid_bin")},
-            {config.value("wikidata_entities_by_name")},
-            {config.value("wikidata_entities_by_uid")},
-            {config.value("wikidata_properties")},
-            {config.value("wikidata_instances")},
-            {config.value("named_entity_uids")},
-            {config.value("wikidata_uids")});
+    return wikidata::EntityModule::factory(get_wikimoudle_param(config));
 }
 
 }//namespace engine

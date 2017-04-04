@@ -53,6 +53,11 @@ struct Sentences{
 
 
 struct DepParsedTokens{
+    struct InputParam{
+        std::string prefix;
+    };
+    static DepParsedTokens factory(InputParam const& param);
+
     static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
@@ -89,7 +94,7 @@ struct DepParsedTokens{
     }
     size_t n_tokens() const { return chunks_idx.size();}
 
-//private:
+private:
     vec_t<SentUID>      sents_uid;
     vec_t<ChunkIndex>   chunks_idx;
     vec_t<SentIndex>    sents_idx;
