@@ -52,8 +52,12 @@ struct Sentences{
 };
 
 
-struct DepParsedTokensBuilder;
 struct DepParsedTokens{
+    struct InputParam{
+        std::string prefix;
+    };
+    static DepParsedTokens factory(InputParam const& param);
+
     static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
@@ -90,7 +94,6 @@ struct DepParsedTokens{
     }
     size_t n_tokens() const { return chunks_idx.size();}
 
-    friend struct DepParsedTokensBuilder;
 private:
     vec_t<SentUID>      sents_uid;
     vec_t<ChunkIndex>   chunks_idx;
@@ -107,21 +110,6 @@ private:
     vec_t<ArcLabelUID>  arclabels;
     ChunkIndex current_chunk_idx{ChunkIndex::val_t{0}};
 };
-
-
-
-struct DepParsedTokensBuilder {
-    struct Param{
-        std::string prefix;
-    };
-    DepParsedTokensBuilder(Param const& param)
-            :param{param}
-    {}
-    DepParsedTokens build() const;
-
-    Param param;
-};
-
 
 }//namespace wordrep
 

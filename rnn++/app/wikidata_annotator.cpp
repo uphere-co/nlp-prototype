@@ -771,7 +771,7 @@ void load_query_engine(int argc, char** argv) {
     std::unique_ptr<wikidata::EntityModule> f{};
 
     auto load_indexed_text=[&texts](){
-        texts = wordrep::DepParsedTokensBuilder{{"nyt"}}.build();
+        texts = wordrep::DepParsedTokens::factory({"nyt"});
     };
     auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
         util::parallel_invoke(
