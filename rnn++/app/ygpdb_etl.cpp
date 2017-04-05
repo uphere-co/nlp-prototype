@@ -441,17 +441,16 @@ int process_ygp_dump(int argc, char** argv){
     timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
     data::parallel_load_jsons(json_dumps, dump_parser);
     timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
-    auto tokens = dump_parser.get(dataset_prefix);
+    auto tokens = dump_parser.get();
 //    auto tokens = dump_parser.serial_parse(json_dumps, prefix);
     auto non_null_idxs = dump_parser.get_nonnull_idx();
     timer.here_then_reset("Parsing is finished. ");
 
-    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, minor_version};
-    tokens.write_to_disk(output_filename.fullname);
+    auto output_prefix = util::get_str(config,"dep_parsed_bins");
+    tokens.to_file({output_prefix});
     std::vector<std::string> non_null_dumps;
     for(auto i : non_null_idxs) non_null_dumps.push_back(json_dumps[i]);
-    data::ygp::write_column_indexes(output_filename.fullname,
+    data::ygp::write_column_indexes(dataset_prefix,
                                     util::get_str(config,"column_uids_dump"),
                                     util::get_str(config,"dep_parsed_prefix"),
                                     non_null_dumps);

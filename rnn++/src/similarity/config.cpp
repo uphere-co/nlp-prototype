@@ -43,14 +43,6 @@ wordrep::ArcLabelUIDindex SubmoduleFactory::arclabel_uid_index() const {
 }
 wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
     return wordrep::DepParsedTokens::factory({config.value("dep_parsed_bins")});
-    auto name = util::get_latest_version(config.value("dep_parsed_store"));
-    if(data_minor_version){
-        auto minor_version = data_minor_version.value();
-        name = util::VersionedName{config.value("dep_parsed_store"),
-                                   wordrep::DepParsedTokens::major_version, minor_version};
-    }
-    fmt::print(std::cerr, "Read {}\n", name .fullname);
-    return {name , config.value("dep_parsed_prefix")};
 }
 wordrep::WordImportance SubmoduleFactory::word_importance() const {
     return {util::io::h5read(config.value("word_prob_dump"))};

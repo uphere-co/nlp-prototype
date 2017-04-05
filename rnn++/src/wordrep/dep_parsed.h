@@ -61,12 +61,8 @@ struct DepParsedTokens{
     static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
-    DepParsedTokens(util::io::H5file const &file, std::string prefix);
-    DepParsedTokens(util::VersionedName const &file, std::string prefix);
-    DepParsedTokens(std::string prefix);
     DepParsedTokens(){}
 
-    void write_to_disk(std::string filename) const;
     void to_file(Binary file) const;
     std::vector<Sentence> IndexSentences() const;
     std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;

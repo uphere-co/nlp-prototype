@@ -33,7 +33,7 @@ void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
 wordrep::DepParsedTokens CoreNLPoutputParser::serial_parse(std::vector<std::string> dump_files,
                                                            std::string prefix) {
     util::Timer timer;
-    wordrep::DepParsedTokens tokens{prefix};
+    wordrep::DepParsedTokens tokens{};
     auto n = dump_files.size();
     //for(auto file : dump_files){
     for(decltype(n)i=0; i<n; ++i){

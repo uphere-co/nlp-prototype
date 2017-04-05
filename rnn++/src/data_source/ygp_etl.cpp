@@ -27,6 +27,8 @@
 #include "utils/random.h"
 #include "utils/persistent_vector.h"
 
+#include "utils/flatbuffers/io.h"
+
 using namespace wordrep;
 using namespace util::io;
 
@@ -240,7 +242,7 @@ void overwrite_column(std::vector<int64_t> rows, std::string filename,
     file.overwriteRawData(H5name{prefix+colname}, rows);
 }
 
-void write_column_indexes(std::string output_filename,
+void write_column_indexes(std::string output_prefix,
                           std::string cols_to_exports,
                           std::string prefix,
                           std::vector<std::string> corenlp_outputs){
@@ -262,9 +264,9 @@ void write_column_indexes(std::string output_filename,
         ++row_uid;
     }
 
-    write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
-    write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
-    write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
+    util::io::fb::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
+    util::io::fb::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
+    util::io::fb::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
 }
 
 

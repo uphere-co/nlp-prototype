@@ -290,11 +290,12 @@ namespace engine{
 namespace test{
 
 void word_cache_thread_safety(util::json_t const& config) {
-    wordrep::VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                           config["w2vmodel_name"], config["w2v_float_t"]};
-    wordrep::DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]};
+    engine::SubmoduleFactory factory{{config}};
+
+    auto voca   = factory.voca_info();
+    auto tokens = factory.dep_parsed_tokens();
     auto sents = tokens.IndexSentences();
-    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto wordUIDs = factory.word_uid_index();
 
     wordrep::WordSimCache dists_cache{voca};
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};

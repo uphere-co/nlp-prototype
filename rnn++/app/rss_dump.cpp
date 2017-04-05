@@ -8,7 +8,7 @@
 #include "utils/profiling.h"
 #include "utils/string.h"
 #include "utils/persistent_vector.h"
-#include "utils/versioned_name.h"
+
 #include "utils/filesystem.h"
 
 #include "similarity/rss.h"
@@ -124,8 +124,7 @@ int process_rss_dump(int argc, char** argv){
     util::Timer timer;
 
     auto json_dump_path   = argv[2];
-    int minor_version     = std::stoi(argv[3]);
-    auto dataset_prefix   = util::get_str(config,"dep_parsed_bins");;
+    auto dataset_prefix   = util::get_str(config,"dep_parsed_bins");
 
     data::CoreNLPoutputParser dump_parser{config};
     auto json_dumps = util::string::readlines(json_dump_path);

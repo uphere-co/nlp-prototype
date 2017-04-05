@@ -66,59 +66,6 @@ DepParsedTokens DepParsedTokens::factory(Binary const &param){
     return texts;
 }
 
-DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
-        : sents_uid {file,prefix+".sent_uid"},
-          chunks_idx{file,prefix+".chunk_idx"},
-          sents_idx {file,prefix+".sent_idx"},
-          words     {file,prefix+".word"},
-          words_uid {file,prefix+".word_uid"},
-          words_pidx{file,prefix+".word_pidx"},
-          head_words{file,prefix+".head"},
-          heads_uid {file,prefix+".head_uid"},
-          heads_pidx{file,prefix+".head_pidx"},
-          words_beg {file,prefix+".word_beg"},
-          words_end {file,prefix+".word_end"},
-          poss      {file,prefix+".pos_uid"},
-          arclabels {file,prefix+".arclabel_uid"}
-{}
-
-DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
-        : DepParsedTokens{util::io::h5read(file.fullname), prefix} {
-    if(file.major!=DepParsedTokens::major_version) throw VersionMismatchException{};
-}
-DepParsedTokens::DepParsedTokens(std::string prefix)
-        : sents_uid {{},prefix+".sent_uid"},
-          chunks_idx{{},prefix+".chunk_idx"},
-          sents_idx {{},prefix+".sent_idx"},
-          words     {{},prefix+".word"},
-          words_uid {{},prefix+".word_uid"},
-          words_pidx{{},prefix+".word_pidx"},
-          head_words{{},prefix+".head"},
-          heads_uid {{},prefix+".head_uid"},
-          heads_pidx{{},prefix+".head_pidx"},
-          words_beg {{},prefix+".word_beg"},
-          words_end {{},prefix+".word_end"},
-          poss      {{},prefix+".pos_uid"},
-          arclabels {{},prefix+".arclabel_uid"}
-{}
-
-void DepParsedTokens::write_to_disk(std::string filename) const {
-    util::io::H5file outfile{util::io::H5name{filename}, util::io::hdf5::FileMode::create};
-    sents_uid.write(outfile);
-    chunks_idx.write(outfile);
-    sents_idx.write(outfile);
-    words_uid.write(outfile);
-    words.write(outfile);
-    words_pidx.write(outfile);
-    heads_uid.write(outfile);
-    head_words.write(outfile);
-    heads_pidx.write(outfile);
-    words_beg.write(outfile);
-    words_end.write(outfile);
-    poss.write(outfile);
-    arclabels.write(outfile);
-}
-
 void DepParsedTokens::to_file(Binary file) const {
     util::parallel_invoke(
         [this,&file](){write_to_binary_file(this->sents_uid,  file.prefix + ".sents_uid.i64v");},

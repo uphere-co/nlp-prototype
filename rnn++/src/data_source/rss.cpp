@@ -5,8 +5,6 @@
 #include "similarity/dataset.h"
 
 #include "utils/string.h"
-#include "utils/versioned_name.h"
-#include "utils/hdf5.h"
 #include "utils/flatbuffers/io.h"
 
 #include "wordrep/dep_parsed.h"
@@ -14,7 +12,6 @@
 #include "data_source/ygp_db.h" //TODO: some indexes should be separated out from YGP ETL.
 #include "data_source/ygp_etl.h" //TODO: some ETL function should be separated out from YGP ETL.
 
-using util::io::h5read;
 using wordrep::Sentence;
 
 namespace data{
