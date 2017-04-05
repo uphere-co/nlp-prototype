@@ -885,6 +885,8 @@ void test_load_annotated_sentences(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
+    auto conf = [&factory](auto x){return factory.config.value(x);};
+
     auto i_block = std::stoi(argv[2]);
     int n_block =100;
     util::Timer timer;
@@ -892,17 +894,17 @@ void test_load_annotated_sentences(int argc, char** argv){
     std::unique_ptr<WordUIDindex> wordUIDs;
     DepParsedTokens texts{};
     std::vector<Sentence> sents;
-    auto load_wordUIDs = [&factory,&wordUIDs](){
-        wordUIDs = std::make_unique<WordUIDindex>(UIDIndexBinary{factory.config.value("word_uid_bin")});
+    auto load_wordUIDs = [&conf,&wordUIDs](){
+        wordUIDs = std::make_unique<WordUIDindex>(UIDIndexBinary{conf("word_uid_bin")});
     };
-    auto load_indexed_text=[&texts,&sents](){
-        texts = DepParsedTokens::factory({"nyt"});
+    auto load_indexed_text=[&conf,&texts,&sents](){
+        texts = DepParsedTokens::factory({conf("dep_parsed_prefix")});
         sents = texts.IndexSentences();
     };
 
     AnnotationFile annotated_tokens;
-    auto load_annotated_text = [&annotated_tokens,n_block](){
-        annotated_tokens = AnnotationFile::factory({"nyt.sents.annotated.bin", n_block});
+    auto load_annotated_text = [&conf,&annotated_tokens,n_block](){
+        annotated_tokens = AnnotationFile::factory({conf("annotated_tokens"), n_block});
     };
 
     util::parallel_invoke(load_wordUIDs, load_indexed_text, load_annotated_text);

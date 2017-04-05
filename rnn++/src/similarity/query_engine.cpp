@@ -210,7 +210,7 @@ struct ProcessQuerySent{
 
     std::vector<ScoredSentence> operator()(Sentence query_sent,
                                            std::vector<val_t> const& /*cutoffs*/,
-                                           PreprocessedSent const& data_sents) {
+                                           PreprocessedSentences const& data_sents) {
         util::Timer timer;
         auto op_word_sim = dists_cache.get_cached_operator();
         auto vidxs = util::map(query_sent, [&query_sent](auto idx){return query_sent.dict->word(idx);});
@@ -242,7 +242,7 @@ struct ProcessQuerySent{
         tbb::concurrent_vector<ScoredSentence> relevant_sents{};
         auto n = data_sents.size();
         tbb::parallel_for(decltype(n){0}, n, [&,this](auto i) {
-            auto& sent_to_scored = data_sents.sents[i];
+            auto& sent_to_scored = data_sents.at(i);
             auto m_scored_sent = op_query_similarity.score(sent_to_scored);
             if(!m_scored_sent) return;
             auto scored_sent = output(m_scored_sent.value());
@@ -265,7 +265,7 @@ struct ProcessQuerySents{
 
     template<typename OP>
     void operator()(std::vector<SentenceQuery> const &query_sents,
-                    PreprocessedSent const &candidate_sents,
+                    PreprocessedSentences const &candidate_sents,
                     OP const &op_per_sent) {
         util::Timer timer{};
         tbb::task_group g;
@@ -296,7 +296,8 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   wiki{factory.common.wikientity_module()},
   scoring{word_importance,db.voca.wvecs},
   scoring_preprocessor{scoring, wiki.entity_repr()},
-  data_sents{wiki, scoring, scoring_preprocessor, db.sents},
+  annotated_tokens{},
+  data_sents{wordrep::PreprocessedSentences::factory(db.sents, annotated_tokens)},
   dists_cache{db.voca}
 {
     fmt::print(std::cerr, "Engine is constructed using factory.\n");
@@ -320,7 +321,8 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   wiki{std::move(engine.wiki)},
   scoring{word_importance,db.voca.wvecs},
   scoring_preprocessor{scoring, wiki.entity_repr()},
-  data_sents{wiki, scoring, scoring_preprocessor, db.sents},
+  annotated_tokens{std::move(engine.annotated_tokens)},
+  data_sents{std::move(engine.data_sents)},
   dists_cache{db.voca}
 {
     fmt::print(std::cerr, "Engine is move constructed.\n");

@@ -36,6 +36,7 @@ struct ConfigKeys{
                          {"corenlp_dumps"},
                          {"dep_parsed_store"},
                          {"dep_parsed_prefix"},
+                         {"annotated_tokens"},
                          {"wordvec_store"},
                          {"voca_name"},
                          {"w2vmodel_name"},
