@@ -7,12 +7,32 @@
 
 #include "wordrep/dep_parsed.h"
 
+#include "utils/flatbuffers/io.h"
+#include "utils/parallel.h"
+
 #include "utils/versioned_name.h"
 #include "utils/hdf5.h"
 #include "utils/string.h"
 
-using namespace util;
-using namespace util::io;
+namespace {
+
+template<typename T>
+void load_binary_file(std::string filename, T& vec){
+    namespace fb = util::io::fb;
+    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
+};
+
+
+template<typename T>
+void write_to_binary_file(util::TypedPersistentVector<T> const& vec, std::string filename){
+    namespace fb = util::io::fb;
+    std::vector<int64_t> vs;
+    vs.reserve(vec.size());
+    for(auto v : vec) vs.push_back(v.val);
+    fb::to_file(vs, fb::I64Binary{filename});
+}
+}//nameless namespace
+
 
 namespace wordrep{
 
@@ -25,6 +45,26 @@ class VersionMismatchException: public std::exception {
         return "Data version mismatches.";
     }
 };
+
+DepParsedTokens DepParsedTokens::factory(Binary const &param){
+    wordrep::DepParsedTokens texts{};
+    util::parallel_invoke(
+            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_uid.i64v", param.prefix), texts.sents_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",param.prefix), texts.chunks_idx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_idx.i64v", param.prefix), texts.sents_idx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words.i64v",     param.prefix), texts.words); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_uid.i64v", param.prefix), texts.words_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_pidx.i64v",param.prefix), texts.words_pidx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.head_words.i64v",param.prefix), texts.head_words); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_uid.i64v", param.prefix), texts.heads_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",param.prefix), texts.heads_pidx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_beg.i64v", param.prefix), texts.words_beg); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_end.i64v", param.prefix), texts.words_end); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.poss.i64v",      param.prefix), texts.poss); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.arclabels.i64v", param.prefix), texts.arclabels); }
+    );
+    return texts;
+}
 
 DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
         : sents_uid {file,prefix+".sent_uid"},
@@ -43,7 +83,7 @@ DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefi
 {}
 
 DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
-        : DepParsedTokens{h5read(file.fullname), prefix} {
+        : DepParsedTokens{util::io::h5read(file.fullname), prefix} {
     if(file.major!=DepParsedTokens::major_version) throw VersionMismatchException{};
 }
 DepParsedTokens::DepParsedTokens(std::string prefix)
@@ -63,7 +103,7 @@ DepParsedTokens::DepParsedTokens(std::string prefix)
 {}
 
 void DepParsedTokens::write_to_disk(std::string filename) const {
-    H5file outfile{H5name{filename}, hdf5::FileMode::create};
+    util::io::H5file outfile{util::io::H5name{filename}, util::io::hdf5::FileMode::create};
     sents_uid.write(outfile);
     chunks_idx.write(outfile);
     sents_idx.write(outfile);
@@ -78,6 +118,25 @@ void DepParsedTokens::write_to_disk(std::string filename) const {
     poss.write(outfile);
     arclabels.write(outfile);
 }
+
+void DepParsedTokens::to_file(Binary file) const {
+    util::parallel_invoke(
+        [this,&file](){write_to_binary_file(this->sents_uid,  file.prefix + ".sents_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->chunks_idx, file.prefix + ".chunks_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->sents_idx,  file.prefix + ".sents_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->words,      file.prefix + ".words.i64v");},
+        [this,&file](){write_to_binary_file(this->words_uid,  file.prefix + ".words_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->words_pidx, file.prefix + ".words_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->head_words, file.prefix + ".head_words.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_uid,  file.prefix + ".heads_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_pidx, file.prefix + ".heads_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->words_beg,  file.prefix + ".words_beg.i64v");},
+        [this,&file](){write_to_binary_file(this->words_end,  file.prefix + ".words_end.i64v");},
+        [this,&file](){write_to_binary_file(this->poss,       file.prefix + ".poss.i64v");},
+        [this,&file](){write_to_binary_file(this->arclabels,  file.prefix + ".arclabels.i64v");}
+    );
+}
+
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
     auto n = words.size();
     for(auto it=words_uid.cbegin()+n; it!=words_uid.cend(); ++it) {
@@ -138,6 +197,8 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
                                             POSUIDindex const &posUIDs,
                                             ArcLabelUIDindex const &arclabelUIDs,
                                             data::CoreNLPjson const &output){
+    using util::get_str;
+    using util::get_int;
 
     int64_t sent_idx{0};
     size_t offset{0};

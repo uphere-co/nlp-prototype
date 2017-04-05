@@ -53,10 +53,10 @@ struct Sentences{
 
 
 struct DepParsedTokens{
-    struct InputParam{
+    struct Binary{
         std::string prefix;
     };
-    static DepParsedTokens factory(InputParam const& param);
+    static DepParsedTokens factory(Binary const& param);
 
     static constexpr int64_t major_version = 5;
     template<typename T>
@@ -67,6 +67,7 @@ struct DepParsedTokens{
     DepParsedTokens(){}
 
     void write_to_disk(std::string filename) const;
+    void to_file(Binary file) const;
     std::vector<Sentence> IndexSentences() const;
     std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;
     //std::vector<Chunk> IndexChunks() const;
