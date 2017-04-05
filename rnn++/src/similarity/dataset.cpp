@@ -7,20 +7,14 @@ using util::get_str;
 
 namespace engine {
 
-UIDmaps::UIDmaps(std::string word_uids,
-                 std::string pos_uids,
-                 std::string arclabel_uids)
-        : word{word_uids}, pos{pos_uids}, arclabel{arclabel_uids}
-{}
-
 Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid)
         : voca{std::move(voca)}, token2uid{std::move(token2uid)}
 {}
 Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
-                 wordrep::DepParsedTokens&& tokens)
+                 wordrep::DepParsedTokens&& tokens_)
         : voca{std::move(voca)},
           token2uid{std::move(token2uid)},
-          tokens{std::move(tokens)},
+          tokens{std::move(tokens_)},
           sents{tokens.IndexSentences()},
           uid2sent{sents}
 {}

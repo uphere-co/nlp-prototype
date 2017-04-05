@@ -31,19 +31,23 @@ data::CoreNLPwebclient SubmoduleFactory::corenlp_webclient() const {
     return {config.value("corenlp_client_script")};
 }
 wordrep::WordUIDindex SubmoduleFactory::word_uid_index() const {
-    return {config.value("word_uids_dump")};
+    return {wordrep::UIDIndexBinary{config.value("word_uid_bin")}};
+    //return {config.value("word_uids_dump")};
 }
 wordrep::POSUIDindex SubmoduleFactory::pos_uid_index() const {
-    return {config.value("pos_uids_dump")};
+//    return {config.value("pos_uids_dump")};
+    return {wordrep::UIDIndexBinary{config.value("pos_uid_bin")}};
 }
 wordrep::ArcLabelUIDindex SubmoduleFactory::arclabel_uid_index() const {
     return {config.value("arclabel_uids_dump")};
 }
 wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
+    return wordrep::DepParsedTokens::factory({config.value("dep_parsed_bins")});
     auto name = util::get_latest_version(config.value("dep_parsed_store"));
     if(data_minor_version){
         auto minor_version = data_minor_version.value();
-        name = util::VersionedName{config.value("dep_parsed_store"), wordrep::DepParsedTokens::major_version, minor_version};
+        name = util::VersionedName{config.value("dep_parsed_store"),
+                                   wordrep::DepParsedTokens::major_version, minor_version};
     }
     fmt::print(std::cerr, "Read {}\n", name .fullname);
     return {name , config.value("dep_parsed_prefix")};
@@ -58,16 +62,16 @@ wordrep::VocaInfo SubmoduleFactory::voca_info() const{
 }
 
 wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordImportance const& importance) const {
-    return {config.value("word_uids_dump"), importance};
+    return {config.value("words_list"), importance};
 }
 
 Dataset SubmoduleFactory::empty_dataset() const{
     return {voca_info(),
-            {config.value("word_uids_dump"),config.value("pos_uids_dump"),config.value("arclabel_uids_dump")}};
+            {word_uid_index(),pos_uid_index(),arclabel_uid_index()}};
 }
 Dataset SubmoduleFactory::load_dataset() const{
     return {voca_info(),
-            {config.value("word_uids_dump"),config.value("pos_uids_dump"),config.value("arclabel_uids_dump")},
+            {word_uid_index(),pos_uid_index(),arclabel_uid_index()},
             dep_parsed_tokens()};
 }
 

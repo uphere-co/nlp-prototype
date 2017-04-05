@@ -26,16 +26,17 @@ template<typename T>
 struct ConfigKeys{
     std::vector<T> keys={{"engine_type"},
                          {"corenlp_client_script"},
-                         {"word_uids_dump"},
+                         {"words_list"},
                          {"word_uid_bin"},
-                         {"pos_uids_dump"},
+//                         {"pos_uids_dump"},
                          {"pos_uid_bin"},
                          {"arclabel_uids_dump"},
                          {"column_uids_dump"},
                          {"word_prob_dump"},
                          {"corenlp_dumps"},
-                         {"dep_parsed_store"},
-                         {"dep_parsed_prefix"},
+                         {"dep_parsed_bins"},
+                         {"dep_parsed_store"}, //TODO : DBIndexer use this. Binarize this
+                         {"dep_parsed_prefix"},//TODO : DBIndexer use this. Binarize this
                          {"annotated_tokens"},
                          {"wordvec_store"},
                          {"voca_name"},
