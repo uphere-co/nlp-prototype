@@ -296,7 +296,7 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
   wiki{factory.common.wikientity_module()},
   scoring{word_importance,db.voca.wvecs},
   scoring_preprocessor{scoring, wiki.entity_repr()},
-  annotated_tokens{AnnotationFile::factory({factory.common.config.value("annotated_tokens"), 100})},
+  annotated_tokens{factory.common.load_annotation()},
   data_sents{wordrep::PreprocessedSentences::factory(db.sents, annotated_tokens)},
   dists_cache{db.voca}
 {

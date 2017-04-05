@@ -65,6 +65,11 @@ wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordIm
     return {config.value("words_list"), importance};
 }
 
+wordrep::AnnotationFile SubmoduleFactory::load_annotation() const{
+    return wordrep::AnnotationFile::factory({config.value("annotated_tokens"),
+                                             std::stoi(config.value("annotated_tokens_n_block"))});
+}
+
 Dataset SubmoduleFactory::empty_dataset() const{
     return {voca_info(),
             {word_uid_index(),pos_uid_index(),arclabel_uid_index()}};
