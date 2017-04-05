@@ -38,7 +38,7 @@ struct CoreNLPoutputParser{
     wordrep::DepParsedTokens serial_parse(std::vector<std::string> dump_files,
                                           std::string prefix) ;
     std::vector<size_t> get_nonnull_idx() const;
-    wordrep::DepParsedTokens get(std::string prefix) const;
+    wordrep::DepParsedTokens get() const;
 
     wordrep::VocaInfo voca;
     wordrep::WordUIDindex wordUIDs;

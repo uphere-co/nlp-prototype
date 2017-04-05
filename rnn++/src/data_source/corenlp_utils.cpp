@@ -66,8 +66,8 @@ std::vector<size_t> CoreNLPoutputParser::get_nonnull_idx() const{
     fmt::print("Concatenate {} chunks\n", idxs.size());
     return idxs;
 }
-wordrep::DepParsedTokens CoreNLPoutputParser::get(std::string prefix) const {
-    wordrep::DepParsedTokens tokens{prefix};
+wordrep::DepParsedTokens CoreNLPoutputParser::get() const {
+    wordrep::DepParsedTokens tokens{};
     util::Timer timer;
     auto idxs = get_nonnull_idx();
     timer.here_then_reset("Got non-null index.");

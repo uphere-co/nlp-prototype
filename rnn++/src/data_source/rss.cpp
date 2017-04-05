@@ -7,6 +7,7 @@
 #include "utils/string.h"
 #include "utils/versioned_name.h"
 #include "utils/hdf5.h"
+#include "utils/flatbuffers/io.h"
 
 #include "wordrep/dep_parsed.h"
 
@@ -22,7 +23,7 @@ namespace rss{
 void write_column_indexes(util::json_t const &config,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
-                          std::string output_filename){
+                          std::string output_prefix){
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
@@ -49,9 +50,10 @@ void write_column_indexes(util::json_t const &config,
     }
 
     auto prefix = config["dep_parsed_prefix"].get<std::string>();
-    data::ygp::write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
-    data::ygp::write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
-    data::ygp::write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
+
+    util::io::fb::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
+    util::io::fb::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
+    util::io::fb::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
 }
 
 

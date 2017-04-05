@@ -125,22 +125,20 @@ int process_rss_dump(int argc, char** argv){
 
     auto json_dump_path   = argv[2];
     int minor_version     = std::stoi(argv[3]);
-    auto dataset_prefix   = util::get_str(config,"dep_parsed_prefix");
-    auto dep_parsed_store = util::get_str(config,"dep_parsed_store");
+    auto dataset_prefix   = util::get_str(config,"dep_parsed_bins");;
 
     data::CoreNLPoutputParser dump_parser{config};
     auto json_dumps = util::string::readlines(json_dump_path);
     timer.here_then_reset(fmt::format("Begin to process {} JSON dump files. ",json_dumps.size()));
     data::parallel_load_jsons(json_dumps, dump_parser);
     timer.here_then_reset(fmt::format("Parsed {} files. ",dump_parser.chunks.size()));
-    auto tokens = dump_parser.get(dataset_prefix);
+    auto tokens = dump_parser.get();
     auto non_null_idxs = dump_parser.get_nonnull_idx();
     timer.here_then_reset("Parsing is finished. ");
 
-    auto output_filename = util::VersionedName{dep_parsed_store,
-                                               wordrep::DepParsedTokens::major_version, minor_version};
-    tokens.write_to_disk(output_filename.fullname);
-    data::rss::write_column_indexes(config, json_dump_path, non_null_idxs, output_filename.fullname);
+
+    tokens.to_file({dataset_prefix});
+    data::rss::write_column_indexes(config, json_dump_path, non_null_idxs, dataset_prefix);
     return 0;
 }
 
