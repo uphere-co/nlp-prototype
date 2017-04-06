@@ -160,7 +160,7 @@ void dump_psql(std::string cols_to_exports, std::string dump_path){
     }
 }
 
-void dump_country_code(std::string table,
+void dump_country_name(std::string table,
                        std::string country_code_col,
                        std::string index_col,
                        std::string dump_path){
@@ -192,7 +192,7 @@ void generate_country_columns(std::string dump_path, std::string country_columns
         auto index_col = tokens[2];
         std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, country_code_col, index_col)<<std::endl;
 
-        dump_country_code(table, country_code_col, index_col, dump_path);
+        dump_country_name(table, country_code_col, index_col, dump_path);
     }
 }
 
