@@ -22,14 +22,14 @@ namespace test {
 void rss_corenlp_path(){
     std::cerr<<"Run rss::test::rss_corenlp_path " <<std::endl;
     {
-        auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/NYT.1.maintext.corenlp";
+        auto fullpath = "/home/jihuni/word2vec/nyt.corenlp/NYT.1._SHA256HASH_.maintext.corenlp";
         RSSRowFilePath path{fullpath};
         assert(path.table =="NYT");
         assert(path.column=="maintext");
         assert(path.index  == 1);
     }
     {
-        auto fullpath = "/foo/bar/WP.2.title.corenlp";
+        auto fullpath = "/foo/bar/WP.2._SHA256HASH_.title.corenlp";
         RSSRowFilePath path{fullpath};
         assert(path.table =="WP");
         assert(path.column=="title");
@@ -37,14 +37,14 @@ void rss_corenlp_path(){
     }
 
     fmt::print(std::cerr, "Run data::rss::test::parse_input\n");
-    RSSRowFilePath test{"/foo/bar/tests/NYT.10.maintext.corenlp"};
+    RSSRowFilePath test{"/foo/bar/tests/NYT.10._SHA256HASH_.maintext.corenlp"};
     assert(test.table=="NYT");
     assert(test.column=="maintext");
     assert(test.index==10);
 
-    RSSRowFilePath test2{"tests/NYT.10.maintext.corenlp"};
-    RSSRowFilePath test3{"NYT.10.maintext.corenlp"};
-    RSSRowFilePath test_n{"NYT.11.maintext.corenlp"};
+    RSSRowFilePath test2{"tests/NYT.10._SHA256HASH_.maintext.corenlp"};
+    RSSRowFilePath test3{"NYT.10._SHA256HASH_.maintext.corenlp"};
+    RSSRowFilePath test_n{"NYT.11._SHA256HASH_.maintext.corenlp"};
     assert(test==test2);
     assert(test==test3);
     assert(test!=test_n);
@@ -84,9 +84,9 @@ void rss_indexing(util::json_t const &config) {
     auto rssdb = factory.db();
     auto table_name  = rssdb.table(col_uid);
     auto column_name = rssdb.column(col_uid);
-    auto file_name = get_row_filename(table_name, column_name, row_idx.val);
 
-    auto full_path = fmt::format(fmt::format("{}/{}", rawtext_dir, file_name));
+    RSSRowFilePath row_elm{table_name,column_name, row_idx.val};
+    auto full_path = lookup_file(rawtext_dir, row_elm).value();
     std::cerr << full_path << std::endl;
     auto row_str = util::string::read_whole(full_path);
     auto offset_beg = sent.beg_offset();
@@ -106,6 +106,16 @@ void extract_filename(){
     assert(util::file::get_filename("filename")!="name");
 }
 
+
+void file_find(){
+    using data::rss::lookup_file;
+    fmt::print(std::cerr, "test_file_find\n");
+    assert(lookup_file("/opt/RSS.text", {"NYT","title",1}));
+    assert(lookup_file("/opt/RSS.text", {"NYT","summary",1}));
+    assert(lookup_file("/opt/RSS.text", {"NYT","maintext",2}));
+    fmt::print("{}\n", lookup_file("/opt/RSS.text", {"NYT","maintext",2}).value());
+};
+
 void test_all(int argc, char** argv){
     assert(argc > 1);
     auto config = util::load_json(argv[1]);
@@ -113,6 +123,7 @@ void test_all(int argc, char** argv){
     IndexUIDs(config);
     rss_indexing(config);
     extract_filename();
+    file_find();
 }
 
 
@@ -121,7 +132,7 @@ void test_all(int argc, char** argv){
 }//namespace data;
 
 int process_rss_dump(int argc, char** argv){
-    assert(argc>4);
+    assert(argc>3);
     auto config = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config}};
     util::Timer timer;
@@ -155,18 +166,9 @@ int process_rss_dump(int argc, char** argv){
 }
 
 
-void test_file_find(){
-    using data::rss::lookup_file;
-    fmt::print(std::cerr, "test_file_find\n");
-    assert(lookup_file("/opt/RSS.text", {"NYT","title",1}));
-    assert(lookup_file("/opt/RSS.text", {"NYT","summary",1}));
-    assert(lookup_file("/opt/RSS.text", {"NYT","maintext",2}));
-    fmt::print("{}\n", lookup_file("/opt/RSS.text", {"NYT","maintext",2}).value());
-};
 int main(int argc, char** argv){
 //    data::rss::test::test_all(argc,argv);
-    test_file_find();
-    return 0;
+//    return 0;
 
     process_rss_dump(argc, argv);
     return 0;
