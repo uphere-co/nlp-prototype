@@ -140,16 +140,13 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
     return uids;
 }
 
-void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
-                                            POSUIDindex const &posUIDs,
-                                            ArcLabelUIDindex const &arclabelUIDs,
-                                            data::CoreNLPjson const &output){
+void DepParsedTokens::append_corenlp_output(data::CoreNLPjson const &output){
     using util::get_str;
     using util::get_int;
 
     int64_t sent_idx{0};
     size_t offset{0};
-    auto per_tokens = [this,&sent_idx,&wordUIDs, &posUIDs](auto const &token){
+    auto per_tokens = [this,&sent_idx](auto const &token){
         auto after  = get_str(token, "after");
         auto before = get_str(token, "before");
         auto token_beg = get_int(token,"characterOffsetBegin");
@@ -163,17 +160,17 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
         chunks_idx.push_back(current_chunk_idx);
         sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-        words_uid.push_back(wordUIDs[word]);
+        words_uid.push_back(WordUIDindex::get_uid(word));
         words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
         heads_uid.push_back(WordUID{});//
         heads_pidx.push_back(WordPosition{});//
         words_beg.push_back(CharOffset{token_beg});
         words_end.push_back(CharOffset{token_end});
-        poss.push_back(posUIDs[pos]);
+        poss.push_back(POSUIDindex::get_uid(pos));
         arclabels.push_back(ArcLabelUID{});//
     };
-    auto per_dep_tokens = [this,&offset,&wordUIDs,&arclabelUIDs](auto const &x){
+    auto per_dep_tokens = [this,&offset](auto const &x){
         //dep dependent dependentGloss governor governorGloss
         auto word      = get_str(x,"dependentGloss");
         auto word_pidx = get_int(x,"dependent")-1;
@@ -182,11 +179,11 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
         auto arc_label = get_str(x,"dep");
 
         auto i= word_pidx;
-        assert(words_uid[offset+i] == wordUIDs[word]);
+        assert(words_uid[offset+i] == WordUIDindex::get_uid(word));
         assert(words_pidx[offset+i]==WordPosition{word_pidx});
-        heads_uid[offset+i] = wordUIDs[head_word];
+        heads_uid[offset+i]  = WordUIDindex::get_uid(head_word);
         heads_pidx[offset+i] = WordPosition{head_pidx};
-        arclabels[offset+i] = arclabelUIDs[arc_label];
+        arclabels[offset+i]  = ArcLabelUIDindex::get_uid(arc_label);
     };
     auto pre_per_sent = [&offset,this](auto) {
         offset = sents_idx.size();

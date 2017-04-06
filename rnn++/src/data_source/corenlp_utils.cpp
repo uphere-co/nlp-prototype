@@ -16,17 +16,9 @@
 
 namespace data {
 
-CoreNLPoutputParser::CoreNLPoutputParser(util::json_t const &config)
-: voca{config["wordvec_store"], config["voca_name"],
-       config["w2vmodel_name"], config["w2v_float_t"]},
-  wordUIDs{config["word_uids_dump"].get<std::string>()},
-  posUIDs{config["pos_uids_dump"].get<std::string>()},
-  arclabelUIDs{config["arclabel_uids_dump"].get<std::string>()}
-{}
-
 void CoreNLPoutputParser::operator() (size_t i, CoreNLPjson const &json) {
     wordrep::DepParsedTokens tokens;
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json);
+    tokens.append_corenlp_output(json);
     chunks[i]=tokens;
 }
 
@@ -49,21 +41,19 @@ wordrep::DepParsedTokens CoreNLPoutputParser::serial_parse(std::vector<std::stri
             continue;
         }
         std::cout << fmt::format("{} will be parsed\n", file) << std::endl;
-        tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, json);
+        tokens.append_corenlp_output(json);
         timer.here_then_reset(fmt::format("{} is parsed", file));
         chunks[i]={};
     }
     tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
     timer.here_then_reset("Built sent UID.");
-    tokens.build_voca_index(voca.indexmap);
-    timer.here_then_reset("Built VocaIndex");
     return tokens;
 }
 std::vector<size_t> CoreNLPoutputParser::get_nonnull_idx() const{
     std::vector<size_t> idxs;
     for(auto elm : chunks) idxs.push_back(elm.first);
     std::sort(idxs.begin(), idxs.end());
-    fmt::print("Concatenate {} chunks\n", idxs.size());
+    fmt::print("Total {} non-empty chunks\n", idxs.size());
     return idxs;
 }
 wordrep::DepParsedTokens CoreNLPoutputParser::get() const {
@@ -75,8 +65,6 @@ wordrep::DepParsedTokens CoreNLPoutputParser::get() const {
     timer.here_then_reset("Appended all chunks.");
     tokens.build_sent_uid(wordrep::SentUID::from_unsigned(0));
     timer.here_then_reset("Built sent UID.");
-    tokens.build_voca_index(voca.indexmap);
-    timer.here_then_reset("Built VocaIndex");
     return tokens;
 }
 

@@ -37,7 +37,7 @@ Dataset::Dataset(Dataset const& data)
 
 std::vector<SentUID> Dataset::append_chunk(data::CoreNLPjson const &ask) {
     std::lock_guard<std::mutex> append_query_toekns{query_tokens_update};
-    tokens.append_corenlp_output(token2uid.word, token2uid.pos, token2uid.arclabel, ask);
+    tokens.append_corenlp_output(ask);
     tokens.build_voca_index(voca.indexmap);
     auto uids = tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     sents = tokens.IndexSentences();

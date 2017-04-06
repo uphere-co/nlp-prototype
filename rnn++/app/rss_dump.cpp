@@ -124,9 +124,9 @@ int process_rss_dump(int argc, char** argv){
     util::Timer timer;
 
     auto json_dump_path   = argv[2];
-    auto dataset_prefix   = util::get_str(config,"dep_parsed_bins");
+    auto dataset_prefix   = argv[3];
 
-    data::CoreNLPoutputParser dump_parser{config};
+    data::CoreNLPoutputParser dump_parser;
     auto json_dumps = util::string::readlines(json_dump_path);
     timer.here_then_reset(fmt::format("Begin to process {} JSON dump files. ",json_dumps.size()));
     data::parallel_load_jsons(json_dumps, dump_parser);
@@ -135,9 +135,16 @@ int process_rss_dump(int argc, char** argv){
     auto non_null_idxs = dump_parser.get_nonnull_idx();
     timer.here_then_reset("Parsing is finished. ");
 
+//    wordrep::VocaInfo voca;
+//    tokens.build_voca_index(voca.indexmap);
+//    timer.here_then_reset("Built VocaIndex");
+
 
     tokens.to_file({dataset_prefix});
-    data::rss::write_column_indexes(config, json_dump_path, non_null_idxs, dataset_prefix);
+    data::rss::write_column_indexes(util::get_str(config, "column_uids_dump"),
+                                    json_dump_path,
+                                    non_null_idxs,
+                                    dataset_prefix);
     return 0;
 }
 

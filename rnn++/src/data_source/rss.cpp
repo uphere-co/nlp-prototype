@@ -17,7 +17,7 @@ using wordrep::Sentence;
 namespace data{
 namespace rss{
 
-void write_column_indexes(util::json_t const &config,
+void write_column_indexes(std::string column_list_file,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
                           std::string output_prefix){
@@ -25,7 +25,7 @@ void write_column_indexes(util::json_t const &config,
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
 
-    Columns rssdb{config["column_uids_dump"].get<std::string>()};
+    Columns rssdb{column_list_file};
 
     RowUID row_uid{};
     auto files = util::string::readlines(row_rawfiles);
@@ -45,9 +45,6 @@ void write_column_indexes(util::json_t const &config,
 
         ++row_uid;
     }
-
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-
     util::io::fb::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
     util::io::fb::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
     util::io::fb::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
