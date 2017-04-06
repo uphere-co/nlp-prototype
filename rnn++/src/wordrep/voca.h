@@ -21,5 +21,4 @@ private:
     VocaIndex unknown_word;
 };
 
-std::vector<WordUID> load_voca(std::string h5name, std::string voca_name);
 }//namespace wordrep

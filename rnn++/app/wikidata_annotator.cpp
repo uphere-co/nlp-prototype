@@ -725,10 +725,8 @@ void convert_voca_info(int argc, char** argv){
     assert(conf("w2v_float_t")=="float32");
     auto wvecs = file.getRawData<float>(conf("w2vmodel_name"));
     timer.here_then_reset("Load word vectors.");
-    auto voca_index_wuids =wordrep::load_voca(conf("wordvec_store"), conf("voca_name"));
+    std::vector<int64_t> voca_idxs = file.getRawData<int64_t>(conf("voca_name"));
     timer.here_then_reset("Load voca indexes.");
-    std::vector<int64_t> voca_idxs = util::serialize(voca_index_wuids);
-    timer.here_then_reset("Serialize WordUIDs.");
     fb::to_file(voca_idxs, {"news.en.uids.bin"});
     fb::to_file(wvecs, {"news.en.vecs.bin"});
     timer.here_then_reset("Write to binary files.");
@@ -776,8 +774,8 @@ void load_query_engine(int argc, char** argv) {
     };
     auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
         util::parallel_invoke(
-                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);},
-                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);}
+                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("w2vmodel_bin_name"), wvecs_raw);},
+                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("voca_bin_name"), vidx_wuids);}
         );
     };
     auto load_wiki_module = [&f,&factory](){
@@ -1105,7 +1103,7 @@ int main(int argc, char** argv){
 //    test_parallel_invoke();
 //    load_query_engine(argc,argv);
     annotate_sentences(argc,argv);
-    test_load_annotated_sentences(argc,argv);
+//    test_load_annotated_sentences(argc,argv);
     return 0;
 
 //    test_property_table();

@@ -49,8 +49,17 @@ wordrep::WordImportance SubmoduleFactory::word_importance() const {
 }
 
 wordrep::VocaInfo SubmoduleFactory::voca_info() const{
-    return {config.value("wordvec_store"), config.value("voca_name"),
-            config.value("w2vmodel_name"), config.value("w2v_float_t")};
+    namespace fb = util::io::fb;
+    std::vector<wordrep::WordUID> vidx_wuids;
+    std::vector<float> wvecs_raw;
+
+    auto conf = [this](auto x){return this->config.value(x);};
+    util::parallel_invoke(
+            [&vidx_wuids,&conf](){fb::deserialize_i64vector(fb::load_binary_file(conf("voca_bin")), vidx_wuids);},
+            [&wvecs_raw,&conf](){fb::deserialize_f32vector(fb::load_binary_file(conf("w2vmodel_bin")), wvecs_raw);}
+    );
+
+    return {{vidx_wuids},{wvecs_raw}};
 }
 
 wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordImportance const& importance) const {

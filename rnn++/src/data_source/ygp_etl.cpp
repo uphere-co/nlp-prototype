@@ -164,8 +164,6 @@ void dump_psql(std::string cols_to_exports, std::string dump_path){
 void write_country_code(util::json_t const &config, int minor_version) {
     namespace ygp = data::ygp;
 
-    VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                  config["w2vmodel_name"], config["w2v_float_t"]};
     WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
 
     auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
