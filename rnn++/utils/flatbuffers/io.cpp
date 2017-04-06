@@ -52,6 +52,12 @@ std::unique_ptr<char[]> load_binary_file(std::string filename){
     return data;
 }
 
+std::vector<int64_t> load_binary_file(I64Binary file){
+    auto data = load_binary_file(file.name);
+    std::vector<int64_t> vec;
+    deserialize_i64vector(std::move(data), vec);
+    return vec;
+}
 
 }//namespace util::io::fb
 }//namespace util::io

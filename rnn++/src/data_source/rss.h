@@ -19,7 +19,7 @@ struct Dataset;
 namespace data{
 namespace rss{
 
-void write_column_indexes(util::json_t const &config,
+void write_column_indexes(std::string column_list_file,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
                           std::string output_filename);

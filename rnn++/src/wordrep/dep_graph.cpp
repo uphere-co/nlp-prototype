@@ -7,17 +7,7 @@
 #include "wordrep/dep_parsed.h"
 
 #include "utils/algorithm.h"
-#include "utils/flatbuffers/io.h"
 
-namespace {
-
-template<typename T>
-void load_binary_file(std::string filename, T& vec){
-    namespace fb = util::io::fb;
-    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
-};
-
-}//nameless namespace
 
 namespace wordrep {
 
@@ -132,25 +122,4 @@ std::vector<DPTokenIndex> PhraseSegmenter::broke_into_phrases(DependencyGraph& g
     }
     return sub_heads;
 }
-
-DepParsedTokens DepParsedTokens::factory(InputParam const &param){
-    wordrep::DepParsedTokens texts{};
-    util::parallel_invoke(
-            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_uid.i64v", param.prefix), texts.sents_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",param.prefix), texts.chunks_idx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_idx.i64v", param.prefix), texts.sents_idx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words.i64v",     param.prefix), texts.words); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_uid.i64v", param.prefix), texts.words_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_pidx.i64v",param.prefix), texts.words_pidx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.head_words.i64v",param.prefix), texts.head_words); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_uid.i64v", param.prefix), texts.heads_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",param.prefix), texts.heads_pidx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_beg.i64v", param.prefix), texts.words_beg); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_end.i64v", param.prefix), texts.words_end); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.poss.i64v",      param.prefix), texts.poss); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.arclabels.i64v", param.prefix), texts.arclabels); }
-    );
-    return texts;
-}
-
 }//namespace wordrep;

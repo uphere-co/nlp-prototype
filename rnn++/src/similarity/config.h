@@ -40,10 +40,8 @@ struct ConfigKeys{
                          {"dep_parsed_prefix"},//TODO : DBIndexer use this. Binarize this
                          {"annotated_tokens"},
                          {"annotated_tokens_n_block"},
-                         {"wordvec_store"},
-                         {"voca_name"},
-                         {"w2vmodel_name"},
-                         {"w2v_float_t"},
+                         {"voca_bin"},
+                         {"w2vmodel_bin"},
                          {"wikidata_entities_by_name"},
                          {"wikidata_entities_by_uid"},
                          {"wikidata_entities"},

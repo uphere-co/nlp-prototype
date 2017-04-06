@@ -42,30 +42,6 @@ void hdf5_to_flatbuffers(){
     timer.here_then_reset("Write to the binary files.");
 }
 
-/*
-void hdf5_dep_parsed_to_flatbuffers(){
-    util::Timer timer;
-    auto hdf5_file=util::io::h5read("/home/jihuni/word2vec/rss/nyt.h5.5.3");
-    wordrep::DepParsedTokens texts{hdf5_file, "nyt"};
-    timer.here_then_reset("Load nyt.h5");
-
-    write_to_binary_file(texts.sents_uid.get(), "nyt.sents_uid.i64v");
-    write_to_binary_file(texts.chunks_idx.get(),"nyt.chunks_idx.i64v");
-    write_to_binary_file(texts.sents_idx.get(), "nyt.sents_idx.i64v");
-    write_to_binary_file(texts.words.get(),     "nyt.words.i64v");
-    write_to_binary_file(texts.words_uid.get(), "nyt.words_uid.i64v");
-    write_to_binary_file(texts.words_pidx.get(),"nyt.words_pidx.i64v");
-    write_to_binary_file(texts.head_words.get(),"nyt.head_words.i64v");
-    write_to_binary_file(texts.heads_uid.get(), "nyt.heads_uid.i64v");
-    write_to_binary_file(texts.heads_pidx.get(),"nyt.heads_pidx.i64v");
-    write_to_binary_file(texts.words_beg.get(), "nyt.words_beg.i64v");
-    write_to_binary_file(texts.words_end.get(), "nyt.words_end.i64v");
-    write_to_binary_file(texts.poss.get(),      "nyt.poss.i64v");
-    write_to_binary_file(texts.arclabels.get(), "nyt.arclabels.i64v");
-    timer.here_then_reset("Write to the binary files.");
-}
-*/
-
 template<typename T>
 void load_binary_file(std::string filename, T& vec){
     assert(vec.empty());

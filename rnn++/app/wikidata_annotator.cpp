@@ -48,7 +48,7 @@ struct UnittestDataset{
                                           "../rnn++/tests/data/sentence.3.corenlp",
                                           "../rnn++/tests/data/sentence.4.corenlp"};
         for(auto& json : jsons)
-            tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, data::CoreNLPjson{json});
+            tokens.append_corenlp_output(data::CoreNLPjson{json});
         tokens.build_sent_uid(0);
         sents = tokens.IndexSentences();
     }
@@ -725,10 +725,8 @@ void convert_voca_info(int argc, char** argv){
     assert(conf("w2v_float_t")=="float32");
     auto wvecs = file.getRawData<float>(conf("w2vmodel_name"));
     timer.here_then_reset("Load word vectors.");
-    auto voca_index_wuids =wordrep::load_voca(conf("wordvec_store"), conf("voca_name"));
+    std::vector<int64_t> voca_idxs = file.getRawData<int64_t>(conf("voca_name"));
     timer.here_then_reset("Load voca indexes.");
-    std::vector<int64_t> voca_idxs = util::serialize(voca_index_wuids);
-    timer.here_then_reset("Serialize WordUIDs.");
     fb::to_file(voca_idxs, {"news.en.uids.bin"});
     fb::to_file(wvecs, {"news.en.vecs.bin"});
     timer.here_then_reset("Write to binary files.");
@@ -776,8 +774,8 @@ void load_query_engine(int argc, char** argv) {
     };
     auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
         util::parallel_invoke(
-                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("news.en.vecs.bin"), wvecs_raw);},
-                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("news.en.uids.bin"), vidx_wuids);}
+                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("w2vmodel_bin_name"), wvecs_raw);},
+                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("voca_bin_name"), vidx_wuids);}
         );
     };
     auto load_wiki_module = [&f,&factory](){
@@ -798,11 +796,11 @@ void load_query_engine(int argc, char** argv) {
 }
 
 void annotate_sentences(int argc, char** argv){
-    constexpr size_t n_block = 100;
-
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
+    auto output_prefix = factory.config.value("annotated_tokens");
+    auto n_block       = std::stoi(factory.config.value("annotated_tokens_n_block"));
 
     util::Timer timer;
     auto wiki = factory.wikientity_module();
@@ -852,11 +850,11 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
     auto len_block = (sents.size() + n_block - 1) / n_block;
-    wordrep::SerializedAnnotation blocks[n_block];
+    wordrep::AnnotationFile file{n_block};
     for(auto& sent : sents){
         auto block_idx        = sent.orig.uid.val / len_block;
-        auto& candidates      = blocks[block_idx].candidates;
-        auto& tagged_entities = blocks[block_idx].tagged_tokens;
+        auto& candidates      = file.blocks[block_idx]->candidates;
+        auto& tagged_entities = file.blocks[block_idx]->tagged_tokens;
         for(auto& entity : sent.entities){
             tagged_entities.push_back({sent.orig.uid.val, entity.idxs.idx.val, entity.idxs.len});
             for(auto& candidate : entity.candidates)
@@ -866,14 +864,14 @@ void annotate_sentences(int argc, char** argv){
             tagged_entities.push_back({sent.orig.uid.val, dep_pair.idx.val, 0});
     }
     timer.here_then_reset("Serialize annotated sentences.");
-    tbb::parallel_for(size_t{0}, n_block, [&blocks](auto i) {
-        blocks[i].sort();
+    tbb::parallel_for(decltype(n_block){0}, n_block, [&file](auto i) {
+        file.blocks[i]->sort();
     });
     timer.here_then_reset("Sort blocks by token_idx.");
     int i=0;
-    for(auto const& block : blocks){
-        auto filename = fmt::format("nyt.sents.annotated.bin.{}",i++);
-        block.to_file({filename});
+    for(auto const& block : file.blocks){
+        auto filename = fmt::format("{}.{}",output_prefix,i++);
+        block->to_file({filename});
     }
     timer.here_then_reset(fmt::format("Write to binary files, at most {} sentences per block.", len_block));
 }
@@ -882,7 +880,7 @@ void annotate_sentences(int argc, char** argv){
 
 void test_load_annotated_sentences(int argc, char** argv){
     using namespace wordrep;
-    assert(argc>2);
+    assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     auto conf = [&factory](auto x){return factory.config.value(x);};
@@ -1104,8 +1102,8 @@ int main(int argc, char** argv){
 //    load_voca_info(argc,argv);
 //    test_parallel_invoke();
 //    load_query_engine(argc,argv);
-//    annotate_sentences(argc,argv);
-    test_load_annotated_sentences(argc,argv);
+    annotate_sentences(argc,argv);
+//    test_load_annotated_sentences(argc,argv);
     return 0;
 
 //    test_property_table();

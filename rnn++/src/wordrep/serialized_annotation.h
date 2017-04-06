@@ -67,7 +67,13 @@ struct AnnotationFile{
     };
     static AnnotationFile factory(InputParam param);
 
-    std::vector<std::unique_ptr<wordrep::SerializedAnnotation>> blocks;
+    AnnotationFile(){}
+    AnnotationFile(int n_block){
+        for(int i=0; i!=n_block; ++i)
+            blocks.push_back(std::make_unique<SerializedAnnotation>());
+    }
+
+    std::vector<std::unique_ptr<SerializedAnnotation>> blocks;
 };
 
 }//namespace wordrep;

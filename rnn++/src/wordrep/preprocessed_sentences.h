@@ -19,6 +19,7 @@ struct PreprocessedSentences{
     size_t size() const {return data->size();}
     Scoring::SentenceToScored const& at(size_t  i)   const {return data->at(i);}
     Scoring::SentenceToScored const& at(SentUID idx) const {return at(idx.val);}
+
     using T = tbb::concurrent_vector<Scoring::SentenceToScored>;
     std::unique_ptr<T> data = std::make_unique<T>();
 };

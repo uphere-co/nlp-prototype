@@ -5,29 +5,27 @@
 #include "similarity/dataset.h"
 
 #include "utils/string.h"
-#include "utils/versioned_name.h"
-#include "utils/hdf5.h"
+#include "utils/flatbuffers/io.h"
 
 #include "wordrep/dep_parsed.h"
 
 #include "data_source/ygp_db.h" //TODO: some indexes should be separated out from YGP ETL.
 #include "data_source/ygp_etl.h" //TODO: some ETL function should be separated out from YGP ETL.
 
-using util::io::h5read;
 using wordrep::Sentence;
 
 namespace data{
 namespace rss{
 
-void write_column_indexes(util::json_t const &config,
+void write_column_indexes(std::string column_list_file,
                           std::string row_rawfiles,
                           std::vector<size_t> const &idxs,
-                          std::string output_filename){
+                          std::string output_prefix){
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
     std::vector<RowUID> row_uids;
 
-    Columns rssdb{config["column_uids_dump"].get<std::string>()};
+    Columns rssdb{column_list_file};
 
     RowUID row_uid{};
     auto files = util::string::readlines(row_rawfiles);
@@ -47,11 +45,9 @@ void write_column_indexes(util::json_t const &config,
 
         ++row_uid;
     }
-
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-    data::ygp::write_column(util::serialize(row_uids), output_filename, prefix, ".chunk2row");
-    data::ygp::write_column(util::serialize(row_idxs), output_filename, prefix, ".chunk2row_idx");
-    data::ygp::write_column(util::serialize(col_uids), output_filename, prefix, ".chunk2col");
+    util::io::fb::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
+    util::io::fb::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
+    util::io::fb::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
 }
 
 
@@ -70,8 +66,8 @@ void annotation_on_result(util::json_t const& config, util::json_t &answers){
             auto offset_end = offsets[i][1].get<int64_t>();
             auto table_name  = rssdb.table(col_uid);
             auto column_name = rssdb.column(col_uid);
-            auto file_name = get_row_filename(table_name, column_name, row_idx.val);
-            auto row_str = util::string::read_whole(fmt::format("{}/{}", rawtext_dir, file_name));
+            RSSRowFilePath row_elm{table_name,column_name, row_idx.val};
+            auto row_str = util::string::read_whole(lookup_file(rawtext_dir, row_elm).value());
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);

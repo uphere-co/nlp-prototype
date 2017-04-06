@@ -53,27 +53,21 @@ struct Sentences{
 
 
 struct DepParsedTokens{
-    struct InputParam{
+    struct Binary{
         std::string prefix;
     };
-    static DepParsedTokens factory(InputParam const& param);
+    static DepParsedTokens factory(Binary const& param);
 
     static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
-    DepParsedTokens(util::io::H5file const &file, std::string prefix);
-    DepParsedTokens(util::VersionedName const &file, std::string prefix);
-    DepParsedTokens(std::string prefix);
     DepParsedTokens(){}
 
-    void write_to_disk(std::string filename) const;
+    void to_file(Binary file) const;
     std::vector<Sentence> IndexSentences() const;
     std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;
     //std::vector<Chunk> IndexChunks() const;
-    void append_corenlp_output(WordUIDindex const &wordUIDs,
-                               POSUIDindex const &posUIDs,
-                               ArcLabelUIDindex const &arclabelUIDs,
-                               data::CoreNLPjson const &output);
+    void append_corenlp_output(data::CoreNLPjson const &output);
     void append(DepParsedTokens const &tokens);
     void build_voca_index(VocaIndexMap const &voca);
     std::vector<SentUID> build_sent_uid(SentUID init_uid);

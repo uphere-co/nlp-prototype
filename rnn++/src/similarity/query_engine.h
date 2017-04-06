@@ -65,6 +65,7 @@ private:
     wordrep::WordImportance const word_importance;
     wordrep::WordCaseCorrector did_you_mean;
     wordrep::PhraseSegmenter phrase_segmenter;
+    wordrep::WordUIDindex wordUIDs;
     Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;

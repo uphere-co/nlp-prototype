@@ -27,14 +27,12 @@ void dependency_graph() {
     data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
     data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
-    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
-    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
     WordImportance importance{"../rnn++/tests/data/word_importance",
                               "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.append_corenlp_output(test_input);
+    tokens.append_corenlp_output(test_input2);
     tokens.build_sent_uid(0);
     //tokens.build_voca_index(voca.indexmap);
 
@@ -88,14 +86,12 @@ void phrases_in_sentence() {
     data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
     data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
-    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
-    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
     WordImportance importance{"../rnn++/tests/data/word_importance",
                               "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.append_corenlp_output(test_input);
+    tokens.append_corenlp_output(test_input2);
     tokens.build_sent_uid(0);
     auto sents = tokens.IndexSentences();
 
@@ -232,12 +228,10 @@ void show_query_suggestion(engine::SubmoduleFactory const& factory,
     data::CoreNLPjson query{query_json};
 
     WordUIDindex wordUIDs         = factory.word_uid_index();
-    POSUIDindex posUIDs           = factory.pos_uid_index();
-    ArcLabelUIDindex arclabelUIDs = factory.arclabel_uid_index();
     WordImportance importance     = factory.word_importance();
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, query);
+    tokens.append_corenlp_output(query);
     tokens.build_sent_uid(0);
     auto sents = tokens.IndexSentences();
     PhraseSegmenter phrase_segmenter{importance};
@@ -290,11 +284,12 @@ namespace engine{
 namespace test{
 
 void word_cache_thread_safety(util::json_t const& config) {
-    wordrep::VocaInfo voca{config["wordvec_store"], config["voca_name"],
-                           config["w2vmodel_name"], config["w2v_float_t"]};
-    wordrep::DepParsedTokens tokens{util::get_latest_version(util::get_str(config, "dep_parsed_store")), config["dep_parsed_prefix"]};
+    engine::SubmoduleFactory factory{{config}};
+
+    auto voca   = factory.voca_info();
+    auto tokens = factory.dep_parsed_tokens();
     auto sents = tokens.IndexSentences();
-    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
+    auto wordUIDs = factory.word_uid_index();
 
     wordrep::WordSimCache dists_cache{voca};
     auto dist_measure = similarity::Similarity<similarity::measure::angle>{};
@@ -405,15 +400,15 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-//    engine.annotation_on_result(config_json, chain_answers);
+    engine.annotation_on_result(config_json, chain_answers);
     timer.here_then_reset("Annotate query output.");
     //fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
     timer.here_then_reset("Ready to process a new query.");
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
-//    engine.annotation_on_result(config_json, stat_answer["results"]);
+    engine.annotation_on_result(config_json, stat_answer["results"]);
     timer.here_then_reset("Annotate query output.");
-    //fmt::print("stats_answers:\n");
+    fmt::print("stats_answers:\n");
     fmt::print("{}\n", stat_answer.dump(4));
 
     timer.here_then_reset("Queries are answered.");

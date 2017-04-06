@@ -8,11 +8,7 @@ struct VocaInfo{
     static constexpr int64_t dim = 100;
     using val_t = float;
     using voca_vecs_t = WordBlock_base<val_t,dim>;
-    VocaInfo(std::string h5file, std::string voca_name,
-             std::string wvec_name, std::string w2v_float_t)
-            : indexmap{load_voca(h5file, voca_name)},
-              wvecs{load_raw_wvec(h5file, wvec_name, w2v_float_t)}
-    {}
+
     VocaInfo(VocaIndexMap&& indexmap, voca_vecs_t&& wvecs)
             : indexmap{std::move(indexmap)},
               wvecs{std::move(wvecs)}

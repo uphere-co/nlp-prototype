@@ -7,12 +7,32 @@
 
 #include "wordrep/dep_parsed.h"
 
+#include "utils/flatbuffers/io.h"
+#include "utils/parallel.h"
+
 #include "utils/versioned_name.h"
 #include "utils/hdf5.h"
 #include "utils/string.h"
 
-using namespace util;
-using namespace util::io;
+namespace {
+
+template<typename T>
+void load_binary_file(std::string filename, T& vec){
+    namespace fb = util::io::fb;
+    fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
+};
+
+
+template<typename T>
+void write_to_binary_file(util::TypedPersistentVector<T> const& vec, std::string filename){
+    namespace fb = util::io::fb;
+    std::vector<int64_t> vs;
+    vs.reserve(vec.size());
+    for(auto v : vec) vs.push_back(v.val);
+    fb::to_file(vs, fb::I64Binary{filename});
+}
+}//nameless namespace
+
 
 namespace wordrep{
 
@@ -26,58 +46,44 @@ class VersionMismatchException: public std::exception {
     }
 };
 
-DepParsedTokens::DepParsedTokens(util::io::H5file const &file, std::string prefix)
-        : sents_uid {file,prefix+".sent_uid"},
-          chunks_idx{file,prefix+".chunk_idx"},
-          sents_idx {file,prefix+".sent_idx"},
-          words     {file,prefix+".word"},
-          words_uid {file,prefix+".word_uid"},
-          words_pidx{file,prefix+".word_pidx"},
-          head_words{file,prefix+".head"},
-          heads_uid {file,prefix+".head_uid"},
-          heads_pidx{file,prefix+".head_pidx"},
-          words_beg {file,prefix+".word_beg"},
-          words_end {file,prefix+".word_end"},
-          poss      {file,prefix+".pos_uid"},
-          arclabels {file,prefix+".arclabel_uid"}
-{}
-
-DepParsedTokens::DepParsedTokens(util::VersionedName const &file, std::string prefix)
-        : DepParsedTokens{h5read(file.fullname), prefix} {
-    if(file.major!=DepParsedTokens::major_version) throw VersionMismatchException{};
+DepParsedTokens DepParsedTokens::factory(Binary const &param){
+    wordrep::DepParsedTokens texts{};
+    util::parallel_invoke(
+            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_uid.i64v", param.prefix), texts.sents_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",param.prefix), texts.chunks_idx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_idx.i64v", param.prefix), texts.sents_idx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words.i64v",     param.prefix), texts.words); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_uid.i64v", param.prefix), texts.words_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_pidx.i64v",param.prefix), texts.words_pidx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.head_words.i64v",param.prefix), texts.head_words); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_uid.i64v", param.prefix), texts.heads_uid); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",param.prefix), texts.heads_pidx); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_beg.i64v", param.prefix), texts.words_beg); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.words_end.i64v", param.prefix), texts.words_end); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.poss.i64v",      param.prefix), texts.poss); },
+            [&texts,&param]() { load_binary_file(fmt::format("{}.arclabels.i64v", param.prefix), texts.arclabels); }
+    );
+    return texts;
 }
-DepParsedTokens::DepParsedTokens(std::string prefix)
-        : sents_uid {{},prefix+".sent_uid"},
-          chunks_idx{{},prefix+".chunk_idx"},
-          sents_idx {{},prefix+".sent_idx"},
-          words     {{},prefix+".word"},
-          words_uid {{},prefix+".word_uid"},
-          words_pidx{{},prefix+".word_pidx"},
-          head_words{{},prefix+".head"},
-          heads_uid {{},prefix+".head_uid"},
-          heads_pidx{{},prefix+".head_pidx"},
-          words_beg {{},prefix+".word_beg"},
-          words_end {{},prefix+".word_end"},
-          poss      {{},prefix+".pos_uid"},
-          arclabels {{},prefix+".arclabel_uid"}
-{}
 
-void DepParsedTokens::write_to_disk(std::string filename) const {
-    H5file outfile{H5name{filename}, hdf5::FileMode::create};
-    sents_uid.write(outfile);
-    chunks_idx.write(outfile);
-    sents_idx.write(outfile);
-    words_uid.write(outfile);
-    words.write(outfile);
-    words_pidx.write(outfile);
-    heads_uid.write(outfile);
-    head_words.write(outfile);
-    heads_pidx.write(outfile);
-    words_beg.write(outfile);
-    words_end.write(outfile);
-    poss.write(outfile);
-    arclabels.write(outfile);
+void DepParsedTokens::to_file(Binary file) const {
+    util::parallel_invoke(
+        [this,&file](){write_to_binary_file(this->sents_uid,  file.prefix + ".sents_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->chunks_idx, file.prefix + ".chunks_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->sents_idx,  file.prefix + ".sents_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->words,      file.prefix + ".words.i64v");},
+        [this,&file](){write_to_binary_file(this->words_uid,  file.prefix + ".words_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->words_pidx, file.prefix + ".words_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->head_words, file.prefix + ".head_words.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_uid,  file.prefix + ".heads_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_pidx, file.prefix + ".heads_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->words_beg,  file.prefix + ".words_beg.i64v");},
+        [this,&file](){write_to_binary_file(this->words_end,  file.prefix + ".words_end.i64v");},
+        [this,&file](){write_to_binary_file(this->poss,       file.prefix + ".poss.i64v");},
+        [this,&file](){write_to_binary_file(this->arclabels,  file.prefix + ".arclabels.i64v");}
+    );
 }
+
 void DepParsedTokens::build_voca_index(VocaIndexMap const &voca){
     auto n = words.size();
     for(auto it=words_uid.cbegin()+n; it!=words_uid.cend(); ++it) {
@@ -134,14 +140,13 @@ std::vector<SentUID> DepParsedTokens::sentences_in_chunk(Sentence const &sent) c
     return uids;
 }
 
-void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
-                                            POSUIDindex const &posUIDs,
-                                            ArcLabelUIDindex const &arclabelUIDs,
-                                            data::CoreNLPjson const &output){
+void DepParsedTokens::append_corenlp_output(data::CoreNLPjson const &output){
+    using util::get_str;
+    using util::get_int;
 
     int64_t sent_idx{0};
     size_t offset{0};
-    auto per_tokens = [this,&sent_idx,&wordUIDs, &posUIDs](auto const &token){
+    auto per_tokens = [this,&sent_idx](auto const &token){
         auto after  = get_str(token, "after");
         auto before = get_str(token, "before");
         auto token_beg = get_int(token,"characterOffsetBegin");
@@ -155,17 +160,17 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
         chunks_idx.push_back(current_chunk_idx);
         sents_idx.push_back(SentIndex{sent_idx});
 //            words;
-        words_uid.push_back(wordUIDs[word]);
+        words_uid.push_back(WordUIDindex::get_uid(word));
         words_pidx.push_back(WordPosition{word_pidx});
 //            head_words;
         heads_uid.push_back(WordUID{});//
         heads_pidx.push_back(WordPosition{});//
         words_beg.push_back(CharOffset{token_beg});
         words_end.push_back(CharOffset{token_end});
-        poss.push_back(posUIDs[pos]);
+        poss.push_back(POSUIDindex::get_uid(pos));
         arclabels.push_back(ArcLabelUID{});//
     };
-    auto per_dep_tokens = [this,&offset,&wordUIDs,&arclabelUIDs](auto const &x){
+    auto per_dep_tokens = [this,&offset](auto const &x){
         //dep dependent dependentGloss governor governorGloss
         auto word      = get_str(x,"dependentGloss");
         auto word_pidx = get_int(x,"dependent")-1;
@@ -174,11 +179,11 @@ void DepParsedTokens::append_corenlp_output(WordUIDindex const &wordUIDs,
         auto arc_label = get_str(x,"dep");
 
         auto i= word_pidx;
-        assert(words_uid[offset+i] == wordUIDs[word]);
+        assert(words_uid[offset+i] == WordUIDindex::get_uid(word));
         assert(words_pidx[offset+i]==WordPosition{word_pidx});
-        heads_uid[offset+i] = wordUIDs[head_word];
+        heads_uid[offset+i]  = WordUIDindex::get_uid(head_word);
         heads_pidx[offset+i] = WordPosition{head_pidx};
-        arclabels[offset+i] = arclabelUIDs[arc_label];
+        arclabels[offset+i]  = ArcLabelUIDindex::get_uid(arc_label);
     };
     auto pre_per_sent = [&offset,this](auto) {
         offset = sents_idx.size();

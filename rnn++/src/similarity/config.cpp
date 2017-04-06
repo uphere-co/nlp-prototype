@@ -43,22 +43,23 @@ wordrep::ArcLabelUIDindex SubmoduleFactory::arclabel_uid_index() const {
 }
 wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
     return wordrep::DepParsedTokens::factory({config.value("dep_parsed_bins")});
-    auto name = util::get_latest_version(config.value("dep_parsed_store"));
-    if(data_minor_version){
-        auto minor_version = data_minor_version.value();
-        name = util::VersionedName{config.value("dep_parsed_store"),
-                                   wordrep::DepParsedTokens::major_version, minor_version};
-    }
-    fmt::print(std::cerr, "Read {}\n", name .fullname);
-    return {name , config.value("dep_parsed_prefix")};
 }
 wordrep::WordImportance SubmoduleFactory::word_importance() const {
     return {util::io::h5read(config.value("word_prob_dump"))};
 }
 
 wordrep::VocaInfo SubmoduleFactory::voca_info() const{
-    return {config.value("wordvec_store"), config.value("voca_name"),
-            config.value("w2vmodel_name"), config.value("w2v_float_t")};
+    namespace fb = util::io::fb;
+    std::vector<wordrep::WordUID> vidx_wuids;
+    std::vector<float> wvecs_raw;
+
+    auto conf = [this](auto x){return this->config.value(x);};
+    util::parallel_invoke(
+            [&vidx_wuids,&conf](){fb::deserialize_i64vector(fb::load_binary_file(conf("voca_bin")), vidx_wuids);},
+            [&wvecs_raw,&conf](){fb::deserialize_f32vector(fb::load_binary_file(conf("w2vmodel_bin")), wvecs_raw);}
+    );
+
+    return {{vidx_wuids},{wvecs_raw}};
 }
 
 wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordImportance const& importance) const {
@@ -71,18 +72,14 @@ wordrep::AnnotationFile SubmoduleFactory::load_annotation() const{
 }
 
 Dataset SubmoduleFactory::empty_dataset() const{
-    return {voca_info(),
-            {word_uid_index(),pos_uid_index(),arclabel_uid_index()}};
+    return {voca_info()};
 }
 Dataset SubmoduleFactory::load_dataset() const{
-    return {voca_info(),
-            {word_uid_index(),pos_uid_index(),arclabel_uid_index()},
-            dep_parsed_tokens()};
+    return {voca_info(), dep_parsed_tokens()};
 }
 
 data::DBIndexer SubmoduleFactory::db_indexer() const {
-    return {util::io::h5read(util::get_latest_version(config.value("dep_parsed_store")).fullname),
-            config.value("dep_parsed_prefix")};
+    return {config.value("dep_parsed_bins")};
 };
 
 wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{

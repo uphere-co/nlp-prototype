@@ -35,6 +35,9 @@ void to_file(std::vector<int64_t> const& vals, I64Binary file);
 void to_file(std::vector<float> const& vals, F32Binary file);
 
 std::unique_ptr<char[]> load_binary_file(std::string file);
+
+std::vector<int64_t> load_binary_file(I64Binary file);
+
 inline std::unique_ptr<char[]> load_binary_file(PairsBinary file){
     return load_binary_file(file.name);
 };

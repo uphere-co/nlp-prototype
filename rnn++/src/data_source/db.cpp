@@ -1,9 +1,8 @@
 #include "data_source/db.h"
 
-#include "utils/hdf5.h"
+#include "utils/flatbuffers/io.h"
 
-using util::io::H5file;
-using util::io::H5name;
+namespace fb = util::io::fb;
 
 namespace data {
 
@@ -26,10 +25,10 @@ void build_db_info_field(util::json_t &answer, PerSentQueryResult const &result)
 
 
 
-DBIndexer::DBIndexer(H5file const &file, std::string prefix)
-        : chunk2idx{util::deserialize<RowIndex>(file.getRawData<int64_t>(H5name{prefix+".chunk2row_idx"}))},
-          chunk2row_uid{util::deserialize<RowUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2row"}))},
-          chunk2col_uid{util::deserialize<ColumnUID>(file.getRawData<int64_t>(H5name{prefix+".chunk2col"}))}
+DBIndexer::DBIndexer(std::string prefix)
+        : chunk2idx{util::deserialize<RowIndex>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2row_idx.i64v"}))},
+          chunk2row_uid{util::deserialize<RowUID>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2row.i64v"}))},
+          chunk2col_uid{util::deserialize<ColumnUID>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2col.i64v"}))}
 {
     auto n = chunk2idx.size();
     assert(chunk2row_uid.size()==n);
