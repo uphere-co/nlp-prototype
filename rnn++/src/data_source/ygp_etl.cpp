@@ -160,75 +160,41 @@ void dump_psql(std::string cols_to_exports, std::string dump_path){
     }
 }
 
+void dump_country_code(std::string table,
+                       std::string country_code_col,
+                       std::string index_col,
+                       std::string dump_path){
+    pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
+    pqxx::work W(C);
 
-void write_country_code(util::json_t const &config, int minor_version) {
-    namespace ygp = data::ygp;
+    auto query = fmt::format("SELECT {1}, OT_country_code.country_name FROM {0}\
+                              INNER JOIN OT_country_code\
+                              ON OT_country_code.country_code = {0}.{2};",
+                             table, index_col, country_code_col);
+    auto body = W.exec(query);
+    W.commit();
 
-    WordUIDindex wordUIDs{config["word_uids_dump"].get<std::string>()};
-
-    auto output_filename = util::VersionedName{util::get_str(config,"dep_parsed_store"),
-                                               DepParsedTokens::major_version, minor_version}.fullname;
-    auto prefix = config["dep_parsed_prefix"].get<std::string>();
-    auto cols_to_exports = config["column_uids_dump"].get<std::string>();
-
-    ygp::CountryColumn table2country_code{};
-
-    std::string ygp_prefix = util::get_str(config,"dep_parsed_prefix");
-    std::string text_prefix = util::get_str(config,"dep_parsed_bins");
-    RowUID row_uid{};
-    YGPdb db{cols_to_exports};
-    DBIndexer ygp_indexer{text_prefix};
-    Chunks ygp_chunks{text_prefix};
-    std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
-    std::map<std::string, util::TypedPersistentVector<SentUID>> sents_by_country;
-    std::map<RowUID,std::vector<SentUID>> sents_in_row;
-
-    for(auto idx=ygp_chunks.token_beg();idx!=ygp_chunks.token_end(); idx = ygp_chunks.next_sent_beg(idx)){
-        auto ch_idx=ygp_chunks.chunk_idx(idx);
-        auto sent_uid=ygp_chunks.sent_uid(idx);
-        auto row_uid=ygp_indexer.row_uid(ch_idx);
-        sents_in_row[row_uid].push_back(sent_uid);
-        assert(row_uid.val==ch_idx.val);
+    auto n = body.size();
+    for (decltype(n) j = 0; j != n; ++j) {
+        auto elm = body[j];
+        auto row_idx = std::stoi(elm[0].c_str());
+        std::string country = elm[1].c_str();
+        auto filename = fmt::format("{}/{}.{}.{}.{}", dump_path, table, "country", index_col, row_idx);
+        util::string::write_whole(filename, country);
     }
-
-    for (auto col_uid = db.beg(); col_uid != db.end(); ++col_uid) {
-        auto table = db.table(col_uid);
-        auto column = db.column(col_uid);
-        auto index_col = db.index_col(col_uid);
-        auto country_code_col = table2country_code[table];
-        fmt::print("{} {} {}\n", table, country_code_col, index_col);
-
-        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        pqxx::work W(C);
-        auto query = fmt::format("SELECT {0}.{1},OT_country_code.country_name FROM {0}\
-                                    INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2});",
-                                 table, index_col, country_code_col);
-        auto body = W.exec(query);
-        W.commit();
-        auto n = body.size();
-        for (decltype(n) i = 0; i != n; ++i) {
-            auto elm = body[i];
-            RowIndex row_idx{std::stoi(elm[0].c_str())};
-            if(ygp_indexer.is_empty(col_uid,row_idx)) continue;
-            auto row_uid = ygp_indexer.row_uid(col_uid, row_idx);
-            std::string country = elm[1].c_str();
-            rows_by_country[country].push_back(row_uid);
-            auto& tmp = sents_by_country[country];
-            for(auto sent_uid : sents_in_row[row_uid]) tmp.push_back(sent_uid);
-        }
-    }
-
-    auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
-                                                   DepParsedTokens::major_version, minor_version}.fullname;
-    std::ofstream country_list{country_output_name};
-    for(auto x : rows_by_country) country_list << x.first << std::endl;
-    for(auto x : rows_by_country)
-        fb::to_file(util::serialize(x.second.get()), {x.first+".row_uid.i64v"});
-    for(auto x : sents_by_country)
-        fb::to_file(util::serialize(x.second.get()), {x.first+".sent_uid.i64v"});
-    country_list.close();
 }
 
+void generate_country_columns(std::string dump_path, std::string country_columns_file){
+    for(auto line : util::string::readlines(country_columns_file)){
+        auto tokens = util::string::split(line, ".");
+        auto table  = tokens[0];
+        auto country_code_col = tokens[1];
+        auto index_col = tokens[2];
+        std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, country_code_col, index_col)<<std::endl;
+
+        dump_country_code(table, country_code_col, index_col, dump_path);
+    }
+}
 
 void write_column_indexes(std::string output_prefix,
                           std::string cols_to_exports,

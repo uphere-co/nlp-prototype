@@ -1,15 +1,12 @@
 #include <cassert>
-
 #include "data_source/ygp_etl.h"
 
 int main(int argc, char** argv){
-    assert(argc>1);
+    assert(argc>2);
     auto columns_to_export = argv[1];
-    std::string dump_path="";
-    if(argc>2) dump_path=argv[2];
-    //auto config = util::load_json(argv[1]);
-    //auto columns_to_export = util::get_str(config,"column_uids_dump")
+    auto country_columns_file = argv[2];
+    auto dump_path=argv[3];
+    data::ygp::generate_country_columns(dump_path, country_columns_file);
     data::ygp::dump_psql(columns_to_export, dump_path);
-
     return 0;
 }

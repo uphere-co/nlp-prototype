@@ -92,7 +92,7 @@ void word_importance(util::json_t const &config){
 
     auto ask = util::load_json("../rnn++/tests/data/query.unittest.inf_cutoff.corenlp");
     DepParsedTokens query_tokens{};
-    query_tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, ask);
+    query_tokens.append_corenlp_output(ask);
     query_tokens.build_sent_uid(SentUID{SentUID::val_t{0x80000000}});
     auto sents = query_tokens.IndexSentences();
     for(auto sent : sents){
@@ -140,8 +140,6 @@ void persistent_vector_WordUID(){
     vec3.front() = WordUID{1};
     assert(vec3.front()!=vec.front());
 }
-
-
 
 void filesystem(util::json_t const &config){
     auto data_path = util::get_str(config, "dep_parsed_store");
@@ -215,51 +213,6 @@ void country_annotator(util::json_t const &config) {
         assert(util::isin(tags, "Hong Kong"));
     }
 }
-
-
-void country_code(util::json_t const &config){
-    Factory factory{{config}};
-    WordUIDindex wordUIDs = factory.common.word_uid_index();
-    YGPdb db = factory.db();
-    DBIndexer ygp_indexer     = factory.common.db_indexer();
-    DBbyCountry ygpdb_country = factory.db_by_country();
-    DepParsedTokens tokens    = factory.common.dep_parsed_tokens();
-
-    auto sents = tokens.IndexSentences();
-    int i = 0;
-    for (auto sent : sents) {
-        if (i++ > 100) break;
-        auto chunk_idx = tokens.chunk_idx(sent.front());
-        auto col_uid = ygp_indexer.column_uid(chunk_idx);
-        auto row_idx = ygp_indexer.row_idx(chunk_idx);
-        auto row_uid = ygp_indexer.row_uid(chunk_idx);
-        CountryColumn table2country_code{};
-        auto table = db.table(col_uid);
-        auto column = db.column(col_uid);
-        auto index_col = db.index_col(col_uid);
-        auto country_code_col = table2country_code[table];
-        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        pqxx::work W(C);
-        auto query = fmt::format("SELECT {1},OT_country_code.country_name FROM {0}\
-                                  INNER JOIN OT_country_code ON (OT_country_code.country_code = {0}.{2})\
-                                  WHERE {0}.{1}={3};",
-                                 table, index_col, country_code_col, row_idx.val);
-        auto body = W.exec(query);
-        W.commit();
-        auto n = body.size();
-        for (decltype(n) j = 0; j != n; ++j) {
-            auto elm = body[j];
-            assert(row_idx == RowIndex{std::stoi(elm[0].c_str())});
-            std::string country = elm[1].c_str();
-            if (country != ygpdb_country.get_country(sent.uid))
-                std::cerr << fmt::format("{} : {} {} {} {}.uid {}.sent_uid {} {}", i, table, column, row_idx.val,
-                                         row_uid.val, sent.uid.val,
-                                         country, ygpdb_country.get_country(sent.uid)) << std::endl;
-            assert(country == ygpdb_country.get_country(sent.uid));
-        }
-    }
-}
-
 
 }//namespace data::ygp::test
 }//namespace data::ygp
@@ -436,7 +389,7 @@ int process_ygp_dump(int argc, char** argv){
     int minor_version          = std::stoi(argv[3]);
 
     auto dataset_prefix = util::get_str(config,"dep_parsed_prefix");
-    data::CoreNLPoutputParser dump_parser{config};
+    data::CoreNLPoutputParser dump_parser;
     auto json_dumps = util::string::readlines(json_dump_path);
     timer.here_then_reset(fmt::format("Begin to process JSON dump files. "));
     data::parallel_load_jsons(json_dumps, dump_parser);
@@ -454,10 +407,6 @@ int process_ygp_dump(int argc, char** argv){
                                     util::get_str(config,"column_uids_dump"),
                                     util::get_str(config,"dep_parsed_prefix"),
                                     non_null_dumps);
-
-    auto country_output_name = util::VersionedName{util::get_str(config,"country_uids_dump"),
-                                                   DepParsedTokens::major_version, minor_version};
-    data::ygp::write_country_code(config, minor_version);
     return 0;
 }
 
@@ -466,7 +415,6 @@ void test_ygp(int argc, char** argv) {
     auto config = util::load_json(argv[1]);
     data::ygp::test::ygpdb_indexing(config);
     data::ygp::test::country_annotator(config);
-    data::ygp::test::country_code(config);
 }
 
 void test_common(int argc, char** argv){
@@ -490,7 +438,8 @@ int main(int argc, char** argv){
 //    test_common(argc, argv);
 //    return 0;
 
-    process_ygp_dump(argc,argv);
+    data::ygp::test::country_code(config);
+//    process_ygp_dump(argc,argv);
 //    data::ygp::parse_psql(get_str(config,"column_uids_dump"));
     return 0;
 }
