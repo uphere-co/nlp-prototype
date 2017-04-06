@@ -25,7 +25,7 @@ void build_db_info_field(util::json_t &answer, PerSentQueryResult const &result)
 
 
 struct DBIndexer{
-    DBIndexer(util::io::H5file const &file, std::string prefix);
+    DBIndexer(std::string prefix);
     ColumnUID column_uid(wordrep::ChunkIndex idx) const {return chunk2col_uid[idx.val];}
     RowIndex row_idx(wordrep::ChunkIndex idx) const {return chunk2idx[idx.val];}
     RowUID row_uid(wordrep::ChunkIndex idx) const {return chunk2row_uid[idx.val];}

@@ -6,6 +6,7 @@
 #include "utils/string.h"
 #include "utils/type_param.h"
 #include "utils/algorithm.h"
+#include "utils/flatbuffers/io.h"
 
 namespace util{
 

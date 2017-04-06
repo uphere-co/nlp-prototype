@@ -73,8 +73,7 @@ Dataset SubmoduleFactory::load_dataset() const{
 }
 
 data::DBIndexer SubmoduleFactory::db_indexer() const {
-    return {util::io::h5read(util::get_latest_version(config.value("dep_parsed_store")).fullname),
-            config.value("dep_parsed_prefix")};
+    return {config.value("dep_parsed_bins")};
 };
 
 wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
