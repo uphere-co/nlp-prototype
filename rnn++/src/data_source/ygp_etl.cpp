@@ -18,7 +18,6 @@
 #include "wordrep/voca_info.h"
 #include "wordrep/dep_parsed.h"
 
-#include "utils/hdf5.h"
 #include "utils/profiling.h"
 #include "utils/span.h"
 #include "utils/string.h"
@@ -30,15 +29,15 @@
 #include "utils/flatbuffers/io.h"
 
 using namespace wordrep;
-using namespace util::io;
+namespace fb = util::io::fb;
 
 namespace {
 
 struct Chunks{
     using idx_t = std::pair<ChunkIndex,SentUID>;
-    Chunks(util::io::H5file const &file, std::string prefix)
-            : sents_uid{file,prefix+".sent_uid"},
-              chunks_idx{file,prefix+".chunk_idx"}
+    Chunks(std::string prefix)
+            : sents_uid{fb::load_binary_file(fb::I64Binary{prefix+".sent_uid.i64v"}),  "sent_uid"},
+              chunks_idx{fb::load_binary_file(fb::I64Binary{prefix+".chunk_idx.i64v"}),"chunk_idx"}
     {
         assert(sents_uid.size()==chunks_idx.size());
     }
@@ -176,12 +175,12 @@ void write_country_code(util::json_t const &config, int minor_version) {
 
     ygp::CountryColumn table2country_code{};
 
-    H5file ygp_h5store{H5name{output_filename},hdf5::FileMode::rw_exist};
-    std::string ygp_prefix = config["dep_parsed_prefix"];
+    std::string ygp_prefix = util::get_str(config,"dep_parsed_prefix");
+    std::string text_prefix = util::get_str(config,"dep_parsed_bins");
     RowUID row_uid{};
     YGPdb db{cols_to_exports};
-    DBIndexer ygp_indexer{ygp_h5store, ygp_prefix};
-    Chunks ygp_chunks{ygp_h5store, ygp_prefix};
+    DBIndexer ygp_indexer{text_prefix};
+    Chunks ygp_chunks{text_prefix};
     std::map<std::string, util::TypedPersistentVector<RowUID>> rows_by_country;
     std::map<std::string, util::TypedPersistentVector<SentUID>> sents_by_country;
     std::map<RowUID,std::vector<SentUID>> sents_in_row;
@@ -225,22 +224,13 @@ void write_country_code(util::json_t const &config, int minor_version) {
                                                    DepParsedTokens::major_version, minor_version}.fullname;
     std::ofstream country_list{country_output_name};
     for(auto x : rows_by_country) country_list << x.first << std::endl;
-    for(auto x : rows_by_country) x.second.write(ygp_h5store,x.first+".row_uid");
-    for(auto x : sents_by_country) x.second.write(ygp_h5store, x.first+".sent_uid");
+    for(auto x : rows_by_country)
+        fb::to_file(util::serialize(x.second.get()), {x.first+".row_uid.i64v"});
+    for(auto x : sents_by_country)
+        fb::to_file(util::serialize(x.second.get()), {x.first+".sent_uid.i64v"});
     country_list.close();
 }
 
-void write_column(std::vector<int64_t> rows, std::string filename,
-                  std::string prefix, std::string colname){
-    hdf5::FileMode mode=hdf5::FileMode::rw_exist;
-    H5file file{H5name{filename}, mode};
-    file.writeRawData(H5name{prefix+colname}, rows);
-}
-void overwrite_column(std::vector<int64_t> rows, std::string filename,
-                      std::string prefix, std::string colname){
-    H5file file{H5name{filename}, hdf5::FileMode::rw_exist};
-    file.overwriteRawData(H5name{prefix+colname}, rows);
-}
 
 void write_column_indexes(std::string output_prefix,
                           std::string cols_to_exports,
