@@ -3,6 +3,8 @@
 #include <fmt/printf.h>
 #include <src/similarity/query_engine.h>
 
+#define TBB_PREVIEW_VARIADIC_PARALLEL_INVOKE 1
+
 #include "wiki/wikidata.h"
 #include "wiki/property_triple.h"
 
@@ -800,6 +802,44 @@ struct SerializedAnnotation{
     struct Binary{
         std::string name;
     };
+    using CIT = std::vector<wordrep::io::EntityCandidate>::const_iterator;
+    struct CandidateIterator{
+        static CIT next_entity(CIT it, CIT end) {
+            auto idx = it->token_idx();
+            return std::find_if_not(it, end, [idx](auto x){return x.token_idx()==idx;});
+        }
+
+        CandidateIterator(CIT it, CIT end) : it{it}, file_end{end} {}
+        auto operator*( void ) const {
+            std::vector<wordrep::Scoring::AmbiguousEntity::Candidate> candidates;
+            auto last_candi = next_entity(it,file_end);
+            candidates.reserve(last_candi-it);
+            for(auto candi=it;candi!=last_candi ; ++candi) {
+                candidates.push_back({candi->wiki_uid(), candi->score()});
+                assert(it->token_idx()==candi->token_idx());
+            }
+            return candidates;
+        }
+        void operator++(void) {
+            it = next_entity(it,file_end);
+        }
+        wordrep::DPTokenIndex index() const { return it->token_idx();}
+        bool operator!=(CandidateIterator rhs ) const {return it != rhs.it;}
+    private:
+        CIT it;
+        CIT file_end;
+    };
+    struct CandidateIteration{
+        CandidateIterator begin() const {return {file_beg,file_end};}
+        CandidateIterator end()   const {return {file_end,file_end};}
+
+        CIT file_beg;
+        CIT file_end;
+    };
+
+    CandidateIteration iter_ambu(){
+        return CandidateIteration{candidates.cbegin(), candidates.cend()};
+    }
     std::vector<wordrep::io::EntityCandidate> candidates;
     std::vector<wordrep::io::TaggedToken> tagged_tokens;
     bool is_sorted = false;
@@ -846,6 +886,8 @@ std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Bin
 }
 
 void annotate_sentences(int argc, char** argv){
+    constexpr size_t n_block = 100;
+
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
@@ -897,7 +939,6 @@ void annotate_sentences(int argc, char** argv){
 
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
-    constexpr size_t n_block = 10;
     auto len_block = (sents.size() + n_block - 1) / n_block;
     SerializedAnnotation blocks[n_block];
     for(auto& sent : sents){
@@ -926,27 +967,90 @@ void annotate_sentences(int argc, char** argv){
 }
 
 void load_annotated_sentences(int argc, char** argv){
-    util::Timer timer;
+    constexpr int n_block =100;
+    using namespace wordrep;
     assert(argc>2);
-    auto i_block = argv[2];
-    auto block = load_binary_file(SerializedAnnotation::Binary{fmt::format("nyt.sents.annotated.bin.{}",i_block)});
+    auto config_json = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config_json}};
+    auto i_block = std::stoi(argv[2]);
+    util::Timer timer;
+
+    DepParsedTokens texts{};
+    std::vector<Sentence> sents;
+    auto load_indexed_text=[&texts,&sents](){
+        texts = DepParsedTokens::factory({"nyt"});
+        sents = texts.IndexSentences();
+    };
+
+    std::unique_ptr<SerializedAnnotation> blocks[n_block];
+    auto load_annotated_text = [&blocks,n_block](){
+        tbb::parallel_for(int{0},n_block, [&blocks](auto i){
+            auto& block = blocks[i];
+            block = load_binary_file(SerializedAnnotation::Binary{fmt::format("nyt.sents.annotated.bin.{}",i)});
+        });
+    };
+    util::parallel_invoke(load_annotated_text, load_indexed_text);
     timer.here_then_reset("Load files.");
-    int i=0;
-    tbb::concurrent_vector<wordrep::Scoring::AmbiguousEntity> a;
-    tbb::concurrent_vector<wordrep::DepPair> b;
-    for(auto& entity : block->tagged_tokens){
-        wordrep::SentUID suid = entity.sent_uid();
-        wordrep::DPTokenIndex idx = entity.token_idx();
-        auto len = entity.token_len();
-        fmt::print("{} : {} {}\n", suid, idx, len);
-        if(++i>50)break;
-    }
-    for(auto& candidate : block->candidates){
-        wordrep::DPTokenIndex idx = candidate.token_idx();
-        wordrep::WikidataUID uid = candidate.wiki_uid();
-        auto score = candidate.score();
-    }
+
+    tbb::concurrent_vector<Scoring::SentenceToScored> tagged_sents;
+    tagged_sents.reserve(sents.size());
+    for(auto& sent: sents) tagged_sents.push_back({sent});
+    auto n_sents = sents.size();
+    tbb::parallel_for(decltype(n_sents){0},n_sents, [&sents,&tagged_sents](auto i){
+        auto& sent = sents[i];
+        auto& tagged_sent = tagged_sents[i];
+        assert(sent.uid == tagged_sent.orig.uid);
+    });
+    timer.here_then_reset("Build annotated sentences.");
+
+    tbb::parallel_for(int{0}, 5, [&blocks,&tagged_sents](auto i_block){
+        auto& block = blocks[i_block];
+        auto candi_per_entity = block->iter_ambu().begin();
+        for(auto& entity : block->tagged_tokens){
+            SentUID suid     = entity.sent_uid();
+            DPTokenIndex idx = entity.token_idx();
+            auto token_len   = entity.token_len();
+            auto& sent = tagged_sents[suid.val];
+
+            if(!token_len) {
+                sent.words.push_back({sent.orig, idx});
+                continue;
+            }
+            assert(candi_per_entity.index()==idx);
+
+            ConsecutiveTokens words{idx,token_len};
+            auto candidates = *candi_per_entity;
+            wiki::AmbiguousUID uid;
+            for(auto candi : candidates) uid.candidates.push_back(candi.uid);
+            auto& dict    = *sent.orig.dict;
+            auto word_gov = dict.head_uid(idx);
+            auto gov      = dict.head_word(idx);
+            wordrep::Scoring::AmbiguousEntity x{candidates,uid, words, word_gov,gov};
+            sent.entities.push_back(x);
+            ++candi_per_entity;
+        }
+    });
+
+    timer.here_then_reset("Fill annotated sentences.");
+
+    fmt::print(std::cerr, "{} sentences.\n", sents.size());
+
+//    int ii=0;
+//    for(auto candi : block->candidates){
+//        fmt::print("{} : {} {}\n", candi.token_idx(), candi.wiki_uid(), candi.score());
+//        if(++ii>50) break;
+//    }
+//    for(auto it = block->iter_ambu().begin(); it!= block->iter_ambu().end(); ++it){
+//        std::vector<Scoring::AmbiguousEntity::Candidate> candidates = *it;
+//        for(auto candi : candidates)
+//            fmt::print("{}[{}] ", candi.uid, candi.score);
+//        fmt::print(" : {}\n", it.index());
+//    }
 }
+
+struct IndexSortedCandidates{
+
+};
 
 using wordrep::UIDIndexBinary;
 void save_wikidata_entities(int argc, char** argv){
@@ -1098,18 +1202,6 @@ void proptext_to_binary_file(){
     timer.here_then_reset("Write files.");
 }
 
-//
-//template<typename T, typename F1>
-//void pp_impl(T& os, F1 const& f1) {
-//    fmt::print(os, "{}\n", f1);
-//}
-//
-//template<typename T, typename F1, typename F2, typename... Args>
-//void pp_impl(T& os, F1 const& f1, F2 const& f2, Args&&... args) {
-//    fmt::print(os, "{} {} ", f1, f2);
-//    pp_impl(os, std::forward<Args>(args)...);
-//}
-
 void test_parallel_invoke(){
     assert(util::tbb_detail::get_number_of_children(1)==1);
     assert(util::tbb_detail::get_number_of_children(2)==2);
@@ -1122,16 +1214,18 @@ void test_parallel_invoke(){
     assert(util::tbb_detail::get_number_of_children(9)==5);
 
 }
+
+
 int main(int argc, char** argv){
     util::Timer timer;
 //    save_wikidata_entities(argc,argv);
 //    proptext_to_binary_file();
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
-    test_parallel_invoke();
-    load_query_engine(argc,argv);
-//    annotate_sentences(argc,argv);
-//    load_annotated_sentences(argc,argv);
+//    test_parallel_invoke();
+//    load_query_engine(argc,argv);
+    annotate_sentences(argc,argv);
+    load_annotated_sentences(argc,argv);
     return 0;
 
 //    test_property_table();
