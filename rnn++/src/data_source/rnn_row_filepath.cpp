@@ -1,9 +1,11 @@
 #include "data_source/rss.h"
 
+#include <experimental/filesystem>
 #include <fmt/format.h>
 
 #include "utils/string.h"
 #include "utils/filesystem.h"
+
 
 using util::io::h5read;
 using wordrep::Sentence;
@@ -19,12 +21,20 @@ RSSRowFilePath::RSSRowFilePath(std::string full_path) {
     index   = std::stoi(tokens[1]);
     //tokens[2] is a hash of the article's URL
     column = tokens[3];
-    assert(tokens.size()==4&&tokens[4]=="corenlp");
 }
 
-std::string get_row_filename(std::string table, std::string column, int64_t index){
-    return fmt::format("{}.{}.{}.corenlp", table,index,column);
+std::optional<std::string> lookup_file(std::string dir_path, data::rss::RSSRowFilePath name){
+    namespace fs = std::experimental::filesystem;
+    fs::directory_iterator dir{dir_path};
+
+    for(fs::path file : dir) {
+        data::rss::RSSRowFilePath row{file.filename()};
+        if(row==name)
+            return file.string();
+    }
+    return {};
 }
+
 
 }//namespace rss::data
 }//namespace data

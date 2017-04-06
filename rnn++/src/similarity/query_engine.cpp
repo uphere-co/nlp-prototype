@@ -458,9 +458,11 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
     };
-    auto per_sent=[&answers,max_clip_len,op_cut,op_results,get_query_suggestions](
+    auto per_sent=[&answers,max_clip_len,op_cut,op_results,get_query_suggestions,this](
             auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
         data::QueryResult answer;
+        for(auto& sent : relevant_sents)
+            fmt::print(std::cerr, "FOUND : {}\n", sent.sent.repr(this->wordUIDs));
         answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
         answer.query = query_sent_info;
         answer.n_relevant_matches = relevant_sents.size();

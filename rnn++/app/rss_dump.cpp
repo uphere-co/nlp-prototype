@@ -13,6 +13,8 @@
 
 #include "similarity/rss.h"
 
+
+#include <experimental/filesystem>
 namespace data{
 namespace rss{
 namespace test {
@@ -119,12 +121,16 @@ void test_all(int argc, char** argv){
 }//namespace data;
 
 int process_rss_dump(int argc, char** argv){
-    assert(argc>1);
+    assert(argc>4);
     auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
     util::Timer timer;
 
     auto json_dump_path   = argv[2];
     auto dataset_prefix   = argv[3];
+
+    auto voca = factory.voca_info();
+    timer.here_then_reset("Load data.");
 
     data::CoreNLPoutputParser dump_parser;
     auto json_dumps = util::string::readlines(json_dump_path);
@@ -135,22 +141,32 @@ int process_rss_dump(int argc, char** argv){
     auto non_null_idxs = dump_parser.get_nonnull_idx();
     timer.here_then_reset("Parsing is finished. ");
 
-//    wordrep::VocaInfo voca;
-//    tokens.build_voca_index(voca.indexmap);
-//    timer.here_then_reset("Built VocaIndex");
-
-
+    tokens.build_voca_index(voca.indexmap);
+    timer.here_then_reset("Built voca index.");
+    
     tokens.to_file({dataset_prefix});
+    timer.here_then_reset("Write to files.");
     data::rss::write_column_indexes(util::get_str(config, "column_uids_dump"),
                                     json_dump_path,
                                     non_null_idxs,
                                     dataset_prefix);
+    timer.here_then_reset("Write indexes.");
     return 0;
 }
 
+
+void test_file_find(){
+    using data::rss::lookup_file;
+    fmt::print(std::cerr, "test_file_find\n");
+    assert(lookup_file("/opt/RSS.text", {"NYT","title",1}));
+    assert(lookup_file("/opt/RSS.text", {"NYT","summary",1}));
+    assert(lookup_file("/opt/RSS.text", {"NYT","maintext",2}));
+    fmt::print("{}\n", lookup_file("/opt/RSS.text", {"NYT","maintext",2}).value());
+};
 int main(int argc, char** argv){
 //    data::rss::test::test_all(argc,argv);
-//    return 0;
+    test_file_find();
+    return 0;
 
     process_rss_dump(argc, argv);
     return 0;

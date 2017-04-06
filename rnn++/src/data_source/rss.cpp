@@ -66,8 +66,8 @@ void annotation_on_result(util::json_t const& config, util::json_t &answers){
             auto offset_end = offsets[i][1].get<int64_t>();
             auto table_name  = rssdb.table(col_uid);
             auto column_name = rssdb.column(col_uid);
-            auto file_name = get_row_filename(table_name, column_name, row_idx.val);
-            auto row_str = util::string::read_whole(fmt::format("{}/{}", rawtext_dir, file_name));
+            RSSRowFilePath row_elm{table_name,column_name, row_idx.val};
+            auto row_str = util::string::read_whole(lookup_file(rawtext_dir, row_elm).value());
             auto substr = util::string::substring_unicode_offset(row_str, offset_beg, offset_end);
             answer["result_DEBUG"].push_back(substr);
             answer["result_row_DEBUG"].push_back(row_str);
