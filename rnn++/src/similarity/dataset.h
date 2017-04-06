@@ -12,10 +12,6 @@
 namespace engine{
 
 struct UIDmaps{
-    UIDmaps(std::string word_uids,
-            std::string pos_uids,
-            std::string arclabel_uids);
-
     wordrep::WordUIDindex word;
     wordrep::POSUIDindex pos;
     wordrep::ArcLabelUIDindex arclabel;
@@ -27,7 +23,7 @@ struct Dataset{
 
     Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
     Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
-            wordrep::DepParsedTokens&& tokens);
+            wordrep::DepParsedTokens&& tokens_);
     Dataset(Dataset&& data);
     Dataset(Dataset const& data);
 

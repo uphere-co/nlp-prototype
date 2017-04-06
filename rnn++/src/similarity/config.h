@@ -13,6 +13,7 @@
 #include "wordrep/word_prob.h"
 #include "wordrep/voca_info.h"
 #include "wordrep/word_case_corrector.h"
+#include "wordrep/serialized_annotation.h"
 
 #include "wordrep/simiarity_score.h"
 #include "wiki/wikidata.h"
@@ -26,16 +27,19 @@ template<typename T>
 struct ConfigKeys{
     std::vector<T> keys={{"engine_type"},
                          {"corenlp_client_script"},
-                         {"word_uids_dump"},
+                         {"words_list"},
                          {"word_uid_bin"},
-                         {"pos_uids_dump"},
+//                         {"pos_uids_dump"},
                          {"pos_uid_bin"},
                          {"arclabel_uids_dump"},
                          {"column_uids_dump"},
                          {"word_prob_dump"},
                          {"corenlp_dumps"},
-                         {"dep_parsed_store"},
-                         {"dep_parsed_prefix"},
+                         {"dep_parsed_bins"},
+                         {"dep_parsed_store"}, //TODO : DBIndexer use this. Binarize this
+                         {"dep_parsed_prefix"},//TODO : DBIndexer use this. Binarize this
+                         {"annotated_tokens"},
+                         {"annotated_tokens_n_block"},
                          {"wordvec_store"},
                          {"voca_name"},
                          {"w2vmodel_name"},
@@ -64,6 +68,7 @@ struct SubmoduleFactory{
     wordrep::WordImportance word_importance() const;
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
+    wordrep::AnnotationFile load_annotation() const;
 
     wordrep::WikidataUIDindex wikientity_uid_index() const;
     wikidata::EntityModule wikientity_module() const;

@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 #include "wordrep/indexes.h"
 #include "wordrep/words.h"
@@ -96,6 +97,9 @@ private:
 
 
 struct AmbiguousUID {
+    bool is_match(WikidataUID uid) const {
+        return std::find(candidates.begin(),candidates.end(), uid)!=candidates.end();
+    }
     std::vector<WikidataUID> candidates;
 };
 

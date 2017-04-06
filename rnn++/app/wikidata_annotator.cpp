@@ -885,38 +885,50 @@ void test_load_annotated_sentences(int argc, char** argv){
     assert(argc>2);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-    auto i_block = std::stoi(argv[2]);
+    auto conf = [&factory](auto x){return factory.config.value(x);};
+
     int n_block =100;
     util::Timer timer;
 
+    std::unique_ptr<wikidata::EntityModule> f{};
     std::unique_ptr<WordUIDindex> wordUIDs;
     DepParsedTokens texts{};
     std::vector<Sentence> sents;
-    auto load_wordUIDs = [&factory,&wordUIDs](){
-        wordUIDs = std::make_unique<WordUIDindex>(UIDIndexBinary{factory.config.value("word_uid_bin")});
+    auto load_wiki_module = [&f,&factory](){
+        f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
     };
-    auto load_indexed_text=[&texts,&sents](){
-        texts = DepParsedTokens::factory({"nyt"});
+    auto load_wordUIDs = [&conf,&wordUIDs](){
+        wordUIDs = std::make_unique<WordUIDindex>(UIDIndexBinary{conf("word_uid_bin")});
+    };
+    auto load_indexed_text=[&conf,&texts,&sents](){
+        texts = DepParsedTokens::factory({conf("dep_parsed_bins")});
         sents = texts.IndexSentences();
     };
 
     AnnotationFile annotated_tokens;
-    auto load_annotated_text = [&annotated_tokens,n_block](){
-        annotated_tokens = AnnotationFile::factory({"nyt.sents.annotated.bin", n_block});
+    auto load_annotated_text = [&conf,&annotated_tokens,n_block](){
+        annotated_tokens = AnnotationFile::factory({conf("annotated_tokens"), n_block});
     };
 
-    util::parallel_invoke(load_wordUIDs, load_indexed_text, load_annotated_text);
+    util::parallel_invoke(load_wiki_module,
+                          load_wordUIDs,
+                          load_indexed_text,
+                          load_annotated_text);
     timer.here_then_reset("Load files.");
 
     auto tagged_sentences = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
     timer.here_then_reset("Construct preprocessed sentences.");
     fmt::print(std::cerr, "Total : {} sentences.\n", tagged_sentences.size());
 
+    auto ai      = f->wiki_uid().get_uid("Q11660");
+    auto company = f->wiki_uid().get_uid("Q4830453");
+    auto google = f->wiki_uid().get_uid("Q95");
     int ii=0;
     for(wordrep::Scoring::SentenceToScored const& sent : tagged_sentences){
-        fmt::print("{}\n", sent.repr(*wordUIDs));
-        fmt::print("{}\n", sent.orig.repr(*wordUIDs));
-        if(++ii>50) break;
+        for(auto& tagged : sent.entities)
+            if(tagged.uid.is_match(google))
+                fmt::print("{}\n", sent.orig.repr(*wordUIDs));
+
     }
 }
 
