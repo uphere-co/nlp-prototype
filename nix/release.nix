@@ -21,6 +21,7 @@ rec {
 		     spdlog      = toolz_cpp.spdlog;
 		     backwardcpp = toolz_cpp.backwardcpp;
                      variant     = toolz_cpp.variant;
+                     flatbuffers = toolz_cpp.flatbuffers;
                    };
   
   "rnnpp"        = import ../rnn++    { inherit pkgs; };
