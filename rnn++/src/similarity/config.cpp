@@ -63,13 +63,10 @@ wordrep::AnnotationFile SubmoduleFactory::load_annotation() const{
 }
 
 Dataset SubmoduleFactory::empty_dataset() const{
-    return {voca_info(),
-            {word_uid_index(),pos_uid_index(),arclabel_uid_index()}};
+    return {voca_info()};
 }
 Dataset SubmoduleFactory::load_dataset() const{
-    return {voca_info(),
-            {word_uid_index(),pos_uid_index(),arclabel_uid_index()},
-            dep_parsed_tokens()};
+    return {voca_info(), dep_parsed_tokens()};
 }
 
 data::DBIndexer SubmoduleFactory::db_indexer() const {

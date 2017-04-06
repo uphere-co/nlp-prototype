@@ -21,8 +21,8 @@ struct Dataset{
     using Sentence = wordrep::Sentence;
     using json_t = util::json_t;
 
-    Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid);
-    Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
+    Dataset(wordrep::VocaInfo&& voca);
+    Dataset(wordrep::VocaInfo&& voca,
             wordrep::DepParsedTokens&& tokens_);
     Dataset(Dataset&& data);
     Dataset(Dataset const& data);
@@ -31,7 +31,6 @@ struct Dataset{
 
     //TODO: clean up dependency on wordrep.
     wordrep::VocaInfo voca;
-    UIDmaps token2uid;
 
     wordrep::DepParsedTokens tokens{};
     std::vector<Sentence> sents{};

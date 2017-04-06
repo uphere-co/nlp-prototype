@@ -7,20 +7,18 @@ using util::get_str;
 
 namespace engine {
 
-Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid)
-        : voca{std::move(voca)}, token2uid{std::move(token2uid)}
+Dataset::Dataset(wordrep::VocaInfo&& voca)
+        : voca{std::move(voca)}
 {}
-Dataset::Dataset(wordrep::VocaInfo&& voca, UIDmaps &&token2uid,
+Dataset::Dataset(wordrep::VocaInfo&& voca,
                  wordrep::DepParsedTokens&& tokens_)
         : voca{std::move(voca)},
-          token2uid{std::move(token2uid)},
           tokens{std::move(tokens_)},
           sents{tokens.IndexSentences()},
           uid2sent{sents}
 {}
 Dataset::Dataset(Dataset&& data)
         : voca{std::move(data.voca)},
-          token2uid{std::move(data.token2uid)},
           tokens{std::move(data.tokens)},
           sents{tokens.IndexSentences()},
           uid2sent{sents},
@@ -28,7 +26,6 @@ Dataset::Dataset(Dataset&& data)
 {}
 Dataset::Dataset(Dataset const& data)
         : voca{data.voca},
-          token2uid{data.token2uid},
           tokens{data.tokens},
           sents{tokens.IndexSentences()},
           uid2sent{sents},

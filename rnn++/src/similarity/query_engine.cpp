@@ -290,6 +290,7 @@ QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
 : word_importance{factory.common.word_importance()},
   did_you_mean{factory.common.word_case_corrector(word_importance)},
   phrase_segmenter{word_importance},
+  wordUIDs{factory.common.word_uid_index()},
   db{factory.common.load_dataset()},
   dbinfo{factory},
   queries{factory.common.empty_dataset()},
@@ -315,6 +316,7 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
 : word_importance{std::move(engine.word_importance)},
   did_you_mean{std::move(engine.did_you_mean)},
   phrase_segmenter{word_importance},
+  wordUIDs{std::move(engine.wordUIDs)},
   db{std::move(engine.db)},
   dbinfo{std::move(engine.dbinfo)},
   queries{std::move(engine.queries)},
@@ -384,7 +386,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
-        return {sent, construct_query_info(sent, db.token2uid.word, word_importance)};
+        return {sent, construct_query_info(sent, wordUIDs, word_importance)};
     });
 
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -426,7 +428,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
 
     auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent, db.uid2sent);
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
-        return {sent, construct_query_info(sent, db.token2uid.word, word_importance)};
+        return {sent, construct_query_info(sent, wordUIDs, word_importance)};
     });
 
     auto candidate_sents = dbinfo.get_candidate_sents(query, db);
@@ -445,7 +447,7 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
             wuids.push_back(wuid);
         }
         json_t query_suggestion;
-        query_suggestion["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, db.token2uid.word, phrase_cutoff);
+        query_suggestion["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, wordUIDs, phrase_cutoff);
         query_suggestion["sent_uid"] = query_sent.uid.val;
         query_suggestions.push_back(query_suggestion);
     };
@@ -484,13 +486,13 @@ json_t QueryEngineT<T>::ask_query_suggestion(json_t const &ask) const{
     WordUsageInPhrase phrase_finder{db.sents, word_importance};
     std::vector<WordUID> wuids;
     for(std::string word : ask["ideas"]) {
-        auto wuid = db.token2uid.word[word];
+        auto wuid = wordUIDs[word];
         if (word_importance.is_noisy_word(wuid)) continue;
         wuids.push_back(wuid);
     }
 
     json_t output;
-    output["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, db.token2uid.word, phrase_cutoff);
+    output["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, wordUIDs, phrase_cutoff);
     return output;
 }
 

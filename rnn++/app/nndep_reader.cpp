@@ -27,14 +27,12 @@ void dependency_graph() {
     data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
     data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
-    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
-    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
     WordImportance importance{"../rnn++/tests/data/word_importance",
                               "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.append_corenlp_output(test_input);
+    tokens.append_corenlp_output(test_input2);
     tokens.build_sent_uid(0);
     //tokens.build_voca_index(voca.indexmap);
 
@@ -88,14 +86,12 @@ void phrases_in_sentence() {
     data::CoreNLPjson test_input{std::string{"../rnn++/tests/data/sentence.1.corenlp"}};
     data::CoreNLPjson test_input2{std::string{"../rnn++/tests/data/sentence.2.corenlp"}};
     WordUIDindex wordUIDs{"../rnn++/tests/data/words.uid"};
-    POSUIDindex const posUIDs{"../rnn++/tests/data/poss.uid"};
-    ArcLabelUIDindex const arclabelUIDs{"../rnn++/tests/data/dep.uid"};
     WordImportance importance{"../rnn++/tests/data/word_importance",
                               "../rnn++/tests/data/words.uid"};
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input);
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, test_input2);
+    tokens.append_corenlp_output(test_input);
+    tokens.append_corenlp_output(test_input2);
     tokens.build_sent_uid(0);
     auto sents = tokens.IndexSentences();
 
@@ -232,12 +228,10 @@ void show_query_suggestion(engine::SubmoduleFactory const& factory,
     data::CoreNLPjson query{query_json};
 
     WordUIDindex wordUIDs         = factory.word_uid_index();
-    POSUIDindex posUIDs           = factory.pos_uid_index();
-    ArcLabelUIDindex arclabelUIDs = factory.arclabel_uid_index();
     WordImportance importance     = factory.word_importance();
 
     DepParsedTokens tokens{};
-    tokens.append_corenlp_output(wordUIDs, posUIDs, arclabelUIDs, query);
+    tokens.append_corenlp_output(query);
     tokens.build_sent_uid(0);
     auto sents = tokens.IndexSentences();
     PhraseSegmenter phrase_segmenter{importance};
