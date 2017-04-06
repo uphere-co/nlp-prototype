@@ -16,12 +16,8 @@ void dump_country_name(std::string table,
                        std::string dump_path);
 void generate_country_columns(std::string dump_path, std::string country_columns_file);
 
-int parse_column(std::string table, std::string column, std::string index_col);
-void parse_psql(std::string cols_to_exports);
-
 void write_column_indexes(std::string output_filename,
                           std::string cols_to_exports,
-                          std::string prefix,
                           std::vector<std::string> corenlp_outputs);
 
 }//namespace data::ygp

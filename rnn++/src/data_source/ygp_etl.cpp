@@ -69,42 +69,6 @@ private:
 namespace data {
 namespace ygp {
 
-
-int parse_column(std::string table, std::string column, std::string index_col){
-    CoreNLPwebclient corenlp_client{"../rnn++/scripts/corenlp.py"};
-    try {
-        pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
-        std::cerr << "Connected to " << C.dbname() << std::endl;
-        pqxx::work W(C);
-
-
-        auto query=fmt::format("SELECT {}, {} FROM {};", column, index_col, table);
-        auto body= W.exec(query);
-        W.commit();
-        auto n = body.size();
-        tbb::parallel_for(decltype(n){0}, n, [&](auto i) {
-            auto row = body[i];
-            std::string raw_text = row[0].c_str();
-            auto index = row[1];
-            auto dumpfile_name=fmt::format("corenlp/{}.{}.{}.{}", table, column, index_col, index);
-            if(raw_text.size()<6) {
-                fmt::print("{} is missing.\n", dumpfile_name);
-                return;
-            }
-            //fmt::print("{:<6} : {} --------------------------\n{}",  index, dumpfile_name, raw_text);
-            auto const &parsed_json = corenlp_client.from_query_content(raw_text);
-            std::ofstream dump_file;
-            dump_file.open(dumpfile_name);
-            dump_file << parsed_json.dump(4);
-            dump_file.close();
-        });
-    } catch (const std::exception &e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-
 int dump_column(std::string table, std::string column, std::string index_col, std::string dump_path){
     try {
         pqxx::connection C{"dbname=C291145_gbi_test host=bill.uphere.he"};
@@ -139,16 +103,6 @@ int dump_column(std::string table, std::string column, std::string index_col, st
     return 0;
 }
 
-void parse_psql(std::string cols_to_exports){
-    YGPdb db{cols_to_exports};
-    for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
-        auto table = db.table(col_uid);
-        auto column = db.column(col_uid);
-        auto index_col = db.index_col(col_uid);
-        std::cerr<<fmt::format("Dumping : {:15} {:15} {:15}\n", table, column, index_col)<<std::endl;
-        parse_column(table, column, index_col);
-    }
-}
 void dump_psql(std::string cols_to_exports, std::string dump_path){
     YGPdb db{cols_to_exports};
     for(auto col_uid =db.beg(); col_uid!=db.end(); ++col_uid){
@@ -198,7 +152,6 @@ void generate_country_columns(std::string dump_path, std::string country_columns
 
 void write_column_indexes(std::string output_prefix,
                           std::string cols_to_exports,
-                          std::string prefix,
                           std::vector<std::string> corenlp_outputs){
     std::vector<ColumnUID> col_uids;
     std::vector<RowIndex> row_idxs;
