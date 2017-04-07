@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include "utils/flatbuffers/file_formats.h"
 
 namespace wordrep{
 
@@ -21,10 +21,10 @@ struct DepParsedFile{
 };
 
 struct VocaIndexMapFile{
-    std::string name;
+    util::io::I64Binary wuids;
 };
 struct WordEmbeggingFile{
-    std::string name;
+    util::io::F32Binary mat;
 };
 
 struct WikiPropertyFile{
