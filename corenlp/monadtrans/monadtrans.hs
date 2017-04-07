@@ -54,16 +54,46 @@ instance (Monad m) => Monad (MaybeT m) where
                 Nothing -> return Nothing
                 Just a -> runMaybeT (f a) ) 
 
-readFile :: FilePath -> IO (Maybe String)
-MaybeT (readFile fp) :: MaybeT IO String
+safeReadFile :: FilePath -> IO (Maybe String)
+MaybeT (safeReadFile fp) :: MaybeT IO String
 
-mreadFile = MaybeT . readFile
+mreadFile = MaybeT . safeReadFile
 
 operation' :: MaybeT IO Int
 operation' = do
-  (x :: String) <- mreadFile file --  MaybeT (readFile file) 
+  (x :: String) <- mreadFile file :: MaybeT IO String --  MaybeT (readFile file) 
   y <- mreadFile file2 -- MaybeT (readFile file2)
+  
+  z <- MaybeT (readFile file3 :: IO String >>= \z' -> return (Just z'))
   return (length (x ++ y))
+
+
+action :: IO a
+
+maction :: MaybeT IO a
+maction = MaybeT (action >>= \z -> return (Just z))
+
+lift :: (Monad m) => m a -> MaybeT m a 
+lift action = MaybeT (action >>= \z -> return (Just z))
+
+class MonadTrans t where
+  lift :: (Monad m) => m a -> (t m) a
+
+instance MonadTrans MaybeT where
+  lift action = MaybeT (action >>= \z -> return (Just z))
+
+mtry :: (IO a) -> IO (Maybe a)
+
+mttry :: IO a -> MaybeT IO a 
+mttry = MaybeT . mtry 
+
+m a 
+get
+put
+modify
+Application = StateT Int IO   
+-- readFile :: FilePath -> IO String 
+
 
 main :: IO ()
 main = do
