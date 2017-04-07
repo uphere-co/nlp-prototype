@@ -8,6 +8,7 @@
 
 #include "similarity/dataset.h"
 
+#include "wordrep/config.h"
 #include "wordrep/dep_parsed.h"
 #include "wordrep/word_uid.h"
 #include "wordrep/word_prob.h"
@@ -76,6 +77,7 @@ struct SubmoduleFactory{
     data::DBIndexer db_indexer() const;
 
     Config config;
+    wordrep::ConfigParams conf;
     std::optional<int> data_minor_version;
 };
 
