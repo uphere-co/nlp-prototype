@@ -55,8 +55,8 @@ wordrep::VocaInfo SubmoduleFactory::voca_info() const{
 
     util::parallel_invoke(
             //TODO:refactoring
-            [&vidx_wuids,this](){fb::deserialize_i64vector(fb::load_binary_file(this->conf.voca_idx.name), vidx_wuids);},
-            [&wvecs_raw,this](){fb::deserialize_f32vector(fb::load_binary_file(this->conf.word_vecs.name), wvecs_raw);}
+            [&vidx_wuids,this](){fb::deserialize_i64vector(fb::load_binary_file(this->conf.voca_idx.wuids.name), vidx_wuids);},
+            [&wvecs_raw,this](){fb::deserialize_f32vector(fb::load_binary_file(this->conf.word_vecs.mat.name), wvecs_raw);}
     );
 
     return {{vidx_wuids},{wvecs_raw}};
