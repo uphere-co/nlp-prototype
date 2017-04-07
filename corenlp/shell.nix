@@ -7,6 +7,7 @@ let #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inhe
     hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
               cabal-install
               aeson
+	      haskeline
               text
             ]);
 in stdenv.mkDerivation {

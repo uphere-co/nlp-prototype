@@ -116,7 +116,13 @@ find /opt/NYT.dump/ -type f | cat -n | xargs -P 20 -i'{}' python ../rss_crawler/
 find /opt/RSS.text -type f | xargs -P20 -I {} python ../rnn++/scripts/corenlp.py {} /opt/RSS.json/
 # Indexing to build HDF5 store file. The "1" is a minor version of the indexed dataset. 
 find /opt/RSS.json/ -type f > rss_jsons
-./rss_dump config.rss.json rss_jsons 1
+
+# Generate indexed texts from CoreNLP JSON output dumps
+./rss_dump config.rss.json rss_jsons rss.parsed
+# Move generated binary files
+mv rss.parsed.* /opt/testset.rss/blocks/
+# Generate Wikidata annotation files
+./wikidata_annotator config.rss.json 
 ```
 
 ## Run an app as a network daemon
