@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "wordrep/indexes.h"
+#include "wordrep/file_formats.h"
 #include "wordrep/words.h"
 #include "wordrep/sentence.h"
 
@@ -40,9 +41,6 @@ std::ostream &operator<<(std::ostream &os, Entity const &a);
 
 
 struct UIDSortedEntities{
-    struct Binary{
-        std::string filename;
-    };
     UIDSortedEntities(std::vector<Entity> const& items)
     : entities{std::make_unique<tbb::concurrent_vector<Entity>>()} {
         entities->reserve(items.size());
@@ -60,20 +58,17 @@ struct UIDSortedEntities{
     auto cend() const {return entities->cend();}
     auto begin() const {return entities->cbegin();}
     auto end() const {return entities->cend();}
-    void to_file(Binary file) const;
+    void to_file(WikiEntityByUIDFile file) const;
 
 private:
     std::unique_ptr<tbb::concurrent_vector<Entity>> entities;
 };
-std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(UIDSortedEntities::Binary file);
+std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile file);
 
 
 struct SortedEntities{
-    struct Binary{
-        std::string filename;
-    };
-    SortedEntities(Binary file);
-    SortedEntities(std::vector<Entity> items) {
+    SortedEntities(WikiEntityByNameFile file);
+    SortedEntities(std::vector<Entity> const& items) {
         entities.reserve(items.size());
         for(auto& item : items) entities.push_back(item);
         tbb::parallel_sort(entities.begin(), entities.end());
@@ -85,7 +80,7 @@ struct SortedEntities{
     auto cend() const {return entities.cend();}
     auto begin() const {return entities.begin();}
     auto end() const {return entities.end();}
-    void to_file(Binary file) const;
+    void to_file(WikiEntityByNameFile file) const;
     UIDSortedEntities to_uid_sorted() const{
         return {entities};
     }

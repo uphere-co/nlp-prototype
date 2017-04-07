@@ -100,8 +100,8 @@ struct EntityModule{
     struct InputParam{
         wordrep::UIDIndexFile word_uids;
         wordrep::UIDIndexFile pos_uids;
-        wordrep::wiki::SortedEntities::Binary wikidata_entities;
-        wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid;
+        wordrep::WikiEntityByNameFile wikidata_entities;
+        wordrep::WikiEntityByUIDFile wikidata_entities_by_uid;
         util::io::fb::PairsBinary wikidata_properties;
         util::io::fb::PairsBinary wikidata_instances;
         wordrep::UIDIndexFile named_entity_wikidata_uids;
