@@ -24,36 +24,6 @@
 
 namespace engine{
 
-template<typename T>
-struct ConfigKeys{
-    std::vector<T> keys={{"engine_type"},
-                         {"corenlp_client_script"},
-                         {"words_list"},
-                         {"word_uid_bin"},
-//                         {"pos_uids_dump"},
-                         {"pos_uid_bin"},
-                         {"arclabel_uids_dump"},
-                         {"column_uids_dump"},
-                         {"word_prob_dump"},
-                         {"corenlp_dumps"},
-                         {"dep_parsed_bins"},
-                         {"dep_parsed_store"}, //TODO : DBIndexer use this. Binarize this
-                         {"dep_parsed_prefix"},//TODO : DBIndexer use this. Binarize this
-                         {"annotated_tokens"},
-                         {"annotated_tokens_n_block"},
-                         {"voca_bin"},
-                         {"w2vmodel_bin"},
-                         {"wikidata_entities_by_name"},
-                         {"wikidata_entities_by_uid"},
-                         {"wikidata_entities"},
-                         {"wikidata_uids"},
-                         {"wikidata_properties"},
-                         {"wikidata_instances"},
-                         {"named_entity_uids"}};
-};
-
-using Config = util::ConfigT<ConfigKeys>;
-
 wikidata::EntityModule::InputParam get_wikimoudle_param(wordrep::ConfigParams const &config);
 
 struct SubmoduleFactory{
@@ -76,7 +46,6 @@ struct SubmoduleFactory{
     Dataset load_dataset() const;
     data::DBIndexer db_indexer() const;
 
-    Config config;
     wordrep::ConfigParams conf;
     std::optional<int> data_minor_version;
 };

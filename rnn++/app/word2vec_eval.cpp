@@ -95,8 +95,10 @@ void evaluation(int argc, char** argv){
     auto voca = factory.voca_info();
     auto wordUIDs = factory.word_uid_index();
 
-    std::string text_store  = util::get_latest_version(factory.config.value("dep_parsed_store")).fullname;
-    std::string text_prefix = factory.config.value("dep_parsed_prefix");
+    auto conf = [&config](auto x){return util::get_str(config, x);};
+    //TODO: update this
+    std::string text_store  = util::get_latest_version(conf("dep_parsed_store")).fullname;
+    std::string text_prefix = conf("dep_parsed_prefix");
     IndexedTexts texts{util::io::h5read(text_store), text_prefix, voca.indexmap};
 
 

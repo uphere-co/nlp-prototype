@@ -46,8 +46,10 @@ int main(int argc, char** argv){
     assert(unseen_words_with_context.size()==new_voca_words.unseen_words.size());
     timer.here_then_reset(fmt::format("Get contexts of {} unseen words; {} words are already known.",
                                       unseen_words_with_context.size(), new_voca_words.known_words.size()));
+    auto conf = [&config](auto x){return util::get_str(config, x);};
+    //TODO: update this
     wordrep::write_to_disk(base_voca, new_voca_words.known_words, unseen_words_with_context,
-                           output_h5store_name, factory.config.value("w2vmodel_name"), factory.config.value("voca_name"));
+                           output_h5store_name, conf("w2vmodel_name"), conf("voca_name"));
 
     return 0;
 }

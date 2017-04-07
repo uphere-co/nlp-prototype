@@ -23,7 +23,8 @@ YGPdb Factory::db() const {
 };
 
 DBbyCountry Factory::db_by_country() const {
-    return {h5read(util::get_latest_version(common.config.value("dep_parsed_store")).fullname),
+    //TODO: deprecated this.
+    return {h5read(util::get_latest_version(ygp.value("dep_parsed_store")).fullname),
             util::get_latest_version(ygp.value("country_uids_dump")).fullname};
 }
 CountryCodeAnnotator Factory::country_code_annotator() const {
