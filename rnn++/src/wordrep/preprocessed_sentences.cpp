@@ -1,9 +1,11 @@
 #include "wordrep/preprocessed_sentences.h"
 
+#include "wordrep/serialized_annotation.h"
+
 namespace wordrep{
 
 PreprocessedSentences PreprocessedSentences::factory(std::vector<Sentence> const& sents,
-                                                     AnnotationFile const& annotation){
+                                                     AnnotationData const& annotation){
     PreprocessedSentences tagged_sents;
     tagged_sents.data->reserve(sents.size());
     for(auto& sent: sents) tagged_sents.data->push_back({sent});

@@ -5,14 +5,14 @@
 
 #include "utils/parallel.h"
 
-#include "wordrep/serialized_annotation.h"
 #include "wordrep/simiarity_score.h"
 
 namespace wordrep{
+struct AnnotationData;
 
 struct PreprocessedSentences{
     static PreprocessedSentences factory(std::vector<Sentence> const& sents,
-                                         AnnotationFile const& annotation);
+                                         AnnotationData const& annotation);
 
     auto begin() const {return data->cbegin();}
     auto end()   const {return data->cend();}

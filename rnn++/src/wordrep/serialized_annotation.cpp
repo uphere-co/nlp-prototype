@@ -46,13 +46,13 @@ std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Bin
     return block;
 }
 
-AnnotationFile AnnotationFile::factory(InputParam param){
-    AnnotationFile root;
+AnnotationData AnnotationData::factory(AnnotatedTokenFile const& param){
+    AnnotationData root;
     root.blocks.resize(param.n_block);
 
     tbb::parallel_for(int{0},param.n_block, [&root,&param](auto i){
         auto& block = root.blocks[i];
-        block = wordrep::load_binary_file(wordrep::SerializedAnnotation::Binary{fmt::format("{}.{}",param.prefix, i)});
+        block = wordrep::load_binary_file(wordrep::SerializedAnnotation::Binary{fmt::format("{}.{}",param.name, i)});
     });
     return root;
 }

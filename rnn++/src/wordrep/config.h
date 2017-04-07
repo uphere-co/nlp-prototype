@@ -7,7 +7,6 @@
 namespace wordrep {
 
 struct ConfigParams {
-    ConfigParams(std::string const& config);
     ConfigParams(util::json_t const& config);
 
     PythonScript corenlp_client;

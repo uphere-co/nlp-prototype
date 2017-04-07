@@ -72,7 +72,7 @@ private:
     wikidata::EntityModule wiki;
     wordrep::Scoring scoring;
     wordrep::Scoring::Preprocess scoring_preprocessor;
-    wordrep::AnnotationFile annotated_tokens;
+    wordrep::AnnotationData annotated_tokens;
     wordrep::PreprocessedSentences data_sents;
     mutable wordrep::WordSimCache dists_cache;
     mutable QueryResultCache result_cache{};

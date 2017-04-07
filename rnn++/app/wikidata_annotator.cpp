@@ -849,7 +849,7 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
     auto len_block = (sents.size() + n_block - 1) / n_block;
-    wordrep::AnnotationFile file{n_block};
+    wordrep::AnnotationData file{n_block};
     for(auto& sent : sents){
         auto block_idx        = sent.orig.uid.val / len_block;
         auto& candidates      = file.blocks[block_idx]->candidates;
@@ -902,9 +902,9 @@ void test_load_annotated_sentences(int argc, char** argv){
         sents = texts.IndexSentences();
     };
 
-    AnnotationFile annotated_tokens;
+    AnnotationData annotated_tokens;
     auto load_annotated_text = [&conf,&annotated_tokens,n_block](){
-        annotated_tokens = AnnotationFile::factory({conf.annotated_tokens.name, n_block});
+        annotated_tokens = AnnotationData::factory(conf.annotated_tokens);
     };
 
     util::parallel_invoke(load_wiki_module,

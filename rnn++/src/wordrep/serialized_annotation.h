@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+
+#include "wordrep/file_formats.h"
 #include "wordrep/simiarity_score.h"
 #include "wordrep/io.h"
 
@@ -59,16 +61,12 @@ struct SerializedAnnotation{
 
 std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Binary const& file);
 
-//AnnotationFile is a collection of SerializedAnnotation::Binary.
-struct AnnotationFile{
-    struct InputParam{
-        std::string prefix;
-        int n_block;
-    };
-    static AnnotationFile factory(InputParam param);
+//AnnotationData is a collection of SerializedAnnotation::Binary.
+struct AnnotationData{
+    static AnnotationData factory(AnnotatedTokenFile const& file);
 
-    AnnotationFile(){}
-    AnnotationFile(int n_block){
+    AnnotationData(){}
+    AnnotationData(int n_block){
         for(int i=0; i!=n_block; ++i)
             blocks.push_back(std::make_unique<SerializedAnnotation>());
     }

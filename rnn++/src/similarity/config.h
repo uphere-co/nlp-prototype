@@ -67,7 +67,7 @@ struct SubmoduleFactory{
     wordrep::WordImportance word_importance() const;
     wordrep::VocaInfo voca_info() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
-    wordrep::AnnotationFile load_annotation() const;
+    wordrep::AnnotationData load_annotation() const;
 
     wordrep::WikidataUIDindex wikientity_uid_index() const;
     wikidata::EntityModule wikientity_module() const;
