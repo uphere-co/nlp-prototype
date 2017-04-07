@@ -25,11 +25,10 @@ void load_binary_file(std::string filename, T& vec){
 
 template<typename T>
 void write_to_binary_file(util::TypedPersistentVector<T> const& vec, std::string filename){
-    namespace fb = util::io::fb;
     std::vector<int64_t> vs;
     vs.reserve(vec.size());
     for(auto v : vec) vs.push_back(v.val);
-    fb::to_file(vs, fb::I64Binary{filename});
+    util::io::fb::to_file(vs, util::io::I64Binary{filename});
 }
 }//nameless namespace
 

@@ -957,7 +957,7 @@ void save_wikidata_entities(int argc, char** argv){
 }
 
 void test_property_table(){
-    using util::io::fb::PairsBinary;
+    using util::io::PairsBinary;
     using util::io::fb::deserialize_pairs;
     using util::io::fb::load_binary_file;
 

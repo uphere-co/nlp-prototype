@@ -102,8 +102,8 @@ struct EntityModule{
         wordrep::UIDIndexFile pos_uids;
         wordrep::WikiEntityByNameFile wikidata_entities;
         wordrep::WikiEntityByUIDFile wikidata_entities_by_uid;
-        util::io::fb::PairsBinary wikidata_properties;
-        util::io::fb::PairsBinary wikidata_instances;
+        util::io::PairsBinary wikidata_properties;
+        util::io::PairsBinary wikidata_instances;
         wordrep::UIDIndexFile named_entity_wikidata_uids;
         wordrep::UIDIndexFile wikidata_uids;
     };

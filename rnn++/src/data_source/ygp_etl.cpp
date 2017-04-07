@@ -30,14 +30,15 @@
 
 using namespace wordrep;
 namespace fb = util::io::fb;
+using util::io::I64Binary;
 
 namespace {
 
 struct Chunks{
     using idx_t = std::pair<ChunkIndex,SentUID>;
     Chunks(std::string prefix)
-            : sents_uid{fb::load_binary_file(fb::I64Binary{prefix+".sent_uid.i64v"}),  "sent_uid"},
-              chunks_idx{fb::load_binary_file(fb::I64Binary{prefix+".chunk_idx.i64v"}),"chunk_idx"}
+            : sents_uid{fb::load_binary_file(I64Binary{prefix+".sent_uid.i64v"}),  "sent_uid"},
+              chunks_idx{fb::load_binary_file(I64Binary{prefix+".chunk_idx.i64v"}),"chunk_idx"}
     {
         assert(sents_uid.size()==chunks_idx.size());
     }
