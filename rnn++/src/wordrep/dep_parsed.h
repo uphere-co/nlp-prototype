@@ -12,6 +12,7 @@
 #include "wordrep/word_uid.h"
 #include "wordrep/voca.h"
 #include "wordrep/indexes.h"
+#include "wordrep/file_formats.h"
 #include "wordrep/sentence.h"
 
 namespace util{
@@ -53,17 +54,14 @@ struct Sentences{
 
 
 struct DepParsedTokens{
-    struct Binary{
-        std::string prefix;
-    };
-    static DepParsedTokens factory(Binary const& param);
+    static DepParsedTokens factory(DepParsedFile const& file);
 
     static constexpr int64_t major_version = 5;
     template<typename T>
     using vec_t = util::TypedPersistentVector<T>;
     DepParsedTokens(){}
 
-    void to_file(Binary file) const;
+    void to_file(DepParsedFile const& file) const;
     std::vector<Sentence> IndexSentences() const;
     std::vector<SentUID> sentences_in_chunk(Sentence const &sent) const;
     //std::vector<Chunk> IndexChunks() const;

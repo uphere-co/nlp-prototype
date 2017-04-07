@@ -29,7 +29,7 @@ namespace wikidata{
 namespace test {
 
 struct UnittestDataset{
-    UnittestDataset(engine::Config const& config)
+    UnittestDataset(util::json_t const& config)
     : factory{config},
       entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
       entities_by_uid{entities.to_uid_sorted()},
@@ -154,14 +154,13 @@ void uid_lookup_benchmark() {
     timer.here_then_reset("Finish comparisons.");
 }
 
-void compare_wordUIDs_and_WikidataUID(util::json_t const& config_json,
+void compare_wordUIDs_and_WikidataUID(util::json_t const& config,
                                       std::string query){
     util::Timer timer;
 
     using wordrep::WordUID;
     using wordrep::WikidataUID;
 
-    engine::Config config{config_json};
     engine::SubmoduleFactory factory{config};
     auto wordUIDs = factory.word_uid_index();
     timer.here_then_reset("Load word UIDs.");
@@ -883,7 +882,7 @@ void test_load_annotated_sentences(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-    auto conf = [&factory](auto x){return factory.config.value(x);};
+    auto conf = wordrep::ConfigParams{config_json};
 
     int n_block =100;
     util::Timer timer;
@@ -896,16 +895,16 @@ void test_load_annotated_sentences(int argc, char** argv){
         f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
     };
     auto load_wordUIDs = [&conf,&wordUIDs](){
-        wordUIDs = std::make_unique<WordUIDindex>(UIDIndexBinary{conf("word_uid_bin")});
+        wordUIDs = std::make_unique<WordUIDindex>(conf.word_uid);
     };
     auto load_indexed_text=[&conf,&texts,&sents](){
-        texts = DepParsedTokens::factory({conf("dep_parsed_bins")});
+        texts = DepParsedTokens::factory(conf.parsed_text);
         sents = texts.IndexSentences();
     };
 
     AnnotationFile annotated_tokens;
     auto load_annotated_text = [&conf,&annotated_tokens,n_block](){
-        annotated_tokens = AnnotationFile::factory({conf("annotated_tokens"), n_block});
+        annotated_tokens = AnnotationFile::factory({conf.annotated_tokens.name, n_block});
     };
 
     util::parallel_invoke(load_wiki_module,
@@ -930,19 +929,18 @@ void test_load_annotated_sentences(int argc, char** argv){
     }
 }
 
-using wordrep::UIDIndexBinary;
 void save_wikidata_entities(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
-    engine::Config config{config_json};
+    auto conf = [&config_json](auto key){return util::get_str(config_json, key);};
 
     util::Timer timer;
-    std::string word_uids     = config.value("word_uids_dump");
-    std::string pos_uids      = config.value("pid_uids_dump");
-    std::string wikidata_uids = config.value("wikidata_uids");
-    std::string wikidata_entities          = config.value("wikidata_entities");
-    std::string named_entity_wikidata_uids = config.value("named_entity_uids");
-    std::string wikidata_properties        = config.value("wikidata_properties");
+    std::string word_uids     = conf("word_uids_dump");
+    std::string pos_uids      = conf("pid_uids_dump");
+    std::string wikidata_uids = conf("wikidata_uids");
+    std::string wikidata_entities          = conf("wikidata_entities");
+    std::string named_entity_wikidata_uids = conf("named_entity_uids");
+    std::string wikidata_properties        = conf("wikidata_properties");
 
     wordrep::WordUIDindex wordUIDs{word_uids};
     wordrep::POSUIDindex posUIDs{pos_uids};
@@ -957,9 +955,9 @@ void save_wikidata_entities(int argc, char** argv){
     entities.to_file({"wikidata.entities.by_name.bin"});
     entities_by_uid.to_file({"wikidata.entities.by_uid.bin"});
     timer.here_then_reset("Save to binary file : wikidata.entities.bin");
-    wordUIDs.to_file(UIDIndexBinary{"words.uid.bin"});
+    wordUIDs.to_file({"words.uid.bin"});
     timer.here_then_reset("Save to binary file : words.uid.bin");
-    wikiUIDs.to_file(UIDIndexBinary{"wikidata.uid.bin"});
+    wikiUIDs.to_file({"wikidata.uid.bin"});
     timer.here_then_reset("Save to binary file : wikidata.uid.bin");
 }
 
@@ -971,7 +969,7 @@ void test_property_table(){
     PairsBinary properties_file{"wikidata.P31.e2p.bin"};
     PairsBinary instances_file{"wikidata.P31.p2e.bin"};
     util::Timer timer;
-    auto wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(UIDIndexBinary{"wikidata.uid.bin"});
+    auto wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(wordrep::UIDIndexFile{"wikidata.uid.bin"});
     timer.here_then_reset("Load WikiUIDs.");
 
 
@@ -1113,11 +1111,10 @@ int main(int argc, char** argv){
     return 0;
 
     assert(argc>2);
-    auto config_json = util::load_json(argv[1]);
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{config};
     std::string query = util::string::strip(util::string::read_whole(argv[2]));
 
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
     auto wiki = factory.wikientity_module();
     timer.here_then_reset("Load wikidata module.");
     auto words = util::string::split(query, " ");

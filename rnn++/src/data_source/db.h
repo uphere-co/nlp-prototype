@@ -7,6 +7,7 @@
 #include "data_source/db_query.h"
 
 #include "wordrep/sentence.h"
+#include "wordrep/file_formats.h"
 
 #include "utils/json.h"
 
@@ -25,7 +26,7 @@ void build_db_info_field(util::json_t &answer, PerSentQueryResult const &result)
 
 
 struct DBIndexer{
-    DBIndexer(std::string prefix);
+    DBIndexer(wordrep::DepParsedFile const& file);
     ColumnUID column_uid(wordrep::ChunkIndex idx) const {return chunk2col_uid[idx.val];}
     RowIndex row_idx(wordrep::ChunkIndex idx) const {return chunk2idx[idx.val];}
     RowUID row_uid(wordrep::ChunkIndex idx) const {return chunk2row_uid[idx.val];}

@@ -54,10 +54,10 @@ struct ConfigKeys{
 
 using Config = util::ConfigT<ConfigKeys>;
 
-wikidata::EntityModule::InputParam get_wikimoudle_param(Config const &config);
+wikidata::EntityModule::InputParam get_wikimoudle_param(wordrep::ConfigParams const &config);
 
 struct SubmoduleFactory{
-    SubmoduleFactory(Config const& config, std::optional<int> data_minor_version={});
+    SubmoduleFactory(util::json_t const& config_, std::optional<int> data_minor_version={});
 
     data::CoreNLPwebclient corenlp_webclient() const;
     wordrep::WordUIDindex word_uid_index() const;

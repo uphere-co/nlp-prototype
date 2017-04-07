@@ -63,7 +63,7 @@ struct UIDSortedEntities{
 private:
     std::unique_ptr<tbb::concurrent_vector<Entity>> entities;
 };
-std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile file);
+std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile const& file);
 
 
 struct SortedEntities{

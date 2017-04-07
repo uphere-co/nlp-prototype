@@ -39,7 +39,7 @@ std::ostream &operator<<(std::ostream &os, Entity const &a) {
 }
 
 
-std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile file){
+std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile const& file){
     util::Timer timer;
     std::ifstream input_file (file.name, std::ios::binary);
     namespace fb = wordrep::wiki::io;

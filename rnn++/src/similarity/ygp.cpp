@@ -19,18 +19,18 @@ namespace data{
 namespace ygp{
 
 YGPdb Factory::db() const {
-    return {config.common.value("column_uids_dump")};
+    return {ygp.value("column_uids_dump")};
 };
 
 DBbyCountry Factory::db_by_country() const {
-    return {h5read(util::get_latest_version(config.common.value("dep_parsed_store")).fullname),
-            util::get_latest_version(config.ygp.value("country_uids_dump")).fullname};
+    return {h5read(util::get_latest_version(common.config.value("dep_parsed_store")).fullname),
+            util::get_latest_version(ygp.value("country_uids_dump")).fullname};
 }
 CountryCodeAnnotator Factory::country_code_annotator() const {
-    return {util::get_latest_version(config.ygp.value("country_uids_dump")).fullname};
+    return {util::get_latest_version(ygp.value("country_uids_dump")).fullname};
 }
 std::vector<std::string> Factory::country_list() const{
-    return util::string::readlines(util::get_latest_version(config.ygp.value("country_uids_dump")).fullname);
+    return util::string::readlines(util::get_latest_version(ygp.value("country_uids_dump")).fullname);
 }
 
 //It returns top N results per (col_uid) each.

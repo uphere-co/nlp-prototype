@@ -2,11 +2,13 @@
 
 #include <string>
 #include "wordrep/file_formats.h"
+#include "utils/json.h"
 
 namespace wordrep {
 
 struct ConfigParams {
     ConfigParams(std::string const& config);
+    ConfigParams(util::json_t const& config);
 
     PythonScript corenlp_client;
     TextFile word_list;
