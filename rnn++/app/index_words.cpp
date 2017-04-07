@@ -360,7 +360,8 @@ void pos_uid_spec(){
 void voca_indexmap_spec(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
-    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
+
+    auto voca = wordrep::VocaIndexMap::factory({util::get_str(config, "voca_bin")});
     WordUIDindex wordUIDs{"words.uid"};
     std::vector<std::string> words = {"the", "-UNKNOWN-"};
     for(auto word : words){
@@ -411,116 +412,7 @@ auto serial_word_count(std::istream&& is){
 }
 
 
-void translate_ordered_worduid_to_hashed_worduid(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    using util::io::h5read;
-    auto oldfile = h5read(util::get_latest_version(util::get_str(config, "dep_parsed_store")).fullname);
-    auto prefix=util::get_str(config,"dep_parsed_prefix");
-    util::TypedPersistentVector<ChunkIndex> chunks_idx{oldfile,prefix+".chunk_idx"};
-    util::TypedPersistentVector<SentUID> sents_uid {oldfile,prefix+".sent_uid"};
-    util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
-    util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
-    WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
-    auto old_word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
-    wordrep::VocaIndexMap old_voca{old_word_uids};
 
-    wordrep::TokenHash<wordrep::WordUID> hasher{};
-
-    for(int i=0; i<1000; ++i){
-        auto word = words_idx[i];
-        fmt::print("{} ",old_wordUIDs[old_voca[word]]);
-    }
-    fmt::print("\n");
-
-    auto n  = words_uid.size();
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
-        for(auto i=r.begin(); i!=r.end(); ++i){
-            auto& x = words_uid[i];
-            x= hasher(old_wordUIDs[x]);
-        }
-    });
-
-    //update wordUID, too.
-    auto count_file = util::io::h5rw_exist("nyt_words.h5");
-    auto words = util::string::readlines("/home/jihuni/word2vec/news/nyt.model.words");
-    auto known_word_uids = util::map(words, [&hasher](auto x){return hasher(x);});
-    util::TypedPersistentVector<WordUID> counted_uids{count_file,"unigram.uid"};
-    auto is_counted=[&counted_uids](auto uid)->bool{
-        if(util::binary_find(counted_uids.get(),uid)) return true;
-        return false;
-    };
-    auto word_uids = util::filter(known_word_uids, is_counted);
-    //auto word_uids  = util::TypedPersistentVector<WordUID>(count_file, "unigram.count");
-    wordrep::VocaIndexMap voca{word_uids};
-    util::TypedPersistentVector<WordUID> widx2wuid {"widx2wuid", std::move(word_uids)};
-
-    fmt::print("-------------------------------------------------\n");
-
-    std::map<WordUID,std::string> wuid2str;
-    for(auto word : words) wuid2str[hasher(word)]=word;
-    tbb::parallel_for(tbb::blocked_range<decltype(n)>{0,n,100000}, [&](auto const &r){
-        for(auto i=r.begin(); i!=r.end(); ++i){
-            auto& x = words_idx[i];
-            x= voca[hasher(old_wordUIDs[old_voca[x]])];
-        }
-    });
-    for(int i=0; i<1000; ++i){
-        auto word = words_idx[i];
-        fmt::print("{} ", wuid2str[voca[word]]);
-    }
-    fmt::print("\n");
-
-
-    widx2wuid.write(count_file);
-    auto newfile = util::io::h5replace("nyt_texts.h5");
-    chunks_idx.write(newfile);
-    sents_uid.write(newfile);
-    words_uid.write(newfile);
-    words_idx.write(newfile);
-}
-
-
-void update_wordvec_h5store(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    using util::io::h5read;
-    using util::io::h5rw_exist;
-    //util::TypedPersistentVector<WordUID> words_uid {oldfile,prefix+".word_uid"};
-    //util::TypedPersistentVector<VocaIndex> words_idx {oldfile,prefix+".word"};
-    WordUIDindex old_wordUIDs{util::get_str(config,"word_uids_dump")};
-    //auto old_word_uids=wordrep::load_voca(config["wordvec_store"], config["voca_name"]);
-
-    auto file = h5rw_exist(config["wordvec_store"]);
-    //auto old_word_uids = util::deserialize<WordUID>(file.getRawData<WordUID::val_t>({"news.en.uids"}));
-    auto old_word_chars = file.getRawData<char>({"news.en.words"});
-    auto words = util::string::unpack_words(old_word_chars);
-    for(auto word : words) fmt::print("{}\n", word);
-
-    wordrep::TokenHash<WordUID> hasher{};
-    auto hash_uids = util::map(words, [&hasher](auto word){return WordUID{hasher(word)};});
-    util::TypedPersistentVector<WordUID> new_uids{"news.en.uids",std::move(hash_uids)};
-    new_uids.write(file);
-}
-
-void update_word_prob(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    auto file = util::io::h5rw_exist(util::get_str(config,"word_prob_dump"));
-    auto old_uids = util::deserialize<WordUID>(file.getRawData<int64_t>({"prob.word_uid"}));
-    auto words = util::string::readlines("/home/jihuni/word2vec/ygp/words.uid");
-
-    WordUID uid{0};
-    std::map<WordUID,std::string> uid2word;
-    for(auto word : words) uid2word[uid++]=word;
-
-    util::TypedPersistentVector<WordUID> uids{"prob.word_uid"};
-    for(auto old_uid : old_uids){
-        uids.push_back(wordUIDs[uid2word[old_uid]]);
-    }
-    uids.write(file);
-}
 void word_prob_check(int argc, char** argv){
     assert(argc>1);
     auto config = util::load_json(argv[1]);
@@ -563,11 +455,6 @@ int main(int argc, char** argv){
 //    word_prob_check(argc,argv);
 //    word_prob_check();
     return 0;
-    //update_word_prob(argc,argv);
-    //translate_ordered_worduid_to_hashed_worduid(argc,argv);
-    update_wordvec_h5store(argc,argv);
-    return 0;
-
 
     util::Timer timer{};
     WordCounter word_count;

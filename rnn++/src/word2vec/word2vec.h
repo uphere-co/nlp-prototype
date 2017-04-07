@@ -24,8 +24,6 @@ struct UnigramDist {
     using WordUID = wordrep::WordUID;
     using VocaIndex = wordrep::VocaIndex;
     using float_t = float;
-    UnigramDist(util::io::H5file const &h5store,
-                wordrep::VocaIndexMap const& voca);
     UnigramDist(std::map<VocaIndex,int64_t> const& counts);
 
     float_t get_prob(VocaIndex idx) const;
