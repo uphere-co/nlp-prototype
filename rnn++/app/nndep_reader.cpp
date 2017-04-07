@@ -349,7 +349,7 @@ int main(int argc, char** argv){
     engine::SubmoduleFactory factory{{config}};
     std::string input = argv[2];
 
-    for(auto key : factory.config.values) fmt::print(std::cerr, "{:<25} : {}\n",key.first.val, key.second);
+    fmt::print(std::cerr, "Run nndep_reader with following config params:\n{}\n",config.dump(4));
 
     data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
     auto raw_query_str = util::string::strip(util::string::read_whole(input));

@@ -71,6 +71,8 @@ struct AnnotationData{
             blocks.push_back(std::make_unique<SerializedAnnotation>());
     }
 
+    void to_file(AnnotatedTokenFile const& file) const;
+
     std::vector<std::unique_ptr<SerializedAnnotation>> blocks;
 };
 

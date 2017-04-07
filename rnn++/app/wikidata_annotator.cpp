@@ -716,8 +716,7 @@ void convert_voca_info(int argc, char** argv){
     assert(argc>1);
     namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config_json}};
-    auto conf = [&factory](auto x){return factory.config.value(x);};
+    auto conf = [&config_json](auto x){return util::get_str(config_json, x);};
     util::Timer timer;
 
     util::io::H5file file{conf("wordvec_store"), util::io::hdf5::FileMode::read_exist};
@@ -798,8 +797,6 @@ void annotate_sentences(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
-    auto output_prefix = factory.config.value("annotated_tokens");
-    auto n_block       = std::stoi(factory.config.value("annotated_tokens_n_block"));
 
     util::Timer timer;
     auto wiki = factory.wikientity_module();
@@ -848,12 +845,13 @@ void annotate_sentences(int argc, char** argv){
 
     timer.here_then_reset(fmt::format("Annotated {} sentences.", sents.size()));
 
+    auto n_block = factory.conf.annotated_tokens.n_block;
     auto len_block = (sents.size() + n_block - 1) / n_block;
-    wordrep::AnnotationData file{n_block};
+    wordrep::AnnotationData annotation_data{n_block};
     for(auto& sent : sents){
         auto block_idx        = sent.orig.uid.val / len_block;
-        auto& candidates      = file.blocks[block_idx]->candidates;
-        auto& tagged_entities = file.blocks[block_idx]->tagged_tokens;
+        auto& candidates      = annotation_data.blocks[block_idx]->candidates;
+        auto& tagged_entities = annotation_data.blocks[block_idx]->tagged_tokens;
         for(auto& entity : sent.entities){
             tagged_entities.push_back({sent.orig.uid.val, entity.idxs.idx.val, entity.idxs.len});
             for(auto& candidate : entity.candidates)
@@ -863,15 +861,12 @@ void annotate_sentences(int argc, char** argv){
             tagged_entities.push_back({sent.orig.uid.val, dep_pair.idx.val, 0});
     }
     timer.here_then_reset("Serialize annotated sentences.");
-    tbb::parallel_for(decltype(n_block){0}, n_block, [&file](auto i) {
-        file.blocks[i]->sort();
+    tbb::parallel_for(decltype(n_block){0}, n_block, [&annotation_data](auto i) {
+        annotation_data.blocks[i]->sort();
     });
     timer.here_then_reset("Sort blocks by token_idx.");
-    int i=0;
-    for(auto const& block : file.blocks){
-        auto filename = fmt::format("{}.{}",output_prefix,i++);
-        block->to_file({filename});
-    }
+
+    annotation_data.to_file(factory.conf.annotated_tokens);
     timer.here_then_reset(fmt::format("Write to binary files, at most {} sentences per block.", len_block));
 }
 

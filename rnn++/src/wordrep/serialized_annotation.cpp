@@ -56,4 +56,12 @@ AnnotationData AnnotationData::factory(AnnotatedTokenFile const& param){
     });
     return root;
 }
+void AnnotationData::to_file(AnnotatedTokenFile const& file) const {
+    int i=0;
+        for(auto const& block : blocks){
+        auto filename = fmt::format("{}.{}",file.name,i++);
+        block->to_file({filename});
+    }
+}
+
 }//namespace wordrep;
