@@ -39,15 +39,15 @@ std::ostream &operator<<(std::ostream &os, Entity const &a) {
 }
 
 
-std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(UIDSortedEntities::Binary file){
+std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(WikiEntityByUIDFile const& file){
     util::Timer timer;
-    std::ifstream input_file (file.filename, std::ios::binary);
+    std::ifstream input_file (file.name, std::ios::binary);
     namespace fb = wordrep::wiki::io;
     flatbuffers::uoffset_t read_size;
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("wiki::UIDSortedEntities::UIDSortedEntities: Read file. {}", file.filename));
+    timer.here_then_reset(fmt::format("wiki::UIDSortedEntities::UIDSortedEntities: Read file. {}", file.name));
 
     auto rbuf = fb::GetSortedEntities(data.get());
     auto n = rbuf->entities()->size();
@@ -68,7 +68,7 @@ std::unique_ptr<tbb::concurrent_vector<Entity>> read_binary_file(UIDSortedEntiti
 }
 
 
-void UIDSortedEntities::to_file(Binary file) const{
+void UIDSortedEntities::to_file(WikiEntityByUIDFile file) const{
     flatbuffers::FlatBufferBuilder builder;
     namespace fb = wordrep::wiki::io;
     std::vector<fb::Entity> es;
@@ -91,12 +91,12 @@ void UIDSortedEntities::to_file(Binary file) const{
     auto *buf = builder.GetBufferPointer();
     auto size = builder.GetSize();
 
-    std::ofstream outfile(file.filename, std::ios::binary);
+    std::ofstream outfile(file.name, std::ios::binary);
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
 
-void SortedEntities::to_file(Binary file) const{
+void SortedEntities::to_file(WikiEntityByNameFile file) const{
     flatbuffers::FlatBufferBuilder builder;
     namespace fb = wordrep::wiki::io;
     std::vector<fb::Entity> es;
@@ -119,20 +119,20 @@ void SortedEntities::to_file(Binary file) const{
     auto *buf = builder.GetBufferPointer();
     auto size = builder.GetSize();
 
-    std::ofstream outfile(file.filename, std::ios::binary);
+    std::ofstream outfile(file.name, std::ios::binary);
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
 
-SortedEntities::SortedEntities(Binary file){
+SortedEntities::SortedEntities(WikiEntityByNameFile file){
     util::Timer timer;
-    std::ifstream input_file (file.filename, std::ios::binary);
+    std::ifstream input_file (file.name, std::ios::binary);
     namespace fb = wordrep::wiki::io;
     flatbuffers::uoffset_t read_size;
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("wiki::SortedEntities::SortedEntities: Read file. {}", file.filename));
+    timer.here_then_reset(fmt::format("wiki::SortedEntities::SortedEntities: Read file. {}", file.name));
 
     auto rbuf = fb::GetSortedEntities(data.get());
     auto n = rbuf->entities()->size();

@@ -264,9 +264,8 @@ void recover_wrong_case_query(engine::SubmoduleFactory const& factory){
 
 void test_all(int argc, char** argv){
     assert(argc>2);
-    auto config_json = util::load_json(argv[1]);
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
     dependency_graph();
     phrases_in_sentence();
     phrases_in_sentence(factory);
@@ -346,13 +345,11 @@ int main(int argc, char** argv){
 //    return 0;
 
     assert(argc>2);
-    auto config_json = util::load_json(argv[1]);
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
     std::string input = argv[2];
 
-
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
-    for(auto key : factory.config.values) fmt::print(std::cerr, "{:<25} : {}\n",key.first.val, key.second);
+    fmt::print(std::cerr, "Run nndep_reader with following config params:\n{}\n",config.dump(4));
 
     data::CoreNLPwebclient corenlp_client = factory.corenlp_webclient();
     auto raw_query_str = util::string::strip(util::string::read_whole(input));
@@ -361,7 +358,7 @@ int main(int argc, char** argv){
 
     util::Timer timer{};
 
-    engine::QueryEngine engine{config_json};
+    engine::QueryEngine engine{config};
     timer.here_then_reset("Data loaded.");
 
     auto corrected_query = engine.preprocess_query(raw_query_json);
@@ -400,13 +397,13 @@ int main(int argc, char** argv){
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);
     timer.here_then_reset("Processed a chain query.");
-    engine.annotation_on_result(config_json, chain_answers);
+    engine.annotation_on_result(config, chain_answers);
     timer.here_then_reset("Annotate query output.");
     //fmt::print("chain_aswers:\n{}\n", chain_answers.dump(4));
     timer.here_then_reset("Ready to process a new query.");
     auto stat_answer = engine.ask_query_stats(uids);
     timer.here_then_reset("Processed a stats query.");
-    engine.annotation_on_result(config_json, stat_answer["results"]);
+    engine.annotation_on_result(config, stat_answer["results"]);
     timer.here_then_reset("Annotate query output.");
     fmt::print("stats_answers:\n");
     fmt::print("{}\n", stat_answer.dump(4));

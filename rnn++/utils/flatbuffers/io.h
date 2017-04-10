@@ -5,22 +5,13 @@
 #include "utils/flatbuffers/pairs_generated.h"
 #include "utils/flatbuffers/i64vec_generated.h"
 #include "utils/flatbuffers/f32vec_generated.h"
+#include "utils/flatbuffers/file_formats.h"
 
 #include "utils/parallel.h"
 
 namespace util {
 namespace io {
 namespace fb {
-
-struct PairsBinary{
-    std::string name;
-};
-struct I64Binary{
-    std::string name;
-};
-struct F32Binary{
-    std::string name;
-};
 
 inline bool operator<(Pair x, Pair y) {
     return x.key() < y.key();

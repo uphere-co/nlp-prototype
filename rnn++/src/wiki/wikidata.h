@@ -4,6 +4,7 @@
 
 #include "wiki/property_triple.h"
 
+#include "wordrep/file_formats.h"
 #include "wordrep/word_uid.h"
 #include "wordrep/sentence.h"
 #include "wordrep/words.h"
@@ -97,14 +98,14 @@ std::vector<wordrep::WordPosition> head_word_pos(wordrep::DepParsedTokens const&
 
 struct EntityModule{
     struct InputParam{
-        wordrep::UIDIndexBinary word_uids;
-        wordrep::UIDIndexBinary pos_uids;
-        wordrep::wiki::SortedEntities::Binary wikidata_entities;
-        wordrep::wiki::UIDSortedEntities::Binary wikidata_entities_by_uid;
-        util::io::fb::PairsBinary wikidata_properties;
-        util::io::fb::PairsBinary wikidata_instances;
-        wordrep::UIDIndexBinary named_entity_wikidata_uids;
-        wordrep::UIDIndexBinary wikidata_uids;
+        wordrep::UIDIndexFile word_uids;
+        wordrep::UIDIndexFile pos_uids;
+        wordrep::WikiEntityByNameFile wikidata_entities;
+        wordrep::WikiEntityByUIDFile wikidata_entities_by_uid;
+        util::io::PairsBinary wikidata_properties;
+        util::io::PairsBinary wikidata_instances;
+        wordrep::UIDIndexFile named_entity_wikidata_uids;
+        wordrep::UIDIndexFile wikidata_uids;
     };
     static EntityModule factory(InputParam const& param) {
         EntityModule f{};

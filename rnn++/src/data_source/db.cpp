@@ -3,6 +3,7 @@
 #include "utils/flatbuffers/io.h"
 
 namespace fb = util::io::fb;
+using util::io::I64Binary;
 
 namespace data {
 
@@ -25,10 +26,10 @@ void build_db_info_field(util::json_t &answer, PerSentQueryResult const &result)
 
 
 
-DBIndexer::DBIndexer(std::string prefix)
-        : chunk2idx{util::deserialize<RowIndex>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2row_idx.i64v"}))},
-          chunk2row_uid{util::deserialize<RowUID>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2row.i64v"}))},
-          chunk2col_uid{util::deserialize<ColumnUID>(fb::load_binary_file(fb::I64Binary{prefix+".chunk2col.i64v"}))}
+DBIndexer::DBIndexer(wordrep::DepParsedFile const& file)
+        : chunk2idx{util::deserialize<RowIndex>(fb::load_binary_file(I64Binary{file.name+".chunk2row_idx.i64v"}))},
+          chunk2row_uid{util::deserialize<RowUID>(fb::load_binary_file(I64Binary{file.name+".chunk2row.i64v"}))},
+          chunk2col_uid{util::deserialize<ColumnUID>(fb::load_binary_file(I64Binary{file.name+".chunk2col.i64v"}))}
 {
     auto n = chunk2idx.size();
     assert(chunk2row_uid.size()==n);

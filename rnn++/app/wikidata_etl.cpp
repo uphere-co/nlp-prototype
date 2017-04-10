@@ -76,9 +76,8 @@ void extract_items(std::istream&& is){
 
 int main(int argc, char** argv){
     assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
     auto wordUIDs = factory.word_uid_index();
     extract_items(std::move(std::cin));
     return 0;

@@ -2,17 +2,11 @@
 
 #include "utils/json.h"
 
-namespace {
-
-auto get_str(std::string const& file, std::string const& key){
-    return util::get_str(util::load_json(file), key);
-}
-
-}//nameless namespace
+using util::get_str;
 
 namespace wordrep {
 
-ConfigParams::ConfigParams(std::string const& config)
+ConfigParams::ConfigParams(util::json_t const& config)
         : corenlp_client{{get_str(config, "corenlp_client_script")}},
           word_list{{get_str(config, "words_list")}},
           word_uid{{get_str( config, "word_uid_bin")}},
@@ -21,7 +15,8 @@ ConfigParams::ConfigParams(std::string const& config)
           dataset_columns{{get_str(config, "column_uids_dump")}},
           word_imporance{{get_str(config, "word_prob_dump")}},
           parsed_text{{get_str(config, "dep_parsed_bins")}},
-          annotated_tokens{{get_str(config, "annotated_tokens")}},
+          annotated_tokens{get_str(config, "annotated_tokens"),
+                           std::stoi(get_str(config, "annotated_tokens_n_block"))},
           voca_idx{{get_str(config, "voca_bin")}},
           word_vecs{{get_str(config, "w2vmodel_bin")}},
           entity_names{{get_str(config, "wikidata_entities_by_name")}},

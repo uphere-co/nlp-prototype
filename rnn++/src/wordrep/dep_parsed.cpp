@@ -25,11 +25,10 @@ void load_binary_file(std::string filename, T& vec){
 
 template<typename T>
 void write_to_binary_file(util::TypedPersistentVector<T> const& vec, std::string filename){
-    namespace fb = util::io::fb;
     std::vector<int64_t> vs;
     vs.reserve(vec.size());
     for(auto v : vec) vs.push_back(v.val);
-    fb::to_file(vs, fb::I64Binary{filename});
+    util::io::fb::to_file(vs, util::io::I64Binary{filename});
 }
 }//nameless namespace
 
@@ -46,41 +45,41 @@ class VersionMismatchException: public std::exception {
     }
 };
 
-DepParsedTokens DepParsedTokens::factory(Binary const &param){
+DepParsedTokens DepParsedTokens::factory(DepParsedFile const& file){
     wordrep::DepParsedTokens texts{};
     util::parallel_invoke(
-            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_uid.i64v", param.prefix), texts.sents_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",param.prefix), texts.chunks_idx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.sents_idx.i64v", param.prefix), texts.sents_idx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words.i64v",     param.prefix), texts.words); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_uid.i64v", param.prefix), texts.words_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_pidx.i64v",param.prefix), texts.words_pidx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.head_words.i64v",param.prefix), texts.head_words); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_uid.i64v", param.prefix), texts.heads_uid); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",param.prefix), texts.heads_pidx); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_beg.i64v", param.prefix), texts.words_beg); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.words_end.i64v", param.prefix), texts.words_end); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.poss.i64v",      param.prefix), texts.poss); },
-            [&texts,&param]() { load_binary_file(fmt::format("{}.arclabels.i64v", param.prefix), texts.arclabels); }
+            [&texts,&file]() { load_binary_file(fmt::format("{}.sents_uid.i64v", file.name), texts.sents_uid); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.chunks_idx.i64v",file.name), texts.chunks_idx); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.sents_idx.i64v", file.name), texts.sents_idx); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.words.i64v",     file.name), texts.words); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.words_uid.i64v", file.name), texts.words_uid); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.words_pidx.i64v",file.name), texts.words_pidx); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.head_words.i64v",file.name), texts.head_words); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.heads_uid.i64v", file.name), texts.heads_uid); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.heads_pidx.i64v",file.name), texts.heads_pidx); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.words_beg.i64v", file.name), texts.words_beg); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.words_end.i64v", file.name), texts.words_end); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.poss.i64v",      file.name), texts.poss); },
+            [&texts,&file]() { load_binary_file(fmt::format("{}.arclabels.i64v", file.name), texts.arclabels); }
     );
     return texts;
 }
 
-void DepParsedTokens::to_file(Binary file) const {
+void DepParsedTokens::to_file(DepParsedFile const& file) const {
     util::parallel_invoke(
-        [this,&file](){write_to_binary_file(this->sents_uid,  file.prefix + ".sents_uid.i64v");},
-        [this,&file](){write_to_binary_file(this->chunks_idx, file.prefix + ".chunks_idx.i64v");},
-        [this,&file](){write_to_binary_file(this->sents_idx,  file.prefix + ".sents_idx.i64v");},
-        [this,&file](){write_to_binary_file(this->words,      file.prefix + ".words.i64v");},
-        [this,&file](){write_to_binary_file(this->words_uid,  file.prefix + ".words_uid.i64v");},
-        [this,&file](){write_to_binary_file(this->words_pidx, file.prefix + ".words_pidx.i64v");},
-        [this,&file](){write_to_binary_file(this->head_words, file.prefix + ".head_words.i64v");},
-        [this,&file](){write_to_binary_file(this->heads_uid,  file.prefix + ".heads_uid.i64v");},
-        [this,&file](){write_to_binary_file(this->heads_pidx, file.prefix + ".heads_pidx.i64v");},
-        [this,&file](){write_to_binary_file(this->words_beg,  file.prefix + ".words_beg.i64v");},
-        [this,&file](){write_to_binary_file(this->words_end,  file.prefix + ".words_end.i64v");},
-        [this,&file](){write_to_binary_file(this->poss,       file.prefix + ".poss.i64v");},
-        [this,&file](){write_to_binary_file(this->arclabels,  file.prefix + ".arclabels.i64v");}
+        [this,&file](){write_to_binary_file(this->sents_uid,  file.name + ".sents_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->chunks_idx, file.name + ".chunks_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->sents_idx,  file.name + ".sents_idx.i64v");},
+        [this,&file](){write_to_binary_file(this->words,      file.name + ".words.i64v");},
+        [this,&file](){write_to_binary_file(this->words_uid,  file.name + ".words_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->words_pidx, file.name + ".words_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->head_words, file.name + ".head_words.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_uid,  file.name + ".heads_uid.i64v");},
+        [this,&file](){write_to_binary_file(this->heads_pidx, file.name + ".heads_pidx.i64v");},
+        [this,&file](){write_to_binary_file(this->words_beg,  file.name + ".words_beg.i64v");},
+        [this,&file](){write_to_binary_file(this->words_end,  file.name + ".words_end.i64v");},
+        [this,&file](){write_to_binary_file(this->poss,       file.name + ".poss.i64v");},
+        [this,&file](){write_to_binary_file(this->arclabels,  file.name + ".arclabels.i64v");}
     );
 }
 

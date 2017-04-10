@@ -85,17 +85,17 @@ std::vector<typename UIDIndex<TUID>::uid_t> UIDIndex<TUID>::get_uids() const{
 }
 
 template<typename TUID>
-UIDIndex<TUID>::UIDIndex(UIDIndexBinary filename){
+UIDIndex<TUID>::UIDIndex(UIDIndexFile file){
     namespace fb = wordrep::io;
     static_assert(std::is_same<typename TUID::val_t, int64_t>::value, "");
 
     util::Timer timer;
-    std::ifstream input_file (filename.val, std::ios::binary);
+    std::ifstream input_file (file.name, std::ios::binary);
     flatbuffers::uoffset_t read_size;
     input_file.read(reinterpret_cast<char*>(&read_size), sizeof(read_size));
     auto data = std::make_unique<char[]>(read_size);
     input_file.read(data.get(), read_size);
-    timer.here_then_reset(fmt::format("wordrep::UIDIndex<TUID>: Read file {}.", filename.val));
+    timer.here_then_reset(fmt::format("wordrep::UIDIndex<TUID>: Read file {}.", file.name));
 
     flatbuffers::FlatBufferBuilder builder;
     std::vector<fb::UID> es;
@@ -118,7 +118,7 @@ UIDIndex<TUID>::UIDIndex(UIDIndexBinary filename){
 };
 
 template<typename TUID>
-void UIDIndex<TUID>::to_file(UIDIndexBinary filename) const {
+void UIDIndex<TUID>::to_file(UIDIndexFile file) const {
     namespace fb = wordrep::io;
     static_assert(std::is_same<typename TUID::val_t, int64_t>::value, "");
 
@@ -143,7 +143,7 @@ void UIDIndex<TUID>::to_file(UIDIndexBinary filename) const {
     auto *buf = builder.GetBufferPointer();
     auto size = builder.GetSize();
 
-    std::ofstream outfile(filename.val, std::ios::binary);
+    std::ofstream outfile(file.name, std::ios::binary);
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }

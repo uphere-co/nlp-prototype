@@ -16,26 +16,18 @@ namespace ygp{
 
 template<typename T>
 struct ConfigKeys{
-    std::vector<T> keys={{"country_uids_dump"}};
-};
-
-struct Config{
-    Config(util::json_t const& config)
-            : common{config}, ygp{config}
-    {}
-    engine::Config common;
-    util::ConfigT<ConfigKeys> ygp;
+    std::vector<T> keys={{"country_uids_dump"}, {"column_uids_dump"}};
 };
 
 struct Factory{
-    Factory(Config const& config,std::optional<int> data_minor_version={})
-            : config{config}, common{config.common, data_minor_version} {}
+    Factory(util::json_t const& config, std::optional<int> data_minor_version={})
+            : ygp{config}, common{config, data_minor_version} {}
     YGPdb db() const;
     DBbyCountry db_by_country() const;
     CountryCodeAnnotator country_code_annotator() const;
     std::vector<std::string> country_list() const;
 
-    Config config;
+    util::ConfigT<ConfigKeys> ygp;
     engine::SubmoduleFactory common;
 };
 std::vector<engine::ScoredSentence> rank_cut_per_column(

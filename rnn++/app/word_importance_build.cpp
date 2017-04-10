@@ -76,9 +76,8 @@ void unknown_word_importance(engine::SubmoduleFactory const& factory){
 
 void test_all(int argc, char** argv){
     assert(argc>1);
-    auto config_json = util::load_json(argv[1]);
-    engine::Config config{config_json};
-    engine::SubmoduleFactory factory{config};
+    auto config = util::load_json(argv[1]);
+    engine::SubmoduleFactory factory{{config}};
     unknown_word_importance(factory);
 }
 }//namespace wordrep::test

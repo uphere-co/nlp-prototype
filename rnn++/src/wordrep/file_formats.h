@@ -14,7 +14,11 @@ struct UIDIndexFile{
     std::string name;
 };
 struct AnnotatedTokenFile{
+    AnnotatedTokenFile(std::string const& name, int n_block)
+            : name{name}, n_block{n_block}
+    {}
     std::string name;
+    int n_block;
 };
 struct DepParsedFile{
     std::string name;

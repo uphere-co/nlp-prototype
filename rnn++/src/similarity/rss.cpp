@@ -13,7 +13,7 @@ namespace data{
 namespace rss{
 
 Columns Factory::db() const{
-    return {config.common.value("column_uids_dump")};
+    return {rss.value("column_uids_dump")};
 };
 
 DBInfo::DBInfo(Factory const& factory)

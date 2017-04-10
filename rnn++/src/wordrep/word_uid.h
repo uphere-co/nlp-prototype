@@ -7,19 +7,16 @@
 #include "utils/parallel.h"
 
 #include "wordrep/indexes.h"
-
+#include "wordrep/file_formats.h"
 namespace wordrep {
 
-struct UIDIndexBinary{
-    std::string val;
-};
 
 template<typename TUID>
 class UIDIndex{
 public:
     using uid_t = TUID;
     UIDIndex(std::string file);
-    UIDIndex(UIDIndexBinary filename);
+    UIDIndex(UIDIndexFile file);
     UIDIndex(UIDIndex &&org)
             : uid2word{std::move(org.uid2word)}
     {}
@@ -37,7 +34,7 @@ public:
 
     static uid_t get_uid(std::string const &word);
 
-    void to_file(UIDIndexBinary filename) const;
+    void to_file(UIDIndexFile file) const;
 
 private:
     tbb::concurrent_vector<std::pair<uid_t,std::string>> uid2word;

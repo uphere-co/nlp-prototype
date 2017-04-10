@@ -9,43 +9,43 @@
 
 namespace engine{
 
-wikidata::EntityModule::InputParam get_wikimoudle_param(Config const &config){
-    auto conf = [&config](auto x){return config.value(x);};
+wikidata::EntityModule::InputParam get_wikimoudle_param(wordrep::ConfigParams const &conf){
     return {
-            wordrep::UIDIndexBinary{conf("word_uid_bin")},
-            wordrep::UIDIndexBinary{conf("pos_uid_bin")},
-            wordrep::wiki::SortedEntities::Binary{conf("wikidata_entities_by_name")},
-            wordrep::wiki::UIDSortedEntities::Binary{conf("wikidata_entities_by_uid")},
-            util::io::fb::PairsBinary{conf("wikidata_properties")},
-            util::io::fb::PairsBinary{conf("wikidata_instances")},
-            wordrep::UIDIndexBinary{conf("named_entity_uids")},
-            wordrep::UIDIndexBinary{conf("wikidata_uids")}
-    };
+            conf.word_uid,
+            conf.pos_uid,
+            conf.entity_names,
+            conf.entity_uids,
+            {conf.entity_properties.name},
+            {conf.entity_instances.name},
+            conf.named_entity_uid,
+            conf.wiki_uid
+            };
 }
 
-SubmoduleFactory::SubmoduleFactory(Config const& config, std::optional<int> data_minor_version)
-        : config{config}, data_minor_version{data_minor_version}
+SubmoduleFactory::SubmoduleFactory(util::json_t const& config_, std::optional<int> data_minor_version)
+        : data_minor_version{data_minor_version}, conf{config_}
 {}
 
 data::CoreNLPwebclient SubmoduleFactory::corenlp_webclient() const {
-    return {config.value("corenlp_client_script")};
+    return {conf.corenlp_client.name};
 }
 wordrep::WordUIDindex SubmoduleFactory::word_uid_index() const {
-    return {wordrep::UIDIndexBinary{config.value("word_uid_bin")}};
-    //return {config.value("word_uids_dump")};
+    return {conf.word_uid};
 }
 wordrep::POSUIDindex SubmoduleFactory::pos_uid_index() const {
 //    return {config.value("pos_uids_dump")};
-    return {wordrep::UIDIndexBinary{config.value("pos_uid_bin")}};
+    return {conf.pos_uid};
 }
 wordrep::ArcLabelUIDindex SubmoduleFactory::arclabel_uid_index() const {
-    return {config.value("arclabel_uids_dump")};
+    return {conf.arclabel_uid.name};
 }
 wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
-    return wordrep::DepParsedTokens::factory({config.value("dep_parsed_bins")});
+    //TODO:refactoring
+     return wordrep::DepParsedTokens::factory(conf.parsed_text);
 }
 wordrep::WordImportance SubmoduleFactory::word_importance() const {
-    return {util::io::h5read(config.value("word_prob_dump"))};
+    //TODO:refactoring
+    return {util::io::h5read(conf.word_imporance.name)};
 }
 
 wordrep::VocaInfo SubmoduleFactory::voca_info() const{
@@ -53,22 +53,23 @@ wordrep::VocaInfo SubmoduleFactory::voca_info() const{
     std::vector<wordrep::WordUID> vidx_wuids;
     std::vector<float> wvecs_raw;
 
-    auto conf = [this](auto x){return this->config.value(x);};
     util::parallel_invoke(
-            [&vidx_wuids,&conf](){fb::deserialize_i64vector(fb::load_binary_file(conf("voca_bin")), vidx_wuids);},
-            [&wvecs_raw,&conf](){fb::deserialize_f32vector(fb::load_binary_file(conf("w2vmodel_bin")), wvecs_raw);}
+            //TODO:refactoring
+            [&vidx_wuids,this](){fb::deserialize_i64vector(fb::load_binary_file(this->conf.voca_idx.wuids.name), vidx_wuids);},
+            [&wvecs_raw,this](){fb::deserialize_f32vector(fb::load_binary_file(this->conf.word_vecs.mat.name), wvecs_raw);}
     );
 
     return {{vidx_wuids},{wvecs_raw}};
 }
 
 wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordImportance const& importance) const {
-    return {config.value("words_list"), importance};
+    //TODO:refactoring
+     return {conf.word_list.name, importance};
 }
 
-wordrep::AnnotationFile SubmoduleFactory::load_annotation() const{
-    return wordrep::AnnotationFile::factory({config.value("annotated_tokens"),
-                                             std::stoi(config.value("annotated_tokens_n_block"))});
+wordrep::AnnotationData SubmoduleFactory::load_annotation() const{
+    //TODO:refactoring
+    return wordrep::AnnotationData::factory(conf.annotated_tokens);
 }
 
 Dataset SubmoduleFactory::empty_dataset() const{
@@ -79,14 +80,14 @@ Dataset SubmoduleFactory::load_dataset() const{
 }
 
 data::DBIndexer SubmoduleFactory::db_indexer() const {
-    return {config.value("dep_parsed_bins")};
+    return {conf.parsed_text};
 };
 
 wordrep::WikidataUIDindex SubmoduleFactory::wikientity_uid_index() const{
-    return {config.value("wikidata_uids")};
+    return {conf.wiki_uid};
 }
 wikidata::EntityModule SubmoduleFactory::wikientity_module() const{
-    return wikidata::EntityModule::factory(get_wikimoudle_param(config));
+    return wikidata::EntityModule::factory(get_wikimoudle_param(conf));
 }
 
 }//namespace engine

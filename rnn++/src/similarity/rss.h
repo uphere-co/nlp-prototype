@@ -16,22 +16,16 @@ namespace rss{
 
 template<typename T>
 struct ConfigKeys{
-    std::vector<T> keys={};
+    std::vector<T> keys={{"column_uids_dump"}};
 };
 
-struct Config{
-    Config(util::json_t const& config)
-            : common{config}, rss{config}
-    {}
-    engine::Config common;
-    util::ConfigT<ConfigKeys> rss;
-};
 struct Factory{
-    Factory(Config const& config, std::optional<int> data_minor_version={})
-            : config{config}, common{config.common, data_minor_version} {}
+    Factory(util::json_t const& config, std::optional<int> data_minor_version={})
+            : rss{config}, common{config, data_minor_version}
+    {}
     Columns db() const;
 
-    Config config;
+    util::ConfigT<ConfigKeys> rss;
     engine::SubmoduleFactory common;
 };
 
