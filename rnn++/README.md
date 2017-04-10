@@ -67,7 +67,7 @@ Output filename is also fixed : `prob.h5`. Generate it and place it appreciative
 #COLUMNS_TO_DUMP : a same format used in the file mentioned in a "column_uids_dump" field of config JSON file.  
 #DUMP_DIR : store dumped text files in there. Do not generate dump files if it is empty.
 #Example usages : generate dump files for indexing
-./ygpdb_dump ~/word2vec/ygp/column.uid /opt/YGP.dump/ > ygp.text 2>ygp.text.log
+./ygpdb_dump ~/word2vec/ygp/column.uid ~/word2vec/ygp/country_col.uid /opt/YGP.text > ygp.text 2>ygp.text.log
 #Dump to stdout only for word2vec training:
 ./ygpdb_dump ~/word2vec/ygp/column.uid | java edu.stanford.nlp.process.PTBTokenizer -preserveLines > ygp.text.ptb
 
