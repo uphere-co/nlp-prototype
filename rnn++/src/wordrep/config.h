@@ -1,0 +1,35 @@
+#pragma once
+
+#include <string>
+#include "wordrep/file_formats.h"
+
+namespace wordrep {
+
+struct ConfigParams {
+    ConfigParams(std::string const& config);
+
+    PythonScript corenlp_client;
+    TextFile word_list;
+
+    UIDIndexFile word_uid;
+    UIDIndexFile pos_uid;
+    TextFile arclabel_uid;
+
+    TextFile dataset_columns;
+    HDF5file word_imporance;
+
+    DepParsedFile parsed_text;
+    AnnotatedTokenFile annotated_tokens;
+
+    VocaIndexMapFile voca_idx;
+    WordEmbeggingFile word_vecs;
+
+    WikiEntityByNameFile entity_names;
+    WikiEntityByUIDFile entity_uids;
+    WikiPropertyFile entity_properties;
+    WikiInstanceFile entity_instances;
+    UIDIndexFile wiki_uid;
+    UIDIndexFile named_entity_uid;
+};
+
+}//namespace wordrep
