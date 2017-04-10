@@ -1024,6 +1024,14 @@ void crnn_parser(char **argv){
         std::cout<<sent<<std::endl;
 }
 
+void test_all(){
+    test_context_node();
+    test_crnn_backward();
+    test_crnn_directed_backward();
+    test_grad_parallel_reduce();
+    test_minibatch_crnn();
+}
+
 }//namespace rnn::test
 }//namespace rnn
 

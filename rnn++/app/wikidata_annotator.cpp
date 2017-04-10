@@ -753,46 +753,6 @@ void load_voca_info(int argc, char** argv){
 }
 
 
-//TODO: remove temporal changes on DepParsedTokens and EntityModule.
-void load_query_engine(int argc, char** argv) {
-    assert(argc>1);
-    namespace fb = util::io::fb;
-    auto config_json = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config_json}};
-    util::Timer timer;
-
-    std::vector<wordrep::WordUID> vidx_wuids;
-    std::vector<float> wvecs_raw;
-
-    wordrep::DepParsedTokens texts{};
-    std::unique_ptr<wikidata::EntityModule> f{};
-
-    auto load_indexed_text=[&texts](){
-        texts = wordrep::DepParsedTokens::factory({"nyt"});
-    };
-    auto load_word_embedding = [&wvecs_raw,&vidx_wuids](){
-        util::parallel_invoke(
-                [&wvecs_raw](){fb::deserialize_f32vector(fb::load_binary_file("w2vmodel_bin_name"), wvecs_raw);},
-                [&vidx_wuids](){fb::deserialize_i64vector(fb::load_binary_file("voca_bin_name"), vidx_wuids);}
-        );
-    };
-    auto load_wiki_module = [&f,&factory](){
-        f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
-    };
-    util::parallel_invoke(load_indexed_text,
-                          load_wiki_module,
-                          load_word_embedding);
-
-    timer.here_then_reset("Concurrent loading of binary files");
-    auto sents = texts.IndexSentences();
-    timer.here_then_reset("Post processing of indexed texts.");
-
-    wordrep::WordBlock_base<float,100> wvecs{std::move(wvecs_raw)};
-    wordrep::VocaInfo voca_info{std::move(vidx_wuids), std::move(wvecs)};
-    timer.here_then_reset("Complete to load data structures.");
-    fmt::print("{} sentences", sents.size());
-}
-
 void annotate_sentences(int argc, char** argv){
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
@@ -1094,7 +1054,7 @@ int main(int argc, char** argv){
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
 //    test_parallel_invoke();
-//    load_query_engine(argc,argv);
+
     annotate_sentences(argc,argv);
 //    test_load_annotated_sentences(argc,argv);
     return 0;
