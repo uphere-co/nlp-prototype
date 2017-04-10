@@ -27,17 +27,6 @@ using word2vec::UnigramDist;
 
 
 
-void check_word_uid(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-
-    auto wordvec_file=util::io::h5read("nyt_words.h5");
-    wordrep::WordUIDindex wordUIDs{util::get_str(config,"word_uids_dump")};
-    wordrep::VocaIndexMap voca{wordrep::load_voca(config["wordvec_store"], config["voca_name"])};
-    UnigramDist unigram{wordvec_file, voca};
-
-    auto words = util::string::readlines(util::get_str(config,"word_uids_dump"));
-}
 void iter_sentences(int argc, char** argv){
     //assert(argc>1);
     //auto config = util::load_json(argv[1]);
@@ -45,6 +34,9 @@ void iter_sentences(int argc, char** argv){
     auto file = util::io::h5read("nyt_texts.h5");
     std::string prefix = "nyt";
     IndexedTexts texts{file, prefix};
+
+    std::map<wordrep::VocaIndex,int64_t> word_counts;
+    for(auto word : texts.words) ++word_counts[word];
 
     util::Timer timer;
     auto wordvec_file=util::io::h5read("nyt_words.h5");
@@ -61,7 +53,7 @@ void iter_sentences(int argc, char** argv){
     using namespace word2vec;
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    UnigramDist unigram{util::io::h5read("nyt_words.h5"), voca};
+    UnigramDist unigram{word_counts};
     SubSampler subsampler{0.001, unigram};
     util::Sampler<VocaIndex,UnigramDist::float_t> neg_sampler{unigram.get_neg_sample_dist(0.75)};
     std::uniform_real_distribution<double> uni{0, neg_sampler.total_weight()};

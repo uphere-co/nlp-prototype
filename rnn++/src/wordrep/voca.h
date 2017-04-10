@@ -8,6 +8,10 @@ namespace wordrep{
 
 class VocaIndexMap{
 public:
+    struct Binary{
+        std::string name;
+    };
+    static VocaIndexMap factory(Binary file);
     VocaIndexMap(std::vector<WordUID> const &uids_val);
     VocaIndex operator[](WordUID   uid) const;
     WordUID   operator[](VocaIndex idx) const;

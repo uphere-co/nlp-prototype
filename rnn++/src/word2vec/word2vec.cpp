@@ -11,18 +11,6 @@
 
 namespace word2vec {
 
-UnigramDist::UnigramDist(util::io::H5file const &h5store,
-                         wordrep::VocaIndexMap const& voca) {
-    util::PersistentVector<WordUID,WordUID::val_t> uid{h5store,"unigram.uid"};
-    util::PersistentVector<size_t,size_t> count{h5store,"unigram.count"};
-    weights.reserve(count.size());
-    auto norm = 1.0 / util::math::sum(count.get());
-    auto n = count.size();
-    for(size_t i=0; i!=n; ++i){
-        weights.push_back({voca[uid[i]], count[i]*norm});
-    }
-    std::sort(weights.begin(),weights.end(), [](auto x, auto y){return x.first<y.first;});
-}
 UnigramDist::UnigramDist(std::map<VocaIndex,int64_t> const& counts){
     int64_t sum{0};
     for(auto& elm : counts) sum+=elm.second;

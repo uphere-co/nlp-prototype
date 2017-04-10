@@ -137,11 +137,11 @@ int process_rss_dump(int argc, char** argv){
     engine::SubmoduleFactory factory{{config}};
     util::Timer timer;
 
-    auto json_dump_path   = argv[2];
-    auto dataset_prefix   = argv[3];
-
     auto voca = factory.voca_info();
     timer.here_then_reset("Load data.");
+
+    auto json_dump_path   = argv[2];
+    auto dataset_prefix   = argv[3];
 
     data::CoreNLPoutputParser dump_parser;
     auto json_dumps = util::string::readlines(json_dump_path);

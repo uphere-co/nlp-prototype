@@ -1,10 +1,17 @@
 #include <unordered_map>
 
 #include "wordrep/voca.h"
-
+#include "wordrep/io.h"
 #include "utils/string.h"
 
 namespace wordrep{
+
+VocaIndexMap VocaIndexMap::factory(Binary file){
+    namespace fb = util::io::fb;
+    std::vector<WordUID> vidx_wuids;
+    fb::deserialize_i64vector(fb::load_binary_file(file.name), vidx_wuids);
+    return {vidx_wuids};
+}
 
 VocaIndexMap::VocaIndexMap(std::vector<WordUID> const &uids)
 : uids{uids} {
