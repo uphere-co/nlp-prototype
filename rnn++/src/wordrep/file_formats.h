@@ -31,6 +31,9 @@ struct WordEmbeggingFile{
     util::io::F32Binary mat;
 };
 struct WordImportanceFile{
+    WordImportanceFile(std::string const& name)
+    : uids{name+".uids.bin"}, scores{name+".scores.bin"}
+    {}
     util::io::I64Binary uids;
     util::io::F32Binary scores;
 };

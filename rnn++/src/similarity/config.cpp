@@ -45,7 +45,7 @@ wordrep::DepParsedTokens SubmoduleFactory::dep_parsed_tokens() const {
 }
 wordrep::WordImportance SubmoduleFactory::word_importance() const {
     //TODO:refactoring
-    return {util::io::h5read(conf.word_imporance.name)};
+    return wordrep::WordImportance::factory(conf.word_imporance);
 }
 
 wordrep::VocaInfo SubmoduleFactory::voca_info() const{

@@ -20,16 +20,13 @@ void from_hdf5_to_fb(std::string hdf5_filename,
     util::io::fb::to_file(to_float(scores), {output_filename+".scores.bin"});
 }
 int main(int argc, char** argv){
-    from_hdf5_to_fb("/opt/testset.rss/prob.h5", "word.score");
-    return 0;
+//    from_hdf5_to_fb("/opt/testset.rss/prob.h5", "word.score");
+//    return 0;
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     auto wordUIDs = factory.word_uid_index();
-
-    wordrep::WordImportanceFile score_file{{"word.score.uids.bin"}, {"word.score.scores.bin"}};
-    auto word_importance = wordrep::WordImportance::factory(score_file);
-
+    auto word_importance = factory.word_importance();
 
     for(auto elm : word_importance.all_scores()){
         if(elm.second==0.0) continue;

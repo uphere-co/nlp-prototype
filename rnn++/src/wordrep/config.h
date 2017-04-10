@@ -16,14 +16,14 @@ struct ConfigParams {
     UIDIndexFile pos_uid;
     TextFile     arclabel_uid;
 
-    TextFile dataset_columns;
-    HDF5file word_imporance;
+    TextFile           dataset_columns;
 
     DepParsedFile      parsed_text;
     AnnotatedTokenFile annotated_tokens;
 
-    VocaIndexMapFile  voca_idx;
-    WordEmbeggingFile word_vecs;
+    VocaIndexMapFile   voca_idx;
+    WordEmbeggingFile  word_vecs;
+    WordImportanceFile word_imporance;
 
     WikiEntityByNameFile entity_names;
     WikiEntityByUIDFile  entity_uids;
