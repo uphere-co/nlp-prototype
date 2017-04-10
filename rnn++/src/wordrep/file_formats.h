@@ -30,6 +30,10 @@ struct VocaIndexMapFile{
 struct WordEmbeggingFile{
     util::io::F32Binary mat;
 };
+struct WordImportanceFile{
+    util::io::I64Binary uids;
+    util::io::F32Binary scores;
+};
 
 struct WikiPropertyFile{
     std::string name;

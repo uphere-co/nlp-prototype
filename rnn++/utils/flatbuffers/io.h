@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "utils/flatbuffers/pairs_generated.h"
 #include "utils/flatbuffers/i64vec_generated.h"
@@ -28,6 +29,7 @@ void to_file(std::vector<float> const& vals, F32Binary file);
 std::unique_ptr<char[]> load_binary_file(std::string file);
 
 std::vector<int64_t> load_binary_file(I64Binary file);
+std::vector<float> load_binary_file(F32Binary file);
 
 inline std::unique_ptr<char[]> load_binary_file(PairsBinary file){
     return load_binary_file(file.name);

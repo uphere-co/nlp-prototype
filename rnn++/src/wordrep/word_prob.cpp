@@ -28,6 +28,22 @@ auto ratio_to_score = [](auto ratio){
 
 namespace wordrep{
 
+WordImportance WordImportance::factory(WordImportanceFile const& file){
+    auto uids = util::io::fb::load_binary_file(file.uids);
+    auto scores = util::io::fb::load_binary_file(file.scores);
+    assert(uids.size()==scores.size());
+    std::map<WordUID,WordImportance::val_t> uid2scores;
+    auto n = uids.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        uid2scores[uids[i]]=scores[i];
+    }
+    return {std::move(uid2scores)};
+}
+
+WordImportance::WordImportance(std::map<WordUID,val_t>&& uid2score)
+: uid2score{std::move(uid2score)}
+{}
+
 WordImportance::WordImportance(H5file const& stats) {
     util::TypedPersistentVector<WordUID> uids{stats, "prob.word_uid"};
     util::PersistentVector<float,float> ratio{stats, "prob.ratio"};
