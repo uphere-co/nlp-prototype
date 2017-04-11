@@ -8,6 +8,7 @@
 #include "wiki/wikidata.h"
 #include "wiki/property_triple.h"
 
+
 #include "similarity/config.h"
 #include "similarity/query_engine.h"
 
@@ -16,57 +17,18 @@
 #include "wordrep/simiarity_score.h"
 #include "wordrep/serialized_annotation.h"
 #include "wordrep/preprocessed_sentences.h"
+#include "wordrep/io.h"
 
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
 #include "utils/string.h"
 #include "utils/json.h"
 
+#include "tests/wiki/test_dataset.h"
 
-#include "wordrep/io.h"
 
 namespace wikidata{
 namespace test {
-
-struct UnittestDataset{
-    UnittestDataset(util::json_t const& config)
-    : factory{config},
-      entities{read_wikidata_entities(wordUIDs, "../rnn++/tests/data/wikidata.test.entities")},
-      entities_by_uid{entities.to_uid_sorted()},
-      annotator{entities},
-      p_dict{"../rnn++/tests/data/wikidata.test.properties"},
-      wordUIDs{factory.word_uid_index()},
-      entity_reprs{entities_by_uid},
-      op_acronym{wordUIDs},
-      wikidataUIDs{"../rnn++/tests/data/wikidata.test.uid"},
-      wiki_ne_UIDs{"../rnn++/tests/data/wikidata.test.uid.named_entities"},
-      op_named_entity{wiki_ne_UIDs, wordUIDs, entity_reprs} {
-        auto posUIDs = factory.pos_uid_index();
-        auto arclabelUIDs = factory.arclabel_uid_index();
-        std::vector<std::string> jsons = {"../rnn++/tests/data/sentence.1.corenlp",
-                                          "../rnn++/tests/data/sentence.2.corenlp",
-                                          "../rnn++/tests/data/sentence.3.corenlp",
-                                          "../rnn++/tests/data/sentence.4.corenlp"};
-        for(auto& json : jsons)
-            tokens.append_corenlp_output(data::CoreNLPjson{json});
-        tokens.build_sent_uid(0);
-        sents = tokens.IndexSentences();
-    }
-    engine::SubmoduleFactory factory;
-    wordrep::wiki::SortedEntities entities;
-    wordrep::wiki::UIDSortedEntities entities_by_uid;
-    GreedyAnnotator annotator;
-    PropertyTable p_dict;
-    wordrep::WordUIDindex wordUIDs;
-    wordrep::wiki::EntityReprs entity_reprs;
-    wordrep::wiki::OpAcronym op_acronym;
-    wordrep::WikidataUIDindex wikidataUIDs;
-    wordrep::WikidataUIDindex wiki_ne_UIDs;
-    wordrep::wiki::OpNamedEntity op_named_entity;
-    wordrep::DepParsedTokens tokens{};
-    std::vector<wordrep::Sentence> sents{};
-
-};
 
 void integer_list_ordering(){
     std::vector<int> a1{1,1};
@@ -185,17 +147,17 @@ void compare_wordUIDs_and_WikidataUID(util::json_t const& config,
     auto op= entity_reprs.get_comparison_operator();
     auto& ws = wordUIDs;
     auto& ds = wikidataUIDs;
-    assert(op.exact_match(ds["Q1"], {ws["artificial"], ws["intelligence"]}));
-    assert(op.exact_match(ds["Q1"], {ws["AI"]}));
+    assert(op.exact_match(ds["Q11660"], {ws["artificial"], ws["intelligence"]}));
+    assert(op.exact_match(ds["Q11660"], {ws["AI"]}));
     assert(!op.exact_match(ds["Q1"], {ws["natural"], ws["language"], ws["processing"]}));
     assert(!op.exact_match(ds["Q1"], {ws["NLP"]}));
 
-    assert(!op.exact_match(ds["Q2"], {ws["artificial"], ws["intelligence"]}));
-    assert(!op.exact_match(ds["Q2"], {ws["AI"]}));
-    assert(op.exact_match(ds["Q2"], {ws["natural"], ws["language"], ws["processing"]}));
-    assert(op.exact_match(ds["Q2"], {ws["NLP"]}));
+    assert(!op.exact_match(ds["Q30642"], {ws["artificial"], ws["intelligence"]}));
+    assert(!op.exact_match(ds["Q30642"], {ws["AI"]}));
+    assert(op.exact_match(ds["Q30642"], {ws["natural"], ws["language"], ws["processing"]}));
+    assert(op.exact_match(ds["Q30642"], {ws["NLP"]}));
 
-    assert(op.exact_match(ds["Q3"], {ws["Google"]}));
+    assert(op.exact_match(ds["Q95"], {ws["Google"]}));
 
     assert(!op.exact_match(ds["Q17948719427"], {ws["artificial"], ws["intelligence"]}));
     assert(!op.exact_match(ds["Q17948719427"], {ws["AI"]}));
@@ -235,8 +197,8 @@ void operation_wikiuid_on_sentence(util::json_t const& config_json){
 
     //chrome_os=Q79531, NLP=q2
     auto chrome_os = wikidataUIDs["Q79531"];
-    auto nlp = wikidataUIDs["Q2"];
-    auto google = wikidataUIDs["Q3"];
+    auto nlp = wikidataUIDs["Q15733006"];
+    auto google = wikidataUIDs["Q95"];
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : testset.entities)
         fmt::print(std::cerr, "{}\n", entity.repr(wikidataUIDs, wordUIDs));
@@ -245,6 +207,7 @@ void operation_wikiuid_on_sentence(util::json_t const& config_json){
     auto op_contain_chrome_os = entity_reprs.get_comparison_operator(chrome_os);
     auto op_contain_nlp = entity_reprs.get_comparison_operator(nlp);
     auto op_contain_google = entity_reprs.get_comparison_operator(google);
+    fmt::print(std::cerr, "Testing matches with ChromeOS:\n");
     for (auto sent : testset.sents) {
         auto iter_words = sent.iter_words();
         auto end = iter_words.end();
@@ -281,8 +244,8 @@ void operation_ambiguous_entity_on_sentence(util::json_t const& config_json){
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& wordUIDs     = testset.wordUIDs;
 
-    auto tagged_sent = testset.annotator.annotate(testset.sents[0]);
-    auto tagged_sent1 = testset.annotator.annotate(testset.sents[1]);
+    auto tagged_sent = testset.annotator.annotate(testset.sents[1]);
+    auto tagged_sent1 = testset.annotator.annotate(testset.sents[2]);
     auto es =tagged_sent.get_entities();
     auto es1 = tagged_sent1.get_entities();
     assert(es==es1);
@@ -329,7 +292,7 @@ void ambiguous_entity_match_scoring(util::json_t const& config_json){
     fmt::print("\n");
     fmt::print("{}\n", annotator.annotate(testset.sents[0]).repr(entity_reprs, wikidataUIDs, wordUIDs));
 
-    auto uids = {"Q1","Q2","Q3","Q79531"};
+    auto uids = {"Q30642","Q95","Q79531"};
     auto qs = util::map(uids,[&entity_reprs,&wikidataUIDs](auto uid){
         return entity_reprs.get_synonyms(wikidataUIDs[uid]);});
     for(auto& q : qs){
@@ -366,7 +329,7 @@ void property_p31_instance_of(util::json_t const& config_json){
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& p_dict       = testset.p_dict;
 
-    auto nlp = wikidataUIDs["Q2"];
+    auto nlp = wikidataUIDs["Q30642"];
     auto facebook = wikidataUIDs["Q380"];
     auto company = wikidataUIDs["Q4830453"];
 
@@ -474,10 +437,10 @@ void acronyms_check(util::json_t const& config_json) {
     auto& wordUIDs     = testset.wordUIDs;
     auto& acronymOps = testset.op_acronym;
 
-    auto ai = entity_reprs.get_synonyms(wikidataUIDs["Q1"]);
-    auto nlp = entity_reprs.get_synonyms(wikidataUIDs["Q2"]);
-    auto google = entity_reprs.get_synonyms(wikidataUIDs["Q4"]);
-    auto deepmind = entity_reprs.get_synonyms(wikidataUIDs["Q5"]);
+    auto ai = entity_reprs.get_synonyms(wikidataUIDs["Q11660"]);
+    auto nlp = entity_reprs.get_synonyms(wikidataUIDs["Q30642"]);
+    auto google = entity_reprs.get_synonyms(wikidataUIDs["Q95"]);
+    auto deepmind = entity_reprs.get_synonyms(wikidataUIDs["Q15733006"]);
     auto chromeOS = entity_reprs.get_synonyms(wikidataUIDs["Q79531"]);
 
     assert(acronymOps.is_acronyms(ai));
@@ -496,11 +459,11 @@ void named_entity_check(util::json_t const& config_json) {
     auto& wikidataUIDs = testset.wikidataUIDs;
     auto& op_named_entity = testset.op_named_entity;
 
-    auto ai       = wikidataUIDs["Q1"];
-    auto nlp      = wikidataUIDs["Q2"];
-    auto google   = wikidataUIDs["Q3"];
-    auto google2  = wikidataUIDs["Q4"];
-    auto deepmind = wikidataUIDs["Q5"];
+    auto ai       = wikidataUIDs["Q11660"];
+    auto nlp      = wikidataUIDs["Q30642"];
+    auto google   = wikidataUIDs["Q9366"];
+    auto google2  = wikidataUIDs["Q95"];
+    auto deepmind = wikidataUIDs["Q15733006"];
     auto week     = wikidataUIDs["Q23387"];
     auto chromeOS = wikidataUIDs["Q79531"];
     auto basf    = wikidataUIDs["Q9401"];
@@ -539,7 +502,7 @@ void representative_repr_of_query(util::json_t const& config_json) {
 
     Scoring scoring{word_importance, voca.wvecs};
 
-    auto entity_uid = wikidataUIDs["Q2"];
+    auto entity_uid = wikidataUIDs["Q30642"];
     auto entity = entity_reprs.get_synonyms(entity_uid);
     for(auto words : entity.reprs){
         fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
@@ -570,8 +533,8 @@ void scoring_words(util::json_t const& config_json){
 
     Scoring scoring{word_importance, voca.wvecs};
 
-    auto tsent1 = annotator.annotate(testset.sents[0]);
-    auto tsent2 = annotator.annotate(testset.sents[2]);
+    auto tsent1 = annotator.annotate(testset.sents[1]);
+    auto tsent2 = annotator.annotate(testset.sents[3]);
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     fmt::print("{}\n",tsent2.sent.repr(wordUIDs));
 
@@ -1054,15 +1017,15 @@ int main(int argc, char** argv){
     //convert_voca_info(argc,argv);
 //    load_voca_info(argc,argv);
 //    test_parallel_invoke();
-
-    annotate_sentences(argc,argv);
 //    test_load_annotated_sentences(argc,argv);
-    return 0;
+
+//    annotate_sentences(argc,argv);
+//    return 0;
 
 //    test_property_table();
 //    util::io::fb::test::test_all();
-//    wikidata::test::test_all(argc, argv);
-//    wordrep::test::test_all(argc,argv);
+    wikidata::test::test_all(argc, argv);
+    wordrep::test::test_all(argc,argv);
     return 0;
 
     assert(argc>2);
