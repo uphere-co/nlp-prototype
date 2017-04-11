@@ -1,0 +1,219 @@
+{
+    "queries": [
+        "AI company that Google bought ."
+    ], 
+    "max_clip_len": 200, 
+    "sentences": [
+        {
+            "basicDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 2, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "company"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "AI"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 3, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 4, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "acl:relcl", 
+                    "dependent": 5, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "bought"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "index": 0, 
+            "tokens": [
+                {
+                    "index": 1, 
+                    "word": "AI", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 2, 
+                    "characterOffsetBegin": 0, 
+                    "originalText": "AI", 
+                    "before": ""
+                }, 
+                {
+                    "index": 2, 
+                    "word": "company", 
+                    "after": " ", 
+                    "pos": "NN", 
+                    "characterOffsetEnd": 10, 
+                    "characterOffsetBegin": 3, 
+                    "originalText": "company", 
+                    "before": " "
+                }, 
+                {
+                    "index": 3, 
+                    "word": "that", 
+                    "after": " ", 
+                    "pos": "WDT", 
+                    "characterOffsetEnd": 15, 
+                    "characterOffsetBegin": 11, 
+                    "originalText": "that", 
+                    "before": " "
+                }, 
+                {
+                    "index": 4, 
+                    "word": "Google", 
+                    "after": " ", 
+                    "pos": "NNP", 
+                    "characterOffsetEnd": 22, 
+                    "characterOffsetBegin": 16, 
+                    "originalText": "Google", 
+                    "before": " "
+                }, 
+                {
+                    "index": 5, 
+                    "word": "bought", 
+                    "after": " ", 
+                    "pos": "VBD", 
+                    "characterOffsetEnd": 29, 
+                    "characterOffsetBegin": 23, 
+                    "originalText": "bought", 
+                    "before": " "
+                }, 
+                {
+                    "index": 6, 
+                    "word": ".", 
+                    "after": "", 
+                    "pos": ".", 
+                    "characterOffsetEnd": 31, 
+                    "characterOffsetBegin": 30, 
+                    "originalText": ".", 
+                    "before": " "
+                }
+            ], 
+            "enhancedPlusPlusDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 2, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "company"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "AI"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 2, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "company"
+                }, 
+                {
+                    "dep": "ref", 
+                    "dependent": 3, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 4, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "acl:relcl", 
+                    "dependent": 5, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "bought"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "."
+                }
+            ], 
+            "enhancedDependencies": [
+                {
+                    "dep": "ROOT", 
+                    "dependent": 2, 
+                    "governorGloss": "ROOT", 
+                    "governor": 0, 
+                    "dependentGloss": "company"
+                }, 
+                {
+                    "dep": "compound", 
+                    "dependent": 1, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "AI"
+                }, 
+                {
+                    "dep": "dobj", 
+                    "dependent": 2, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "company"
+                }, 
+                {
+                    "dep": "ref", 
+                    "dependent": 3, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "that"
+                }, 
+                {
+                    "dep": "nsubj", 
+                    "dependent": 4, 
+                    "governorGloss": "bought", 
+                    "governor": 5, 
+                    "dependentGloss": "Google"
+                }, 
+                {
+                    "dep": "acl:relcl", 
+                    "dependent": 5, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "bought"
+                }, 
+                {
+                    "dep": "punct", 
+                    "dependent": 6, 
+                    "governorGloss": "company", 
+                    "governor": 2, 
+                    "dependentGloss": "."
+                }
+            ]
+        }
+    ]
+}
