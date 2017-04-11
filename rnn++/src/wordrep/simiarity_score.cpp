@@ -26,8 +26,7 @@ std::vector<wiki::AmbiguousUID> Scoring::SentenceToScored::all_named_entities() 
     return uids;
 }
 
-void Scoring::SentenceToScored::filter_false_named_entity(wiki::OpNamedEntity const &op,
-                                                          POSUIDindex const& posUIDs){
+void Scoring::SentenceToScored::filter_false_named_entity(wiki::OpNamedEntity const &op){
     for(auto it=entities.begin(); it<entities.end();){
         auto& entity = *it;
         if(entity.idxs.size()!=1) {
@@ -62,11 +61,11 @@ void Scoring::SentenceToScored::filter_false_named_entity(wiki::OpNamedEntity co
             }
         } else{
             auto idx = entity.idxs.front();
-            auto is_noun = [&posUIDs](auto pos){
-                auto NN = posUIDs["NN"];
-                auto NNS = posUIDs["NNS"];
-                auto NNP = posUIDs["NNP"];
-                auto NNPS = posUIDs["NNPS"];
+            auto is_noun = [](auto pos){
+                auto NN = POSUIDindex::get_uid("NN");
+                auto NNS = POSUIDindex::get_uid("NNS");
+                auto NNP = POSUIDindex::get_uid("NNP");
+                auto NNPS = POSUIDindex::get_uid("NNPS");
                 return pos==NN||pos==NNS||pos==NNP||pos==NNPS;
             };
             auto pos = this->orig.dict->pos(idx);

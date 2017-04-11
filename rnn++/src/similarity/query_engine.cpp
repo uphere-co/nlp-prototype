@@ -222,7 +222,7 @@ struct ProcessQuerySent{
         timer.here_then_reset("Annotate a query sentence.");
         Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_repr()};
         auto query_sent_to_scored = scoring_preprocessor.sentence(tagged_query_sent);
-        query_sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
+        query_sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity());
 
         auto named_entities = query_sent_to_scored.all_named_entities();
         timer.here_then_reset("A query sentence is ready to be compared.");
@@ -523,7 +523,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.word_uid()));
     for(auto e : query_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.word_uid()));
-    query_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
+    query_to_scored.filter_false_named_entity(wiki.get_op_named_entity());
     timer.here_then_reset("Annotate a query sentence.");
 
     auto tagged_sent = wiki.annotator().annotate(sent);
@@ -533,7 +533,7 @@ json_t QueryEngineT<T>::compare_sentences(json_t const &ask) const {
         fmt::print(std::cerr, "{:<15} : Entity.\n", e.repr(*query_to_scored.orig.dict, wiki.word_uid()));
     for(auto e : sent_to_scored.words)
         fmt::print(std::cerr, "{:<15} : Word.\n", e.repr(wiki.word_uid()));
-    sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity(), wiki.pos_uid());
+    sent_to_scored.filter_false_named_entity(wiki.get_op_named_entity());
     timer.here_then_reset("Annotate a sentence.");
 
     for(auto e : query_to_scored.entities){

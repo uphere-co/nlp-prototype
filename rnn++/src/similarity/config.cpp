@@ -23,7 +23,7 @@ wikidata::EntityModule::InputParam get_wikimoudle_param(wordrep::ConfigParams co
 }
 
 SubmoduleFactory::SubmoduleFactory(util::json_t const& config_, std::optional<int> data_minor_version)
-        : data_minor_version{data_minor_version}, conf{config_}
+        :conf{config_},  data_minor_version{data_minor_version}
 {}
 
 data::CoreNLPwebclient SubmoduleFactory::corenlp_webclient() const {

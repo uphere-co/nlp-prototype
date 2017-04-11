@@ -80,8 +80,7 @@ struct Scoring{
                 : orig{sent}, entities{}, words{}
         {}
         std::vector<wiki::AmbiguousUID> all_named_entities() const;
-        void filter_false_named_entity(wiki::OpNamedEntity const &op,
-                                       POSUIDindex const& posUIDs);
+        void filter_false_named_entity(wiki::OpNamedEntity const &op);
         std::string repr(WordUIDindex const& wordUIDs) const;
 
         Sentence const& orig;
