@@ -2,13 +2,13 @@ P31	instance of
 Q1	AI
 Q11660	AI
 Q11660	artificial intelligence
-Q2	NLP
-Q2	natural language processing
-Q2	noise for testing
+Q30642	NLP
+Q30642	natural language processing
+Q30642	noise for testing
 Q9366	Google
 Q95	Google
 Q95	Google Inc.
-Q5	DeepMind
+Q15733006	DeepMind
 Q23387	week
 Q23387	Weekly
 Q23387	Week duration
