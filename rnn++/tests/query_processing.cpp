@@ -4,6 +4,8 @@
 
 #include "wordrep/preprocessed_sentences.h"
 
+#include "tests/wiki/test_dataset.h"
+
 #include "utils/flatbuffers/io.h"
 #include "utils/profiling.h"
 
@@ -16,6 +18,9 @@ int load_query_engine_data(int argc, char** argv) {
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
+
+    wikidata::test::UnittestDataset testset{{config_json}};
+    timer.here_then_reset("Load test dataset.");
 
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::DepParsedTokens> texts;
@@ -53,23 +58,27 @@ int load_query_engine_data(int argc, char** argv) {
     };
     //serial_load();
 //    return 0;
-    util::parallel_invoke(load_word_uids,
-                          load_annotation,
-                          load_indexed_text,
-                          load_wiki_module,
-                          load_word_embedding);
+    util::parallel_invoke(load_annotation,
+                          load_word_uids,
+//                          load_wiki_module,
+//                          load_word_embedding,
+                          load_indexed_text);
 
     timer.here_then_reset("Concurrent loading of binary files");
-    auto sents = texts->IndexSentences();
-    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
-    timer.here_then_reset("Post processing of indexed texts.");
-    timer.here_then_reset("Complete to load data structures.");
-    fmt::print("{} sentences", sents.size());
+//    auto sents = texts->IndexSentences();
+//    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
+//    timer.here_then_reset("Post processing of indexed texts.");
 
-    int i=0;
-    for(auto& sent : data_sent){
-        fmt::print("{}\n{}\n\n", sent.orig.repr(*wordUIDs), sent.repr(*wordUIDs));
-        if(++i>50) break;
+    timer.here_then_reset("Complete to load data structures.");
+
+    fmt::print(std::cerr, "List of Wikidata entities:\n");
+    for(auto entity : testset.entities)
+        fmt::print(std::cerr, "{}\n", entity.repr(testset.wikidataUIDs, testset.wordUIDs));
+    fmt::print(std::cerr, "Annotated sentences in test dataset:\n");
+    for (auto sent : testset.sents) {
+        fmt::print(std::cerr, "{}\n", sent.repr(*wordUIDs));
+        auto tagged_sent = testset.annotator.annotate(sent);
+        fmt::print(std::cerr, "{}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
     }
 
     return 0;
