@@ -111,7 +111,7 @@ struct EntityModule{
         EntityModule f{};
         util::parallel_invoke(
                 [&f,param](){f.wordUIDs = std::make_unique<wordrep::WordUIDindex>(param.word_uids);},
-                [&f,param](){f.posUIDs = std::make_unique<wordrep::POSUIDindex>(param.pos_uids);},
+                [&f,param](){f.posUIDs  = std::make_unique<wordrep::POSUIDindex>(param.pos_uids);},
                 [&f,param](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(param.wikidata_uids);},
                 [&f,param](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(param.named_entity_wikidata_uids);},
                 [&f,param]() {

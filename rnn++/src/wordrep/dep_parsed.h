@@ -70,6 +70,7 @@ struct DepParsedTokens{
     void build_voca_index(VocaIndexMap const &voca);
     std::vector<SentUID> build_sent_uid(SentUID init_uid);
 
+    SentUID    sent_uid(DPTokenIndex idx)  const {return sents_uid[idx.val];}
     WordUID    word_uid(DPTokenIndex idx)  const {return words_uid[idx.val];}
     ChunkIndex chunk_idx(DPTokenIndex idx) const {return chunks_idx[idx.val];}
     CharOffset word_beg(DPTokenIndex idx)  const {return words_beg[idx.val];}
