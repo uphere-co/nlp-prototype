@@ -17,11 +17,11 @@ std::string AnnotatedSentence::repr(wiki::EntityReprs const &entity_reprs,
         token.val.match([&ss, &entity_reprs, &wordUIDs, &wikidataUIDs](Token::UnresolvedWikiEntity w) {
                             fmt::print(ss, " (");
                             for (auto uid : w.uid.candidates)
-                                fmt::print(ss, "{} ", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
+                                fmt::print(ss, " {}", entity_reprs[uid].repr(wikidataUIDs, wordUIDs));
                             fmt::print(ss, ")");
                         },
                         [this, &ss, &wordUIDs](DPTokenIndex idx) {
-                            fmt::print(ss, "{} ", wordUIDs[sent.dict->word_uid(idx)]);
+                            fmt::print(ss, " {}", wordUIDs[sent.dict->word_uid(idx)]);
                         });
     }
     return ss.str();

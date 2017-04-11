@@ -1,12 +1,10 @@
 #include "tests/test_context_rnn.h"
+#include "tests/query_processing.h"
 
-int main(){
-    rnn::test::test_context_node();
-    rnn::test::test_crnn_backward();
-    rnn::test::test_crnn_directed_backward();
-    rnn::test::test_grad_parallel_reduce();
-    rnn::test::test_minibatch_crnn();
 
+int main(int argc, char** argv){
+//    rnn::test::test_all();
+    engine::test::load_query_engine_data(argc,argv);
     return 0;
 }
 
