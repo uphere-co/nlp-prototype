@@ -3,6 +3,7 @@
 #include <map>
 
 #include "wordrep/word_uid.h"
+#include "wordrep/file_formats.h"
 
 namespace util{
 namespace io{
@@ -15,11 +16,13 @@ namespace wordrep{
 
 struct Words;
 struct WordImportance{
+    static WordImportance factory(WordImportanceFile const& file);
     using val_t = double;
     //words with their score below low_cutoff are considered noisy words.
     static constexpr val_t low_cutoff = 0.6;
     //low_cutoff_ratio is a functio of low_cutoff and the ratio_to_score function.
     static constexpr val_t low_cutoff_ratio = 3.0;
+    WordImportance(std::map<WordUID,val_t>&& uid2score);
     WordImportance(util::io::H5file const& stats);
     WordImportance(std::string probfile, std::string wordfile);
     val_t score(WordUID uid) const;

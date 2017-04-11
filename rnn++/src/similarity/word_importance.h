@@ -26,4 +26,4 @@ void accum_word_importance_count(util::json_t const& config,
                                  int64_t& n_case);
 void build_word_importance();
 
-}//namespace wordrep
+}//namespace engine

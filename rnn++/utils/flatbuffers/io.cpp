@@ -58,6 +58,12 @@ std::vector<int64_t> load_binary_file(I64Binary file){
     deserialize_i64vector(std::move(data), vec);
     return vec;
 }
+std::vector<float> load_binary_file(F32Binary file){
+    auto data = load_binary_file(file.name);
+    std::vector<float> vec;
+    deserialize_f32vector(std::move(data), vec);
+    return vec;
+}
 
 }//namespace util::io::fb
 }//namespace util::io
