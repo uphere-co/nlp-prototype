@@ -18,8 +18,21 @@ struct LookupEntityCandidateIndexDummy{};
 struct LookupEntityCandidate{
     using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
     struct Range{
-        Index beg;
-        Index end;
+        struct Iterator{
+            Iterator(Index idx) : idx{idx} {}
+            Index operator*( void ) const {return idx;}
+            void operator++(void)                {++idx;}
+            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
+            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
+        private:
+            Index idx;
+        };
+        Range(Index beg, Index end) : beg_{beg},end_{end} {}
+        auto begin() const { return Iterator{beg_};}
+        auto end() const { return Iterator{end_};}
+    private:
+        Index beg_;
+        Index end_;
     };
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
@@ -148,7 +161,7 @@ int load_query_engine_data(int argc, char** argv) {
     for(auto e : named_entities){
         for(auto uid : e.candidates){
             auto range = candidates.find(uid);
-            for(auto i=range.beg; i!=range.end; ++i) {
+            for(auto i : range) {
                 auto& sent = sents.at(texts->sent_uid(candidates.token_index(i)).val);
                 fmt::print("{} : {}\n",
                            testset.entity_reprs[uid].repr(testset.wikidataUIDs, testset.wordUIDs),
