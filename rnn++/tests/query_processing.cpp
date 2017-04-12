@@ -54,6 +54,7 @@ int load_query_engine_data(int argc, char** argv) {
     wikidata::test::UnittestDataset testset{{config_json}};
     timer.here_then_reset("Load test dataset.");
 
+    std::unique_ptr<wordrep::WordImportance> word_importance;
     std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
     std::unique_ptr<wordrep::DepParsedTokens> texts;
     std::unique_ptr<wikidata::EntityModule> f{};
@@ -62,6 +63,9 @@ int load_query_engine_data(int argc, char** argv) {
 
     auto load_word_uids =[&wordUIDs,&factory](){
         wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.conf.word_uid);
+    };
+    auto load_word_scores =[&word_importance,&factory](){
+        word_importance = std::make_unique<wordrep::WordImportance>(factory.word_importance());
     };
     auto load_annotation =[&annotated_tokens,&factory](){
         annotated_tokens = factory.load_annotation();
@@ -92,14 +96,19 @@ int load_query_engine_data(int argc, char** argv) {
 //    return 0;
     util::parallel_invoke(load_annotation,
                           load_word_uids,
+                          load_word_scores,
 //                          load_wiki_module,
-//                          load_word_embedding,
+                          load_word_embedding,
                           load_indexed_text);
 
     timer.here_then_reset("Concurrent loading of binary files");
     auto sents = texts->IndexSentences();
 //    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
+    wordrep::Scoring scoring{*word_importance, voca->wvecs};
+    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
     timer.here_then_reset("Post processing of indexed texts.");
+
+    testset.tokens.build_voca_index(voca->indexmap);
 
     timer.here_then_reset("Complete to load data structures.");
 
@@ -111,24 +120,30 @@ int load_query_engine_data(int argc, char** argv) {
     for(auto entity : testset.entities)
         fmt::print("{}\n", entity.repr(testset.wikidataUIDs, testset.wordUIDs));
     fmt::print(std::cerr, "Annotated sentences in test dataset:\n");
-    for (auto sent : testset.sents) {
-        fmt::print(std::cerr, "{}\n", sent.repr(*wordUIDs));
-        auto tagged_sent = testset.annotator.annotate(sent);
-        fmt::print(std::cerr, "{}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
-    }
 
-    auto google  = wordrep::WikidataUIDindex::get_uid("Q95");
-    auto m_google_tags = candidates.find(google);
-    timer.here_then_reset("Find candidate entities.");
-
-    if(m_google_tags){
-        auto google_tags = m_google_tags.value();
-        for(auto it=google_tags.first; it!=google_tags.second; ++it){
-            auto& sent = sents.at(texts->sent_uid(it->token_idx()).val);
-            fmt::print("{}\n", sent.repr(*wordUIDs));
+    auto& sent = testset.sents.front();
+    auto tagged_sent = testset.annotator.annotate(sent);
+    fmt::print(std::cerr, "SENT: {}\n", tagged_sent.sent.repr(*wordUIDs));
+    fmt::print(std::cerr, "TAGGED: {}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
+    auto preprocessed_sent = scoring_preprocessor.sentence(tagged_sent);
+    preprocessed_sent.filter_false_named_entity(testset.op_named_entity);
+    auto named_entities = preprocessed_sent.all_named_entities();
+    fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
+    for(auto e : named_entities){
+        for(auto uid : e.candidates){
+            auto m_matches = candidates.find(uid);
+            if(!m_matches) continue;
+            auto matched_tokens = m_matches.value();
+            for(auto it=matched_tokens.first; it!=matched_tokens.second; ++it) {
+                auto& sent = sents.at(texts->sent_uid(it->token_idx()).val);
+                fmt::print("{} : {}\n",
+                           testset.entity_reprs[uid].repr(testset.wikidataUIDs, testset.wordUIDs),
+                           sent.repr(*wordUIDs));
+            }
         }
-        fmt::print(std::cerr, "{} tokens are found\n", google_tags.second-google_tags.first);
     }
+
+    timer.here_then_reset("Find candidate entities.");
 
 
     return 0;

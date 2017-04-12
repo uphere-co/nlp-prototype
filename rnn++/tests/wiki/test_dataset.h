@@ -48,8 +48,8 @@ struct UnittestDataset {
     wordrep::WikidataUIDindex    wikidataUIDs;
     wordrep::WikidataUIDindex    wiki_ne_UIDs;
     wordrep::wiki::OpNamedEntity op_named_entity;
-    wordrep::DepParsedTokens     tokens{};
-    std::vector<wordrep::Sentence> sents{};
+    wordrep::DepParsedTokens     tokens;
+    std::vector<wordrep::Sentence> sents;
 
 };
 
