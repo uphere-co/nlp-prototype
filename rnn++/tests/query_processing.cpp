@@ -30,10 +30,12 @@ struct LookupEntityCandidate{
         Range(Index beg, Index end) : beg_{beg},end_{end} {}
         auto begin() const { return Iterator{beg_};}
         auto end() const { return Iterator{end_};}
+        size_t size() const {return end_.val - beg_.val;}
     private:
         Index beg_;
         Index end_;
     };
+
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
         LookupEntityCandidate candidates;
@@ -72,6 +74,39 @@ private:
     {}
     std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
 };
+
+template<typename OP>
+auto reduce(LookupEntityCandidate::Range const& lhs,
+            LookupEntityCandidate::Range const& rhs,
+            OP key){
+    auto lhs_keys = util::map(lhs, key);
+    auto rhs_keys = util::map(rhs, key);
+    util::sort(lhs_keys);
+    util::sort(rhs_keys);
+    decltype(lhs_keys) common_keys;
+    std::set_intersection(lhs_keys.begin(), lhs_keys.end(),
+                          rhs_keys.begin(), rhs_keys.end(),
+                          std::back_inserter(common_keys));
+    return common_keys;
+}
+
+template<typename OP>
+auto reduce(std::vector<LookupEntityCandidate::Range> const& xs,
+            std::vector<LookupEntityCandidate::Range> const& ys,
+            OP key){
+
+    using TM = typename std::result_of<OP(decltype(*(std::begin(xs.front()))))>::type;
+    std::vector<TM> vals;
+
+    for(auto& x : xs){
+        for(auto& y : ys){
+            auto commons = reduce(x, y, key);
+            util::append(vals, commons);
+        }
+    }
+
+    return vals;
+}
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
@@ -159,14 +194,13 @@ int load_query_engine_data(int argc, char** argv) {
     auto named_entities = preprocessed_sent.all_named_entities();
     fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
     for(auto e : named_entities){
-        for(auto uid : e.candidates){
-            auto range = candidates.find(uid);
-            for(auto i : range) {
-                auto& sent = sents.at(texts->sent_uid(candidates.token_index(i)).val);
-                fmt::print("{} : {}\n",
-                           testset.entity_reprs[uid].repr(testset.wikidataUIDs, testset.wordUIDs),
-                           sent.repr(*wordUIDs));
-            }
+        auto ranges = util::map(e.candidates, [&](auto uid){return candidates.find(uid);});
+        auto common = reduce(ranges, ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
+        for(auto sent_uid : common){
+            auto& sent = sents.at(sent_uid.val);
+            fmt::print("{} : {}\n",
+                       testset.entity_reprs[e.candidates.back()].repr(testset.wikidataUIDs, testset.wordUIDs),
+                       sent.repr(*wordUIDs));
         }
     }
 
