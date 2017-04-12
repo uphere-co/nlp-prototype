@@ -13,7 +13,14 @@
 namespace engine {
 namespace test{
 
+struct LookupEntityCandidateIndexDummy{};
+
 struct LookupEntityCandidate{
+    using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
+    struct Range{
+        Index beg;
+        Index end;
+    };
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
         LookupEntityCandidate candidates;
@@ -31,11 +38,20 @@ struct LookupEntityCandidate{
         return candidates;
     }
 
-    auto find(wordrep::WikidataUID uid) const{
+    Range find(wordrep::WikidataUID uid) const{
         auto eq   = [uid](auto x){return uid.val==x.wiki_uid();};
         auto less = [uid](auto x){return uid.val<x.wiki_uid();};
-        return util::binary_find_block(*tokens, eq, less);
+
+        auto m_pair = util::binary_find_block(*tokens, eq, less);
+        if(!m_pair) return {0,0};
+        auto beg = m_pair->first  - tokens->cbegin();
+        auto end = m_pair->second - tokens->cbegin();
+        return {beg,end};
     }
+    auto& at(Index idx) const{return tokens->at(idx.val);}
+    wordrep::DPTokenIndex token_index(Index idx) const {return at(idx).token_idx();}
+    wordrep::WikidataUID  wiki_uid(Index idx)    const {return at(idx).wiki_uid();}
+    auto score(Index idx) const {return at(idx).score();}
     auto size() const{return tokens->size();}
 private:
     LookupEntityCandidate()
@@ -131,11 +147,9 @@ int load_query_engine_data(int argc, char** argv) {
     fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
     for(auto e : named_entities){
         for(auto uid : e.candidates){
-            auto m_matches = candidates.find(uid);
-            if(!m_matches) continue;
-            auto matched_tokens = m_matches.value();
-            for(auto it=matched_tokens.first; it!=matched_tokens.second; ++it) {
-                auto& sent = sents.at(texts->sent_uid(it->token_idx()).val);
+            auto range = candidates.find(uid);
+            for(auto i=range.beg; i!=range.end; ++i) {
+                auto& sent = sents.at(texts->sent_uid(candidates.token_index(i)).val);
                 fmt::print("{} : {}\n",
                            testset.entity_reprs[uid].repr(testset.wikidataUIDs, testset.wordUIDs),
                            sent.repr(*wordUIDs));
