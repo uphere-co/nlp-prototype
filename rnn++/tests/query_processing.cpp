@@ -13,10 +13,10 @@
 namespace engine {
 namespace test{
 
-struct UIDSortedCandidates{
-    static UIDSortedCandidates factory(wordrep::AnnotationData const& tokens){
+struct LookupEntityCandidate{
+    static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
-        UIDSortedCandidates candidates;
+        LookupEntityCandidate candidates;
 
         for(auto const& block : tokens.blocks){
             util::append(*candidates.tokens, block->candidates);
@@ -38,7 +38,7 @@ struct UIDSortedCandidates{
     }
     auto size() const{return tokens->size();}
 private:
-    UIDSortedCandidates()
+    LookupEntityCandidate()
             : tokens{std::make_unique<tbb::concurrent_vector<wordrep::io::EntityCandidate>>()}
     {}
     std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
@@ -112,7 +112,7 @@ int load_query_engine_data(int argc, char** argv) {
 
     timer.here_then_reset("Complete to load data structures.");
 
-    auto candidates = UIDSortedCandidates::factory(annotated_tokens);
+    auto candidates = LookupEntityCandidate::factory(annotated_tokens);
     timer.here_then_reset("Aggregate to UID sorted tokens.");
     fmt::print(std::cerr, "{} tokens\n", candidates.size());
 
