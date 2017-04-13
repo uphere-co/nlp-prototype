@@ -16,6 +16,21 @@ public:
     using span_t     = util::span_1d<val_t,dim>;
     using idx_t      = VocaIndex;
 
+    struct RowIndexIterator{
+        struct Iterator{
+            Iterator(idx_t idx) : idx{idx} {}
+            idx_t operator*( void ) const {return idx;}
+            void operator++(void) {++idx;}
+            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
+            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
+        private:
+            idx_t idx;
+
+        };
+        Iterator begin() const { return {0};}
+        Iterator end()   const { return {util::to_signed_positive<idx_t::val_t>(self.size())};}
+        WordBlock_base const& self;
+    };
 //    WordBlock_base()
 //    : _val{},span{_val} {}
 //    WordBlock_base(idx_t voca_size)
@@ -39,11 +54,15 @@ public:
 
     WordBlock_base& operator=(const WordBlock_base& )= delete;
     WordBlock_base copy() const {
-        return WordBlock_base{_val};
+        return {_val};
     }
     span_t operator[](idx_t idx) const{
         return span.subspan(idx.val*word_dim, word_dim);
     }
+    span_t operator[](idx_t idx) {
+        return span.subspan(idx.val*word_dim, word_dim);
+    }
+    auto& at(idx_t idx, int32_t j) { return _val.at(idx.val*word_dim+j); }
     WordBlock_base getWordVec(util::span_dyn<idx_t> idxs) const {
         data_t new_block;
         new_block.reserve(2*idxs.size()*word_dim); //2x size for phrases that will be generated from words.
@@ -56,6 +75,7 @@ public:
     auto size() const {return _val.size()/word_dim;};
     data_t serialize() const { return _val;}
 
+    RowIndexIterator iter_row_idx() const{return {*this};}
 private:
     data_t _val;
     raw_span_t span;

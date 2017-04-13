@@ -21,7 +21,7 @@ struct LookupEntityCandidate{
         struct Iterator{
             Iterator(Index idx) : idx{idx} {}
             Index operator*( void ) const {return idx;}
-            void operator++(void)                {++idx;}
+            void operator++(void) {++idx;}
             bool operator==(Iterator rhs) const {return idx == rhs.idx;}
             bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
         private:

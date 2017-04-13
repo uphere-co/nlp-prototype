@@ -39,6 +39,13 @@ auto to_pairs(tbb::concurrent_hash_map<TK,TV,TH> const& src){
     return out;
 }
 
+template<typename T>
+std::vector<T> to_vector(tbb::concurrent_vector<T> const &vs){
+    std::vector<T> vec;
+    vec.reserve(vs.size());
+    for(auto& v : vs) vec.push_back(v);
+    return vec;
+}
 
 template<typename T>
 auto binary_find(tbb::concurrent_vector<T> const &vs, T val){
