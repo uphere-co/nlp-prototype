@@ -68,6 +68,12 @@ auto binary_find_block(tbb::concurrent_vector<T> const &vs, T val){
     return binary_find_block(beg,end,eq, less);
 }
 
+template<typename T, typename TI>
+void append(tbb::concurrent_vector<T> &orig, TI elms) {
+    static_assert(std::is_same<typename TI::value_type,T>::value, "");
+    orig.reserve(orig.size()+elms.size());
+    std::copy(elms.cbegin(), elms.cend(), std::back_inserter(orig));
+}
 
 }//namespace util
 
