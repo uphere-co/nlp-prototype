@@ -15,10 +15,10 @@ struct SimilarWords {
     SimilarWords(tbb::concurrent_vector<io::SimilarWordPair> && may_not_sorted);
 
     void to_file(SimilarWordsFile&& file) const;
-    auto begin() const {return similar_words->begin();}
-    auto end()   const {return similar_words->end();}
+    auto begin() const {return similar_words.begin();}
+    auto end()   const {return similar_words.end();}
 private:
-    std::unique_ptr<tbb::concurrent_vector<io::SimilarWordPair>> similar_words;
+    tbb::concurrent_vector<io::SimilarWordPair> similar_words;
 };
 
 }//namespace wordrep

@@ -16,13 +16,13 @@ SimilarWords SimilarWords::factory(SimilarWordsFile const& file){
     return {std::move(similar_words)};
 }
 
-SimilarWords::SimilarWords(tbb::concurrent_vector<io::SimilarWordPair>&& may_not_sorted) {
-    tbb::parallel_sort(may_not_sorted.begin(), may_not_sorted.end());
-    similar_words = std::make_unique<tbb::concurrent_vector<io::SimilarWordPair>>(std::move(may_not_sorted));
+SimilarWords::SimilarWords(tbb::concurrent_vector<io::SimilarWordPair>&& may_not_sorted)
+: similar_words{std::move(may_not_sorted)} {
+    tbb::parallel_sort(similar_words.begin(), similar_words.end());
 }
 
 void SimilarWords::to_file(SimilarWordsFile&& file) const {
-    auto tokens = util::to_vector(*similar_words);
+    auto tokens = util::to_vector(similar_words);
     flatbuffers::FlatBufferBuilder builder;
     auto tokens_serialized = builder.CreateVectorOfStructs(tokens);
     auto entities = wordrep::io::CreateSimilarWords(builder, tokens_serialized);
