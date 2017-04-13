@@ -135,6 +135,9 @@ target_link_libraries(wikidata_annotator stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt p
 add_executable(wikidata_etl app/wikidata_etl
         ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(wikidata_etl stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
+add_executable(wordsim_table app/wordsim_table
+        ${etl_files} ${similarity_files} ${wordrep_files} ${wiki_files} ${util_files})
+target_link_libraries(wordsim_table stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt pqxx dw)
 
 
 add_executable(hdf5io app/hdf5io src/parser/config src/parser/param  ${util_files} ${wordrep_files})
