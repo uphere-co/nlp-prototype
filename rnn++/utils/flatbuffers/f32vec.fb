@@ -1,4 +1,4 @@
-namespace util.io.fb;
+namespace util.io;
 table F32Vector {  vals:[float]; }
 
 file_identifier "F32V";

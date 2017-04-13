@@ -12,7 +12,6 @@
 
 namespace util {
 namespace io {
-namespace fb {
 
 inline bool operator<(Pair x, Pair y) {
     return x.key() < y.key();
@@ -76,6 +75,5 @@ auto deserialize_pairs(std::unique_ptr<char[]> data){
     return pairs;
 }
 
-}//namespace util::io::fb
 }//namespace util::io
 }//namesapce util
