@@ -115,8 +115,8 @@ struct EntityModule{
                 [&f,param](){f.wikiUIDs = std::make_unique<wordrep::WikidataUIDindex>(param.wikidata_uids);},
                 [&f,param](){f.wiki_ne_UIDs = std::make_unique<wordrep::WikidataUIDindex>(param.named_entity_wikidata_uids);},
                 [&f,param]() {
-                    using util::io::fb::deserialize_pairs;
-                    using util::io::fb::load_binary_file;
+                    using util::io::deserialize_pairs;
+                    using util::io::load_binary_file;
                     auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(load_binary_file(param.wikidata_properties));
                     auto instances = deserialize_pairs<wikidata::EntityOfProperty>(load_binary_file(param.wikidata_instances));
                     f.prop_dict = std::make_unique<wikidata::PropertyTable>(std::move(properties), std::move(instances));

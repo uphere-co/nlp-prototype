@@ -5,7 +5,6 @@
 
 namespace util {
 namespace io {
-namespace fb {
 
 void to_file(flatbuffers::FlatBufferBuilder const& builder, std::string filename){
     auto *buf = builder.GetBufferPointer();
@@ -14,7 +13,7 @@ void to_file(flatbuffers::FlatBufferBuilder const& builder, std::string filename
     outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
     outfile.write(reinterpret_cast<const char *>(buf), size);
 }
-void to_file(std::vector<Pair> const& vals, PairsBinary file){
+void to_file(std::vector<Pair> const& vals, PairsBinary&& file){
     flatbuffers::FlatBufferBuilder builder;
     auto vals_serialized = builder.CreateVectorOfStructs(vals);
     auto properties = CreatePairs(builder, vals_serialized);
@@ -22,7 +21,7 @@ void to_file(std::vector<Pair> const& vals, PairsBinary file){
     to_file(builder, file.name);
 }
 
-void to_file(std::vector<int64_t> const& vals, I64Binary file){
+void to_file(std::vector<int64_t> const& vals, I64Binary&& file){
     flatbuffers::FlatBufferBuilder builder;
     auto vals_serialized = builder.CreateVector(vals);
     auto properties = CreateI64Vector(builder, vals_serialized);
@@ -30,7 +29,7 @@ void to_file(std::vector<int64_t> const& vals, I64Binary file){
     to_file(builder, file.name);
 }
 
-void to_file(std::vector<float> const& vals, F32Binary file){
+void to_file(std::vector<float> const& vals, F32Binary&& file){
     flatbuffers::FlatBufferBuilder builder;
     auto vals_serialized = builder.CreateVector(vals);
     auto properties = CreateF32Vector(builder, vals_serialized);
@@ -47,19 +46,18 @@ std::unique_ptr<char[]> load_binary_file(std::string filename){
     return data;
 }
 
-std::vector<int64_t> load_binary_file(I64Binary file){
+std::vector<int64_t> load_binary_file(I64Binary const& file){
     auto data = load_binary_file(file.name);
     std::vector<int64_t> vec;
     deserialize_i64vector(std::move(data), vec);
     return vec;
 }
-std::vector<float> load_binary_file(F32Binary file){
+std::vector<float> load_binary_file(F32Binary const& file){
     auto data = load_binary_file(file.name);
     std::vector<float> vec;
     deserialize_f32vector(std::move(data), vec);
     return vec;
 }
 
-}//namespace util::io::fb
 }//namespace util::io
 }//namesapce util

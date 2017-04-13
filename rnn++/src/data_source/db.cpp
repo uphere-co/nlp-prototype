@@ -2,7 +2,7 @@
 
 #include "utils/flatbuffers/io.h"
 
-namespace fb = util::io::fb;
+namespace fb = util::io;
 using util::io::I64Binary;
 
 namespace data {

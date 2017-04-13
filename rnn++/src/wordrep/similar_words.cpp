@@ -7,7 +7,7 @@
 namespace wordrep {
 
 SimilarWords SimilarWords::factory(SimilarWordsFile const& file){
-    auto data = util::io::fb::load_binary_file(file.name);
+    auto data = util::io::load_binary_file(file.name);
     auto rbuf = wordrep::io::GetSimilarWords(data.get());
     tbb::concurrent_vector<wordrep::io::SimilarWordPair> similar_words;
     similar_words.reserve(rbuf->pairs()->size());
@@ -27,7 +27,7 @@ void SimilarWords::to_file(SimilarWordsFile&& file) const {
     auto tokens_serialized = builder.CreateVectorOfStructs(tokens);
     auto entities = wordrep::io::CreateSimilarWords(builder, tokens_serialized);
     builder.Finish(entities);
-    util::io::fb::to_file(builder, file.name);
+    util::io::to_file(builder, file.name);
 }
 
 }//namespace wordrep

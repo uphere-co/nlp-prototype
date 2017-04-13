@@ -7,7 +7,7 @@
 namespace wordrep{
 
 VocaIndexMap VocaIndexMap::factory(Binary file){
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
     std::vector<WordUID> vidx_wuids;
     fb::deserialize_i64vector(fb::load_binary_file(file.name), vidx_wuids);
     return {vidx_wuids};

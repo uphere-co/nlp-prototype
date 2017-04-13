@@ -22,17 +22,17 @@ inline bool operator==(Pair x, Pair y) {
 
 
 void to_file(flatbuffers::FlatBufferBuilder const& builder, std::string filename);
-void to_file(std::vector<Pair> const& vals, PairsBinary file);
-void to_file(std::vector<int64_t> const& vals, I64Binary file);
-void to_file(std::vector<float> const& vals, F32Binary file);
+void to_file(std::vector<Pair> const& vals, PairsBinary&& file);
+void to_file(std::vector<int64_t> const& vals, I64Binary&& file);
+void to_file(std::vector<float> const& vals, F32Binary&& file);
 
 
 std::unique_ptr<char[]> load_binary_file(std::string file);
 
-std::vector<int64_t> load_binary_file(I64Binary file);
-std::vector<float> load_binary_file(F32Binary file);
+std::vector<int64_t> load_binary_file(I64Binary const& file);
+std::vector<float> load_binary_file(F32Binary const& file);
 
-inline std::unique_ptr<char[]> load_binary_file(PairsBinary file){
+inline std::unique_ptr<char[]> load_binary_file(PairsBinary const& file){
     return load_binary_file(file.name);
 };
 
@@ -41,7 +41,7 @@ void deserialize_i64vector(std::unique_ptr<char[]> data, T& vec){
     assert(vec.empty());
 //    static_assert(std::is_same<typename T::value_type, int64_t>::value, "");
 
-    auto rbuf = fb::GetI64Vector(data.get());
+    auto rbuf = GetI64Vector(data.get());
     vec.reserve(rbuf->vals()->size());
     for(auto v : *rbuf->vals()) vec.push_back(v);
 }
@@ -49,15 +49,14 @@ template<typename T>
 void deserialize_f32vector(std::unique_ptr<char[]> data, T& vec){
     assert(vec.empty());
 //    static_assert(std::is_same<typename T::value_type, float>::value, "");
-    auto rbuf = fb::GetF32Vector(data.get());
+    auto rbuf = GetF32Vector(data.get());
     vec.reserve(rbuf->vals()->size());
     for(auto v : *rbuf->vals()) vec.push_back(v);
 }
 
 template<typename T>
 void deserialize_pairs(std::unique_ptr<char[]> data, tbb::concurrent_vector<T>& pairs){
-    namespace fb = util::io::fb;
-    auto rbuf = fb::GetPairs(data.get());
+    auto rbuf = GetPairs(data.get());
     auto& properties_buf = *rbuf->vals();
     auto n = properties_buf.size();
 

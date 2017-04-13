@@ -140,7 +140,7 @@ void UIDIndex<TUID>::to_file(UIDIndexFile file) const {
     auto entities = fb::CreateSortedUIDs(builder, es_serialized, words_serialized);
     builder.Finish(entities);
 
-    util::io::fb::to_file(builder, file.name);
+    util::io::to_file(builder, file.name);
 }
 
 
