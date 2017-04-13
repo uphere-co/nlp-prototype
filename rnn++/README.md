@@ -60,6 +60,7 @@ Output filename is also fixed : `prob.h5`. Generate it and place it appreciative
 #First, place config.rss.json and config.ygp.json to present directory.
 ./word_importance_build
 ```
+
 ## Indexing YGP DB:
 ```
 #Dumping YGP DB:

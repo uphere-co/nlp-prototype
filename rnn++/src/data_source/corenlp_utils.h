@@ -33,8 +33,7 @@ void parallel_load_jsons(std::vector<std::string> const &files, OP &op){
 
 struct CoreNLPoutputParser{
     void operator() (size_t i, CoreNLPjson const &json);
-    wordrep::DepParsedTokens serial_parse(std::vector<std::string> dump_files,
-                                          std::string prefix) ;
+    wordrep::DepParsedTokens serial_parse(std::vector<std::string> dump_files) ;
     std::vector<size_t> get_nonnull_idx() const;
     wordrep::DepParsedTokens get() const;
 
