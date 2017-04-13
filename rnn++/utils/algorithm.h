@@ -60,6 +60,35 @@ void apply(T &elms, OP const &op){
     for(auto &elm : elms) elm = op(elm);
 };
 
+template<typename FI, typename OP>
+auto concat_map(std::vector<FI> const& xs, OP op_key){
+    decltype(map(xs.front(), op_key)) vals;
+    for(auto& x : xs)
+        append(vals, util::map(x, op_key));
+    return vals;
+}
+
+template<typename T>
+auto intersection(std::vector<T> xs){
+    using RT = std::vector<typename T::value_type>;
+    RT commons;
+
+    if(xs.empty()) return commons;
+    commons = xs.back();
+    xs.pop_back();
+
+    for(auto& tmps : xs){
+        sort(commons);
+        sort(tmps);
+        RT commons_updated;
+        std::set_intersection(commons.begin(), commons.end(),
+                              tmps.begin(), tmps.end(),
+                              std::back_inserter(commons_updated));
+        commons = commons_updated;
+    }
+    return commons;
+}
+
 
 template<typename T>
 T to_type(size_t uval){

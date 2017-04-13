@@ -63,6 +63,9 @@ struct LookupEntityCandidate{
         auto end = m_pair->second - tokens->cbegin();
         return {beg,end};
     }
+    std::vector<Range> find(wordrep::wiki::AmbiguousUID const& ambi_uid) const{
+        return util::map(ambi_uid.candidates, [this](auto uid){return this->find(uid);});
+    }
     auto& at(Index idx) const{return tokens->at(idx.val);}
     wordrep::DPTokenIndex token_index(Index idx) const {return at(idx).token_idx();}
     wordrep::WikidataUID  wiki_uid(Index idx)    const {return at(idx).wiki_uid();}
@@ -75,38 +78,6 @@ private:
     std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
 };
 
-template<typename OP>
-auto reduce(LookupEntityCandidate::Range const& lhs,
-            LookupEntityCandidate::Range const& rhs,
-            OP key){
-    auto lhs_keys = util::map(lhs, key);
-    auto rhs_keys = util::map(rhs, key);
-    util::sort(lhs_keys);
-    util::sort(rhs_keys);
-    decltype(lhs_keys) common_keys;
-    std::set_intersection(lhs_keys.begin(), lhs_keys.end(),
-                          rhs_keys.begin(), rhs_keys.end(),
-                          std::back_inserter(common_keys));
-    return common_keys;
-}
-
-template<typename OP>
-auto reduce(std::vector<LookupEntityCandidate::Range> const& xs,
-            std::vector<LookupEntityCandidate::Range> const& ys,
-            OP key){
-
-    using TM = typename std::result_of<OP(decltype(*(std::begin(xs.front()))))>::type;
-    std::vector<TM> vals;
-
-    for(auto& x : xs){
-        for(auto& y : ys){
-            auto commons = reduce(x, y, key);
-            util::append(vals, commons);
-        }
-    }
-
-    return vals;
-}
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
@@ -178,30 +149,35 @@ int load_query_engine_data(int argc, char** argv) {
 
     auto candidates = LookupEntityCandidate::factory(annotated_tokens);
     timer.here_then_reset("Aggregate to UID sorted tokens.");
-    fmt::print(std::cerr, "{} tokens\n", candidates.size());
 
+
+    auto& sent = testset.sents.front();
+    auto tagged_sent = testset.annotator.annotate(sent);
+    auto preprocessed_sent = scoring_preprocessor.sentence(tagged_sent);
+    preprocessed_sent.filter_false_named_entity(testset.op_named_entity);
+    auto named_entities = preprocessed_sent.all_named_entities();
+    timer.here_then_reset("Annotate a query sentence.");
+
+    auto tokens_per_uid = util::map(named_entities, [&](auto& e){
+        auto ranges = candidates.find(e);
+        return util::concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
+    });
+    timer.here_then_reset("Map phase for Wiki entities.");
+    auto matched_sents  = util::intersection(tokens_per_uid);
+    timer.here_then_reset("Reduce phase for Wiki entities.");
+
+    fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", candidates.size());
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : testset.entities)
         fmt::print("{}\n", entity.repr(testset.wikidataUIDs, testset.wordUIDs));
     fmt::print(std::cerr, "Annotated sentences in test dataset:\n");
 
-    auto& sent = testset.sents.front();
-    auto tagged_sent = testset.annotator.annotate(sent);
     fmt::print(std::cerr, "SENT: {}\n", tagged_sent.sent.repr(*wordUIDs));
     fmt::print(std::cerr, "TAGGED: {}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
-    auto preprocessed_sent = scoring_preprocessor.sentence(tagged_sent);
-    preprocessed_sent.filter_false_named_entity(testset.op_named_entity);
-    auto named_entities = preprocessed_sent.all_named_entities();
     fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
-    for(auto e : named_entities){
-        auto ranges = util::map(e.candidates, [&](auto uid){return candidates.find(uid);});
-        auto common = reduce(ranges, ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
-        for(auto sent_uid : common){
-            auto& sent = sents.at(sent_uid.val);
-            fmt::print("{} : {}\n",
-                       testset.entity_reprs[e.candidates.back()].repr(testset.wikidataUIDs, testset.wordUIDs),
-                       sent.repr(*wordUIDs));
-        }
+    for(auto sent_uid : matched_sents){
+        auto& sent = sents.at(sent_uid.val);
+        fmt::print("{}\n", sent.repr(*wordUIDs));
     }
 
     timer.here_then_reset("Find candidate entities.");
