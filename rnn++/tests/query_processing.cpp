@@ -158,12 +158,12 @@ int load_query_engine_data(int argc, char** argv) {
     auto named_entities = preprocessed_sent.all_named_entities();
     timer.here_then_reset("Annotate a query sentence.");
 
-    auto tokens_per_ambiguous_entity = util::map(named_entities, [&](auto& e){
+    auto keys_per_ambiguous_entity = util::map(named_entities, [&](auto& e){
         auto ranges = candidates.find(e);
         return util::concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
     });
     timer.here_then_reset("Map phase for Wiki entities.");
-    auto matched_sents  = util::intersection(tokens_per_ambiguous_entity);
+    auto matched_sents  = util::intersection(keys_per_ambiguous_entity);
     timer.here_then_reset("Reduce phase for Wiki entities.");
 
     fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", candidates.size());
