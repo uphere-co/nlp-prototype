@@ -4,7 +4,7 @@
 #include "wordrep/word_hash.h"
 #include "wordrep/word_iter.h"
 
-#include "wordrep/flatbuffers/uids_generated.h"
+#include "wordrep/io.h"
 
 #include "utils/string.h"
 #include "utils/parallel_algorithm.h"
@@ -140,12 +140,7 @@ void UIDIndex<TUID>::to_file(UIDIndexFile file) const {
     auto entities = fb::CreateSortedUIDs(builder, es_serialized, words_serialized);
     builder.Finish(entities);
 
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-
-    std::ofstream outfile(file.name, std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
+    util::io::fb::to_file(builder, file.name);
 }
 
 

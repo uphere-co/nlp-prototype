@@ -25,11 +25,7 @@ void SerializedAnnotation::to_file(Binary file) const {
     auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, tokens_serialized);
     builder.Finish(entities);
 
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-    std::ofstream outfile(file.name, std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
+    util::io::fb::to_file(builder, file.name);
 }
 
 std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Binary const& file){
