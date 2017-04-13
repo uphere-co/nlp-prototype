@@ -7,10 +7,11 @@
 #include "wordrep/voca_info.h"
 #include "wordrep/word_uid.h"
 #include "wordrep/simiarity_score.h"
-#include "wordrep/io.h"
+#include "wordrep/similar_words.h"
 
 int generate_similarword_table(int argc, char** argv) {
     assert(argc>1);
+    auto cutoff_ratio = 0.7;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
@@ -41,19 +42,19 @@ int generate_similarword_table(int argc, char** argv) {
         auto norm_factor = 1.0/util::math::norm_L2(wvecs[vidx]);
         for(decltype(vec_dim)j=0; j!=vec_dim; ++j) wvecs.at(vidx,j) *= norm_factor;
     }
-    timer.here_then_reset("L1 normalize word vectors.");
+    timer.here_then_reset("L2 normalize word vectors.");
 
     tbb::concurrent_vector<wordrep::io::SimilarWordPair> similar_words;
     similar_words.reserve(voca->indexmap.size()*100);
     auto word_scores = util::to_pairs(word_importance->all_scores());
     auto n = word_scores.size();
-    tbb::parallel_for(decltype(n){0}, n, [&word_scores,&word_importance,&voca,&wvecs,&similar_words](auto i){
+    tbb::parallel_for(decltype(n){0}, n, [cutoff_ratio,&word_scores,&word_importance,&voca,&wvecs,&similar_words](auto i){
         auto& elm = word_scores[i];
         auto word = elm.first;
         if(word_importance->is_noisy_word(word)) return;
 
         auto word_vidx = voca->indexmap[word];
-        auto cutoff = word_importance->score(word) * 0.7;
+        auto cutoff = word_importance->score(word) * cutoff_ratio;
         for(auto elm : voca->indexmap.iter_token()){
             auto w = elm.first;
             auto vidx = elm.second;
@@ -64,17 +65,10 @@ int generate_similarword_table(int argc, char** argv) {
     });
     timer.here_then_reset("Get similar words");
 
-    tbb::parallel_sort(similar_words.begin(), similar_words.end());
-    timer.here_then_reset("Sort similar words");
-
-    auto tokens = util::to_vector(similar_words);
-    flatbuffers::FlatBufferBuilder builder;
-    auto tokens_serialized = builder.CreateVectorOfStructs(tokens);
-    auto entities = wordrep::io::CreateSimilarWords(builder, tokens_serialized);
-    builder.Finish(entities);
-    util::io::fb::to_file(builder, "similar_words.bin");
+    wordrep::SimilarWords table{std::move(similar_words)};
+    timer.here_then_reset("Build SimilarWords table");
+    table.to_file({"similar_words.bin"});
     timer.here_then_reset("Write to file");
-
     return 0;
 }
 
@@ -86,12 +80,7 @@ void load_similarword_table(int argc, char** argv) {
     wordrep::WordUIDindex wordUIDs{factory.conf.word_uid};
     timer.here_then_reset("Load data");
 
-    auto data = util::io::fb::load_binary_file("similar_words.bin");
-    auto rbuf = wordrep::io::GetSimilarWords(data.get());
-    tbb::concurrent_vector<wordrep::io::SimilarWordPair> similar_words;
-    similar_words.reserve(rbuf->pairs()->size());
-    for(auto v : *rbuf->pairs())
-        similar_words.push_back(*v);
+    auto similar_words = wordrep::SimilarWords::factory({"similar_words.bin"});
     timer.here_then_reset("Load SimilarWordPair from binary files");
     for(auto elm : similar_words){
         fmt::print("{} {} {}\n", wordUIDs.str(elm.word()), wordUIDs.str(elm.sim()), elm.similarity());

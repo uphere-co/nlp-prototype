@@ -38,6 +38,10 @@ struct WordImportanceFile{
     util::io::F32Binary scores;
 };
 
+struct SimilarWordsFile{
+    std::string name;
+};
+
 struct WikiPropertyFile{
     std::string name;
 };
