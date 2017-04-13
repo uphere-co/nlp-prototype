@@ -83,16 +83,24 @@ void load_similarword_table(int argc, char** argv) {
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
-
     wordrep::WordUIDindex wordUIDs{factory.conf.word_uid};
+    timer.here_then_reset("Load data");
+
+    auto data = util::io::fb::load_binary_file("similar_words.bin");
+    auto rbuf = wordrep::io::GetSimilarWords(data.get());
     tbb::concurrent_vector<wordrep::io::SimilarWordPair> similar_words;
+    similar_words.reserve(rbuf->pairs()->size());
+    for(auto v : *rbuf->pairs())
+        similar_words.push_back(*v);
+    timer.here_then_reset("Load SimilarWordPair from binary files");
     for(auto elm : similar_words){
         fmt::print("{} {} {}\n", wordUIDs.str(elm.word()), wordUIDs.str(elm.sim()), elm.similarity());
     }
 }
 
 int main(int argc, char** argv){
-    generate_similarword_table(argc,argv);
+//    generate_similarword_table(argc,argv);
+    load_similarword_table(argc,argv);
     return 0;
 
     rnn::test::test_all();
