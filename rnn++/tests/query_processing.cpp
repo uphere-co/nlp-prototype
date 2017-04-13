@@ -81,7 +81,6 @@ private:
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
-    namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
