@@ -39,7 +39,7 @@ struct LookupEntityCandidate{
     }
 
     Range find(wordrep::WikidataUID uid) const{
-        auto m_pair = util::binary_find_block(*tokens, {0, uid.val, 0.0});
+        auto m_pair = util::binary_find_block(*tokens, wordrep::io::partial_construct(uid));
         if(!m_pair) return {0,0};
         auto beg = m_pair->first  - tokens->cbegin();
         auto end = m_pair->second - tokens->cbegin();
