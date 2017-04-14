@@ -81,6 +81,11 @@ private:
 
 struct LookupIndexedWordsIndexDummy{};
 struct LookupIndexedWords{
+    static LookupIndexedWords factory(wordrep::DepParsedTokens const& texts){
+        auto indexed_words = texts.indexed_words();
+        tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
+        return {std::move(indexed_words)};
+    }
     using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
     struct Range{
         struct Iterator{
@@ -184,11 +189,7 @@ int load_query_engine_data(int argc, char** argv) {
 //    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
     timer.here_then_reset("Post processing of indexed texts.");
 
-    auto indexed_words = texts->indexed_words();
-    timer.here_then_reset("Get indexed words.");
-    tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
-    timer.here_then_reset("Sort indexed words.");
-    LookupIndexedWords words{std::move(indexed_words)};
+    auto words = LookupIndexedWords::factory(*texts);
     timer.here_then_reset("Build indexed words table.");
 
     auto range = word_sim->find(wordUIDs->get_uid("purchased"));
