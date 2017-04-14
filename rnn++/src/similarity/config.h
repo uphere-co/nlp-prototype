@@ -15,6 +15,7 @@
 #include "wordrep/voca_info.h"
 #include "wordrep/word_case_corrector.h"
 #include "wordrep/serialized_annotation.h"
+#include "wordrep/similar_words.h"
 
 #include "wordrep/simiarity_score.h"
 #include "wiki/wikidata.h"
@@ -36,11 +37,13 @@ struct SubmoduleFactory{
     wordrep::DepParsedTokens dep_parsed_tokens() const;
     wordrep::WordImportance word_importance() const;
     wordrep::VocaInfo voca_info() const;
+    wordrep::SimilarWords similar_words() const;
     wordrep::WordCaseCorrector word_case_corrector(wordrep::WordImportance const& importance) const;
     wordrep::AnnotationData load_annotation() const;
 
     wordrep::WikidataUIDindex wikientity_uid_index() const;
     wikidata::EntityModule wikientity_module() const;
+
 
     Dataset empty_dataset() const;
     Dataset load_dataset() const;

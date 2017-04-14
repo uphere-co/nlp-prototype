@@ -24,6 +24,7 @@ struct ConfigParams {
     VocaIndexMapFile   voca_idx;
     WordEmbeggingFile  word_vecs;
     WordImportanceFile word_imporance;
+    SimilarWordsFile   sim_words;
 
     WikiEntityByNameFile entity_names;
     WikiEntityByUIDFile  entity_uids;

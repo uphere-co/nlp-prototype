@@ -62,6 +62,10 @@ wordrep::VocaInfo SubmoduleFactory::voca_info() const{
     return {{vidx_wuids},{wvecs_raw}};
 }
 
+wordrep::SimilarWords SubmoduleFactory::similar_words() const{
+    return wordrep::SimilarWords::factory(conf.sim_words);
+}
+
 wordrep::WordCaseCorrector SubmoduleFactory::word_case_corrector(wordrep::WordImportance const& importance) const {
     //TODO:refactoring
      return {conf.word_list.name, importance};
