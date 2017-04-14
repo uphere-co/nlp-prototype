@@ -115,10 +115,9 @@ int load_query_engine_data(int argc, char** argv) {
     auto load_wiki_module = [&f,&factory](){
         f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
     };
-    auto load_wordsim_table = [&word_sim](){
-        word_sim = std::make_unique<wordrep::SimilarWords>(wordrep::SimilarWords::factory({"similar_words.bin"}));
+    auto load_wordsim_table = [&word_sim,&factory](){
+        word_sim = std::make_unique<wordrep::SimilarWords>(factory.similar_words());
     };
-    timer.here_then_reset("Load SimilarWordPair from binary files");
 
     auto serial_load = [&](){
         load_annotation();
@@ -134,14 +133,22 @@ int load_query_engine_data(int argc, char** argv) {
     };
     //serial_load();
 //    return 0;
-    util::parallel_invoke(load_annotation,
-                          load_word_uids,
-                          load_word_scores,
-//                          load_wiki_module,
-                          load_word_embedding,
-                          load_indexed_text);
+//    util::parallel_invoke(load_annotation,
+//                          load_word_uids,
+//                          load_word_scores,
+////                          load_wiki_module,
+//                          load_word_embedding,
+//                          load_indexed_text);
 
+    load_wordsim_table();
     timer.here_then_reset("Concurrent loading of binary files");
+    return 0;
+
+    for(auto elm : *word_sim){
+        fmt::print("{} {} {}\n", wordUIDs->str(elm.word()), wordUIDs->str(elm.sim()), elm.similarity());
+    }
+    return 0;
+
     auto sents = texts->IndexSentences();
 //    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
     wordrep::Scoring scoring{*word_importance, voca->wvecs};
@@ -186,12 +193,6 @@ int load_query_engine_data(int argc, char** argv) {
     }
 
     timer.here_then_reset("Find candidate entities.");
-
-
-    for(auto elm : *word_sim){
-        fmt::print("{} {} {}\n", wordUIDs->str(elm.word()), wordUIDs->str(elm.sim()), elm.similarity());
-    }
-
 
     return 0;
 }

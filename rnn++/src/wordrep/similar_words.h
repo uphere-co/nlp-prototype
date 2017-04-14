@@ -1,3 +1,4 @@
+#pragma once
 #include <memory>
 
 #include "wordrep/file_formats.h"

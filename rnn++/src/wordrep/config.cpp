@@ -19,6 +19,7 @@ ConfigParams::ConfigParams(util::json_t const& config)
           voca_idx{{get_str(config, "voca_bin")}},
           word_vecs{{get_str(config, "w2vmodel_bin")}},
           word_imporance{{get_str(config, "word_prob_bin")}},
+          sim_words{{get_str(config, "simword_bin")}},
           entity_names{{get_str(config, "wikidata_entities_by_name")}},
           entity_uids{{get_str(config, "wikidata_entities_by_uid")}},
           entity_properties{{get_str(config, "wikidata_properties")}},
