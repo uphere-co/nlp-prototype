@@ -11,6 +11,8 @@
 #include "utils/profiling.h"
 #include "utils/parallel_algorithm.h"
 
+#include "utils/index_range.h"
+
 namespace engine {
 namespace test{
 
@@ -18,24 +20,7 @@ struct LookupEntityCandidateIndexDummy{};
 
 struct LookupEntityCandidate{
     using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
-    struct Range{
-        struct Iterator{
-            Iterator(Index idx) : idx{idx} {}
-            Index operator*( void ) const {return idx;}
-            void operator++(void) {++idx;}
-            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
-            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
-        private:
-            Index idx;
-        };
-        Range(Index beg, Index end) : beg_{beg},end_{end} {}
-        auto begin() const { return Iterator{beg_};}
-        auto end() const { return Iterator{end_};}
-        size_t size() const {return end_.val - beg_.val;}
-    private:
-        Index beg_;
-        Index end_;
-    };
+    using Range = util::IndexRange<Index>;
 
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
@@ -87,24 +72,7 @@ struct LookupIndexedWords{
         return {std::move(indexed_words)};
     }
     using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
-    struct Range{
-        struct Iterator{
-            Iterator(Index idx) : idx{idx} {}
-            Index operator*( void ) const {return idx;}
-            void operator++(void) {++idx;}
-            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
-            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
-        private:
-            Index idx;
-        };
-        Range(Index beg, Index end) : beg_{beg},end_{end} {}
-        auto begin() const { return Iterator{beg_};}
-        auto end() const { return Iterator{end_};}
-        size_t size() const {return end_.val - beg_.val;}
-    private:
-        Index beg_;
-        Index end_;
-    };
+    using Range = util::IndexRange<Index>;
 
     Range find(wordrep::WordUID word) const{
         auto m_pair = util::binary_find_block(sorted_words, wordrep::IndexedWord{word, -1});
