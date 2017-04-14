@@ -45,9 +45,9 @@ struct SimilarWords {
     auto end()   const {return similar_words.end();}
     Range find(WordUID uid) const;
     auto& at(Index idx) const {return similar_words.at(idx.val);}
-    auto word(Index idx)       const {return at(idx).word();}
-    auto sim_word(Index idx)   const {return at(idx).sim();}
-    auto similarity(Index idx) const {return at(idx).similarity();}
+    WordUID word(Index idx)     const {return at(idx).word();}
+    WordUID sim_word(Index idx) const {return at(idx).sim();}
+    auto similarity(Index idx)  const {return at(idx).similarity();}
 private:
     tbb::concurrent_vector<io::SimilarWordPair> similar_words;
 };
