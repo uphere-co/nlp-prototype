@@ -19,5 +19,12 @@ inline bool operator==(SimilarWordPair const& x, SimilarWordPair const& y) {
     return x.word() == y.word();
 }
 
+inline bool operator<(EntityCandidate const& x, EntityCandidate const& y) {
+    return x.wiki_uid() < y.wiki_uid();
+}
+inline bool operator==(EntityCandidate const& x, EntityCandidate const& y) {
+    return x.wiki_uid() == y.wiki_uid();
+}
+
 }//namespace wordrep::io
 }//namespace wordrep

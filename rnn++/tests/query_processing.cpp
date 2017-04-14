@@ -32,18 +32,14 @@ struct LookupEntityCandidate{
         timer.here_then_reset("Aggregate tokens.");
 
         tbb::parallel_sort(candidates.tokens->begin(),
-                           candidates.tokens->end(),
-                           [](auto const& x, auto const& y) {return x.wiki_uid() < y.wiki_uid();});
+                           candidates.tokens->end());
         timer.here_then_reset("Sort tokens by WikiUID.");
 
         return candidates;
     }
 
     Range find(wordrep::WikidataUID uid) const{
-        auto eq   = [uid](auto x){return uid.val==x.wiki_uid();};
-        auto less = [uid](auto x){return uid.val<x.wiki_uid();};
-
-        auto m_pair = util::binary_find_block(*tokens, eq, less);
+        auto m_pair = util::binary_find_block(*tokens, {0, uid.val, 0.0});
         if(!m_pair) return {0,0};
         auto beg = m_pair->first  - tokens->cbegin();
         auto end = m_pair->second - tokens->cbegin();
@@ -75,7 +71,7 @@ struct LookupIndexedWords{
     using Range = util::IndexRange<Index>;
 
     Range find(wordrep::WordUID word) const{
-        auto m_pair = util::binary_find_block(sorted_words, wordrep::IndexedWord{word, -1});
+        auto m_pair = util::binary_find_block(sorted_words, {word, -1});
         if(!m_pair) return {0,0};
         auto beg = m_pair->first  - sorted_words.cbegin();
         auto end = m_pair->second - sorted_words.cbegin();
