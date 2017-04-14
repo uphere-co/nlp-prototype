@@ -30,4 +30,14 @@ void SimilarWords::to_file(SimilarWordsFile&& file) const {
     util::io::to_file(builder, file.name);
 }
 
+SimilarWords::Range SimilarWords::find(WordUID uid) const {
+    auto eq   = [uid](auto x){return uid.val==x.word();};
+    auto less = [uid](auto x){return uid.val<x.word();};
+
+    auto m_pair = util::binary_find_block(similar_words, eq, less);
+    if(!m_pair) return {0,0};
+    auto beg = m_pair->first  - similar_words.cbegin();
+    auto end = m_pair->second - similar_words.cbegin();
+    return {beg,end};
+}
 }//namespace wordrep
