@@ -144,22 +144,37 @@ int load_query_engine_data(int argc, char** argv) {
 
     timer.here_then_reset("Concurrent loading of binary files");
 
-    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
-    for(auto idx : range){
-        fmt::print("{} {} {}\n", wordUIDs->str(word_sim->word(idx)),
-                   wordUIDs->str(word_sim->sim_word(idx)),
-                   word_sim->similarity(idx));
-    }
-    return 0;
-
     auto sents = texts->IndexSentences();
 //    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
-    wordrep::Scoring scoring{*word_importance, voca->wvecs};
-    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
     timer.here_then_reset("Post processing of indexed texts.");
 
-    testset.tokens.build_voca_index(voca->indexmap);
+    auto indexed_words = texts->indexed_words();
+    timer.here_then_reset("Get indexed words.");
+    tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
+    timer.here_then_reset("Sort indexed words.");
 
+    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
+    for(auto idx : range){
+        auto word = word_sim->sim_word(idx);
+        fmt::print("{} {} {}\n",
+                   wordUIDs->str(word_sim->word(idx)),
+                   wordUIDs->str(word),
+                   word_sim->similarity(idx));
+        auto m_pair = util::binary_find_block(indexed_words, wordrep::IndexedWord{word, -1});
+        if(!m_pair) continue;
+        auto pair = m_pair.value();
+        for(auto it=pair.first; it!=pair.second; ++it){
+            auto sent_uid = texts->sent_uid(it->idx);
+            auto& sent = sents.at(sent_uid.val);
+            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
+        }
+    }
+    timer.here_then_reset("Found similar words.");
+    return 0;
+
+    wordrep::Scoring scoring{*word_importance, voca->wvecs};
+    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
+    testset.tokens.build_voca_index(voca->indexmap);
     timer.here_then_reset("Complete to load data structures.");
 
     auto candidates = LookupEntityCandidate::factory(annotated_tokens);
