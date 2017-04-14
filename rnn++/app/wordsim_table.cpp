@@ -8,9 +8,11 @@
 #include "wordrep/similar_words.h"
 
 int main(int argc, char** argv) {
-    assert(argc>1);
+    assert(argc>2);
     auto cutoff_ratio = 0.7;
     auto config_json = util::load_json(argv[1]);
+    auto output_filename = argv[2];
+
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
 
@@ -65,7 +67,7 @@ int main(int argc, char** argv) {
 
     wordrep::SimilarWords table{std::move(similar_words)};
     timer.here_then_reset("Build SimilarWords table");
-    table.to_file({"similar_words.bin"});
+    table.to_file({output_filename});
     timer.here_then_reset("Write to file");
     return 0;
 }
