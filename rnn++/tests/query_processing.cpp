@@ -79,6 +79,42 @@ private:
     std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
 };
 
+struct LookupIndexedWordsIndexDummy{};
+struct LookupIndexedWords{
+    using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
+    struct Range{
+        struct Iterator{
+            Iterator(Index idx) : idx{idx} {}
+            Index operator*( void ) const {return idx;}
+            void operator++(void) {++idx;}
+            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
+            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
+        private:
+            Index idx;
+        };
+        Range(Index beg, Index end) : beg_{beg},end_{end} {}
+        auto begin() const { return Iterator{beg_};}
+        auto end() const { return Iterator{end_};}
+        size_t size() const {return end_.val - beg_.val;}
+    private:
+        Index beg_;
+        Index end_;
+    };
+
+    Range find(wordrep::WordUID word) const{
+        auto m_pair = util::binary_find_block(sorted_words, wordrep::IndexedWord{word, -1});
+        if(!m_pair) return {0,0};
+        auto beg = m_pair->first  - sorted_words.cbegin();
+        auto end = m_pair->second - sorted_words.cbegin();
+        return {beg,end};
+    }
+    wordrep::DPTokenIndex token_index(Index idx) const { return sorted_words.at(idx.val).idx;}
+    LookupIndexedWords(tbb::concurrent_vector<wordrep::IndexedWord>&& words)
+            : sorted_words{std::move(words)}
+    {}
+private:
+    tbb::concurrent_vector<wordrep::IndexedWord> sorted_words;
+};
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
@@ -152,6 +188,8 @@ int load_query_engine_data(int argc, char** argv) {
     timer.here_then_reset("Get indexed words.");
     tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
     timer.here_then_reset("Sort indexed words.");
+    LookupIndexedWords words{std::move(indexed_words)};
+    timer.here_then_reset("Build indexed words table.");
 
     auto range = word_sim->find(wordUIDs->get_uid("purchased"));
     for(auto idx : range){
@@ -160,11 +198,9 @@ int load_query_engine_data(int argc, char** argv) {
                    wordUIDs->str(word_sim->word(idx)),
                    wordUIDs->str(word),
                    word_sim->similarity(idx));
-        auto m_pair = util::binary_find_block(indexed_words, wordrep::IndexedWord{word, -1});
-        if(!m_pair) continue;
-        auto pair = m_pair.value();
-        for(auto it=pair.first; it!=pair.second; ++it){
-            auto sent_uid = texts->sent_uid(it->idx);
+        auto matched_words = words.find(word);
+        for(auto idx: matched_words){
+            auto sent_uid = texts->sent_uid(words.token_index(idx));
             auto& sent = sents.at(sent_uid.val);
             fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
         }
