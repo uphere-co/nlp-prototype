@@ -11,6 +11,8 @@
 #include "utils/profiling.h"
 #include "utils/parallel_algorithm.h"
 
+#include "utils/index_range.h"
+
 namespace engine {
 namespace test{
 
@@ -18,24 +20,7 @@ struct LookupEntityCandidateIndexDummy{};
 
 struct LookupEntityCandidate{
     using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
-    struct Range{
-        struct Iterator{
-            Iterator(Index idx) : idx{idx} {}
-            Index operator*( void ) const {return idx;}
-            void operator++(void) {++idx;}
-            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
-            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
-        private:
-            Index idx;
-        };
-        Range(Index beg, Index end) : beg_{beg},end_{end} {}
-        auto begin() const { return Iterator{beg_};}
-        auto end() const { return Iterator{end_};}
-        size_t size() const {return end_.val - beg_.val;}
-    private:
-        Index beg_;
-        Index end_;
-    };
+    using Range = util::IndexRange<Index>;
 
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
@@ -79,6 +64,30 @@ private:
     std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
 };
 
+struct LookupIndexedWordsIndexDummy{};
+struct LookupIndexedWords{
+    static LookupIndexedWords factory(wordrep::DepParsedTokens const& texts){
+        auto indexed_words = texts.indexed_words();
+        tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
+        return {std::move(indexed_words)};
+    }
+    using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
+    using Range = util::IndexRange<Index>;
+
+    Range find(wordrep::WordUID word) const{
+        auto m_pair = util::binary_find_block(sorted_words, wordrep::IndexedWord{word, -1});
+        if(!m_pair) return {0,0};
+        auto beg = m_pair->first  - sorted_words.cbegin();
+        auto end = m_pair->second - sorted_words.cbegin();
+        return {beg,end};
+    }
+    wordrep::DPTokenIndex token_index(Index idx) const { return sorted_words.at(idx.val).idx;}
+    LookupIndexedWords(tbb::concurrent_vector<wordrep::IndexedWord>&& words)
+            : sorted_words{std::move(words)}
+    {}
+private:
+    tbb::concurrent_vector<wordrep::IndexedWord> sorted_words;
+};
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
@@ -144,22 +153,33 @@ int load_query_engine_data(int argc, char** argv) {
 
     timer.here_then_reset("Concurrent loading of binary files");
 
-    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
-    for(auto idx : range){
-        fmt::print("{} {} {}\n", wordUIDs->str(word_sim->word(idx)),
-                   wordUIDs->str(word_sim->sim_word(idx)),
-                   word_sim->similarity(idx));
-    }
-    return 0;
-
     auto sents = texts->IndexSentences();
 //    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
-    wordrep::Scoring scoring{*word_importance, voca->wvecs};
-    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
     timer.here_then_reset("Post processing of indexed texts.");
 
-    testset.tokens.build_voca_index(voca->indexmap);
+    auto words = LookupIndexedWords::factory(*texts);
+    timer.here_then_reset("Build indexed words table.");
 
+    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
+    for(auto idx : range){
+        auto word = word_sim->sim_word(idx);
+        fmt::print("{} {} {}\n",
+                   wordUIDs->str(word_sim->word(idx)),
+                   wordUIDs->str(word),
+                   word_sim->similarity(idx));
+        auto matched_words = words.find(word);
+        for(auto idx: matched_words){
+            auto sent_uid = texts->sent_uid(words.token_index(idx));
+            auto& sent = sents.at(sent_uid.val);
+            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
+        }
+    }
+    timer.here_then_reset("Found similar words.");
+    return 0;
+
+    wordrep::Scoring scoring{*word_importance, voca->wvecs};
+    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
+    testset.tokens.build_voca_index(voca->indexmap);
     timer.here_then_reset("Complete to load data structures.");
 
     auto candidates = LookupEntityCandidate::factory(annotated_tokens);

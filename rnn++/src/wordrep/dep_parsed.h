@@ -52,8 +52,15 @@ struct Sentences{
     std::map<SentUID,Sentence> uid2sent{};
 };
 
+struct IndexedWord{
+    friend bool operator< (IndexedWord lhs, IndexedWord rhs) {return lhs.word<rhs.word;}
+    friend bool operator==(IndexedWord lhs, IndexedWord rhs) {return lhs.word==rhs.word;}
+    WordUID      word;
+    DPTokenIndex idx;
+};
 
 struct DepParsedTokens{
+
     static DepParsedTokens factory(DepParsedFile const& file);
 
     static constexpr int64_t major_version = 5;
@@ -86,6 +93,15 @@ struct DepParsedTokens{
         return pos;
     }
     size_t n_tokens() const { return chunks_idx.size();}
+
+    auto indexed_words() const {
+        tbb::concurrent_vector<IndexedWord> words;
+        DPTokenIndex idx{0};
+        DPTokenIndex  n = n_tokens();
+        for(DPTokenIndex idx=0; idx!=n; ++idx)
+            words.push_back({word_uid(idx), idx});
+        return words;
+    }
 
 private:
     vec_t<SentUID>      sents_uid;
