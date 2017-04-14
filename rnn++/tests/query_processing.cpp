@@ -105,6 +105,10 @@ int load_query_engine_data(int argc, char** argv) {
     std::unique_ptr<wordrep::VocaInfo> voca{};
     std::unique_ptr<wordrep::SimilarWords> word_sim{};
     wordrep::AnnotationData annotated_tokens;
+    wordrep::PreprocessedSentences data_sent;
+
+    std::unique_ptr<LookupIndexedWords> words;
+    std::vector<wordrep::Sentence> sents;
 
     auto load_word_uids =[&wordUIDs,&factory](){
         wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.conf.word_uid);
@@ -115,8 +119,12 @@ int load_query_engine_data(int argc, char** argv) {
     auto load_annotation =[&annotated_tokens,&factory](){
         annotated_tokens = factory.load_annotation();
     };
-    auto load_indexed_text=[&texts,&factory](){
+    auto load_indexed_text=[&texts,&sents,&words,&factory](){
         texts = std::make_unique<wordrep::DepParsedTokens>(factory.dep_parsed_tokens());
+        util::parallel_invoke(
+                [&](){sents = texts->IndexSentences();},
+                [&](){words = std::make_unique<LookupIndexedWords>(LookupIndexedWords::factory(*texts));}
+        );
     };
     auto load_word_embedding = [&voca,&factory](){
         voca = std::make_unique<wordrep::VocaInfo>(factory.voca_info());
@@ -142,40 +150,14 @@ int load_query_engine_data(int argc, char** argv) {
     };
     //serial_load();
 //    return 0;
-    util::parallel_invoke(
-//            load_annotation,
+    util::parallel_invoke(load_annotation,
                           load_wordsim_table,
                           load_word_uids,
-//                          load_word_scores,
-//                          load_wiki_module,
-//                          load_word_embedding,
+                          load_wiki_module,
+                          load_word_scores,
+                          load_word_embedding,
                           load_indexed_text);
-
     timer.here_then_reset("Concurrent loading of binary files");
-
-    auto sents = texts->IndexSentences();
-//    auto data_sent = wordrep::PreprocessedSentences::factory(sents, annotated_tokens);
-    timer.here_then_reset("Post processing of indexed texts.");
-
-    auto words = LookupIndexedWords::factory(*texts);
-    timer.here_then_reset("Build indexed words table.");
-
-    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
-    for(auto idx : range){
-        auto word = word_sim->sim_word(idx);
-        fmt::print("{} {} {}\n",
-                   wordUIDs->str(word_sim->word(idx)),
-                   wordUIDs->str(word),
-                   word_sim->similarity(idx));
-        auto matched_words = words.find(word);
-        for(auto idx: matched_words){
-            auto sent_uid = texts->sent_uid(words.token_index(idx));
-            auto& sent = sents.at(sent_uid.val);
-            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
-        }
-    }
-    timer.here_then_reset("Found similar words.");
-    return 0;
 
     wordrep::Scoring scoring{*word_importance, voca->wvecs};
     wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
@@ -214,8 +196,23 @@ int load_query_engine_data(int argc, char** argv) {
         auto& sent = sents.at(sent_uid.val);
         fmt::print("{}\n", sent.repr(*wordUIDs));
     }
-
     timer.here_then_reset("Find candidate entities.");
+
+    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
+    for(auto idx : range){
+        auto word = word_sim->sim_word(idx);
+        fmt::print("{} {} {}\n",
+                   wordUIDs->str(word_sim->word(idx)),
+                   wordUIDs->str(word),
+                   word_sim->similarity(idx));
+        auto matched_words = words->find(word);
+        for(auto idx: matched_words){
+            auto sent_uid = texts->sent_uid(words->token_index(idx));
+            auto& sent = sents.at(sent_uid.val);
+            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
+        }
+    }
+    timer.here_then_reset("Found similar words.");
 
     return 0;
 }
