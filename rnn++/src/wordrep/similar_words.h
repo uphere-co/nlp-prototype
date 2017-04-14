@@ -6,6 +6,7 @@
 #include "wordrep/io.h"
 
 #include "utils/parallel.h"
+#include "utils/index_range.h"
 
 namespace wordrep {
 
@@ -17,24 +18,7 @@ struct SimilarWordsIndexDummy{};
 
 struct SimilarWords {
     using Index = util::IntegerLike<SimilarWordsIndexDummy>;
-    struct Range{
-        struct Iterator{
-            Iterator(Index idx) : idx{idx} {}
-            Index operator*( void ) const {return idx;}
-            void operator++(void) {++idx;}
-            bool operator==(Iterator rhs) const {return idx == rhs.idx;}
-            bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
-        private:
-            Index idx;
-        };
-        Range(Index beg, Index end) : beg_{beg},end_{end} {}
-        auto begin() const { return Iterator{beg_};}
-        auto end() const { return Iterator{end_};}
-        size_t size() const {return end_.val - beg_.val;}
-    private:
-        Index beg_;
-        Index end_;
-    };
+    using Range = util::IndexRange<Index>;
 
     static SimilarWords factory(SimilarWordsFile const& file);
 
