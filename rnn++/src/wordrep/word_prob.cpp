@@ -29,8 +29,8 @@ auto ratio_to_score = [](auto ratio){
 namespace wordrep{
 
 WordImportance WordImportance::factory(WordImportanceFile const& file){
-    auto uids = util::io::fb::load_binary_file(file.uids);
-    auto scores = util::io::fb::load_binary_file(file.scores);
+    auto uids = util::io::load_binary_file(file.uids);
+    auto scores = util::io::load_binary_file(file.scores);
     assert(uids.size()==scores.size());
     std::map<WordUID,WordImportance::val_t> uid2scores;
     auto n = uids.size();

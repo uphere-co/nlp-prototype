@@ -49,7 +49,7 @@ wordrep::WordImportance SubmoduleFactory::word_importance() const {
 }
 
 wordrep::VocaInfo SubmoduleFactory::voca_info() const{
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
     std::vector<wordrep::WordUID> vidx_wuids;
     std::vector<float> wvecs_raw;
 

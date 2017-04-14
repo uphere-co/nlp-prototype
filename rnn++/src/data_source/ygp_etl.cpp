@@ -29,7 +29,7 @@
 #include "utils/flatbuffers/io.h"
 
 using namespace wordrep;
-namespace fb = util::io::fb;
+namespace fb = util::io;
 using util::io::I64Binary;
 
 namespace {
@@ -172,9 +172,9 @@ void write_column_indexes(std::string output_prefix,
         ++row_uid;
     }
 
-    util::io::fb::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
-    util::io::fb::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
-    util::io::fb::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
+    util::io::to_file(util::serialize(row_uids), {output_prefix + ".chunk2row.i64v"});
+    util::io::to_file(util::serialize(row_idxs), {output_prefix + ".chunk2row_idx.i64v"});
+    util::io::to_file(util::serialize(col_uids), {output_prefix + ".chunk2col.i64v"});
 }
 
 

@@ -18,7 +18,7 @@ namespace {
 
 template<typename T>
 void load_binary_file(std::string filename, T& vec){
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
     fb::deserialize_i64vector(fb::load_binary_file(filename), vec);
 };
 
@@ -28,7 +28,7 @@ void write_to_binary_file(util::TypedPersistentVector<T> const& vec, std::string
     std::vector<int64_t> vs;
     vs.reserve(vec.size());
     for(auto v : vec) vs.push_back(v.val);
-    util::io::fb::to_file(vs, util::io::I64Binary{filename});
+    util::io::to_file(vs, util::io::I64Binary{filename});
 }
 }//nameless namespace
 

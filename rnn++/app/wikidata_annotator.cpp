@@ -677,7 +677,7 @@ void test_all(int argc, char** argv){
 
 void convert_voca_info(int argc, char** argv){
     assert(argc>1);
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
     auto config_json = util::load_json(argv[1]);
     auto conf = [&config_json](auto x){return util::get_str(config_json, x);};
     util::Timer timer;
@@ -695,7 +695,7 @@ void convert_voca_info(int argc, char** argv){
 
 void load_voca_info(int argc, char** argv){
     assert(argc>1);
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
 
     util::Timer timer;
 
@@ -881,8 +881,8 @@ void save_wikidata_entities(int argc, char** argv){
 
 void test_property_table(){
     using util::io::PairsBinary;
-    using util::io::fb::deserialize_pairs;
-    using util::io::fb::load_binary_file;
+    using util::io::deserialize_pairs;
+    using util::io::load_binary_file;
 
     PairsBinary properties_file{"wikidata.P31.e2p.bin"};
     PairsBinary instances_file{"wikidata.P31.p2e.bin"};
@@ -891,7 +891,7 @@ void test_property_table(){
     timer.here_then_reset("Load WikiUIDs.");
 
 
-    auto data = util::io::fb::load_binary_file(properties_file);
+    auto data = util::io::load_binary_file(properties_file);
     timer.here_then_reset(fmt::format("Read file. {}", properties_file.name));
     auto properties = deserialize_pairs<wikidata::PropertyOfEntity>(std::move(data));
     timer.here_then_reset(fmt::format("Construct {} property values.", properties->size()));
@@ -927,11 +927,10 @@ void test_property_table(){
 
 namespace util{
 namespace io{
-namespace fb{
 namespace test{
 
 void ordered_pair(){
-    std::cerr<< "util::io::fb::test::ordered_pair" <<std::endl;
+    std::cerr<< "util::io::test::ordered_pair" <<std::endl;
     std::vector<Pair> vals = {{1,1},{0,2},{1,3},{4,2},{5,2},{3,4},{2,4},{2,1},{4,5},{1,3}};
     std::sort(vals.begin(), vals.end());
     auto beg = vals.begin();
@@ -949,14 +948,13 @@ void test_all(){
     ordered_pair();
 }
 
-}//namespace util::io::fb::test
-}//namespace util::io::fb
+}//namespace util::io::test
 }//namespace util::io
 }//namespace util
 
 
 void proptext_to_binary_file(){
-    namespace fb = util::io::fb;
+    namespace fb = util::io;
 
     util::Timer timer;
     std::string wikidata_properties        = "/home/jihuni/word2vec/rss/wikidata.properties";
@@ -991,8 +989,8 @@ void proptext_to_binary_file(){
     tbb::parallel_sort(entity2property.begin(),entity2property.end());
     tbb::parallel_sort(property2entity.begin(),property2entity.end());
     timer.here_then_reset("Sort data.");
-    util::io::fb::to_file(entity2property, {"wikidata.P31.e2p.bin"});
-    util::io::fb::to_file(property2entity, {"wikidata.P31.p2e.bin"});
+    util::io::to_file(entity2property, {"wikidata.P31.e2p.bin"});
+    util::io::to_file(property2entity, {"wikidata.P31.p2e.bin"});
     timer.here_then_reset("Write files.");
 }
 
@@ -1023,7 +1021,7 @@ int main(int argc, char** argv){
 //    return 0;
 
 //    test_property_table();
-//    util::io::fb::test::test_all();
+//    util::io::test::test_all();
     wikidata::test::test_all(argc, argv);
     wordrep::test::test_all(argc,argv);
     return 0;

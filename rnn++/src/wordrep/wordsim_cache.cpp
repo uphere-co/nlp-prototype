@@ -33,10 +33,6 @@ struct Similarity<measure::inner>{
         return dot(v,q);
     }
 };
-auto euclidean_distance_i=[](int64_t i, auto &out, auto const &x, auto const &y){
-    auto tmp=x[i]-y[i];
-    out += tmp*tmp;
-};
 template<>
 struct Similarity<measure::euclidean>{
     template<typename T, int64_t dim>
@@ -44,7 +40,11 @@ struct Similarity<measure::euclidean>{
         using namespace util::math;
         VecLoop_void<T,dim> vecloop_void{};
         T distance{};
-        vecloop_void(euclidean_distance_i, distance, v, q);
+        vecloop_void([](int64_t i, auto &out, auto const &x, auto const &y) {
+                         auto tmp = x[i] - y[i];
+                         out += tmp * tmp;
+                     },
+                     distance, v, q);
         return distance;
     }
 };

@@ -1,4 +1,4 @@
-namespace util.io.fb;
+namespace util.io;
 table I64Vector {  vals:[long]; }
 
 file_identifier "I64V";

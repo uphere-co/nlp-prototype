@@ -25,11 +25,11 @@ void SerializedAnnotation::to_file(Binary file) const {
     auto entities = fb::CreateTaggedSentences(builder, candidates_serialized, tokens_serialized);
     builder.Finish(entities);
 
-    util::io::fb::to_file(builder, file.name);
+    util::io::to_file(builder, file.name);
 }
 
 std::unique_ptr<SerializedAnnotation> load_binary_file(SerializedAnnotation::Binary const& file){
-    auto data = util::io::fb::load_binary_file(file.name);
+    auto data = util::io::load_binary_file(file.name);
     auto block = std::make_unique<SerializedAnnotation>();
     auto rbuf = wordrep::io::GetTaggedSentences(data.get());
     block->candidates.reserve(rbuf->candidates()->size());

@@ -16,8 +16,8 @@ void from_hdf5_to_fb(std::string hdf5_filename,
     wordrep::WordImportance word_importance{util::io::h5read(hdf5_filename)};
     auto uids   = util::get_keys(word_importance.all_scores());
     auto scores = util::get_values(word_importance.all_scores());
-    util::io::fb::to_file(util::serialize(uids),   {output_filename+".uids.bin"});
-    util::io::fb::to_file(to_float(scores), {output_filename+".scores.bin"});
+    util::io::to_file(util::serialize(uids),   {output_filename+".uids.bin"});
+    util::io::to_file(to_float(scores), {output_filename+".scores.bin"});
 }
 int main(int argc, char** argv){
 //    from_hdf5_to_fb("/opt/testset.rss/prob.h5", "word.score");

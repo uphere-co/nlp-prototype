@@ -1,4 +1,4 @@
-namespace util.io.fb;
+namespace util.io;
 
 struct Pair{
 key:long;
