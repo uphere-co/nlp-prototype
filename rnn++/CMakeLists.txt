@@ -147,7 +147,6 @@ add_executable(benchmark_fileio app/benchmark_fileio
         ${wordrep_files} ${wiki_files} ${util_files})
 target_link_libraries(benchmark_fileio stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 
-
 #add_executable(gsl boilerplate/gsl)
 #add_executable(string boilerplate/string)
 #add_executable(math boilerplate/math)
@@ -170,7 +169,7 @@ add_library(util STATIC ${util_files})
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
 target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
-install(TARGETS nndep_reader RUNTIME DESTINATION bin)
+#install(TARGETS nndep_reader RUNTIME DESTINATION bin)
 
 install(TARGETS similarity DESTINATION lib) 
 
