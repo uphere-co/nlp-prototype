@@ -133,19 +133,22 @@ int load_query_engine_data(int argc, char** argv) {
     };
     //serial_load();
 //    return 0;
-//    util::parallel_invoke(load_annotation,
-//                          load_word_uids,
+    util::parallel_invoke(
+//            load_annotation,
+                          load_wordsim_table,
+                          load_word_uids,
 //                          load_word_scores,
-////                          load_wiki_module,
+//                          load_wiki_module,
 //                          load_word_embedding,
-//                          load_indexed_text);
+                          load_indexed_text);
 
-    load_wordsim_table();
     timer.here_then_reset("Concurrent loading of binary files");
-    return 0;
 
-    for(auto elm : *word_sim){
-        fmt::print("{} {} {}\n", wordUIDs->str(elm.word()), wordUIDs->str(elm.sim()), elm.similarity());
+    auto range = word_sim->find(wordUIDs->get_uid("purchased"));
+    for(auto idx : range){
+        fmt::print("{} {} {}\n", wordUIDs->str(word_sim->word(idx)),
+                   wordUIDs->str(word_sim->sim_word(idx)),
+                   word_sim->similarity(idx));
     }
     return 0;
 
