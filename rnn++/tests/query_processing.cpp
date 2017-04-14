@@ -3,6 +3,7 @@
 #include "similarity/config.h"
 
 #include "wordrep/preprocessed_sentences.h"
+#include "wordrep/similar_words.h"
 
 #include "tests/wiki/test_dataset.h"
 
@@ -21,7 +22,7 @@ struct LookupEntityCandidate{
         struct Iterator{
             Iterator(Index idx) : idx{idx} {}
             Index operator*( void ) const {return idx;}
-            void operator++(void)                {++idx;}
+            void operator++(void) {++idx;}
             bool operator==(Iterator rhs) const {return idx == rhs.idx;}
             bool operator!=(Iterator rhs) const {return idx != rhs.idx;}
         private:
@@ -81,7 +82,6 @@ private:
 
 int load_query_engine_data(int argc, char** argv) {
     assert(argc>1);
-    namespace fb = util::io::fb;
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
     util::Timer timer;
@@ -94,6 +94,7 @@ int load_query_engine_data(int argc, char** argv) {
     std::unique_ptr<wordrep::DepParsedTokens> texts;
     std::unique_ptr<wikidata::EntityModule> f{};
     std::unique_ptr<wordrep::VocaInfo> voca{};
+    std::unique_ptr<wordrep::SimilarWords> word_sim{};
     wordrep::AnnotationData annotated_tokens;
 
     auto load_word_uids =[&wordUIDs,&factory](){
@@ -114,6 +115,10 @@ int load_query_engine_data(int argc, char** argv) {
     auto load_wiki_module = [&f,&factory](){
         f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
     };
+    auto load_wordsim_table = [&word_sim](){
+        word_sim = std::make_unique<wordrep::SimilarWords>(wordrep::SimilarWords::factory({"similar_words.bin"}));
+    };
+    timer.here_then_reset("Load SimilarWordPair from binary files");
 
     auto serial_load = [&](){
         load_annotation();
@@ -181,6 +186,11 @@ int load_query_engine_data(int argc, char** argv) {
     }
 
     timer.here_then_reset("Find candidate entities.");
+
+
+    for(auto elm : *word_sim){
+        fmt::print("{} {} {}\n", wordUIDs->str(elm.word()), wordUIDs->str(elm.sim()), elm.similarity());
+    }
 
 
     return 0;

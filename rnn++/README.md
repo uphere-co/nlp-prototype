@@ -60,6 +60,17 @@ Output filename is also fixed : `prob.h5`. Generate it and place it appreciative
 #First, place config.rss.json and config.ygp.json to present directory.
 ./word_importance_build
 ```
+
+## Building word similarity table :
+- Input: a config JSON to get
+  1. Word importance
+  2. Word2vec embedding
+- Output : a single binary file (`wordsim.table.bin` for below example)
+```bash
+# Example :
+./wordsim_table config.rss.json.1 wordsim.table.bin
+```
+
 ## Indexing YGP DB:
 ```
 #Dumping YGP DB:

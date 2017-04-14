@@ -88,12 +88,7 @@ void UIDSortedEntities::to_file(WikiEntityByUIDFile file) const{
     auto entities = fb::CreateSortedEntities(builder, es_serialized, names_serialized);
     builder.Finish(entities);
 
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-
-    std::ofstream outfile(file.name, std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
+    util::io::fb::to_file(builder, file.name);
 }
 
 void SortedEntities::to_file(WikiEntityByNameFile file) const{
@@ -116,12 +111,7 @@ void SortedEntities::to_file(WikiEntityByNameFile file) const{
     auto entities = fb::CreateSortedEntities(builder, es_serialized, names_serialized);
     builder.Finish(entities);
 
-    auto *buf = builder.GetBufferPointer();
-    auto size = builder.GetSize();
-
-    std::ofstream outfile(file.name, std::ios::binary);
-    outfile.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    outfile.write(reinterpret_cast<const char *>(buf), size);
+    util::io::fb::to_file(builder, file.name);
 }
 
 SortedEntities::SortedEntities(WikiEntityByNameFile file){

@@ -1,0 +1,15 @@
+namespace wordrep.io;
+
+struct SimilarWordPair {
+word:long;
+sim:long;
+similarity:float;
+}
+
+table SimilarWords{
+pairs:[SimilarWordPair];
+}
+
+file_identifier "wfsw";
+file_extension "wfsw";
+root_type SimilarWords;

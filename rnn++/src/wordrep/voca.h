@@ -11,6 +11,12 @@ public:
     struct Binary{
         std::string name;
     };
+    struct IterToken{
+        auto begin() const {return self.uid2idx.cbegin();}
+        auto end()   const {return self.uid2idx.cend();}
+        VocaIndexMap const& self;
+    };
+
     static VocaIndexMap factory(Binary file);
     VocaIndexMap(std::vector<WordUID> const &uids_val);
     VocaIndex operator[](WordUID   uid) const;
@@ -19,6 +25,8 @@ public:
     bool isin(WordUID uid) {return uid2idx.find(uid)!=uid2idx.end();}
     auto all_words() const {return uids;}
     auto size() const {return uids.size();}
+
+    IterToken iter_token() const{return {*this};}
 private:
     std::unordered_map<WordUID, VocaIndex> uid2idx;
     std::vector<WordUID> uids;

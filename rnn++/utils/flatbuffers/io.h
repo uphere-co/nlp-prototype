@@ -22,9 +22,11 @@ inline bool operator==(Pair x, Pair y) {
 }
 
 
+void to_file(flatbuffers::FlatBufferBuilder const& builder, std::string filename);
 void to_file(std::vector<Pair> const& vals, PairsBinary file);
 void to_file(std::vector<int64_t> const& vals, I64Binary file);
 void to_file(std::vector<float> const& vals, F32Binary file);
+
 
 std::unique_ptr<char[]> load_binary_file(std::string file);
 
