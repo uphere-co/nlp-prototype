@@ -217,11 +217,10 @@ int query_sent_processing(int argc, char** argv) {
     }
     timer.here_then_reset("Find candidate entities.");
 
-    return 0;
     auto range = word_sim->find(wordUIDs->get_uid("purchased"));
     for(auto idx : range){
         auto word = word_sim->sim_word(idx);
-        fmt::print("{} {} {}\n",
+        fmt::print(std::cerr, "{} {} {}\n",
                    wordUIDs->str(word_sim->word(idx)),
                    wordUIDs->str(word),
                    word_sim->similarity(idx));
@@ -229,7 +228,7 @@ int query_sent_processing(int argc, char** argv) {
         for(auto idx: matched_words){
             auto sent_uid = texts->sent_uid(words->token_index(idx));
             auto& sent = sents.at(sent_uid.val);
-            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
+            assert(sent.isin(word));
         }
     }
 
