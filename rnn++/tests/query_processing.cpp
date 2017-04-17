@@ -101,22 +101,23 @@ private:
     tbb::concurrent_vector<value_type> sorted_words;
 };
 
-struct MatchedToken{
-    wordrep::SentUID key;
-    wordrep::ConsecutiveTokens query;
-    wordrep::ConsecutiveTokens matched;
-    double score;
+struct MatchedTokenPerSent{
+    using Key = wordrep::SentUID;
+    struct Value{
+        wordrep::ConsecutiveTokens query;
+        wordrep::ConsecutiveTokens matched;
+        double score;
+    };
+
+    Key key;
+    Value val;
 };
 
 struct MatchedTokenReducer{
+    using Key = MatchedTokenPerSent::Key;
     struct Value{
-        struct PerToken{
-            wordrep::ConsecutiveTokens query;
-            wordrep::ConsecutiveTokens matched;
-            double score;
-        };
         double score;
-        std::vector<PerToken> tokens;
+        std::vector<MatchedTokenPerSent::Value> tokens;
     };
 
     void score_filtering(double cutoff=0.0){
@@ -128,17 +129,15 @@ struct MatchedTokenReducer{
             it = vals.erase(it);
         }
     }
-
-    std::map<wordrep::SentUID,Value> vals;
-};
-
-void accum_tokens(MatchedTokenReducer& accum, std::vector<MatchedToken> const& vals){
-    for(auto& val : vals){
-        if(accum.vals.find(val.key)==accum.vals.cend()) continue;
-        accum.vals[val.key].score += val.score;
-        accum.vals[val.key].tokens.push_back({val.query,val.matched,val.score});
+    bool accum(MatchedTokenPerSent const& token){
+        if(vals.find(token.key)==vals.cend()) return false;
+        vals[token.key].score += token.val.score;
+        vals[token.key].tokens.push_back({token.val.query,token.val.matched,token.val.score});
+        return true;
     }
-}
+
+    std::map<Key,Value> vals;
+};
 
 int query_sent_processing(int argc, char** argv) {
     assert(argc>1);
@@ -254,7 +253,7 @@ int query_sent_processing(int argc, char** argv) {
             }
             return decltype(word_sim->similarity(0)){0.0};
         };
-        std::vector<MatchedToken> matched_tokens;
+        std::vector<MatchedTokenPerSent> matched_tokens;
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
             auto word_similarity = word_sim->similarity(simword_idx);
@@ -264,15 +263,15 @@ int query_sent_processing(int argc, char** argv) {
                 auto sent_uid  = texts->sent_uid(token_idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
                 matched_tokens.push_back({sent_uid,
-                                          {dep_pair.idx},
-                                          {token_idx},
-                                          word_score*word_similarity*(0.5+word_gov_similarity)});
+                                          {{dep_pair.idx},
+                                           {token_idx},
+                                           word_score*word_similarity*(0.5+word_gov_similarity)}});
             }
         }
-        util::sort(matched_tokens, [](auto&x, auto& y){return x.score>y.score;});
+        util::sort(matched_tokens, [](auto&x, auto& y){return x.val.score>y.val.score;});
         auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
         matched_tokens.erase(last, matched_tokens.end());
-        accum_tokens(matched_results, matched_tokens);
+        for(auto& token : matched_tokens) matched_results.accum(token);
     }
     timer.here_then_reset("Reduce phase.");
     matched_results.score_filtering();
