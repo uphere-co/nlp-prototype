@@ -67,6 +67,49 @@ private:
     std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
 };
 
+struct LookupEntityTaggedTokenDummy{};
+struct LookupEntityTaggedToken{
+    using Index = util::IntegerLike<LookupEntityTaggedTokenDummy>;
+    using Range = util::IndexRange<Index>;
+
+    using key_type   = wordrep::DPTokenIndex ;
+    using value_type = wordrep::io::TaggedToken;
+    static key_type to_key(value_type const& x) {return x.token_idx();};
+
+    static LookupEntityTaggedToken factory(wordrep::AnnotationData const& tokens){
+        util::Timer timer;
+        LookupEntityTaggedToken tagged_entities;
+
+        for(auto const& block : tokens.blocks){
+            util::append(*tagged_entities.tokens, block->tagged_tokens);
+        }
+        timer.here_then_reset("Aggregate tokens.");
+
+        tbb::parallel_sort(tagged_entities.tokens->begin(),
+                           tagged_entities.tokens->end(),
+                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
+        timer.here_then_reset("Sort tokens by WikiUID.");
+
+        return tagged_entities;
+    }
+
+    std::optional<wordrep::ConsecutiveTokens> find(key_type idx) const{
+        auto eq   = [idx](auto& x){return idx==to_key(x);};
+        auto less = [idx](auto& x){return idx< to_key(x);};
+        auto m_token = util::binary_find(*tokens, eq, less);
+        if(!m_token) return {};
+        auto token = m_token.value();
+        return {{token->token_idx(), token->token_len()}};
+    }
+    auto size() const{return tokens->size();}
+private:
+    LookupEntityTaggedToken()
+            : tokens{std::make_unique<tbb::concurrent_vector<value_type>>()}
+    {}
+    std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
+};
+
+
 struct LookupIndexedWordsIndexDummy{};
 struct LookupIndexedWords{
     using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
@@ -215,8 +258,9 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Complete to load data structures.");
 
     auto candidates = LookupEntityCandidate::factory(annotated_tokens);
-    timer.here_then_reset("Aggregate to UID sorted tokens.");
-
+    timer.here_then_reset("Aggregate WikidataUID sorted entities.");
+    auto ner_tagged_tokens = LookupEntityTaggedToken::factory(annotated_tokens);
+    timer.here_then_reset("Aggregate DPTokenIndex sorted tagged tokens.");
 
     auto& sent = testset.sents.front();
     auto tagged_sent = testset.annotator.annotate(sent);
@@ -229,9 +273,16 @@ int query_sent_processing(int argc, char** argv) {
     using util::concat_map;
     using util::append;
 
-    auto keys_per_ambiguous_entity = map(named_entities, [&](auto& e){
-        auto ranges = candidates.find(e);
-        return concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
+    auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
+        auto ranges = candidates.find(e.uid);
+        return concat_map(ranges, [&](auto i){
+            auto idx = candidates.token_index(i);
+            auto m_words = ner_tagged_tokens.find(idx);
+            assert(m_words);
+            auto match_score = candidates.score(i);
+            MatchedTokenPerSent matched_token{texts->sent_uid(idx), {e.idxs, m_words.value(), match_score}};
+            return matched_token.key;
+        });
     });
     timer.here_then_reset("Map phase for Wiki entities.");
 
@@ -241,6 +292,7 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
+        if(word_importance->is_noisy_word(dep_pair.word_dep)) continue;
         auto similar_words_gov = word_sim->find(dep_pair.word_gov);
         auto op_gov_word_similarity = [&](auto gov){
             for(auto idx : similar_words_gov){
@@ -257,10 +309,9 @@ int query_sent_processing(int argc, char** argv) {
             auto matched_idxs   = words->find(similar_word);
             for(auto idx : matched_idxs){
                 auto token_idx = words->token_index(idx);
-                auto sent_uid  = texts->sent_uid(token_idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
                 auto match_score = word_importance->score(dep_pair.word_dep)*word_similarity*(0.5+word_gov_similarity);
-                matched_tokens.push_back({sent_uid,
+                matched_tokens.push_back({texts->sent_uid(token_idx),
                                           {dep_pair.idx, token_idx, match_score}});
             }
         }
