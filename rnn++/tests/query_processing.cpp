@@ -43,7 +43,7 @@ struct LookupEntityCandidate{
         return candidates;
     }
 
-    Range find(wordrep::WikidataUID entity) const{
+    Range find(key_type entity) const{
         auto eq   = [entity](auto& x){return entity==to_key(x);};
         auto less = [entity](auto& x){return entity< to_key(x);};
         auto m_pair = util::binary_find_block(*tokens, eq, less);
@@ -62,9 +62,9 @@ struct LookupEntityCandidate{
     auto size() const{return tokens->size();}
 private:
     LookupEntityCandidate()
-            : tokens{std::make_unique<tbb::concurrent_vector<wordrep::io::EntityCandidate>>()}
+            : tokens{std::make_unique<tbb::concurrent_vector<value_type>>()}
     {}
-    std::unique_ptr<tbb::concurrent_vector<wordrep::io::EntityCandidate>> tokens;
+    std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
 };
 
 struct LookupIndexedWordsIndexDummy{};
@@ -84,7 +84,7 @@ struct LookupIndexedWords{
         return {std::move(indexed_words)};
     }
 
-    Range find(wordrep::WordUID word) const{
+    Range find(key_type word) const{
         auto eq   = [word](auto& x){return word==to_key(x);};
         auto less = [word](auto& x){return word< to_key(x);};
         auto m_pair = util::binary_find_block(sorted_words, eq, less);
@@ -94,11 +94,11 @@ struct LookupIndexedWords{
         return {beg,end};
     }
     wordrep::DPTokenIndex token_index(Index idx) const { return sorted_words.at(idx.val).idx;}
-    LookupIndexedWords(tbb::concurrent_vector<wordrep::IndexedWord>&& words)
+    LookupIndexedWords(tbb::concurrent_vector<value_type>&& words)
             : sorted_words{std::move(words)}
     {}
 private:
-    tbb::concurrent_vector<wordrep::IndexedWord> sorted_words;
+    tbb::concurrent_vector<value_type> sorted_words;
 };
 
 int query_sent_processing(int argc, char** argv) {

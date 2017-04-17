@@ -9,14 +9,14 @@ namespace wordrep {
 SimilarWords SimilarWords::factory(SimilarWordsFile const& file){
     auto data = util::io::load_binary_file(file.name);
     auto rbuf = wordrep::io::GetSimilarWords(data.get());
-    tbb::concurrent_vector<wordrep::io::SimilarWordPair> similar_words;
+    tbb::concurrent_vector<value_type> similar_words;
     similar_words.reserve(rbuf->pairs()->size());
     for(auto v : *rbuf->pairs())
         similar_words.push_back(*v);
     return {std::move(similar_words)};
 }
 
-SimilarWords::SimilarWords(tbb::concurrent_vector<io::SimilarWordPair>&& may_not_sorted)
+SimilarWords::SimilarWords(tbb::concurrent_vector<value_type>&& may_not_sorted)
 : similar_words{std::move(may_not_sorted)} {
     tbb::parallel_sort(similar_words.begin(),
                        similar_words.end(),
@@ -32,7 +32,7 @@ void SimilarWords::to_file(SimilarWordsFile&& file) const {
     util::io::to_file(builder, file.name);
 }
 
-SimilarWords::Range SimilarWords::find(WordUID word) const {
+SimilarWords::Range SimilarWords::find(key_type word) const {
     auto eq   = [word](auto& x){return word==to_key(x);};
     auto less = [word](auto& x){return word< to_key(x);};
     auto m_pair = util::binary_find_block(similar_words, eq, less);
