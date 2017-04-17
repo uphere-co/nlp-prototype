@@ -103,12 +103,20 @@ private:
 
 struct MatchedToken{
     wordrep::SentUID key;
+    wordrep::ConsecutiveTokens query;
+    wordrep::ConsecutiveTokens matched;
     double score;
 };
 
 struct MatchedTokenReducer{
     struct Value{
+        struct PerToken{
+            wordrep::ConsecutiveTokens query;
+            wordrep::ConsecutiveTokens matched;
+            double score;
+        };
         double score;
+        std::vector<PerToken> tokens;
     };
 
     void score_filtering(double cutoff=0.0){
@@ -128,6 +136,7 @@ void accum_tokens(MatchedTokenReducer& accum, std::vector<MatchedToken> const& v
     for(auto& val : vals){
         if(accum.vals.find(val.key)==accum.vals.cend()) continue;
         accum.vals[val.key].score += val.score;
+        accum.vals[val.key].tokens.push_back({val.query,val.matched,val.score});
     }
 }
 
@@ -229,7 +238,7 @@ int query_sent_processing(int argc, char** argv) {
 
     auto ner_matched_tokens  = util::intersection(keys_per_ambiguous_entity);
     MatchedTokenReducer matched_results;
-    for(auto& sent : ner_matched_tokens) matched_results.vals[sent] = {0.0};
+    for(auto& sent : ner_matched_tokens) matched_results.vals[sent] = {0.0, {}};
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
@@ -254,7 +263,10 @@ int query_sent_processing(int argc, char** argv) {
                 auto token_idx = words->token_index(idx);
                 auto sent_uid  = texts->sent_uid(token_idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
-                matched_tokens.push_back({sent_uid,word_score*word_similarity*(0.5+word_gov_similarity)});
+                matched_tokens.push_back({sent_uid,
+                                          {dep_pair.idx},
+                                          {token_idx},
+                                          word_score*word_similarity*(0.5+word_gov_similarity)});
             }
         }
         util::sort(matched_tokens, [](auto&x, auto& y){return x.score>y.score;});
@@ -277,6 +289,11 @@ int query_sent_processing(int argc, char** argv) {
     for(auto matched : matched_results.vals){
         auto& sent = sents.at(matched.first.val);
         fmt::print("{} : {}\n", matched.second.score, sent.repr(*wordUIDs));
+        for(auto token : matched.second.tokens){
+            fmt::print("{} : {}\n",
+                       token.query.repr(testset.tokens, *wordUIDs),
+                       token.matched.repr(*texts, *wordUIDs));
+        }
     }
     timer.here_then_reset("Find candidate entities.");
 
