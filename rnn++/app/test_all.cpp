@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv){
 //    rnn::test::test_all();
-    engine::test::load_query_engine_data(argc,argv);
+    engine::test::query_sent_processing(argc,argv);
     return 0;
 }
 

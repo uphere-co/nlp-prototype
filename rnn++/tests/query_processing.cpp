@@ -85,7 +85,7 @@ private:
     tbb::concurrent_vector<wordrep::IndexedWord> sorted_words;
 };
 
-int load_query_engine_data(int argc, char** argv) {
+int query_sent_processing(int argc, char** argv) {
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
@@ -184,12 +184,12 @@ int load_query_engine_data(int argc, char** argv) {
 
     for(auto dep_pair : preprocessed_sent.words){
         auto word = dep_pair.word_dep;
-        if(word != wordUIDs->get_uid("bought")) continue;
+        if(word_importance->is_noisy_word(word)) continue;
         auto range = word_sim->find(word);
         std::vector<wordrep::SentUID> sent_uids;
         for(auto idx : range){
             auto word = word_sim->sim_word(idx);
-            auto similarity_word = word_sim->similarity(idx);
+            auto word_similarity = word_sim->similarity(idx);
             auto matched_words = words->find(word);
             append(sent_uids, map(matched_words, [&](auto idx){return texts->sent_uid(words->token_index(idx));}));
         }
