@@ -85,7 +85,7 @@ private:
     tbb::concurrent_vector<wordrep::IndexedWord> sorted_words;
 };
 
-int load_query_engine_data(int argc, char** argv) {
+int query_sent_processing(int argc, char** argv) {
     assert(argc>1);
     auto config_json = util::load_json(argv[1]);
     engine::SubmoduleFactory factory{{config_json}};
@@ -171,13 +171,36 @@ int load_query_engine_data(int argc, char** argv) {
     auto named_entities = preprocessed_sent.all_named_entities();
     timer.here_then_reset("Annotate a query sentence.");
 
-    auto keys_per_ambiguous_entity = util::map(named_entities, [&](auto& e){
+    using util::map;
+    using util::concat_map;
+    using util::append;
+
+    auto keys_per_ambiguous_entity = map(named_entities, [&](auto& e){
         auto ranges = candidates.find(e);
-        return util::concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
+        return concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
     });
     timer.here_then_reset("Map phase for Wiki entities.");
+
+
+    for(auto dep_pair : preprocessed_sent.words){
+        auto word = dep_pair.word_dep;
+        if(word_importance->is_noisy_word(word)) continue;
+        auto similar_words = word_sim->find(word);
+        std::vector<wordrep::SentUID> sent_uids;
+        for(auto simword_idx : similar_words){
+            auto similar_word = word_sim->sim_word(simword_idx);
+            auto word_similarity = word_sim->similarity(simword_idx);
+            auto matched_words = words->find(similar_word);
+            append(sent_uids, map(matched_words, [&](auto idx){return texts->sent_uid(words->token_index(idx));}));
+        }
+        keys_per_ambiguous_entity.push_back(sent_uids);
+    }
+    timer.here_then_reset("Map phase for words.");
+
+
     auto matched_sents  = util::intersection(keys_per_ambiguous_entity);
-    timer.here_then_reset("Reduce phase for Wiki entities.");
+    timer.here_then_reset("Reduce phase.");
+
 
     fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", candidates.size());
     fmt::print(std::cerr, "List of Wikidata entities:\n");
@@ -197,7 +220,7 @@ int load_query_engine_data(int argc, char** argv) {
     auto range = word_sim->find(wordUIDs->get_uid("purchased"));
     for(auto idx : range){
         auto word = word_sim->sim_word(idx);
-        fmt::print("{} {} {}\n",
+        fmt::print(std::cerr, "{} {} {}\n",
                    wordUIDs->str(word_sim->word(idx)),
                    wordUIDs->str(word),
                    word_sim->similarity(idx));
@@ -205,10 +228,9 @@ int load_query_engine_data(int argc, char** argv) {
         for(auto idx: matched_words){
             auto sent_uid = texts->sent_uid(words->token_index(idx));
             auto& sent = sents.at(sent_uid.val);
-            fmt::print("{} : {}\n", wordUIDs->str(word), sent.repr(*wordUIDs));
+            assert(sent.isin(word));
         }
     }
-    timer.here_then_reset("Found similar words.");
 
     return 0;
 }
