@@ -22,6 +22,10 @@ struct LookupEntityCandidate{
     using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
     using Range = util::IndexRange<Index>;
 
+    using key_type   = wordrep::WikidataUID;
+    using value_type = wordrep::io::EntityCandidate;
+    static key_type to_key(value_type const& x) {return x.wiki_uid();};
+
     static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
         util::Timer timer;
         LookupEntityCandidate candidates;
@@ -32,14 +36,17 @@ struct LookupEntityCandidate{
         timer.here_then_reset("Aggregate tokens.");
 
         tbb::parallel_sort(candidates.tokens->begin(),
-                           candidates.tokens->end());
+                           candidates.tokens->end(),
+                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
         timer.here_then_reset("Sort tokens by WikiUID.");
 
         return candidates;
     }
 
-    Range find(wordrep::WikidataUID uid) const{
-        auto m_pair = util::binary_find_block(*tokens, wordrep::io::partial_construct(uid));
+    Range find(wordrep::WikidataUID entity) const{
+        auto eq   = [entity](auto& x){return entity==to_key(x);};
+        auto less = [entity](auto& x){return entity< to_key(x);};
+        auto m_pair = util::binary_find_block(*tokens, eq, less);
         if(!m_pair) return {0,0};
         auto beg = m_pair->first  - tokens->cbegin();
         auto end = m_pair->second - tokens->cbegin();
@@ -62,16 +69,25 @@ private:
 
 struct LookupIndexedWordsIndexDummy{};
 struct LookupIndexedWords{
-    static LookupIndexedWords factory(wordrep::DepParsedTokens const& texts){
-        auto indexed_words = texts.indexed_words();
-        tbb::parallel_sort(indexed_words.begin(), indexed_words.end());
-        return {std::move(indexed_words)};
-    }
     using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
     using Range = util::IndexRange<Index>;
 
+    using key_type   = wordrep::WordUID;
+    using value_type = wordrep::IndexedWord;
+    static key_type to_key(value_type const& x) {return x.word;};
+
+    static LookupIndexedWords factory(wordrep::DepParsedTokens const& texts){
+        auto indexed_words = texts.indexed_words();
+        tbb::parallel_sort(indexed_words.begin(),
+                           indexed_words.end(),
+                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
+        return {std::move(indexed_words)};
+    }
+
     Range find(wordrep::WordUID word) const{
-        auto m_pair = util::binary_find_block(sorted_words, {word, -1});
+        auto eq   = [word](auto& x){return word==to_key(x);};
+        auto less = [word](auto& x){return word< to_key(x);};
+        auto m_pair = util::binary_find_block(sorted_words, eq, less);
         if(!m_pair) return {0,0};
         auto beg = m_pair->first  - sorted_words.cbegin();
         auto end = m_pair->second - sorted_words.cbegin();
