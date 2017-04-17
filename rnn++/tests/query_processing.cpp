@@ -241,11 +241,7 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
-        auto word       = dep_pair.word_dep;
-        auto word_score = word_importance->score(word);
-        auto word_gov   = dep_pair.word_gov;
-        auto similar_words     = word_sim->find(word);
-        auto similar_words_gov = word_sim->find(word_gov);
+        auto similar_words_gov = word_sim->find(dep_pair.word_gov);
         auto op_gov_word_similarity = [&](auto gov){
             for(auto idx : similar_words_gov){
                 if(gov == word_sim->sim_word(idx))
@@ -254,6 +250,7 @@ int query_sent_processing(int argc, char** argv) {
             return decltype(word_sim->similarity(0)){0.0};
         };
         std::vector<MatchedTokenPerSent> matched_tokens;
+        auto similar_words = word_sim->find(dep_pair.word_dep);
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
             auto word_similarity = word_sim->similarity(simword_idx);
@@ -262,10 +259,9 @@ int query_sent_processing(int argc, char** argv) {
                 auto token_idx = words->token_index(idx);
                 auto sent_uid  = texts->sent_uid(token_idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
+                auto match_score = word_importance->score(dep_pair.word_dep)*word_similarity*(0.5+word_gov_similarity);
                 matched_tokens.push_back({sent_uid,
-                                          {{dep_pair.idx},
-                                           {token_idx},
-                                           word_score*word_similarity*(0.5+word_gov_similarity)}});
+                                          {dep_pair.idx, token_idx, match_score}});
             }
         }
         util::sort(matched_tokens, [](auto&x, auto& y){return x.val.score>y.val.score;});
