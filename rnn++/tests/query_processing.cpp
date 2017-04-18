@@ -314,11 +314,26 @@ int query_sent_processing(int argc, char** argv) {
 
     auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
         auto ranges = candidates.find(e.uid);
+
+        auto similar_words_gov = word_sim->find(e.word_gov);
+        auto op_gov_word_similarity = [&](auto gov){
+            for(auto idx : similar_words_gov){
+                if(gov == word_sim->sim_word(idx))
+                    return word_sim->similarity(idx);
+            }
+            return decltype(word_sim->similarity(0)){0.0};
+        };
+        auto gov_importance = word_importance->score(e.word_gov);
         auto matched_tokens = concat_map(ranges, [&](auto i){
             auto idx = candidates.token_index(i);
             auto m_words = ner_tagged_tokens.find(idx);
             assert(m_words);
-            auto match_score = candidates.score(i);
+            auto entity_words = m_words.value();
+            auto data_word_gov = texts->head_uid(entity_words.dep_token_idx(*texts));
+            auto gov_similarity = op_gov_word_similarity(data_word_gov);
+            auto score_gov = 1 + gov_importance * gov_similarity;
+            auto score_dep = candidates.score(i);
+            auto match_score = score_dep * score_gov;
             MatchedTokenPerSent matched_token{texts->sent_uid(idx), {e.idxs, m_words.value(), match_score}};
             return matched_token;
         });
@@ -351,11 +366,14 @@ int query_sent_processing(int argc, char** argv) {
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
             auto word_similarity = word_sim->similarity(simword_idx);
+            auto score_dep = word_importance->score(dep_pair.word_dep)*word_similarity;
+            auto gov_importance = word_importance->score(dep_pair.word_gov);
             auto matched_idxs   = words->find(similar_word);
             for(auto idx : matched_idxs){
                 auto token_idx = words->token_index(idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
-                auto match_score = word_importance->score(dep_pair.word_dep)*word_similarity*(0.5+word_gov_similarity);
+                auto score_gov = 1+word_gov_similarity*gov_importance;
+                auto match_score = score_dep * score_gov;
                 matched_tokens.push_back({texts->sent_uid(token_idx),
                                           {dep_pair.idx, token_idx, match_score}});
             }
