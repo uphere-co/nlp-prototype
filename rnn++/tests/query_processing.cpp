@@ -173,7 +173,7 @@ struct MatchedTokenReducer{
 
         for(auto& tokens : xs){
             commons.drop_complement(tokens);
-            for(auto& token : tokens) commons.accum(token);
+            for(auto& token : tokens) commons.accum_if(token);
         }
         return commons;
     }
@@ -196,7 +196,7 @@ struct MatchedTokenReducer{
             it = vals.erase(it);
         }
     }
-    bool accum(MatchedTokenPerSent const& token){
+    bool accum_if(MatchedTokenPerSent const &token){
         if(!has_key(token.key)) return false;
         vals[token.key].score += token.val.score;
         vals[token.key].tokens.push_back(token.val);
@@ -384,7 +384,7 @@ int query_sent_processing(int argc, char** argv) {
         });
         auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
         matched_tokens.erase(last, matched_tokens.end());
-        for(auto& token : matched_tokens) matched_results.accum(token);
+        for(auto& token : matched_tokens) matched_results.accum_if(token);
     }
     timer.here_then_reset("Reduce phase.");
     matched_results.score_filtering();
