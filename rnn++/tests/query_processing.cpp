@@ -163,6 +163,21 @@ struct MatchedTokenReducer{
         std::vector<MatchedTokenPerSent::Value> tokens;
     };
 
+    static MatchedTokenReducer intersection(std::vector<std::vector<MatchedTokenPerSent>>&& xs){
+        MatchedTokenReducer commons;
+        if(xs.empty()) return commons;
+
+        for(auto& token : xs.back())
+            commons.vals[token.key]={token.val.score, {token.val}};
+        xs.pop_back();
+
+        for(auto& tokens : xs){
+            commons.drop_complement(tokens);
+            for(auto& token : tokens) commons.accum(token);
+        }
+        return commons;
+    }
+
     void score_filtering(double cutoff=0.0){
         for(auto it = vals.begin(); it != vals.end(); ){
             if(it->second.score > cutoff) {
@@ -173,13 +188,28 @@ struct MatchedTokenReducer{
         }
     }
     bool accum(MatchedTokenPerSent const& token){
-        if(vals.find(token.key)==vals.cend()) return false;
+        if(!has_key(token.key)) return false;
         vals[token.key].score += token.val.score;
-        vals[token.key].tokens.push_back({token.val.query,token.val.matched,token.val.score});
+        vals[token.key].tokens.push_back(token.val);
         return true;
     }
-
+    void drop_complement(std::vector<MatchedTokenPerSent> const& tokens) {
+        auto keys = util::map(tokens, [](auto& x){return x.key;});
+        util::sort(keys);
+        for(auto it = vals.begin(); it != vals.end(); ){
+            if(util::binary_find(keys, it->first)) {
+                ++it;
+                continue;
+            }
+            it = vals.erase(it);
+        }
+    }
     std::map<Key,Value> vals;
+private:
+    bool has_key(Key key) const {
+        if(vals.find(key)==vals.cend()) return false;
+        return true;
+    }
 };
 
 int query_sent_processing(int argc, char** argv) {
@@ -275,20 +305,26 @@ int query_sent_processing(int argc, char** argv) {
 
     auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
         auto ranges = candidates.find(e.uid);
-        return concat_map(ranges, [&](auto i){
+        auto matched_tokens = concat_map(ranges, [&](auto i){
             auto idx = candidates.token_index(i);
             auto m_words = ner_tagged_tokens.find(idx);
             assert(m_words);
             auto match_score = candidates.score(i);
             MatchedTokenPerSent matched_token{texts->sent_uid(idx), {e.idxs, m_words.value(), match_score}};
-            return matched_token.key;
+            return matched_token;
         });
+        util::sort(matched_tokens, [](auto&x, auto& y){
+            if(x.key==y.key) return x.val.score>y.val.score;
+            return x.key<y.key;
+        });
+        auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
+        matched_tokens.erase(last, matched_tokens.end());
+        //return map(matched_tokens, [](auto x){return x.key;});
+        return matched_tokens;
     });
     timer.here_then_reset("Map phase for Wiki entities.");
 
-    auto ner_matched_tokens  = util::intersection(keys_per_ambiguous_entity);
-    MatchedTokenReducer matched_results;
-    for(auto& sent : ner_matched_tokens) matched_results.vals[sent] = {0.0, {}};
+    auto matched_results = MatchedTokenReducer::intersection(std::move(keys_per_ambiguous_entity));
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
@@ -315,7 +351,10 @@ int query_sent_processing(int argc, char** argv) {
                                           {dep_pair.idx, token_idx, match_score}});
             }
         }
-        util::sort(matched_tokens, [](auto&x, auto& y){return x.val.score>y.val.score;});
+        util::sort(matched_tokens, [](auto&x, auto& y){
+            if(x.key==y.key) return x.val.score>y.val.score;
+            return x.key<y.key;
+        });
         auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
         matched_tokens.erase(last, matched_tokens.end());
         for(auto& token : matched_tokens) matched_results.accum(token);
