@@ -25,7 +25,6 @@ struct SimilarWords {
     static key_type to_key(value_type const& x) {return x.word();};
 
     static SimilarWords factory(SimilarWordsFile const& file);
-
     SimilarWords(tbb::concurrent_vector<value_type>&& may_not_sorted);
 
     void to_file(SimilarWordsFile&& file) const;
@@ -36,6 +35,23 @@ struct SimilarWords {
     WordUID word(Index idx)     const {return at(idx).word();}
     WordUID sim_word(Index idx) const {return at(idx).sim();}
     auto similarity(Index idx)  const {return at(idx).similarity();}
+
+    struct OpSimilarity{
+        auto similarity(WordUID word) const {
+            for(auto idx : range){
+                if(word==self.sim_word(idx))
+                    return self.similarity(idx);
+            }
+            return decltype(self.similarity(0)){0.0};
+        }
+        Range range;
+        SimilarWords const& self;
+    };
+
+    OpSimilarity get_op_sim(WordUID word) const {
+        return {find(word), *this};
+    }
+
 private:
     tbb::concurrent_vector<value_type> similar_words;
 };
