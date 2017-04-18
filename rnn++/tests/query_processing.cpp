@@ -178,6 +178,15 @@ struct MatchedTokenReducer{
         return commons;
     }
 
+    std::vector<std::pair<Key,Value>> top_n_results(size_t n) const {
+        auto results = util::to_pairs(vals);
+        auto beg = results.begin();
+        auto end = results.end();
+        std::partial_sort(beg, beg+n, end, [](auto& x, auto& y){return x.second.score > y.second.score;});
+        results.erase(beg+n, end);
+        return results;
+    }
+
     void score_filtering(double cutoff=0.0){
         for(auto it = vals.begin(); it != vals.end(); ){
             if(it->second.score > cutoff) {
@@ -361,6 +370,8 @@ int query_sent_processing(int argc, char** argv) {
     }
     timer.here_then_reset("Reduce phase.");
     matched_results.score_filtering();
+    auto results = matched_results.top_n_results(5);
+
 
     fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", candidates.size());
     fmt::print(std::cerr, "List of Wikidata entities:\n");
@@ -371,7 +382,7 @@ int query_sent_processing(int argc, char** argv) {
     fmt::print(std::cerr, "SENT: {}\n", tagged_sent.sent.repr(*wordUIDs));
     fmt::print(std::cerr, "TAGGED: {}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
     fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
-    for(auto matched : matched_results.vals){
+    for(auto matched : results){
         auto& sent = sents.at(matched.first.val);
         fmt::print("{} : {}\n", matched.second.score, sent.repr(*wordUIDs));
         for(auto token : matched.second.tokens){
