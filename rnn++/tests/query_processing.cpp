@@ -401,10 +401,12 @@ int query_sent_processing(int argc, char** argv) {
             auto matched_idxs   = words->find(similar_word);
             for(auto idx : matched_idxs){
                 auto token_idx = words->token_index(idx);
+                auto key = texts->sent_uid(token_idx);
+                if(!util::binary_find(common_keys, key)) continue;
                 auto word_gov_similarity = op_gov_word.similarity(texts->head_uid(token_idx));
                 auto score_gov = 1+word_gov_similarity*gov_importance;
                 auto match_score = score_dep * score_gov;
-                matched_tokens.push_back({texts->sent_uid(token_idx),
+                matched_tokens.push_back({key,
                                           {dep_pair.idx, token_idx, match_score}});
             }
         }
