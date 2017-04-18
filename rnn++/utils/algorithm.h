@@ -61,7 +61,7 @@ void apply(T &elms, OP const &op){
 };
 
 template<typename FI, typename OP>
-auto concat_map(std::vector<FI> const& xs, OP op_key){
+auto concat_mapmap(std::vector<FI> const& xs, OP op_key){
     decltype(map(xs.front(), op_key)) vals;
     for(auto& x : xs)
         append(vals, util::map(x, op_key));

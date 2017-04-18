@@ -317,13 +317,13 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Annotate a query sentence.");
 
     using util::map;
-    using util::concat_map;
+    using util::concat_mapmap;
     using util::append;
 
     auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
         auto op_gov_word = word_sim->get_op_sim(e.word_gov);
         auto gov_importance = word_importance->score(e.word_gov);
-        auto matched_tokens = concat_map(candidates.find(e.uid), [&](auto i){
+        auto matched_tokens = concat_mapmap(candidates.find(e.uid), [&](auto i){
             auto idx = candidates.token_index(i);
             //texts, e, op_gov_word_similarity, i
             auto key = texts->sent_uid(idx);
