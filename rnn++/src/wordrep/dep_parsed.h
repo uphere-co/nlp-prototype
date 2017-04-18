@@ -53,8 +53,6 @@ struct Sentences{
 };
 
 struct IndexedWord{
-    friend bool operator< (IndexedWord lhs, IndexedWord rhs) {return lhs.word<rhs.word;}
-    friend bool operator==(IndexedWord lhs, IndexedWord rhs) {return lhs.word==rhs.word;}
     WordUID      word;
     DPTokenIndex idx;
 };
