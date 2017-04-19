@@ -39,23 +39,28 @@ struct OpWordSim{
 
 class QueryProcessor{
 public:
-    QueryProcessor(SubmoduleFactory const& factory){
+    static QueryProcessor factory(SubmoduleFactory const& factory){
         util::MockTimer timer;
-        auto load_word_scores =[this,&factory](){
-            this->word_importance = std::make_unique<wordrep::WordImportance>(factory.word_importance());
+//        util::Timer timer;
+
+        wordrep::AnnotationData annotated_tokens;
+        QueryProcessor engine;
+
+        auto load_annotation =[&annotated_tokens,&factory](){
+            annotated_tokens = factory.load_annotation();
         };
-        auto load_annotation =[this,&factory](){
-            this->annotated_tokens = factory.load_annotation();
+        auto load_word_scores =[&engine,&factory](){
+            engine.word_importance = std::make_unique<wordrep::WordImportance>(factory.word_importance());
         };
-        auto load_indexed_text=[this,&factory](){
-            this->texts = std::make_unique<wordrep::DepParsedTokens>(factory.dep_parsed_tokens());
-            this->words = std::make_unique<LookupIndexedWords>(LookupIndexedWords::factory(*this->texts));
+        auto load_indexed_text=[&engine,&factory](){
+            engine.texts = std::make_unique<wordrep::DepParsedTokens>(factory.dep_parsed_tokens());
+            engine.words = std::make_unique<LookupIndexedWords>(LookupIndexedWords::factory(*engine.texts));
         };
-        auto load_wiki_module = [this,&factory](){
-            this->f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
+        auto load_wiki_module = [&engine,&factory](){
+            engine.f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
         };
-        auto load_wordsim_table = [this,&factory](){
-            this->word_sim = std::make_unique<wordrep::SimilarWords>(factory.similar_words());
+        auto load_wordsim_table = [&engine,&factory](){
+            engine.word_sim = std::make_unique<wordrep::SimilarWords>(factory.similar_words());
         };
 
         util::parallel_invoke(load_annotation,
@@ -65,11 +70,11 @@ public:
                               load_indexed_text);
         timer.here_then_reset("Concurrent loading of binary files");
 
-        candidates = std::make_unique<LookupEntityCandidate>(LookupEntityCandidate::factory(annotated_tokens));
+        engine.candidates = std::make_unique<LookupEntityCandidate>(LookupEntityCandidate::factory(annotated_tokens));
         timer.here_then_reset("Aggregate WikidataUID sorted entities.");
-        ner_tagged_tokens = std::make_unique<LookupEntityTaggedToken>(LookupEntityTaggedToken::factory(annotated_tokens));
+        engine.ner_tagged_tokens = std::make_unique<LookupEntityTaggedToken>(LookupEntityTaggedToken::factory(annotated_tokens));
         timer.here_then_reset("Aggregate DPTokenIndex sorted tagged tokens.");
-
+        return engine;
     }
 
     auto find_similar_sentences(wordrep::Scoring::SentenceToScored const& preprocessed_sent) const {
@@ -176,12 +181,13 @@ public:
         return matched_results;
     }
 
-    std::unique_ptr<wordrep::WordImportance> word_importance;
+
     std::unique_ptr<wordrep::DepParsedTokens> texts;
+private:
+    QueryProcessor() {}
+    std::unique_ptr<wordrep::WordImportance> word_importance;
     std::unique_ptr<wikidata::EntityModule> f;
     std::unique_ptr<wordrep::SimilarWords> word_sim;
-    wordrep::AnnotationData annotated_tokens;
-    wordrep::PreprocessedSentences data_sent;
     std::unique_ptr<LookupEntityCandidate> candidates;
     std::unique_ptr<LookupEntityTaggedToken> ner_tagged_tokens;
     std::unique_ptr<LookupIndexedWords> words;
@@ -216,7 +222,7 @@ int query_sent_processing(int argc, char** argv) {
     testset.tokens.build_voca_index(voca->indexmap);
     timer.here_then_reset("Load test dataset.");
 
-    QueryProcessor engine{factory};
+    auto engine = QueryProcessor::factory(factory);
     auto sents = engine.texts->IndexSentences();
     timer.here_then_reset("Load engine.");
 
@@ -232,7 +238,6 @@ int query_sent_processing(int argc, char** argv) {
 
     auto named_entities = preprocessed_sent.all_named_entities();
 
-    fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", engine.candidates->size());
     fmt::print(std::cerr, "List of Wikidata entities:\n");
     for(auto entity : testset.entities)
         fmt::print("{}\n", entity.repr(testset.wikidataUIDs, testset.wordUIDs));
