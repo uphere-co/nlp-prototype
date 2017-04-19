@@ -61,7 +61,7 @@ void apply(T &elms, OP const &op){
 };
 
 template<typename FI, typename OP>
-auto concat_map(std::vector<FI> const& xs, OP op_key){
+auto concat_mapmap(std::vector<FI> const& xs, OP op_key){
     decltype(map(xs.front(), op_key)) vals;
     for(auto& x : xs)
         append(vals, util::map(x, op_key));
@@ -89,7 +89,6 @@ auto intersection(std::vector<T> xs){
     return commons;
 }
 
-
 template<typename T>
 T to_type(size_t uval){
     assert(uval <std::numeric_limits<T>::max());
@@ -110,6 +109,20 @@ auto sort(T &elms){
 template<typename T, typename TO>
 auto sort(T &elms, TO const& op){
     return std::sort(elms.begin(), elms.end(), op);
+}
+
+template<typename T, typename OP, typename OP2>
+void drop_duplicates(std::vector<T> &xs, OP const& ep, OP2 const& less){
+    sort(xs, less);
+    auto last = std::unique(xs.begin(), xs.end(), ep);
+    xs.erase(last, xs.end());
+}
+
+template<typename T>
+void drop_duplicates(std::vector<T> &xs){
+    sort(xs);
+    auto last = std::unique(xs.begin(), xs.end());
+    xs.erase(last, xs.end());
 }
 
 template<typename T, typename OP>
