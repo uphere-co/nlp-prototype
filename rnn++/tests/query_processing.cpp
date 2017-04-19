@@ -382,10 +382,18 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Map phase for Wiki entities : get intersection of keys.");
 
 
+    for(auto& matched_indexes : pre_results_per_entity) {
+        auto last = std::partition(matched_indexes.begin(), matched_indexes.end(), [&](auto &token) {
+            if (util::binary_find(common_keys, token.key)) return true;
+            return false;
+        });
+        matched_indexes.erase(last, matched_indexes.end());
+    }
+    timer.here_then_reset("Map phase for Wiki entities : filter with common keys.");
+
     auto get_op_word_sim = [&word_importance, &word_sim](wordrep::WordUID word_gov){
         return OpWordSim{word_gov, *word_importance, *word_sim};
     };
-
     std::vector<std::vector<MatchedTokenPerSent>> matched_tokens_per_entity;
     auto n = pre_results_per_entity.size();
     for(decltype(n)i=0; i!=n; ++i){
