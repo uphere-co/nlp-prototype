@@ -144,6 +144,21 @@ private:
     tbb::concurrent_vector<value_type> sorted_words;
 };
 
+struct MatchedIndexPerSent{
+    using Key = wordrep::SentUID;
+    using Value = LookupEntityCandidate::Index;
+
+    friend bool operator==(MatchedIndexPerSent const& x, MatchedIndexPerSent const& y){
+        return x.key==y.key;
+    }
+    friend bool operator<(MatchedIndexPerSent const& x, MatchedIndexPerSent const& y){
+        return x.key<y.key;
+    }
+
+    Key key;
+    Value val;
+};
+
 struct MatchedTokenPerSent{
     using Key = wordrep::SentUID;
     struct Value{
@@ -320,11 +335,36 @@ int query_sent_processing(int argc, char** argv) {
     using util::concat_mapmap;
     using util::append;
 
-    auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
+    auto pre_results_per_entity = map(preprocessed_sent.entities, [&](auto& e) {
+        return concat_mapmap(candidates.find(e.uid), [&](auto i) {
+            return MatchedIndexPerSent{texts->sent_uid(candidates.token_index(i)), i};
+        });
+    });
+    assert(pre_results_per_entity.size()==preprocessed_sent.entities.size());
+    timer.here_then_reset("Map phase for Wiki entities : lookup named entities.");
+    auto keys_per_ambiguous_entity=util::mapmap(pre_results_per_entity, [](auto x){return x.key;});
+    timer.here_then_reset("Map phase for Wiki entities : get keys.");
+    auto common_keys = util::intersection(keys_per_ambiguous_entity);
+    util::sort(common_keys);
+    timer.here_then_reset("Map phase for Wiki entities : get intersection of keys.");
+
+    std::vector<std::vector<MatchedTokenPerSent>> matched_tokens_per_entity;
+    auto n = pre_results_per_entity.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        auto& e = preprocessed_sent.entities.at(i);
+        auto& matched_indexes = pre_results_per_entity.at(i);
+        auto last = std::partition(matched_indexes.begin(), matched_indexes.end(), [&](auto& token) {
+            if(util::binary_find(common_keys, token.key)) return true;
+            return false;
+        });
+        matched_indexes.erase(last, matched_indexes.end());
+        timer.here_then_reset("Map phase for Wiki entities : collect relevant tokens.");
+
         auto op_gov_word = word_sim->get_op_sim(e.word_gov);
         auto gov_importance = word_importance->score(e.word_gov);
-        auto matched_tokens = concat_mapmap(candidates.find(e.uid), [&](auto i){
-            auto idx = candidates.token_index(i);
+
+        auto matched_tokens = map(matched_indexes, [&](auto i){
+            auto idx = candidates.token_index(i.val);
             //texts, e, op_gov_word_similarity, i
             auto key = texts->sent_uid(idx);
             auto& query_words = e.idxs;
@@ -335,20 +375,18 @@ int query_sent_processing(int argc, char** argv) {
             auto gov_similarity = op_gov_word_similarity(data_word_gov);
             // for smoothing the effect of word similarity of governer words.
             auto score_gov = 1 + gov_importance * gov_similarity;
-            auto score_dep = candidates.score(i);
+            auto score_dep = candidates.score(i.val);
             auto match_score = score_dep * score_gov;
-            MatchedTokenPerSent matched_token{key, {query_words, entity_words, match_score}};
-            return matched_token;
+            return MatchedTokenPerSent{key, {query_words, entity_words, match_score}};
         });
         timer.here_then_reset("Map phase for Wiki entities : get matched_tokens.");
         util::drop_duplicates(matched_tokens);
         timer.here_then_reset("Map phase for Wiki entities : drop duplicates of matched_tokens.");
-        //return map(matched_tokens, [](auto x){return x.key;});
-        return matched_tokens;
-    });
+        matched_tokens_per_entity.push_back(matched_tokens);
+    }
     timer.here_then_reset("Map phase for Wiki entities.");
 
-    auto matched_results = MatchedTokenReducer::intersection(std::move(keys_per_ambiguous_entity));
+    auto matched_results = MatchedTokenReducer::intersection(std::move(matched_tokens_per_entity));
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
@@ -364,11 +402,13 @@ int query_sent_processing(int argc, char** argv) {
             auto matched_idxs   = words->find(similar_word);
             for(auto idx : matched_idxs){
                 auto token_idx = words->token_index(idx);
-                auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
+                auto key = texts->sent_uid(token_idx);
+                if(!util::binary_find(common_keys, key)) continue;
+                auto word_gov_similarity = op_gov_word.similarity(texts->head_uid(token_idx));
                 // Same logic of line 334.
                 auto score_gov = 1+word_gov_similarity*gov_importance;
                 auto match_score = score_dep * score_gov;
-                matched_tokens.push_back({texts->sent_uid(token_idx),
+                matched_tokens.push_back({key,
                                           {dep_pair.idx, token_idx, match_score}});
             }
         }
