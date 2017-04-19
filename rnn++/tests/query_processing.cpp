@@ -440,14 +440,11 @@ int query_sent_processing(int argc, char** argv) {
     auto matched_results = MatchedTokenReducer::intersection(std::move(matched_tokens_per_entity));
     timer.here_then_reset("Map phase for words.");
 
-    std::vector<std::vector<MatchedWordPerSent>> matches_per_word;
-    matches_per_word.reserve(preprocessed_sent.words.size());
-    for(auto& dep_pair : preprocessed_sent.words){
+    //TODO : Remove assumption that query sent contains one or more named entities.
+    auto matches_per_word = map(preprocessed_sent.words, [&](auto& dep_pair){
         std::vector<MatchedWordPerSent> matches;
-        if(word_importance->is_noisy_word(dep_pair.word_dep)){
-            matches_per_word.push_back(matches);
-            continue;
-        }
+        if(word_importance->is_noisy_word(dep_pair.word_dep))
+            return matches;
         auto similar_words = word_sim->find(dep_pair.word_dep);
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
@@ -460,8 +457,8 @@ int query_sent_processing(int argc, char** argv) {
                 matches.push_back({key, token_idx});
             }
         }
-        matches_per_word.push_back(matches);
-    }
+        return matches;
+    });
 
     assert(matches_per_word.size()==preprocessed_sent.words.size());
     auto n = matches_per_word.size();
@@ -472,17 +469,15 @@ int query_sent_processing(int argc, char** argv) {
         auto op_gov_similarity = get_op_word_sim(dep_pair.word_gov);
         auto op_dep_similarity = get_op_word_sim(dep_pair.word_dep);
 
-        std::vector<MatchedTokenPerSent> matched_tokens;
-        for(auto& match : matches){
+        auto matched_tokens = map(matches, [&](auto& match){
             auto token_idx = match.val;
             auto matched_word = texts->word_uid(token_idx);
             auto score_dep = op_dep_similarity.dep_scoring(matched_word);
             auto data_word_gov = texts->head_uid(token_idx);
             auto score_gov = op_gov_similarity.gov_scoring(data_word_gov);
             auto match_score = score_dep * score_gov;
-            matched_tokens.push_back({match.key,
-                                      {dep_pair.idx, token_idx, match_score}});
-        }
+            return MatchedTokenPerSent{match.key, {dep_pair.idx, token_idx, match_score}};
+        });
         util::drop_duplicates(matched_tokens);
         for(auto& token : matched_tokens) matched_results.accum_if(token);
     }
