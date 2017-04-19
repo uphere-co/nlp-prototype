@@ -1,6 +1,8 @@
 #include <fmt/printf.h>
 
 #include "similarity/config.h"
+#include "similarity/lookup_tables.h"
+#include "similarity/token_map_reducer.h"
 
 #include "wordrep/preprocessed_sentences.h"
 #include "wordrep/similar_words.h"
@@ -9,251 +11,10 @@
 
 #include "utils/flatbuffers/io.h"
 #include "utils/profiling.h"
-#include "utils/parallel_algorithm.h"
 
-#include "utils/index_range.h"
 
 namespace engine {
 namespace test{
-
-struct LookupEntityCandidateIndexDummy{};
-
-struct LookupEntityCandidate{
-    using Index = util::IntegerLike<LookupEntityCandidateIndexDummy>;
-    using Range = util::IndexRange<Index>;
-
-    using key_type   = wordrep::WikidataUID;
-    using value_type = wordrep::io::EntityCandidate;
-    static key_type to_key(value_type const& x) {return x.wiki_uid();};
-
-    static LookupEntityCandidate factory(wordrep::AnnotationData const& tokens){
-        util::Timer timer;
-        LookupEntityCandidate candidates;
-
-        for(auto const& block : tokens.blocks){
-            util::append(*candidates.tokens, block->candidates);
-        }
-        timer.here_then_reset("Aggregate tokens.");
-
-        tbb::parallel_sort(candidates.tokens->begin(),
-                           candidates.tokens->end(),
-                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
-        timer.here_then_reset("Sort tokens by WikiUID.");
-
-        return candidates;
-    }
-
-    Range find(key_type entity) const{
-        auto eq   = [entity](auto& x){return entity==to_key(x);};
-        auto less = [entity](auto& x){return entity< to_key(x);};
-        auto m_pair = util::binary_find_block(*tokens, eq, less);
-        if(!m_pair) return {0,0};
-        auto beg = m_pair->first  - tokens->cbegin();
-        auto end = m_pair->second - tokens->cbegin();
-        return {beg,end};
-    }
-    std::vector<Range> find(wordrep::wiki::AmbiguousUID const& ambi_uid) const{
-        return util::map(ambi_uid.candidates, [this](auto uid){return this->find(uid);});
-    }
-    auto& at(Index idx) const{return tokens->at(idx.val);}
-    wordrep::DPTokenIndex token_index(Index idx) const {return at(idx).token_idx();}
-    wordrep::WikidataUID  wiki_uid(Index idx)    const {return at(idx).wiki_uid();}
-    auto score(Index idx) const {return at(idx).score();}
-    auto size() const{return tokens->size();}
-private:
-    LookupEntityCandidate()
-            : tokens{std::make_unique<tbb::concurrent_vector<value_type>>()}
-    {}
-    std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
-};
-
-struct LookupEntityTaggedTokenDummy{};
-struct LookupEntityTaggedToken{
-    using Index = util::IntegerLike<LookupEntityTaggedTokenDummy>;
-    using Range = util::IndexRange<Index>;
-
-    using key_type   = wordrep::DPTokenIndex ;
-    using value_type = wordrep::io::TaggedToken;
-    static key_type to_key(value_type const& x) {return x.token_idx();};
-
-    static LookupEntityTaggedToken factory(wordrep::AnnotationData const& tokens){
-        util::Timer timer;
-        LookupEntityTaggedToken tagged_entities;
-
-        for(auto const& block : tokens.blocks){
-            util::append(*tagged_entities.tokens, block->tagged_tokens);
-        }
-        timer.here_then_reset("Aggregate tokens.");
-
-        tbb::parallel_sort(tagged_entities.tokens->begin(),
-                           tagged_entities.tokens->end(),
-                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
-        timer.here_then_reset("Sort tokens by WikiUID.");
-
-        return tagged_entities;
-    }
-
-    std::optional<wordrep::ConsecutiveTokens> find(key_type idx) const{
-        auto eq   = [idx](auto& x){return idx==to_key(x);};
-        auto less = [idx](auto& x){return idx< to_key(x);};
-        auto m_token = util::binary_find(*tokens, eq, less);
-        if(!m_token) return {};
-        auto token = m_token.value();
-        return {{token->token_idx(), token->token_len()}};
-    }
-    auto size() const{return tokens->size();}
-private:
-    LookupEntityTaggedToken()
-            : tokens{std::make_unique<tbb::concurrent_vector<value_type>>()}
-    {}
-    std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
-};
-
-
-struct LookupIndexedWordsIndexDummy{};
-struct LookupIndexedWords{
-    using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
-    using Range = util::IndexRange<Index>;
-
-    using key_type   = wordrep::WordUID;
-    using value_type = wordrep::IndexedWord;
-    static key_type to_key(value_type const& x) {return x.word;};
-
-    static LookupIndexedWords factory(wordrep::DepParsedTokens const& texts){
-        auto indexed_words = texts.indexed_words();
-        tbb::parallel_sort(indexed_words.begin(),
-                           indexed_words.end(),
-                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
-        return {std::move(indexed_words)};
-    }
-
-    Range find(key_type word) const{
-        auto eq   = [word](auto& x){return word==to_key(x);};
-        auto less = [word](auto& x){return word< to_key(x);};
-        auto m_pair = util::binary_find_block(sorted_words, eq, less);
-        if(!m_pair) return {0,0};
-        auto beg = m_pair->first  - sorted_words.cbegin();
-        auto end = m_pair->second - sorted_words.cbegin();
-        return {beg,end};
-    }
-    wordrep::DPTokenIndex token_index(Index idx) const { return sorted_words.at(idx.val).idx;}
-    LookupIndexedWords(tbb::concurrent_vector<value_type>&& words)
-            : sorted_words{std::move(words)}
-    {}
-private:
-    tbb::concurrent_vector<value_type> sorted_words;
-};
-
-template<typename KEY, typename VALUE>
-struct MatchPerKey{
-    using Key   = KEY;
-    using Value = VALUE;
-    friend bool operator==(MatchPerKey const& x, MatchPerKey const& y){
-        return x.key==y.key;
-    }
-    friend bool operator<(MatchPerKey const& x, MatchPerKey const& y){
-        //DESCENDING ordering for VALUE if KEY is same; since ordering of VALUE is usually based on its score.
-        if(x.key==y.key) return x.val>y.val;
-        return x.key<y.key;
-    }
-
-    KEY key;
-    VALUE val;
-};
-
-struct MatchedToken{
-    friend bool operator==(MatchedToken const& x, MatchedToken const& y){
-        return x.score==y.score;
-    }
-    friend bool operator>(MatchedToken const& x, MatchedToken const& y){
-        return x.score>y.score;
-    }
-
-    wordrep::ConsecutiveTokens query;
-    wordrep::ConsecutiveTokens matched;
-    double score;
-};
-
-using EntityMatchPerSent = MatchPerKey<wordrep::SentUID,LookupEntityCandidate::Index>;
-using WordMatchPerSent   = MatchPerKey<wordrep::SentUID,wordrep::DPTokenIndex>;
-using MatchedTokenPerSent= MatchPerKey<wordrep::SentUID,MatchedToken>;
-
-struct MatchedTokenReducer{
-    using Key = MatchedTokenPerSent::Key;
-    struct Value{
-        double score;
-        std::vector<MatchedTokenPerSent::Value> tokens;
-    };
-
-    static MatchedTokenReducer intersection(std::vector<std::vector<MatchedTokenPerSent>>&& xs){
-        MatchedTokenReducer commons;
-        if(xs.empty()) return commons;
-
-        for(auto& token : xs.back())
-            commons.vals[token.key]={token.val.score, {token.val}};
-        xs.pop_back();
-
-        for(auto& tokens : xs){
-            commons.drop_complement(tokens);
-            for(auto& token : tokens) commons.accum_if(token);
-        }
-        return commons;
-    }
-
-    std::vector<std::pair<Key,Value>> top_n_results(size_t n) const {
-        auto results = util::to_pairs(vals);
-        auto beg = results.begin();
-        auto end = results.end();
-        std::partial_sort(beg, beg+n, end, [](auto& x, auto& y){return x.second.score > y.second.score;});
-        results.erase(beg+n, end);
-        return results;
-    }
-
-    void score_filtering(double cutoff=0.0){
-        for(auto it = vals.begin(); it != vals.end(); ){
-            if(it->second.score > cutoff) {
-                ++it;
-                continue;
-            }
-            it = vals.erase(it);
-        }
-    }
-    bool accum_if(MatchedTokenPerSent const &token){
-        if(!has_key(token.key)) return false;
-        vals[token.key].score += token.val.score;
-        vals[token.key].tokens.push_back(token.val);
-        return true;
-    }
-    void drop_complement(std::vector<MatchedTokenPerSent> const& tokens) {
-        auto keys = util::map(tokens, [](auto& x){return x.key;});
-        util::sort(keys);
-        for(auto it = vals.begin(); it != vals.end(); ){
-            if(util::binary_find(keys, it->first)) {
-                ++it;
-                continue;
-            }
-            it = vals.erase(it);
-        }
-    }
-    std::map<Key,Value> vals;
-private:
-    bool has_key(Key key) const {
-        if(vals.find(key)==vals.cend()) return false;
-        return true;
-    }
-};
-
-
-auto scoring_dep_word(LookupEntityCandidate const& candidates, EntityMatchPerSent i){
-    return candidates.score(i.val);
-}
-
-auto governour_word(wordrep::DPTokenIndex idx, wordrep::DepParsedTokens const& texts){
-    return texts.head_uid(idx);
-}
-auto governour_word(wordrep::ConsecutiveTokens const& phrase, wordrep::DepParsedTokens const& texts){
-    return governour_word(phrase.dep_token_idx(texts), texts);
-}
 
 struct OpWordSim{
     OpWordSim(wordrep::WordUID ref_word,
@@ -407,7 +168,7 @@ int query_sent_processing(int argc, char** argv) {
             auto m_words = ner_tagged_tokens.find(idx);
             assert(m_words);
             auto entity_words = m_words.value();
-            auto data_word_gov = governour_word(entity_words, *texts);
+            auto data_word_gov = texts->head_uid(entity_words.dep_token_idx(*texts));
             auto score_gov = op_gov_similarity.gov_scoring(data_word_gov);
             auto score_dep = candidates.score(i.val);
             auto match_score = score_dep * score_gov;
