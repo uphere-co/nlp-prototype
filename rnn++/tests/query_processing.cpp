@@ -144,14 +144,14 @@ private:
     tbb::concurrent_vector<value_type> sorted_words;
 };
 
-struct MatchedEntityPerSent{
+struct EntityMatchPerSent{
     using Key = wordrep::SentUID;
     using Value = LookupEntityCandidate::Index;
 
-    friend bool operator==(MatchedEntityPerSent const& x, MatchedEntityPerSent const& y){
+    friend bool operator==(EntityMatchPerSent const& x, EntityMatchPerSent const& y){
         return x.key==y.key;
     }
-    friend bool operator<(MatchedEntityPerSent const& x, MatchedEntityPerSent const& y){
+    friend bool operator<(EntityMatchPerSent const& x, EntityMatchPerSent const& y){
         return x.key<y.key;
     }
 
@@ -159,15 +159,15 @@ struct MatchedEntityPerSent{
     Value val;
 };
 
-struct MatchedWordPerSent{
+struct WordMatchPerSent{
     using Key = wordrep::SentUID;
     //using Value = wordrep::SimilarWords::Index;
     using Value = wordrep::DPTokenIndex;
 
-    friend bool operator==(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
+    friend bool operator==(WordMatchPerSent const& x, WordMatchPerSent const& y){
         return x.key==y.key;
     }
-    friend bool operator<(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
+    friend bool operator<(WordMatchPerSent const& x, WordMatchPerSent const& y){
         return x.key<y.key;
     }
 
@@ -178,6 +178,13 @@ struct MatchedWordPerSent{
 struct MatchedTokenPerSent{
     using Key = wordrep::SentUID;
     struct Value{
+        friend bool operator==(Value const& x, Value const& y){
+            return x.score==y.score;
+        }
+        friend bool operator>(Value const& x, Value const& y){
+            return x.score>y.score;
+        }
+
         wordrep::ConsecutiveTokens query;
         wordrep::ConsecutiveTokens matched;
         double score;
@@ -187,7 +194,7 @@ struct MatchedTokenPerSent{
         return x.key==y.key;
     }
     friend bool operator<(MatchedTokenPerSent const& x, MatchedTokenPerSent const& y){
-        if(x.key==y.key) return x.val.score>y.val.score;
+        if(x.key==y.key) return x.val>y.val;
         return x.key<y.key;
     }
 
@@ -261,7 +268,7 @@ private:
 };
 
 
-auto scoring_dep_word(LookupEntityCandidate const& candidates, MatchedEntityPerSent i){
+auto scoring_dep_word(LookupEntityCandidate const& candidates, EntityMatchPerSent i){
     return candidates.score(i.val);
 }
 
@@ -386,7 +393,7 @@ int query_sent_processing(int argc, char** argv) {
 
     auto pre_results_per_entity = map(preprocessed_sent.entities, [&](auto& e) {
         return concat_mapmap(candidates.find(e.uid), [&](auto i) {
-            return MatchedEntityPerSent{texts->sent_uid(candidates.token_index(i)), i};
+            return EntityMatchPerSent{texts->sent_uid(candidates.token_index(i)), i};
         });
     });
     timer.here_then_reset("Map phase for Wiki entities : lookup named entities.");
@@ -442,7 +449,7 @@ int query_sent_processing(int argc, char** argv) {
 
     //TODO : Remove assumption that query sent contains one or more named entities.
     auto matches_per_word = map(preprocessed_sent.words, [&](auto& dep_pair){
-        std::vector<MatchedWordPerSent> matches;
+        std::vector<WordMatchPerSent> matches;
         if(word_importance->is_noisy_word(dep_pair.word_dep))
             return matches;
         auto similar_words = word_sim->find(dep_pair.word_dep);
