@@ -372,7 +372,8 @@ int query_sent_processing(int argc, char** argv) {
             assert(m_words);
             auto entity_words = m_words.value();
             auto data_word_gov = texts->head_uid(entity_words.dep_token_idx(*texts));
-            auto gov_similarity = op_gov_word.similarity(data_word_gov);
+            auto gov_similarity = op_gov_word_similarity(data_word_gov);
+            // for smoothing the effect of word similarity of governer words.
             auto score_gov = 1 + gov_importance * gov_similarity;
             auto score_dep = candidates.score(i.val);
             auto match_score = score_dep * score_gov;
@@ -404,6 +405,7 @@ int query_sent_processing(int argc, char** argv) {
                 auto key = texts->sent_uid(token_idx);
                 if(!util::binary_find(common_keys, key)) continue;
                 auto word_gov_similarity = op_gov_word.similarity(texts->head_uid(token_idx));
+                // Same logic of line 334.
                 auto score_gov = 1+word_gov_similarity*gov_importance;
                 auto match_score = score_dep * score_gov;
                 matched_tokens.push_back({key,
