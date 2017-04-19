@@ -67,6 +67,49 @@ private:
     std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
 };
 
+struct LookupEntityTaggedTokenDummy{};
+struct LookupEntityTaggedToken{
+    using Index = util::IntegerLike<LookupEntityTaggedTokenDummy>;
+    using Range = util::IndexRange<Index>;
+
+    using key_type   = wordrep::DPTokenIndex ;
+    using value_type = wordrep::io::TaggedToken;
+    static key_type to_key(value_type const& x) {return x.token_idx();};
+
+    static LookupEntityTaggedToken factory(wordrep::AnnotationData const& tokens){
+        util::Timer timer;
+        LookupEntityTaggedToken tagged_entities;
+
+        for(auto const& block : tokens.blocks){
+            util::append(*tagged_entities.tokens, block->tagged_tokens);
+        }
+        timer.here_then_reset("Aggregate tokens.");
+
+        tbb::parallel_sort(tagged_entities.tokens->begin(),
+                           tagged_entities.tokens->end(),
+                           [](auto &x, auto &y){return to_key(x) < to_key(y);});
+        timer.here_then_reset("Sort tokens by WikiUID.");
+
+        return tagged_entities;
+    }
+
+    std::optional<wordrep::ConsecutiveTokens> find(key_type idx) const{
+        auto eq   = [idx](auto& x){return idx==to_key(x);};
+        auto less = [idx](auto& x){return idx< to_key(x);};
+        auto m_token = util::binary_find(*tokens, eq, less);
+        if(!m_token) return {};
+        auto token = m_token.value();
+        return {{token->token_idx(), token->token_len()}};
+    }
+    auto size() const{return tokens->size();}
+private:
+    LookupEntityTaggedToken()
+            : tokens{std::make_unique<tbb::concurrent_vector<value_type>>()}
+    {}
+    std::unique_ptr<tbb::concurrent_vector<value_type>> tokens;
+};
+
+
 struct LookupIndexedWordsIndexDummy{};
 struct LookupIndexedWords{
     using Index = util::IntegerLike<LookupIndexedWordsIndexDummy>;
@@ -120,6 +163,30 @@ struct MatchedTokenReducer{
         std::vector<MatchedTokenPerSent::Value> tokens;
     };
 
+    static MatchedTokenReducer intersection(std::vector<std::vector<MatchedTokenPerSent>>&& xs){
+        MatchedTokenReducer commons;
+        if(xs.empty()) return commons;
+
+        for(auto& token : xs.back())
+            commons.vals[token.key]={token.val.score, {token.val}};
+        xs.pop_back();
+
+        for(auto& tokens : xs){
+            commons.drop_complement(tokens);
+            for(auto& token : tokens) commons.accum_if(token);
+        }
+        return commons;
+    }
+
+    std::vector<std::pair<Key,Value>> top_n_results(size_t n) const {
+        auto results = util::to_pairs(vals);
+        auto beg = results.begin();
+        auto end = results.end();
+        std::partial_sort(beg, beg+n, end, [](auto& x, auto& y){return x.second.score > y.second.score;});
+        results.erase(beg+n, end);
+        return results;
+    }
+
     void score_filtering(double cutoff=0.0){
         for(auto it = vals.begin(); it != vals.end(); ){
             if(it->second.score > cutoff) {
@@ -129,14 +196,29 @@ struct MatchedTokenReducer{
             it = vals.erase(it);
         }
     }
-    bool accum(MatchedTokenPerSent const& token){
-        if(vals.find(token.key)==vals.cend()) return false;
+    bool accum_if(MatchedTokenPerSent const &token){
+        if(!has_key(token.key)) return false;
         vals[token.key].score += token.val.score;
-        vals[token.key].tokens.push_back({token.val.query,token.val.matched,token.val.score});
+        vals[token.key].tokens.push_back(token.val);
         return true;
     }
-
+    void drop_complement(std::vector<MatchedTokenPerSent> const& tokens) {
+        auto keys = util::map(tokens, [](auto& x){return x.key;});
+        util::sort(keys);
+        for(auto it = vals.begin(); it != vals.end(); ){
+            if(util::binary_find(keys, it->first)) {
+                ++it;
+                continue;
+            }
+            it = vals.erase(it);
+        }
+    }
     std::map<Key,Value> vals;
+private:
+    bool has_key(Key key) const {
+        if(vals.find(key)==vals.cend()) return false;
+        return true;
+    }
 };
 
 int query_sent_processing(int argc, char** argv) {
@@ -215,8 +297,9 @@ int query_sent_processing(int argc, char** argv) {
     timer.here_then_reset("Complete to load data structures.");
 
     auto candidates = LookupEntityCandidate::factory(annotated_tokens);
-    timer.here_then_reset("Aggregate to UID sorted tokens.");
-
+    timer.here_then_reset("Aggregate WikidataUID sorted entities.");
+    auto ner_tagged_tokens = LookupEntityTaggedToken::factory(annotated_tokens);
+    timer.here_then_reset("Aggregate DPTokenIndex sorted tagged tokens.");
 
     auto& sent = testset.sents.front();
     auto tagged_sent = testset.annotator.annotate(sent);
@@ -229,18 +312,48 @@ int query_sent_processing(int argc, char** argv) {
     using util::concat_map;
     using util::append;
 
-    auto keys_per_ambiguous_entity = map(named_entities, [&](auto& e){
-        auto ranges = candidates.find(e);
-        return concat_map(ranges, [&](auto i){return texts->sent_uid(candidates.token_index(i));});
+    auto keys_per_ambiguous_entity = map(preprocessed_sent.entities, [&](auto& e){
+        auto ranges = candidates.find(e.uid);
+
+        auto similar_words_gov = word_sim->find(e.word_gov);
+        auto op_gov_word_similarity = [&](auto gov){
+            for(auto idx : similar_words_gov){
+                if(gov == word_sim->sim_word(idx))
+                    return word_sim->similarity(idx);
+            }
+            return decltype(word_sim->similarity(0)){0.0};
+        };
+        auto gov_importance = word_importance->score(e.word_gov);
+        auto matched_tokens = concat_map(ranges, [&](auto i){
+            auto idx = candidates.token_index(i);
+            auto m_words = ner_tagged_tokens.find(idx);
+            assert(m_words);
+            auto entity_words = m_words.value();
+            auto data_word_gov = texts->head_uid(entity_words.dep_token_idx(*texts));
+            auto gov_similarity = op_gov_word_similarity(data_word_gov);
+            // for smoothing the effect of word similarity of governer words.
+            auto score_gov = 1 + gov_importance * gov_similarity;
+            auto score_dep = candidates.score(i);
+            auto match_score = score_dep * score_gov;
+            MatchedTokenPerSent matched_token{texts->sent_uid(idx), {e.idxs, m_words.value(), match_score}};
+            return matched_token;
+        });
+        util::sort(matched_tokens, [](auto&x, auto& y){
+            if(x.key==y.key) return x.val.score>y.val.score;
+            return x.key<y.key;
+        });
+        auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
+        matched_tokens.erase(last, matched_tokens.end());
+        //return map(matched_tokens, [](auto x){return x.key;});
+        return matched_tokens;
     });
     timer.here_then_reset("Map phase for Wiki entities.");
 
-    auto ner_matched_tokens  = util::intersection(keys_per_ambiguous_entity);
-    MatchedTokenReducer matched_results;
-    for(auto& sent : ner_matched_tokens) matched_results.vals[sent] = {0.0, {}};
+    auto matched_results = MatchedTokenReducer::intersection(std::move(keys_per_ambiguous_entity));
     timer.here_then_reset("Map phase for words.");
 
     for(auto dep_pair : preprocessed_sent.words){
+        if(word_importance->is_noisy_word(dep_pair.word_dep)) continue;
         auto similar_words_gov = word_sim->find(dep_pair.word_gov);
         auto op_gov_word_similarity = [&](auto gov){
             for(auto idx : similar_words_gov){
@@ -254,23 +367,31 @@ int query_sent_processing(int argc, char** argv) {
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
             auto word_similarity = word_sim->similarity(simword_idx);
+            auto score_dep = word_importance->score(dep_pair.word_dep)*word_similarity;
+            auto gov_importance = word_importance->score(dep_pair.word_gov);
             auto matched_idxs   = words->find(similar_word);
             for(auto idx : matched_idxs){
                 auto token_idx = words->token_index(idx);
-                auto sent_uid  = texts->sent_uid(token_idx);
                 auto word_gov_similarity = op_gov_word_similarity(texts->head_uid(token_idx));
-                auto match_score = word_importance->score(dep_pair.word_dep)*word_similarity*(0.5+word_gov_similarity);
-                matched_tokens.push_back({sent_uid,
+                // Same logic of line 334.
+                auto score_gov = 1+word_gov_similarity*gov_importance;
+                auto match_score = score_dep * score_gov;
+                matched_tokens.push_back({texts->sent_uid(token_idx),
                                           {dep_pair.idx, token_idx, match_score}});
             }
         }
-        util::sort(matched_tokens, [](auto&x, auto& y){return x.val.score>y.val.score;});
+        util::sort(matched_tokens, [](auto&x, auto& y){
+            if(x.key==y.key) return x.val.score>y.val.score;
+            return x.key<y.key;
+        });
         auto last = std::unique(matched_tokens.begin(), matched_tokens.end(), [](auto&x, auto& y){return x.key==y.key;});
         matched_tokens.erase(last, matched_tokens.end());
-        for(auto& token : matched_tokens) matched_results.accum(token);
+        for(auto& token : matched_tokens) matched_results.accum_if(token);
     }
     timer.here_then_reset("Reduce phase.");
     matched_results.score_filtering();
+    auto results = matched_results.top_n_results(5);
+
 
     fmt::print(std::cerr, "{} tokens in Wiki candidates data.\n", candidates.size());
     fmt::print(std::cerr, "List of Wikidata entities:\n");
@@ -281,7 +402,7 @@ int query_sent_processing(int argc, char** argv) {
     fmt::print(std::cerr, "SENT: {}\n", tagged_sent.sent.repr(*wordUIDs));
     fmt::print(std::cerr, "TAGGED: {}\n", tagged_sent.repr(testset.entity_reprs, testset.wikidataUIDs, testset.wordUIDs));
     fmt::print(std::cerr, "# of named entities : {}\n",named_entities.size());
-    for(auto matched : matched_results.vals){
+    for(auto matched : results){
         auto& sent = sents.at(matched.first.val);
         fmt::print("{} : {}\n", matched.second.score, sent.repr(*wordUIDs));
         for(auto token : matched.second.tokens){
