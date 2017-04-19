@@ -45,6 +45,5 @@ struct DBIndexer{
     std::map<RowUID, wordrep::ChunkIndex> row_uid2chunk;
 };
 
-
 }//namespace data
 
