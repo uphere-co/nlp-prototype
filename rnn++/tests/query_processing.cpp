@@ -144,63 +144,39 @@ private:
     tbb::concurrent_vector<value_type> sorted_words;
 };
 
-struct EntityMatchPerSent{
-    using Key = wordrep::SentUID;
-    using Value = LookupEntityCandidate::Index;
-
-    friend bool operator==(EntityMatchPerSent const& x, EntityMatchPerSent const& y){
+template<typename KEY, typename VALUE>
+struct MatchPerKey{
+    using Key   = KEY;
+    using Value = VALUE;
+    friend bool operator==(MatchPerKey const& x, MatchPerKey const& y){
         return x.key==y.key;
     }
-    friend bool operator<(EntityMatchPerSent const& x, EntityMatchPerSent const& y){
-        return x.key<y.key;
-    }
-
-    Key key;
-    Value val;
-};
-
-struct WordMatchPerSent{
-    using Key = wordrep::SentUID;
-    //using Value = wordrep::SimilarWords::Index;
-    using Value = wordrep::DPTokenIndex;
-
-    friend bool operator==(WordMatchPerSent const& x, WordMatchPerSent const& y){
-        return x.key==y.key;
-    }
-    friend bool operator<(WordMatchPerSent const& x, WordMatchPerSent const& y){
-        return x.key<y.key;
-    }
-
-    Key key;
-    Value val;
-};
-
-struct MatchedTokenPerSent{
-    using Key = wordrep::SentUID;
-    struct Value{
-        friend bool operator==(Value const& x, Value const& y){
-            return x.score==y.score;
-        }
-        friend bool operator>(Value const& x, Value const& y){
-            return x.score>y.score;
-        }
-
-        wordrep::ConsecutiveTokens query;
-        wordrep::ConsecutiveTokens matched;
-        double score;
-    };
-
-    friend bool operator==(MatchedTokenPerSent const& x, MatchedTokenPerSent const& y){
-        return x.key==y.key;
-    }
-    friend bool operator<(MatchedTokenPerSent const& x, MatchedTokenPerSent const& y){
+    friend bool operator<(MatchPerKey const& x, MatchPerKey const& y){
+        //DESCENDING ordering for VALUE if KEY is same; since ordering of VALUE is usually based on its score.
         if(x.key==y.key) return x.val>y.val;
         return x.key<y.key;
     }
 
-    Key key;
-    Value val;
+    KEY key;
+    VALUE val;
 };
+
+struct MatchedToken{
+    friend bool operator==(MatchedToken const& x, MatchedToken const& y){
+        return x.score==y.score;
+    }
+    friend bool operator>(MatchedToken const& x, MatchedToken const& y){
+        return x.score>y.score;
+    }
+
+    wordrep::ConsecutiveTokens query;
+    wordrep::ConsecutiveTokens matched;
+    double score;
+};
+
+using EntityMatchPerSent = MatchPerKey<wordrep::SentUID,LookupEntityCandidate::Index>;
+using WordMatchPerSent   = MatchPerKey<wordrep::SentUID,wordrep::DPTokenIndex>;
+using MatchedTokenPerSent= MatchPerKey<wordrep::SentUID,MatchedToken>;
 
 struct MatchedTokenReducer{
     using Key = MatchedTokenPerSent::Key;
