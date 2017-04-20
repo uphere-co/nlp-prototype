@@ -6,6 +6,7 @@
 #include "similarity/rss.h"
 #include "similarity/config.h"
 #include "similarity/query_processor.h"
+#include "similarity/query_types.h"
 
 #include "wordrep/word_prob.h"
 #include "wordrep/word_case_corrector.h"
@@ -53,6 +54,12 @@ public:
 
 private:
     QueryEngineT(){}
+
+    std::vector<SentenceQuery> parse_query_json(typename dbinfo_t::query_t const& query) const;
+    MatchedTokenReducer get_matched_contents(wordrep::Sentence const& query) const;
+    data::QueryResult collect_result(SentenceQuery const& query,
+                                     std::vector<ScoredSentence> const& relevant_sents,
+                                     int64_t max_clip_len) const;
 
     std::unique_ptr<const wordrep::WordImportance> word_importance;
     std::unique_ptr<wordrep::WordCaseCorrector> did_you_mean;

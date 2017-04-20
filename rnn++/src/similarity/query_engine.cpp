@@ -8,7 +8,6 @@
 #include "data_source/db.h"
 #include "data_source/rss.h"
 
-#include "similarity/query_types.h"
 #include "similarity/query_engine.h"
 #include "similarity/phrase_suggestion.h"
 #include "similarity/query_output.h"
@@ -209,55 +208,66 @@ json_t QueryEngineT<T>::register_documents(json_t const &ask) {
 }
 
 template<typename T>
-json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
-    util::Timer timer;
-    timer.here_then_reset(fmt::format("QueryEngine::ask_query is called : {}", ask.dump()));
-    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    typename dbinfo_t::query_t query{ask};
-    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
-    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
-
+std::vector<SentenceQuery> QueryEngineT<T>::parse_query_json(typename dbinfo_t::query_t const& query) const{
     //Lookup sentences based on sentence UIDs
     auto query_sents = dbinfo->get_query_sents(query, queries->uid2sent);
     //Get words and their cutoffs in query sentence
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
         return {sent, construct_query_info(sent, *wordUIDs, *word_importance)};
     });
+    return queries;
+}
 
-    util::ConcurrentVector<data::QueryResult> answers;
+template<typename T>
+MatchedTokenReducer QueryEngineT<T>::get_matched_contents(wordrep::Sentence const& query) const{
+    auto tagged_query = wiki->annotator().annotate(query);
+    wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
+    auto preprocessed_query = scoring_preprocessor.sentence(tagged_query);
+    preprocessed_query.filter_false_named_entity(wiki->get_op_named_entity());
+    return processor->find_similar_sentences(preprocessed_query);
+}
+
+template<typename T>
+data::QueryResult QueryEngineT<T>::collect_result(SentenceQuery const& query,
+                                                  std::vector<ScoredSentence> const& relevant_sents,
+                                                  int64_t max_clip_len) const {
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
     };
-    auto per_sent=[&answers,&op_results,max_clip_len](
-            auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
-        data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, op_results);
-        answer.query = query_sent_info;
-        answer.n_relevant_matches = relevant_sents.size();
-        answers.push_back(answer);
-    };
 
-    for(auto& sent_query : queries){
-        auto tagged_query_sent = wiki->annotator().annotate(sent_query.sent);
-        wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
-        auto preprocessed_sent = scoring_preprocessor.sentence(tagged_query_sent);
-        preprocessed_sent.filter_false_named_entity(wiki->get_op_named_entity());
+    data::QueryResult answer;
+    answer.results = write_output(query.sent, relevant_sents, op_results);
+    answer.query = query.info;
+    answer.n_relevant_matches = relevant_sents.size();
+    return answer;
+}
 
-        auto matched_results = processor->find_similar_sentences(preprocessed_sent);
+template<typename T>
+json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
+    util::Timer timer;
+    timer.here_then_reset(fmt::format("QueryEngine::ask_query is called : {}", ask.dump()));
+    if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
+    auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
+    auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
+
+    auto queries = parse_query_json({ask});
+
+    auto answers = util::map(queries, [this,max_clip_len](auto& sent_query) {
+        auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
         auto results = matched_results.top_n_results(5);
 
-        auto sents = processor->texts->IndexSentences();
+        auto sents = this->processor->texts->IndexSentences();
         std::vector<ScoredSentence> relevant_sents;
-        for(auto& matched : results){
-            auto& sent = sents.at(matched.first.val);
-            relevant_sents.push_back({sent,to_dep_score(matched.second)});
+        for (auto &matched : results) {
+            auto &sent = sents.at(matched.first.val);
+            relevant_sents.push_back({sent, to_dep_score(matched.second)});
         }
-        per_sent(sent_query.sent, sent_query.info, relevant_sents);
-    }
+        return collect_result(sent_query, relevant_sents, max_clip_len);
+    });
 
     timer.here_then_reset("QueryEngine::ask_query is finished.");
-    return to_json(answers.to_vector());
+    return to_json(answers);
 }
 
 template<typename T>
@@ -270,14 +280,10 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     util::Timer timer;
     timer.here_then_reset(fmt::format("QueryEngine::ask_query_stats is called : {}", ask.dump()));
     if (!dbinfo_t::query_t::is_valid(ask)) return json_t{};
-    typename dbinfo_t::query_t query{ask};
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
-    auto query_sents = dbinfo->get_query_sents(query, queries->uid2sent);
-    auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
-        return {sent, construct_query_info(sent, *wordUIDs, *word_importance)};
-    });
+    auto queries = parse_query_json({ask});
 
     auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
     json_t query_suggestions = json_t::array();
