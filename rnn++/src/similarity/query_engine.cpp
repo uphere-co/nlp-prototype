@@ -165,20 +165,6 @@ QueryEngineT<T> QueryEngineT<T>::factory(json_t const& config){
 }
 
 template<typename T>
-QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
-: word_importance{std::move(engine.word_importance)},
-  did_you_mean{std::move(engine.did_you_mean)},
-  phrase_segmenter{std::make_unique<wordrep::PhraseSegmenter>(*word_importance)},
-  wordUIDs{std::move(engine.wordUIDs)},
-  dbinfo{std::move(engine.dbinfo)},
-  queries{std::move(engine.queries)},
-  wiki{std::move(engine.wiki)},
-  processor{std::move(engine.processor)}
-{
-    fmt::print(std::cerr, "Engine is move constructed.\n");
-}
-
-template<typename T>
 json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
     util::Timer timer;
     timer.here_then_reset(fmt::format("QueryEngine::preprocess_query is called : {}", ask.dump()));

@@ -40,8 +40,6 @@ public:
 
     static QueryEngineT factory(json_t const& config);
 
-    QueryEngineT(QueryEngineT&& engine);
-
     json_t preprocess_query(json_t const &ask) const;
     json_t register_documents(json_t const &ask);
     json_t ask_query(json_t const &ask) const;
