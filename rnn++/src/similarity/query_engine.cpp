@@ -40,7 +40,7 @@ using data::ColumnUID;
 namespace {
 using engine::ScoredSentence;
 
-std::vector<ScoredSentence> deduplicate_results(tbb::concurrent_vector<ScoredSentence> const &relevant_sents){
+std::vector<ScoredSentence> deduplicate_results(std::vector<ScoredSentence> const &relevant_sents){
     using hash_t = size_t;
     std::map<hash_t, bool> is_seen{};
     std::vector<ScoredSentence> dedup_sents;
@@ -268,7 +268,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
         auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
         ScoredSentenceCollector op_sents{this->processor->texts->IndexSentences()};
-        auto relevant_sents = op_sents.get_scored_sents(matched_results.top_n_results(5));
+        auto relevant_sents = deduplicate_results(op_sents.get_scored_sents(matched_results.top_n_results(5)));
         return collect_result(sent_query, relevant_sents, max_clip_len);
     });
 
@@ -312,11 +312,13 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     auto answers = util::map(queries, [this,max_clip_len,&get_query_suggestions](auto& sent_query) {
         auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
-
         ScoredSentenceCollector op_sents{this->processor->texts->IndexSentences()};
-        auto relevant_sents = op_sents.get_scored_sents(matched_results.top_n_results(5));
+
+        //Run query suggestion
         get_query_suggestions(sent_query.sent,
                               op_sents.get_scored_sents(matched_results.all_results()));
+
+        auto relevant_sents = deduplicate_results(op_sents.get_scored_sents(matched_results.top_n_results(5)));
         return collect_result(sent_query, relevant_sents, max_clip_len);
     });
 
