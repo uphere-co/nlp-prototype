@@ -303,35 +303,16 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         query_suggestions.push_back(query_suggestion);
     };
 
-    util::ConcurrentVector<data::QueryResult> answers;
-    auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
-    };
-    auto per_sent=[&answers,&op_results,max_clip_len](
-            auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
-        data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, op_results);
-        answer.query = query_sent_info;
-        answer.n_relevant_matches = relevant_sents.size();
-        answers.push_back(answer);
-    };
-
-    for(auto& sent_query : queries){
-        auto tagged_query_sent = wiki->annotator().annotate(sent_query.sent);
-        wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
-        auto preprocessed_sent = scoring_preprocessor.sentence(tagged_query_sent);
-        preprocessed_sent.filter_false_named_entity(wiki->get_op_named_entity());
-
-        auto matched_results = processor->find_similar_sentences(preprocessed_sent);
+    auto answers = util::map(queries, [this,max_clip_len,&get_query_suggestions](auto& sent_query) {
+        auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
-        auto results = matched_results.top_n_results(5);
-        auto sents = processor->texts->IndexSentences();
-        std::vector<ScoredSentence> relevant_sents;
-        for(auto& matched : results){
-            auto& sent = sents.at(matched.first.val);
-            relevant_sents.push_back({sent,to_dep_score(matched.second)});
-        }
-        per_sent(sent_query.sent, sent_query.info, relevant_sents);
+
+        auto sents = this->processor->texts->IndexSentences();
+        auto relevant_sents = util::map(matched_results.top_n_results(5),
+                                                            [&](auto &matched)->ScoredSentence{
+            auto &sent = sents.at(matched.first.val);
+            return {sent, to_dep_score(matched.second)};
+        });
 
         get_query_suggestions(sent_query.sent,
                               util::map(matched_results.all_results(),
@@ -339,10 +320,13 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
                                             auto& sent = sents.at(matched.first.val);
                                             return {sent,to_dep_score(matched.second)};
                                         }));
-    }
+
+
+        return collect_result(sent_query, relevant_sents, max_clip_len);
+    });
 
     util::json_t out{};
-    out["results"] = to_json(answers.to_vector());
+    out["results"] = to_json(answers);
     out["query_suggestions_per_sent"] = query_suggestions;
     return out;
 }
