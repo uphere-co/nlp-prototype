@@ -87,6 +87,13 @@ DepSearchScore::val_t DepSearchScore::score_sum() const {return util::math::sum(
 
 ////////////////////////////////
 
+DepSearchScore to_dep_score(MatchedTokenReducer::Value const& matches){
+    DepSearchScore match_score{matches.tokens.size()};
+    for(auto& matched_pair : matches.tokens)
+        match_score.insert(matched_pair.query, {matched_pair.matched,matched_pair.score});
+    return match_score;
+}
+
 template<typename OPR>
 std::vector<data::PerSentQueryResult> write_output(
         Sentence const &query_sent,
@@ -239,16 +246,13 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     std::vector<ScoredSentence> relevant_sents;
     for(auto& matched : results){
         auto& sent = sents.at(matched.first.val);
-        DepSearchScore match_score{matched.second.tokens.size()};
-        for(auto& matched_pair : matched.second.tokens)
-            match_score.insert(matched_pair.query, {matched_pair.matched,matched_pair.score});
-        relevant_sents.push_back({sent,match_score});
+        relevant_sents.push_back({sent,to_dep_score(matched.second)});
     }
 
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
     };
-    auto per_sent=[&answers,max_clip_len,op_results,op_cut](
+    auto per_sent=[&answers,&op_results,max_clip_len](
             auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
         data::QueryResult answer;
         answer.results = write_output(query_sent, relevant_sents, op_results);
