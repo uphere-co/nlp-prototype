@@ -112,15 +112,33 @@ struct Scoring{
                                     Scoring::AmbiguousEntity x{{},entity.uid, entity.words, word_gov,gov};
                                     for (auto uid : x.uid.candidates) {
                                         auto synonyms = entity_reprs.get_synonyms(uid);
-                                        auto repr = scoring.max_score_repr(synonyms);
-                                        x.candidates.push_back({uid, scoring.phrase(repr)});
+                                        auto repr = max_score_repr(synonyms);
+                                        x.candidates.push_back({uid, phrase(repr)});
                                     }
                                     sent.entities.push_back(x);
                                 });
             }
             return sent;
         }
-        Scoring const &scoring;
+
+        Words max_score_repr(wiki::Synonyms const& synonym) const {
+            auto it = std::max_element(synonym.reprs.cbegin(),synonym.reprs.cend(),[this](auto const& x, auto const& y){
+                return this->phrase(x)<this->phrase(y);
+            });
+            return *it;
+        }
+        val_t phrase(Words const &words) const {
+            WordImportance::val_t score{0.0};
+            for(auto word : words) score+=word_importance.score(word);
+            return score;
+        }
+        val_t phrase(wiki::Synonyms const& entity) const {
+            auto it = std::max_element(entity.reprs.cbegin(),entity.reprs.cend(),[this](auto const& x, auto const& y){
+                return this->phrase(x)<this->phrase(y);
+            });
+            return phrase(*it);
+        }
+        WordImportance const& word_importance;
         wiki::EntityReprs const &entity_reprs;
     };
 

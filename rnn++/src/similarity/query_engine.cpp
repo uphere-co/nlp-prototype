@@ -233,6 +233,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     //output : util::ConcurrentVector<data::QueryResult> answers;
 
     util::ConcurrentVector<data::QueryResult> answers;
+
     auto op_cut = [](){};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo->build_result(query_sent, scored_sent, max_clip_len);

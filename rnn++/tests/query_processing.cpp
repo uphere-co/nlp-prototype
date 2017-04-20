@@ -39,7 +39,7 @@ int query_sent_processing(int argc, char** argv) {
                           load_word_scores);
     wikidata::test::UnittestDataset testset{{config_json}};
     wordrep::Scoring scoring{*word_importance, voca->wvecs};
-    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, testset.entity_reprs};
+    wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, testset.entity_reprs};
     testset.tokens.build_voca_index(voca->indexmap);
     timer.here_then_reset("Load test dataset.");
 
