@@ -231,24 +231,6 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     //output : util::ConcurrentVector<data::QueryResult> answers;
 
     util::ConcurrentVector<data::QueryResult> answers;
-
-    SentenceQuery& sent_query = queries.front();
-    auto tagged_query_sent = wiki->annotator().annotate(sent_query.sent);
-    wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
-    auto preprocessed_sent = scoring_preprocessor.sentence(tagged_query_sent);
-    preprocessed_sent.filter_false_named_entity(wiki->get_op_named_entity());
-
-    auto matched_results = processor->find_similar_sentences(preprocessed_sent);
-    matched_results.score_filtering();
-    auto results = matched_results.top_n_results(5);
-
-    auto sents = processor->texts->IndexSentences();
-    std::vector<ScoredSentence> relevant_sents;
-    for(auto& matched : results){
-        auto& sent = sents.at(matched.first.val);
-        relevant_sents.push_back({sent,to_dep_score(matched.second)});
-    }
-
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
     };
@@ -261,7 +243,24 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
         answers.push_back(answer);
     };
 
-    per_sent(sent_query.sent, sent_query.info, relevant_sents);
+    for(auto& sent_query : queries){
+        auto tagged_query_sent = wiki->annotator().annotate(sent_query.sent);
+        wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
+        auto preprocessed_sent = scoring_preprocessor.sentence(tagged_query_sent);
+        preprocessed_sent.filter_false_named_entity(wiki->get_op_named_entity());
+
+        auto matched_results = processor->find_similar_sentences(preprocessed_sent);
+        matched_results.score_filtering();
+        auto results = matched_results.top_n_results(5);
+
+        auto sents = processor->texts->IndexSentences();
+        std::vector<ScoredSentence> relevant_sents;
+        for(auto& matched : results){
+            auto& sent = sents.at(matched.first.val);
+            relevant_sents.push_back({sent,to_dep_score(matched.second)});
+        }
+        per_sent(sent_query.sent, sent_query.info, relevant_sents);
+    }
 
     timer.here_then_reset("QueryEngine::ask_query is finished.");
     return to_json(answers.to_vector());
