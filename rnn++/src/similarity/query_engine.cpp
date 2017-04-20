@@ -151,12 +151,16 @@ QueryEngineT<T> QueryEngineT<T>::factory(json_t const& config){
     auto load_wiki = [&engine,&factory](){
         engine.wiki = std::make_unique<wikidata::EntityModule>(factory.common.wikientity_module());
     };
+    auto load_processor = [&engine,&factory](){
+        engine.processor = std::make_unique<QueryProcessor>(QueryProcessor::factory(factory.common));
+    };
 
     util::parallel_invoke(load_word_score_related,
                           load_word_uids,
                           load_dbinfo,
                           load_queries,
-                          load_wiki);
+                          load_wiki,
+                          load_processor);
     return engine;
 }
 
@@ -168,7 +172,8 @@ QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
   wordUIDs{std::move(engine.wordUIDs)},
   dbinfo{std::move(engine.dbinfo)},
   queries{std::move(engine.queries)},
-  wiki{std::move(engine.wiki)}
+  wiki{std::move(engine.wiki)},
+  processor{std::move(engine.processor)}
 {
     fmt::print(std::cerr, "Engine is move constructed.\n");
 }

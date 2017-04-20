@@ -5,6 +5,7 @@
 #include "similarity/ygp.h"
 #include "similarity/rss.h"
 #include "similarity/config.h"
+#include "similarity/query_processor.h"
 
 #include "wordrep/word_prob.h"
 #include "wordrep/word_case_corrector.h"
@@ -62,6 +63,7 @@ private:
     std::unique_ptr<const dbinfo_t> dbinfo;
     std::unique_ptr<Dataset> queries;
     std::unique_ptr<wikidata::EntityModule> wiki;
+    std::unique_ptr<QueryProcessor> processor;
 };
 
 using RSSQueryEngine = engine::QueryEngineT<data::rss::DBInfo>;
