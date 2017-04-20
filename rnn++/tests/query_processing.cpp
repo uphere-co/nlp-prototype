@@ -159,6 +159,22 @@ struct MatchedEntityPerSent{
     Value val;
 };
 
+struct MatchedWordPerSent{
+    using Key = wordrep::SentUID;
+    //using Value = wordrep::SimilarWords::Index;
+    using Value = wordrep::DPTokenIndex;
+
+    friend bool operator==(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
+        return x.key==y.key;
+    }
+    friend bool operator<(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
+        return x.key<y.key;
+    }
+
+    Key key;
+    Value val;
+};
+
 struct MatchedTokenPerSent{
     using Key = wordrep::SentUID;
     struct Value{
@@ -258,14 +274,14 @@ auto governour_word(wordrep::ConsecutiveTokens const& phrase, wordrep::DepParsed
 
 struct OpWordSim{
     OpWordSim(wordrep::WordUID ref_word,
-        wordrep::WordImportance const& word_importance,
-        wordrep::SimilarWords const&word_sim)
+              wordrep::WordImportance const& word_importance,
+              wordrep::SimilarWords const&word_sim)
     : ref_word_importance{word_importance.score(ref_word)},
       op_word_sim{word_sim.get_op_sim(ref_word)}
     {}
     auto gov_scoring(wordrep::WordUID word_gov) const{
         auto word_similarity = op_word_sim.similarity(word_gov);
-        // for smoothing the effect of word similarity of governer words. 
+        //for smoothing the effect of word similarity of governer words.
         return 1 + ref_word_importance * word_similarity;
     }
     auto dep_scoring(wordrep::WordUID word_dep) const{
@@ -373,7 +389,6 @@ int query_sent_processing(int argc, char** argv) {
             return MatchedEntityPerSent{texts->sent_uid(candidates.token_index(i)), i};
         });
     });
-    assert(pre_results_per_entity.size()==preprocessed_sent.entities.size());
     timer.here_then_reset("Map phase for Wiki entities : lookup named entities.");
     auto keys_per_ambiguous_entity=util::mapmap(pre_results_per_entity, [](auto x){return x.key;});
     timer.here_then_reset("Map phase for Wiki entities : get keys.");
@@ -394,8 +409,9 @@ int query_sent_processing(int argc, char** argv) {
         return OpWordSim{word_gov, *word_importance, *word_sim};
     };
     std::vector<std::vector<MatchedTokenPerSent>> matched_tokens_per_entity;
-    auto n = pre_results_per_entity.size();
-    for(decltype(n)i=0; i!=n; ++i){
+    assert(pre_results_per_entity.size()==preprocessed_sent.entities.size());
+    auto nw = pre_results_per_entity.size();
+    for(decltype(nw)i=0; i!=nw; ++i){
         auto& entity = preprocessed_sent.entities.at(i);
         auto& entity_name = entity.idxs;
         auto op_gov_similarity = get_op_word_sim(entity.word_gov);
@@ -424,33 +440,48 @@ int query_sent_processing(int argc, char** argv) {
     auto matched_results = MatchedTokenReducer::intersection(std::move(matched_tokens_per_entity));
     timer.here_then_reset("Map phase for words.");
 
-    for(auto dep_pair : preprocessed_sent.words){
-        if(word_importance->is_noisy_word(dep_pair.word_dep)) continue;
-
-        auto op_gov_similarity = get_op_word_sim(dep_pair.word_gov);
-        auto op_dep_similarity = get_op_word_sim(dep_pair.word_dep);
-
-        std::vector<MatchedTokenPerSent> matched_tokens;
+    //TODO : Remove assumption that query sent contains one or more named entities.
+    auto matches_per_word = map(preprocessed_sent.words, [&](auto& dep_pair){
+        std::vector<MatchedWordPerSent> matches;
+        if(word_importance->is_noisy_word(dep_pair.word_dep))
+            return matches;
         auto similar_words = word_sim->find(dep_pair.word_dep);
         for(auto simword_idx : similar_words){
             auto similar_word    = word_sim->sim_word(simword_idx);
-            auto score_dep = op_dep_similarity.dep_scoring(similar_word);
             auto word_occurences   = words->find(similar_word);
+            matches.reserve(matches.size()+word_occurences.size());
             for(auto idx : word_occurences){
                 auto token_idx = words->token_index(idx);
                 auto key = texts->sent_uid(token_idx);
                 if(!util::binary_find(common_keys, key)) continue;
-                auto data_word_gov = governour_word(token_idx, *texts);
-                auto score_gov = op_gov_similarity.gov_scoring(data_word_gov);
-                auto match_score = score_dep * score_gov;
-                matched_tokens.push_back({key,
-                                          {dep_pair.idx, token_idx, match_score}});
+                matches.push_back({key, token_idx});
             }
         }
+        return matches;
+    });
+
+    assert(matches_per_word.size()==preprocessed_sent.words.size());
+    auto n = matches_per_word.size();
+    for(decltype(n)i=0; i!=n; ++i){
+        auto& dep_pair = preprocessed_sent.words.at(i);
+        auto& matches  = matches_per_word.at(i);
+
+        auto op_gov_similarity = get_op_word_sim(dep_pair.word_gov);
+        auto op_dep_similarity = get_op_word_sim(dep_pair.word_dep);
+
+        auto matched_tokens = map(matches, [&](auto& match){
+            auto token_idx = match.val;
+            auto matched_word = texts->word_uid(token_idx);
+            auto score_dep = op_dep_similarity.dep_scoring(matched_word);
+            auto data_word_gov = texts->head_uid(token_idx);
+            auto score_gov = op_gov_similarity.gov_scoring(data_word_gov);
+            auto match_score = score_dep * score_gov;
+            return MatchedTokenPerSent{match.key, {dep_pair.idx, token_idx, match_score}};
+        });
         util::drop_duplicates(matched_tokens);
         for(auto& token : matched_tokens) matched_results.accum_if(token);
     }
-    timer.here_then_reset("Reduce phase.");
+    timer.here_then_reset("Reduce phase on word matches.");
     matched_results.score_filtering();
     auto results = matched_results.top_n_results(5);
 
