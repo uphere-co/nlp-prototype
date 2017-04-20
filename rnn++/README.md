@@ -23,7 +23,7 @@ One shall not include same or higher-level namespaces.
 - `data` : high
   - In `data_source/` : contains ETL logics for YGP DB, RSS, and so on.
 - `engine` : application
- - In `similarity/` : contains query engine implementation.
+  - In `similarity/` : contains query engine implementation.
 
 Other directories : 
 - `app/`      : contains executables
