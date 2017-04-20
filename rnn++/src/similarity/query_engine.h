@@ -53,13 +53,13 @@ public:
     }
 
 private:
-    wordrep::WordImportance const word_importance;
-    wordrep::WordCaseCorrector did_you_mean;
-    wordrep::PhraseSegmenter phrase_segmenter;
-    wordrep::WordUIDindex wordUIDs;
-    dbinfo_t const dbinfo;
-    Dataset queries;
-    wikidata::EntityModule wiki;
+    std::unique_ptr<const wordrep::WordImportance> word_importance;
+    std::unique_ptr<wordrep::WordCaseCorrector> did_you_mean;
+    std::unique_ptr<wordrep::PhraseSegmenter> phrase_segmenter;
+    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
+    std::unique_ptr<const dbinfo_t> dbinfo;
+    std::unique_ptr<Dataset> queries;
+    std::unique_ptr<wikidata::EntityModule> wiki;
 };
 
 using RSSQueryEngine = engine::QueryEngineT<data::rss::DBInfo>;
