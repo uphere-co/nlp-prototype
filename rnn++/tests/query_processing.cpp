@@ -144,56 +144,39 @@ private:
     tbb::concurrent_vector<value_type> sorted_words;
 };
 
-struct MatchedEntityPerSent{
-    using Key = wordrep::SentUID;
-    using Value = LookupEntityCandidate::Index;
-
-    friend bool operator==(MatchedEntityPerSent const& x, MatchedEntityPerSent const& y){
+template<typename KEY, typename VALUE>
+struct MatchPerKey{
+    using Key   = KEY;
+    using Value = VALUE;
+    friend bool operator==(MatchPerKey const& x, MatchPerKey const& y){
         return x.key==y.key;
     }
-    friend bool operator<(MatchedEntityPerSent const& x, MatchedEntityPerSent const& y){
+    friend bool operator<(MatchPerKey const& x, MatchPerKey const& y){
+        //DESCENDING ordering for VALUE if KEY is same; since ordering of VALUE is usually based on its score.
+        if(x.key==y.key) return x.val>y.val;
         return x.key<y.key;
     }
 
-    Key key;
-    Value val;
+    KEY key;
+    VALUE val;
 };
 
-struct MatchedWordPerSent{
-    using Key = wordrep::SentUID;
-    //using Value = wordrep::SimilarWords::Index;
-    using Value = wordrep::DPTokenIndex;
-
-    friend bool operator==(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
-        return x.key==y.key;
+struct MatchedToken{
+    friend bool operator==(MatchedToken const& x, MatchedToken const& y){
+        return x.score==y.score;
     }
-    friend bool operator<(MatchedWordPerSent const& x, MatchedWordPerSent const& y){
-        return x.key<y.key;
+    friend bool operator>(MatchedToken const& x, MatchedToken const& y){
+        return x.score>y.score;
     }
 
-    Key key;
-    Value val;
+    wordrep::ConsecutiveTokens query;
+    wordrep::ConsecutiveTokens matched;
+    double score;
 };
 
-struct MatchedTokenPerSent{
-    using Key = wordrep::SentUID;
-    struct Value{
-        wordrep::ConsecutiveTokens query;
-        wordrep::ConsecutiveTokens matched;
-        double score;
-    };
-
-    friend bool operator==(MatchedTokenPerSent const& x, MatchedTokenPerSent const& y){
-        return x.key==y.key;
-    }
-    friend bool operator<(MatchedTokenPerSent const& x, MatchedTokenPerSent const& y){
-        if(x.key==y.key) return x.val.score>y.val.score;
-        return x.key<y.key;
-    }
-
-    Key key;
-    Value val;
-};
+using EntityMatchPerSent = MatchPerKey<wordrep::SentUID,LookupEntityCandidate::Index>;
+using WordMatchPerSent   = MatchPerKey<wordrep::SentUID,wordrep::DPTokenIndex>;
+using MatchedTokenPerSent= MatchPerKey<wordrep::SentUID,MatchedToken>;
 
 struct MatchedTokenReducer{
     using Key = MatchedTokenPerSent::Key;
@@ -261,7 +244,7 @@ private:
 };
 
 
-auto scoring_dep_word(LookupEntityCandidate const& candidates, MatchedEntityPerSent i){
+auto scoring_dep_word(LookupEntityCandidate const& candidates, EntityMatchPerSent i){
     return candidates.score(i.val);
 }
 
@@ -386,7 +369,7 @@ int query_sent_processing(int argc, char** argv) {
 
     auto pre_results_per_entity = map(preprocessed_sent.entities, [&](auto& e) {
         return concat_mapmap(candidates.find(e.uid), [&](auto i) {
-            return MatchedEntityPerSent{texts->sent_uid(candidates.token_index(i)), i};
+            return EntityMatchPerSent{texts->sent_uid(candidates.token_index(i)), i};
         });
     });
     timer.here_then_reset("Map phase for Wiki entities : lookup named entities.");
@@ -442,7 +425,7 @@ int query_sent_processing(int argc, char** argv) {
 
     //TODO : Remove assumption that query sent contains one or more named entities.
     auto matches_per_word = map(preprocessed_sent.words, [&](auto& dep_pair){
-        std::vector<MatchedWordPerSent> matches;
+        std::vector<WordMatchPerSent> matches;
         if(word_importance->is_noisy_word(dep_pair.word_dep))
             return matches;
         auto similar_words = word_sim->find(dep_pair.word_dep);
