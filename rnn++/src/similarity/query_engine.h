@@ -37,8 +37,8 @@ public:
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
 
-    QueryEngineT(typename T::factory_t const& factory);
-    QueryEngineT(json_t const& config, std::optional<int> data_minor_version={});
+    static QueryEngineT factory(json_t const& config);
+
     QueryEngineT(QueryEngineT&& engine);
 
     json_t preprocess_query(json_t const &ask) const;
@@ -53,6 +53,8 @@ public:
     }
 
 private:
+    QueryEngineT(){}
+
     std::unique_ptr<const wordrep::WordImportance> word_importance;
     std::unique_ptr<wordrep::WordCaseCorrector> did_you_mean;
     std::unique_ptr<wordrep::PhraseSegmenter> phrase_segmenter;
@@ -67,7 +69,7 @@ using YGPQueryEngine = engine::QueryEngineT<data::ygp::DBInfo>;
 
 struct QueryEngine {
     using json_t = util::json_t;
-    QueryEngine(util::json_t& config);
+    QueryEngine(util::json_t const& config);
 
     json_t preprocess_query(json_t const &ask) {
         return engine.match([&ask] (auto& e)  { return e.preprocess_query(ask);});

@@ -128,23 +128,36 @@ data::QuerySentInfo construct_query_info(
 
 ///////////////////////////////////////////////////////////////
 template<typename T>
-QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
-: word_importance{std::make_unique<const wordrep::WordImportance>(factory.common.word_importance())},
-  did_you_mean{std::make_unique<wordrep::WordCaseCorrector>(factory.common.word_case_corrector(*word_importance))},
-  phrase_segmenter{std::make_unique<wordrep::PhraseSegmenter>(*word_importance)},
-  wordUIDs{std::make_unique<wordrep::WordUIDindex>(factory.common.word_uid_index())},
-  dbinfo{std::make_unique<const dbinfo_t>(factory)},
-  queries{std::make_unique<Dataset>(factory.common.empty_dataset())},
-  wiki{std::make_unique<wikidata::EntityModule>(factory.common.wikientity_module())}
-{
-    fmt::print(std::cerr, "Engine is constructed using factory.\n");
-}
+QueryEngineT<T> QueryEngineT<T>::factory(json_t const& config){
+    QueryEngineT engine;
+    typename T::factory_t factory{config};
+    auto load_word_score_related = [&engine,&factory](){
+        engine.word_importance = std::make_unique<const wordrep::WordImportance>(factory.common.word_importance());
+        util::parallel_invoke([&](){
+            engine.did_you_mean    = std::make_unique<wordrep::WordCaseCorrector>(factory.common.word_case_corrector(*engine.word_importance));
+        },[&](){
+            engine.phrase_segmenter= std::make_unique<wordrep::PhraseSegmenter>(*engine.word_importance);
+        });
+    };
+    auto load_word_uids = [&engine,&factory](){
+        engine.wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.common.word_uid_index());
+    };
+    auto load_dbinfo = [&engine,&factory](){
+        engine.dbinfo = std::make_unique<const dbinfo_t>(factory);
+    };
+    auto load_queries = [&engine,&factory](){
+        engine.queries = std::make_unique<Dataset>(factory.common.empty_dataset());
+    };
+    auto load_wiki = [&engine,&factory](){
+        engine.wiki = std::make_unique<wikidata::EntityModule>(factory.common.wikientity_module());
+    };
 
-template<typename T>
-QueryEngineT<T>::QueryEngineT(json_t const &config, std::optional<int> data_minor_version)
-        : QueryEngineT<T>{typename T::factory_t{{config}, data_minor_version}}
-{
-    fmt::print(std::cerr, "Engine is constructed.\n");
+    util::parallel_invoke(load_word_score_related,
+                          load_word_uids,
+                          load_dbinfo,
+                          load_queries,
+                          load_wiki);
+    return engine;
 }
 
 template<typename T>
@@ -296,18 +309,18 @@ class UnknownQueryEngineException: public std::exception {
     }
 };
 
-mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> load_query_engine(util::json_t config){
+mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> load_query_engine(util::json_t const& config){
     if(util::get_str(config,"engine_type")=="ygp")
-        return YGPQueryEngine{config};
+        return YGPQueryEngine::factory(config);
     if(util::get_str(config,"engine_type")!="rss") throw UnknownQueryEngineException{};
-    return RSSQueryEngine{config};
+    return RSSQueryEngine::factory(config);
 };
 
 //Explicit instantiation of query engines.
 template class engine::QueryEngineT<data::rss::DBInfo>;
 template class engine::QueryEngineT<data::ygp::DBInfo>;
 
-QueryEngine::QueryEngine(util::json_t& config)
+QueryEngine::QueryEngine(util::json_t const& config)
 : engine{load_query_engine(config)}
 {}
 
