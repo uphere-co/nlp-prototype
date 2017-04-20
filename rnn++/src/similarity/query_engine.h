@@ -6,20 +6,12 @@
 #include "similarity/rss.h"
 #include "similarity/config.h"
 
-#include "wordrep/dep_parsed.h"
-#include "wordrep/dep_graph.h"
-#include "wordrep/voca_info.h"
 #include "wordrep/word_prob.h"
 #include "wordrep/word_case_corrector.h"
-#include "wordrep/wordsim_cache.h"
-#include "wordrep/preprocessed_sentences.h"
-#include "wordrep/serialized_annotation.h"
+#include "wordrep/dep_graph.h"
 
-#include "utils/parallel.h"
 #include "utils/json.h"
-
 #include "utils/variant.h"
-#include "config.h"
 
 namespace engine {
 
@@ -54,7 +46,6 @@ public:
     json_t ask_query(json_t const &ask) const;
     json_t ask_chain_query(json_t const &ask) const;
     json_t ask_query_stats(json_t const &ask) const;
-    json_t ask_query_suggestion(json_t const &ask) const;
     json_t compare_sentences(json_t const &ask) const;
 
     static void annotation_on_result(util::json_t const& config, util::json_t &answers){
@@ -66,16 +57,9 @@ private:
     wordrep::WordCaseCorrector did_you_mean;
     wordrep::PhraseSegmenter phrase_segmenter;
     wordrep::WordUIDindex wordUIDs;
-    Dataset const db;
     dbinfo_t const dbinfo;
     Dataset queries;
     wikidata::EntityModule wiki;
-    wordrep::Scoring scoring;
-    wordrep::Scoring::Preprocess scoring_preprocessor;
-    wordrep::AnnotationData annotated_tokens;
-    wordrep::PreprocessedSentences data_sents;
-    mutable wordrep::WordSimCache dists_cache;
-    mutable QueryResultCache result_cache{};
 };
 
 using RSSQueryEngine = engine::QueryEngineT<data::rss::DBInfo>;
@@ -99,12 +83,6 @@ struct QueryEngine {
     }
     json_t ask_query_stats(json_t const &ask) const{
         return engine.match([&ask] (auto& e)  { return e.ask_query_stats(ask);});
-    }
-    json_t ask_query_suggestion(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.ask_query_suggestion(ask);});
-    }
-    json_t compare_sentences(json_t const &ask) const{
-        return engine.match([&ask] (auto& e)  { return e.compare_sentences(ask);});
     }
     void annotation_on_result(util::json_t const& config, util::json_t &answers) const {
         engine.match([&config,&answers] (auto& e)  { return e.annotation_on_result(config, answers);});
