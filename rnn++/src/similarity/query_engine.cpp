@@ -87,25 +87,16 @@ DepSearchScore::val_t DepSearchScore::score_sum() const {return util::math::sum(
 
 ////////////////////////////////
 
-template<typename OPC, typename OPR>
+template<typename OPR>
 std::vector<data::PerSentQueryResult> write_output(
         Sentence const &query_sent,
         std::vector<ScoredSentence> const &relevant_sents,
-        OPC op_cut, OPR op_results) {
-    auto n_found = relevant_sents.size();
-    std::cerr<<n_found << " results are found"<<std::endl;
-
-    util::Timer timer;
-    auto top_N_results = op_cut(relevant_sents);
-    timer.here_then_reset("Get top N results.");
-
+        OPR const& op_results) {
     std::vector<data::PerSentQueryResult> results;
-    for(auto const &scored_sent : top_N_results){
+    for(auto const &scored_sent : relevant_sents){
         auto result = op_results(query_sent, scored_sent);
         results.push_back(result);
     }
-
-    timer.here_then_reset("Generate JSON output.");
     return results;
 }
 
@@ -234,18 +225,39 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
 
     util::ConcurrentVector<data::QueryResult> answers;
 
-    auto op_cut = [](){};
+    SentenceQuery& sent_query = queries.front();
+    auto tagged_query_sent = wiki->annotator().annotate(sent_query.sent);
+    wordrep::Scoring::Preprocess scoring_preprocessor{*word_importance, wiki->entity_repr()};
+    auto preprocessed_sent = scoring_preprocessor.sentence(tagged_query_sent);
+    preprocessed_sent.filter_false_named_entity(wiki->get_op_named_entity());
+
+    auto matched_results = processor->find_similar_sentences(preprocessed_sent);
+    matched_results.score_filtering();
+    auto results = matched_results.top_n_results(5);
+
+    auto sents = processor->texts->IndexSentences();
+    std::vector<ScoredSentence> relevant_sents;
+    for(auto& matched : results){
+        auto& sent = sents.at(matched.first.val);
+        DepSearchScore match_score{matched.second.tokens.size()};
+        for(auto& matched_pair : matched.second.tokens)
+            match_score.insert(matched_pair.query, {matched_pair.matched,matched_pair.score});
+        relevant_sents.push_back({sent,match_score});
+    }
+
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
         return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
     };
     auto per_sent=[&answers,max_clip_len,op_results,op_cut](
             auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
         data::QueryResult answer;
-        answer.results = write_output(query_sent, relevant_sents, op_cut, op_results);
+        answer.results = write_output(query_sent, relevant_sents, op_results);
         answer.query = query_sent_info;
         answer.n_relevant_matches = relevant_sents.size();
         answers.push_back(answer);
     };
+
+    per_sent(sent_query.sent, sent_query.info, relevant_sents);
 
     timer.here_then_reset("QueryEngine::ask_query is finished.");
     return to_json(answers.to_vector());
