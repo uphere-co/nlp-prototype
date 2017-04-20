@@ -1,3 +1,39 @@
+# Source layout
+## Important constraints for managing dependencies
+Namespaces have their hiearachy :
+1. base
+2. low
+3. high
+4. application
+
+One shall not include same or higher-level namespaces.
+
+## List of namespaces
+- `test`: application
+  - In `tests/` :  for unit-testing
+  - `tests/data` : dataset for unit-testing
+- 'util` : base
+  - In `utils/`    : contain general helper functions; i.e. not NLP specific.
+- `wordrep` : low
+  - In `wordrep/`  : data types for NLP applications; e.g. word embedding, named entity, ...
+- `word2vec` : high
+  - In `word2vec/` : for word2vec training
+- `wiki` : high
+  - In `wiki/`     : for Wikidata entity tagging
+- `data` : high
+  - In `data_source/` : contains ETL logics for YGP DB, RSS, and so on.
+- `engine` : application
+  - In `similarity/` : contains query engine implementation.
+
+Other directories : 
+- `app/`      : contains executables
+- `rnn/`      : for recursive neural networks(RNN)
+- `parser/`   : for parser based on RNN
+- `models/`   : contains RNN models.
+- `wrapper/`  : for query-daemon
+- `scripts/`  : contain some bash and python scripts.
+
+
 # C++ implementation of RecursiveNN
 ## Build
 ```bash
