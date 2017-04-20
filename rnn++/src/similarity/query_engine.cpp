@@ -93,6 +93,18 @@ DepSearchScore to_dep_score(MatchedTokenReducer::Value const& matches){
     return match_score;
 }
 
+
+struct ScoredSentenceCollector{
+    std::vector<ScoredSentence> get_scored_sents(std::vector<MatchedTokenReducer::result_type> const& results) const{
+        return util::map(results,
+                         [this](auto& matched)->ScoredSentence{
+                             auto& sent = this->all_sents.at(matched.first.val);
+                             return {sent,to_dep_score(matched.second)};
+                         });
+    }
+    std::vector<wordrep::Sentence> const& all_sents;
+};
+
 template<typename OPR>
 std::vector<data::PerSentQueryResult> write_output(
         Sentence const &query_sent,
@@ -255,14 +267,8 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     auto answers = util::map(queries, [this,max_clip_len](auto& sent_query) {
         auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
-        auto results = matched_results.top_n_results(5);
-
-        auto sents = this->processor->texts->IndexSentences();
-        std::vector<ScoredSentence> relevant_sents;
-        for (auto &matched : results) {
-            auto &sent = sents.at(matched.first.val);
-            relevant_sents.push_back({sent, to_dep_score(matched.second)});
-        }
+        ScoredSentenceCollector op_sents{this->processor->texts->IndexSentences()};
+        auto relevant_sents = op_sents.get_scored_sents(matched_results.top_n_results(5));
         return collect_result(sent_query, relevant_sents, max_clip_len);
     });
 
@@ -307,21 +313,10 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
         auto matched_results = get_matched_contents(sent_query.sent);
         matched_results.score_filtering();
 
-        auto sents = this->processor->texts->IndexSentences();
-        auto relevant_sents = util::map(matched_results.top_n_results(5),
-                                                            [&](auto &matched)->ScoredSentence{
-            auto &sent = sents.at(matched.first.val);
-            return {sent, to_dep_score(matched.second)};
-        });
-
+        ScoredSentenceCollector op_sents{this->processor->texts->IndexSentences()};
+        auto relevant_sents = op_sents.get_scored_sents(matched_results.top_n_results(5));
         get_query_suggestions(sent_query.sent,
-                              util::map(matched_results.all_results(),
-                                        [&](auto& matched)->ScoredSentence{
-                                            auto& sent = sents.at(matched.first.val);
-                                            return {sent,to_dep_score(matched.second)};
-                                        }));
-
-
+                              op_sents.get_scored_sents(matched_results.all_results()));
         return collect_result(sent_query, relevant_sents, max_clip_len);
     });
 

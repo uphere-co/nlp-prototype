@@ -44,6 +44,7 @@ struct MatchedTokenReducer{
         double score;
         std::vector<MatchedTokenPerSent::Value> tokens;
     };
+    using result_type = std::pair<Key,Value>;
 
     static MatchedTokenReducer intersection(std::vector<std::vector<MatchedTokenPerSent>>&& xs){
         MatchedTokenReducer commons;
