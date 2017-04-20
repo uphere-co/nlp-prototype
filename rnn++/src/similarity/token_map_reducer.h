@@ -60,8 +60,9 @@ struct MatchedTokenReducer{
         return commons;
     }
 
+    std::vector<std::pair<Key,Value>> all_results() const { return util::to_pairs(vals);}
     std::vector<std::pair<Key,Value>> top_n_results(size_t n) const {
-        auto results = util::to_pairs(vals);
+        auto results = all_results();
         auto beg = results.begin();
         auto end = results.end();
         std::partial_sort(beg, beg+n, end, [](auto& x, auto& y){return x.second.score > y.second.score;});
