@@ -47,16 +47,12 @@ public:
             engine.texts = std::make_unique<wordrep::DepParsedTokens>(factory.dep_parsed_tokens());
             engine.words = std::make_unique<LookupIndexedWords>(LookupIndexedWords::factory(*engine.texts));
         };
-        auto load_wiki_module = [&engine,&factory](){
-            engine.f = std::make_unique<wikidata::EntityModule>(factory.wikientity_module());
-        };
         auto load_wordsim_table = [&engine,&factory](){
             engine.word_sim = std::make_unique<wordrep::SimilarWords>(factory.similar_words());
         };
 
         util::parallel_invoke(load_annotation,
                               load_wordsim_table,
-                              load_wiki_module,
                               load_word_scores,
                               load_indexed_text);
         timer.here_then_reset("Concurrent loading of binary files");
@@ -177,7 +173,6 @@ public:
 private:
     QueryProcessor() {}
     std::unique_ptr<wordrep::WordImportance> word_importance;
-    std::unique_ptr<wikidata::EntityModule> f;
     std::unique_ptr<wordrep::SimilarWords> word_sim;
     std::unique_ptr<LookupEntityCandidate> candidates;
     std::unique_ptr<LookupEntityTaggedToken> ner_tagged_tokens;
