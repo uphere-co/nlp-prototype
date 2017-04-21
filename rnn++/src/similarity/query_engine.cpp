@@ -128,30 +128,43 @@ data::QuerySentInfo construct_query_info(
 
 ///////////////////////////////////////////////////////////////
 template<typename T>
-QueryEngineT<T>::QueryEngineT(typename T::factory_t const &factory)
-: word_importance{factory.common.word_importance()},
-  did_you_mean{factory.common.word_case_corrector(word_importance)},
-  phrase_segmenter{word_importance},
-  wordUIDs{factory.common.word_uid_index()},
-  dbinfo{factory},
-  queries{factory.common.empty_dataset()},
-  wiki{factory.common.wikientity_module()}
-{
-    fmt::print(std::cerr, "Engine is constructed using factory.\n");
-}
+QueryEngineT<T> QueryEngineT<T>::factory(json_t const& config){
+    QueryEngineT engine;
+    typename T::factory_t factory{config};
+    auto load_word_score_related = [&engine,&factory](){
+        engine.word_importance = std::make_unique<const wordrep::WordImportance>(factory.common.word_importance());
+        util::parallel_invoke([&](){
+            engine.did_you_mean    = std::make_unique<wordrep::WordCaseCorrector>(factory.common.word_case_corrector(*engine.word_importance));
+        },[&](){
+            engine.phrase_segmenter= std::make_unique<wordrep::PhraseSegmenter>(*engine.word_importance);
+        });
+    };
+    auto load_word_uids = [&engine,&factory](){
+        engine.wordUIDs = std::make_unique<wordrep::WordUIDindex>(factory.common.word_uid_index());
+    };
+    auto load_dbinfo = [&engine,&factory](){
+        engine.dbinfo = std::make_unique<const dbinfo_t>(factory);
+    };
+    auto load_queries = [&engine,&factory](){
+        engine.queries = std::make_unique<Dataset>(factory.common.empty_dataset());
+    };
+    auto load_wiki = [&engine,&factory](){
+        engine.wiki = std::make_unique<wikidata::EntityModule>(factory.common.wikientity_module());
+    };
 
-template<typename T>
-QueryEngineT<T>::QueryEngineT(json_t const &config, std::optional<int> data_minor_version)
-        : QueryEngineT<T>{typename T::factory_t{{config}, data_minor_version}}
-{
-    fmt::print(std::cerr, "Engine is constructed.\n");
+    util::parallel_invoke(load_word_score_related,
+                          load_word_uids,
+                          load_dbinfo,
+                          load_queries,
+                          load_wiki);
+    return engine;
 }
 
 template<typename T>
 QueryEngineT<T>::QueryEngineT(QueryEngineT&& engine)
 : word_importance{std::move(engine.word_importance)},
   did_you_mean{std::move(engine.did_you_mean)},
-  phrase_segmenter{word_importance},
+  phrase_segmenter{std::make_unique<wordrep::PhraseSegmenter>(*word_importance)},
   wordUIDs{std::move(engine.wordUIDs)},
   dbinfo{std::move(engine.dbinfo)},
   queries{std::move(engine.queries)},
@@ -173,7 +186,7 @@ json_t QueryEngineT<T>::preprocess_query(json_t const &ask) const {
     };
     query.iter_tokens(per_tokens);
     auto original_query = util::string::join(original_words, " ");
-    auto corrected_words = util::map(original_words, [this](auto word){return did_you_mean.try_correct(word);});
+    auto corrected_words = util::map(original_words, [this](auto word){return did_you_mean->try_correct(word);});
     auto corrected_query = util::string::join(corrected_words, " ");
 
     json_t answer{};
@@ -194,14 +207,14 @@ json_t QueryEngineT<T>::register_documents(json_t const &ask) {
     timer.here_then_reset(fmt::format("QueryEngine::register_documents is called : {}", ask.dump()));
 
     if (ask.find("sentences") == ask.end()) return json_t{};
-    auto uids = queries.append_chunk(data::CoreNLPjson{ask});
+    auto uids = queries->append_chunk(data::CoreNLPjson{ask});
     json_t answer{};
     answer["sent_uids"]=util::serialize(uids);
     std::cerr<<fmt::format("# of sents : {}\n", uids.size()) << std::endl;
     // tag_on_register_documents does
     // RSS : nothing
     // YGP : country tags
-    dbinfo.tag_on_register_documents(ask, answer);
+    dbinfo->tag_on_register_documents(ask, answer);
     timer.here_then_reset("QueryEngine::register_documents is finished.");
     return answer;
 }
@@ -216,10 +229,10 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
     //Lookup sentences based on sentence UIDs
-    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent);
+    auto query_sents = dbinfo->get_query_sents(query, queries->uid2sent);
     //Get words and their cutoffs in query sentence
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
-        return {sent, construct_query_info(sent, wordUIDs, word_importance)};
+        return {sent, construct_query_info(sent, *wordUIDs, *word_importance)};
     });
 
         //input : candidates_sents
@@ -231,7 +244,7 @@ json_t QueryEngineT<T>::ask_query(json_t const &ask) const {
     util::ConcurrentVector<data::QueryResult> answers;
     auto op_cut = [](){};
     auto op_results = [this,max_clip_len](auto const& query_sent, auto const& scored_sent){
-        return dbinfo.build_result(query_sent, scored_sent, max_clip_len);
+        return dbinfo->build_result(query_sent, scored_sent, max_clip_len);
     };
     auto per_sent=[&answers,max_clip_len,op_results,op_cut](
             auto const &query_sent, auto const& query_sent_info, auto const &relevant_sents){
@@ -260,9 +273,9 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     auto max_clip_len = util::find<int64_t>(ask, "max_clip_len").value_or(200);
     auto n_cut = util::find<int64_t>(ask, "n_cut").value_or(10);
 
-    auto query_sents = dbinfo.get_query_sents(query, queries.uid2sent);
+    auto query_sents = dbinfo->get_query_sents(query, queries->uid2sent);
     auto queries = util::map(query_sents, [this](auto sent)->SentenceQuery{
-        return {sent, construct_query_info(sent, wordUIDs, word_importance)};
+        return {sent, construct_query_info(sent, *wordUIDs, *word_importance)};
     });
 
     auto phrase_cutoff = util::find<float>(ask, "phrase_cutoff").value_or(5.0);
@@ -270,15 +283,15 @@ json_t QueryEngineT<T>::ask_query_stats(json_t const &ask) const {
     auto get_query_suggestions = [this,&query_suggestions,phrase_cutoff](auto const &query_sent, auto const &relevant_sents){
         auto sents = util::map(relevant_sents, [](auto const& r_sent){return r_sent.sent;});
         fmt::print(std::cerr, "Find phrase suggestions in {} sentences.", sents.size());
-        WordUsageInPhrase phrase_finder{sents, word_importance};
+        WordUsageInPhrase phrase_finder{sents, *word_importance};
         std::vector<WordUID> wuids;
         for(auto idx : query_sent) {
             auto wuid = query_sent.dict->word_uid(idx);
-            if (word_importance.is_noisy_word(wuid)) continue;
+            if (word_importance->is_noisy_word(wuid)) continue;
             wuids.push_back(wuid);
         }
         json_t query_suggestion;
-        query_suggestion["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, wordUIDs, phrase_cutoff);
+        query_suggestion["query_suggestions"]= get_query_suggestion(wuids, phrase_finder, *wordUIDs, phrase_cutoff);
         query_suggestion["sent_uid"] = query_sent.uid.val;
         query_suggestions.push_back(query_suggestion);
     };
@@ -296,18 +309,18 @@ class UnknownQueryEngineException: public std::exception {
     }
 };
 
-mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> load_query_engine(util::json_t config){
+mapbox::util::variant<RSSQueryEngine,YGPQueryEngine> load_query_engine(util::json_t const& config){
     if(util::get_str(config,"engine_type")=="ygp")
-        return YGPQueryEngine{config};
+        return YGPQueryEngine::factory(config);
     if(util::get_str(config,"engine_type")!="rss") throw UnknownQueryEngineException{};
-    return RSSQueryEngine{config};
+    return RSSQueryEngine::factory(config);
 };
 
 //Explicit instantiation of query engines.
 template class engine::QueryEngineT<data::rss::DBInfo>;
 template class engine::QueryEngineT<data::ygp::DBInfo>;
 
-QueryEngine::QueryEngine(util::json_t& config)
+QueryEngine::QueryEngine(util::json_t const& config)
 : engine{load_query_engine(config)}
 {}
 

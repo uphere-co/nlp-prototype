@@ -37,8 +37,8 @@ public:
     using val_t = voca_info_t::voca_vecs_t::val_t;
     using output_t = std::vector<data::QueryResult>;
 
-    QueryEngineT(typename T::factory_t const& factory);
-    QueryEngineT(json_t const& config, std::optional<int> data_minor_version={});
+    static QueryEngineT factory(json_t const& config);
+
     QueryEngineT(QueryEngineT&& engine);
 
     json_t preprocess_query(json_t const &ask) const;
@@ -53,13 +53,15 @@ public:
     }
 
 private:
-    wordrep::WordImportance const word_importance;
-    wordrep::WordCaseCorrector did_you_mean;
-    wordrep::PhraseSegmenter phrase_segmenter;
-    wordrep::WordUIDindex wordUIDs;
-    dbinfo_t const dbinfo;
-    Dataset queries;
-    wikidata::EntityModule wiki;
+    QueryEngineT(){}
+
+    std::unique_ptr<const wordrep::WordImportance> word_importance;
+    std::unique_ptr<wordrep::WordCaseCorrector> did_you_mean;
+    std::unique_ptr<wordrep::PhraseSegmenter> phrase_segmenter;
+    std::unique_ptr<wordrep::WordUIDindex> wordUIDs;
+    std::unique_ptr<const dbinfo_t> dbinfo;
+    std::unique_ptr<Dataset> queries;
+    std::unique_ptr<wikidata::EntityModule> wiki;
 };
 
 using RSSQueryEngine = engine::QueryEngineT<data::rss::DBInfo>;
@@ -67,7 +69,7 @@ using YGPQueryEngine = engine::QueryEngineT<data::ygp::DBInfo>;
 
 struct QueryEngine {
     using json_t = util::json_t;
-    QueryEngine(util::json_t& config);
+    QueryEngine(util::json_t const& config);
 
     json_t preprocess_query(json_t const &ask) {
         return engine.match([&ask] (auto& e)  { return e.preprocess_query(ask);});
