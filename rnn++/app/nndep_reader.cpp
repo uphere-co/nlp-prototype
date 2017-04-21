@@ -380,9 +380,9 @@ int main(int argc, char** argv){
     //fmt::print("{}\n", uids.dump(4));
     timer.here_then_reset("Registered documents.");
     auto answers = engine.ask_query(uids);
-    engine.annotation_on_result(config, answers);
+//    engine.annotation_on_result(config, answers);
     timer.here_then_reset("Processed a query.");
-    fmt::print("{}\n", answers.dump(4));
+//    fmt::print("{}\n", answers.dump(4));
     //fmt::print("\n\n---------------------\nA chain query find results:\n", answers.dump(4));
     timer.here_then_reset("Begin a chain query.");
     auto chain_answers = engine.ask_chain_query(uids);

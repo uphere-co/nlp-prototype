@@ -64,7 +64,7 @@ public:
         return engine;
     }
 
-    auto find_similar_sentences(wordrep::Scoring::SentenceToScored const& preprocessed_sent) const {
+    MatchedTokenReducer find_similar_sentences(wordrep::Scoring::SentenceToScored const& preprocessed_sent) const {
         util::MockTimer timer;
         auto pre_results_per_entity = util::map(preprocessed_sent.entities, [&](auto& e) {
             return util::concat_mapmap(candidates->find(e.uid), [&](auto i) {

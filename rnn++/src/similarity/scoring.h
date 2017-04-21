@@ -2,8 +2,6 @@
 
 #include <vector>
 
-#include "wordrep/dep_parsed.h"
-#include "wordrep/voca_info.h"
 #include "wordrep/words.h"
 #include "wordrep/simiarity_score.h"
 
@@ -27,7 +25,7 @@ struct DepSearchScore{
     std::vector<std::pair<Index,val_t>> scores_with_idx() const {
         return util::zip(idxs_rhs, scores);
     };
-    auto insert(Index lhs, wordrep::Scoring::Score rhs) {
+    auto insert(Index lhs, wordrep::Scoring::Score const& rhs) {
         idxs_lhs.push_back(lhs);
         idxs_rhs.push_back(rhs.data);
         scores.push_back(rhs.score);
