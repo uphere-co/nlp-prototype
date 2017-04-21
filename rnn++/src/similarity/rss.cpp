@@ -23,20 +23,13 @@ DBInfo::DBInfo(Factory const& factory)
 
 std::vector<wordrep::Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,
-        wordrep::Sentences const &query_sent_uids,
-        wordrep::Sentences const &db_sent_uids) const{
+        wordrep::Sentences const &query_sent_uids) const{
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = query_sent_uids.find(uid);
-        if(!sent) sent = db_sent_uids.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
+        auto m_sent = query_sent_uids.find(uid);
+        if(m_sent) query_sents.push_back(m_sent.value());
     }
     return query_sents;
-}
-std::vector<wordrep::Sentence> DBInfo::get_candidate_sents(
-        DBInfo::query_t const& /*query*/, engine::Dataset const& db) const{
-    return db.sents;
 }
 
 }//data::ygp

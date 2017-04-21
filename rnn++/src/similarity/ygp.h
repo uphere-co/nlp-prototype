@@ -84,11 +84,7 @@ struct DBInfo{
     }
     std::vector<wordrep::Sentence> get_query_sents(
             query_t const& query,
-            wordrep::Sentences const &query_sent_uids,
-            wordrep::Sentences const &db_sent_uids) const;
-    std::vector<wordrep::Sentence> get_candidate_sents(
-            query_t const& query,
-            engine::Dataset const& db) const;
+            wordrep::Sentences const &query_sent_uids) const;
 
     PerSentQueryResult build_result(wordrep::Sentence const &query_sent,
                                     engine::ScoredSentence const &matched_sentence,

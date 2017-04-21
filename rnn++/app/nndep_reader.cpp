@@ -367,17 +367,6 @@ int main(int argc, char** argv){
     query_json["query_str"] = query_str;
     fmt::print(std::cerr, "{}\n", corrected_query.dump(4));
 
-    if(true){
-        util::json_t suggestion_query{};
-//        auto ideas = {"China", "air", "fire","metal"};
-        //auto ideas = {"Yahoo", "Google","China","AI"};
-        auto ideas = util::string::split(util::string::strip(query_str));
-        suggestion_query["ideas"]=ideas;
-        //fmt::print("{}\n", suggestion_query.dump(4));
-        auto suggestion_output = engine.ask_query_suggestion(suggestion_query);
-        //fmt::print("{}\n", suggestion_output.dump(4));
-    }
-
     auto uids = engine.register_documents(query_json);
     uids["n_cut"]=10;
     uids["max_clip_len"] = query_json["max_clip_len"];

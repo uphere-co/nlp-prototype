@@ -120,50 +120,14 @@ DBInfo::DBInfo(Factory const& factory)
 
 std::vector<Sentence> DBInfo::get_query_sents(
         DBInfo::query_t const& query,
-        Sentences const &query_sent_uids,
-        Sentences const &db_sent_uids) const{
+        Sentences const &query_sent_uids) const{
     std::vector<Sentence> query_sents{};
     for(auto uid : query.uids){
-        auto sent = query_sent_uids.find(uid);
-        if(!sent) sent = db_sent_uids.find(uid);
-        if(!sent) continue;
-        query_sents.push_back(sent.value());
+        auto m_sent = query_sent_uids.find(uid);
+        if(m_sent) query_sents.push_back(m_sent.value());
     }
+
     return query_sents;
-}
-std::vector<Sentence> DBInfo::get_candidate_sents(
-        query_t const& query, engine::Dataset const& dataset) const{
-    std::cerr<<"Find for a query in country DB of : ";
-    for(auto const &country : query.countries) std::cerr<<country << ", ";
-    std::cerr<<std::endl;
-    if(query.countries.size()==0) std::cerr<<"No countries are specified. Find for all countries."<<std::endl;
-
-    std::vector<ColumnUID> interested_columns;
-    if(query.table_columns) {
-        for(auto table_name : query.table_columns.value()){
-            auto maybe_uid = db.table_column(table_name);
-            if(!maybe_uid) continue;
-            auto uid = maybe_uid.value();
-            interested_columns.push_back(uid);
-            fmt::print(std::cerr, "Table to search : {} {} \n", table_name, uid);
-
-        }
-    } else{
-        fmt::print(std::cerr, "Find in all table\n");
-    }
-
-    auto uids = per_country.sents(query.countries);
-    std::vector<Sentence> candidate_sents;
-    for(auto uid : uids) candidate_sents.push_back(dataset.uid2sent[uid]);
-    if(query.countries.size()==0) candidate_sents=dataset.sents;
-
-    if(interested_columns.empty()) return candidate_sents;
-    auto tmp= util::filter(candidate_sents,
-                        [&interested_columns,this](auto& sent){
-        return util::isin(interested_columns, indexer.column_uid(sent.dict->chunk_idx(sent.front())));
-    });
-    fmt::print(std::cerr, "Select {} among {} sents\n", tmp.size(), candidate_sents.size());
-    return tmp;
 }
 
 }//data::ygp

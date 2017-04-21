@@ -54,13 +54,6 @@ util::json_t* EngineWrapper::query( util::json_t* input )
 }
 
 
-util::json_t* EngineWrapper::suggest( util::json_t* input )
-{
-    return (new util::json_t(engine->ask_query_suggestion(*input)));
-}
-
-
-
 //void force_instantiation() {
 //  EngineWrapper t("");
 //}
