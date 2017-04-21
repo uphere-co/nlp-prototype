@@ -560,7 +560,7 @@ void scoring_words(util::json_t const& config_json){
     Words words{{w["European"],w["Union"]}};
     fmt::print("{} : {}\n", words.repr(wordUIDs), scoring.phrase(words));
 
-    Scoring::Preprocess scoring_preprocessor{scoring, entity_reprs};
+    Scoring::Preprocess scoring_preprocessor{word_importance, entity_reprs};
 
     fmt::print("{}\n",tsent1.sent.repr(wordUIDs));
     auto sent_to_scored1 = scoring_preprocessor.sentence(tsent1);
@@ -732,7 +732,7 @@ void annotate_sentences(int argc, char** argv){
     timer.here_then_reset("Load voca_info.");
     wordrep::Scoring scoring{word_importance, voca.wvecs};
     timer.here_then_reset("Load wordrep::Scoring.");
-    wordrep::Scoring::Preprocess scoring_preprocessor{scoring, wiki.entity_repr()};
+    wordrep::Scoring::Preprocess scoring_preprocessor{word_importance, wiki.entity_repr()};
     timer.here_then_reset("Load wordrep::Scoring::Preprocess.");
 
     timer.here_then_reset("Load all data.");
