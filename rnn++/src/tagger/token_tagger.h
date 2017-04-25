@@ -5,7 +5,7 @@
 
 namespace tagger {
 
-    void test_program( util::json_t const& p );
+void test_program( util::json_t const& p );
     
 
 }//namespace tagger
