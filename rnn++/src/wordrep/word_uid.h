@@ -15,6 +15,10 @@ template<typename TUID>
 class UIDIndex{
 public:
     using uid_t = TUID;
+    UIDIndex(tbb::concurrent_vector<std::pair<uid_t,std::string>>&& v)
+        : uid2word{std::move(v)}
+    {}
+    // the following creation of UIDIndex from files should be out-sourced from this class.
     UIDIndex(std::string file);
     UIDIndex(UIDIndexFile file);
     UIDIndex(UIDIndex &&org)
