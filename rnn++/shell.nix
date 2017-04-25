@@ -33,7 +33,7 @@ stdenv.mkDerivation {
                  [
                    wget jdk zip unzip which stress htop
                    cmake pkgconfig clang_38 clang-analyzer
-                   linuxPackages_4_6.perf
+                   linuxPackages.perf
                    zeromq
                    doxygen graphviz
                    libcgroup 

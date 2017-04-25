@@ -166,6 +166,11 @@ target_link_libraries(similarity stdc++fs fmt tbb hd5f_cpp pqxx dw) # not effect
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
 
+add_library(tagger STATIC src/tagger/token_tagger.cpp)
+
+add_executable(token_tagger_app app/token_tagger_app)
+target_link_libraries(token_tagger_app tagger)
+
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
 target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
