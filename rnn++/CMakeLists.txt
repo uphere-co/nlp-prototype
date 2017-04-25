@@ -157,11 +157,11 @@ target_link_libraries(benchmark_fileio stdc++fs hdf5_cpp hdf5_hl_cpp tbb fmt)
 #target_link_libraries(bfgs lbfgs)
 
 add_library(parser STATIC ${simple_model_parsers} ${util_files})
-target_link_libraries(parser stdc++fs fmt tbb hd5f_cpp)  # not effective when making query package
+target_link_libraries(parser stdc++fs fmt tbb hdf5_cpp)  # not effective when making query package
 
 # etl_files may need to be splitted out as a separate package.
 add_library(similarity STATIC ${similarity_files} ${etl_files} ${wordrep_files} ${wiki_files}  ${util_files})
-target_link_libraries(similarity stdc++fs fmt tbb hd5f_cpp pqxx dw) # not effective when making query package
+target_link_libraries(similarity stdc++fs fmt tbb hdf5_cpp pqxx dw) # not effective when making query package
 
 add_library(util STATIC ${util_files})
 #target_link_libraries(util hdf5_cpp hdf5_hl_cpp tbb)
@@ -169,10 +169,10 @@ add_library(util STATIC ${util_files})
 add_library(tagger STATIC src/tagger/token_tagger.cpp)
 
 add_executable(token_tagger_app app/token_tagger_app)
-target_link_libraries(token_tagger_app tagger)
+target_link_libraries(token_tagger_app tagger util similarity hdf5_cpp hdf5_hl_cpp)
 
 add_library(enginewrapper STATIC wrapper/enginewrapper.cpp)
-target_link_libraries(enginewrapper similarity parser tbb hd5f_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
+target_link_libraries(enginewrapper similarity parser tbb hdf5_cpp fmp pqxx stdc++ stdc++fs dw) # not effective when making query package
 
 #install(TARGETS nndep_reader RUNTIME DESTINATION bin)
 
