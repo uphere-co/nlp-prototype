@@ -42,8 +42,10 @@ wordrep::wiki::UIDSortedEntities create_uid_sorted_entities(wordrep::wiki::Sorte
 int main( int argc, char** argv )
 {
     std::cout << "start token_tagger_app" << std::endl;
-    util::json_t p = util::load_json("../tests/data/sentence.1.corenlp");
-    wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/words.uid"};
+    //util::json_t p = util::load_json("../tests/data/sentence.1.corenlp");
+    //wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/words.uid"};
+    util::json_t p = util::load_json("../rnn++/tests/data/sentence.1.corenlp");
+    wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/all_words"};
     wordrep::wiki::SortedEntities entities = create_entities(wordUIDs, "F7745.all_entities");
     wordrep::wiki::UIDSortedEntities uid_sorted_ett = create_uid_sorted_entities(entities);
     wordrep::wiki::EntityReprs entity_reprs{uid_sorted_ett};
