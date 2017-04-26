@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <fmt/printf.h>
+
 #include "utils/json.h"
 #include "tagger/token_tagger.h"
 #include "wordrep/wikientity_base.h"
@@ -22,9 +24,13 @@ wordrep::WikidataUIDindex create_WikidataUIDindex(std::string const& filename) {
     auto lines = util::string::readlines(filename);
     for(auto& line : lines) {
         auto tokens = util::string::split(line, "\t");
-        auto uid = wordrep::WikidataUIDindex::get_uid(tokens[0]);
-        items.push_back(std::make_pair(uid,tokens[1]));
+        auto uid_str = tokens[0];
+        auto uid = wordrep::WikidataUIDindex::get_uid(uid_str);
+        items.push_back(std::make_pair(uid,uid_str));
     }
+    tbb::parallel_sort(items.begin(), items.end(), [](auto& x, auto& y){
+        return x.first<y.first;
+    });
     return {std::move(items)};
 }
 
@@ -54,7 +60,7 @@ int main( int argc, char** argv )
 
     // int s = 0; 
      for(auto e = entities.cbegin(); e != entities.cend() ; e++ ) {
-        std::cout << e->repr(wikidataUIDs,wordUIDs) << std::endl;
+         std::cout << e->repr(wikidataUIDs,wordUIDs) << std::endl;
     }
     
     std::cout << p.dump(4) << std::endl;
