@@ -80,5 +80,6 @@ int main( int argc, char** argv )
         s++;
         std::cout << s << std::endl;
     }
-    std::cout << asent.repr(entity_reprs,wikidataUIDs,wordUIDs) << std::endl;  // segfault here
+    std::cout << asent.sent.repr(wordUIDs) << std::endl;
+    std::cout << asent.repr(entity_reprs,wikidataUIDs,wordUIDs) << std::endl;
 }
