@@ -65,7 +65,15 @@ int main( int argc, char** argv )
     
     std::cout << p.dump(4) << std::endl;
     // std::cout << wordrep::WordUIDindex::get_uid("Earlier") << std::endl;
-    wordrep::AnnotatedSentence asent = tagger::test_program(ann,p);
+    //wordrep::AnnotatedSentence asent = tagger::test_program(ann,p);
+    wordrep::DepParsedTokens tokens;
+    data::CoreNLPjson c{p} ;
+    tokens.append_corenlp_output(c);
+    wordrep::Sentence sent ( 0, 1, 5 , &tokens) ;
+    // wordrep::WordUIDindex widx("/data/groups/uphere/engine.rss/words.uid" ) ;
+    // std::cout << sent.repr(widx)  << std::endl;
+
+    auto asent = ann.annotate(sent);
 
     int s = 0;
     for( auto e = asent.begin() ; e != asent.end() ; ++e ) {
