@@ -9,7 +9,8 @@ let toolz     = callPackage (uphere-nix-overlay + "/default-python.nix") {
                   buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
                 };
     toolz_cpp = callPackage (uphere-nix-overlay + "/default-cpp.nix") { };
-    mystdenv = clangStdenv;
+    # mystdenv = clangStdenv; # clangStdenv has clang 3.9 as of 20170427.
+    mystdenv = llvmPackages_4.stdenv;
 in
 mystdenv.mkDerivation {
   name = "python-env";
