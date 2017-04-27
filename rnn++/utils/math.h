@@ -43,26 +43,26 @@ auto norm_L1(span_1d<T,M> const vec){
     T factor{};
     for (auto &x : vec) factor += std::abs(x);
     return factor;
-};
+}
 template<typename T, int64_t M, int64_t N>
 auto norm_L1(span_2d<T,M,N> const mat){
     T factor{};
     for (auto &x : mat) factor += std::abs(x);
     return factor;
-};
+}
 
 template<typename T, int64_t M>
 auto norm_L2(span_1d<T,M> const vec){
     T factor{};
     for (auto &x : vec) factor += x*x;
     return std::sqrt(factor);
-};
+}
 template<typename T, int64_t M, int64_t N>
 auto norm_L2(span_2d<T,M,N> const mat){
     T factor{};
     for (auto &x : mat) factor += x*x;
     return std::sqrt(factor);
-};
+}
 
 
 template<FunName>

@@ -661,7 +661,7 @@ void scoring_words(util::json_t const& config_json){
         fmt::print("{:<5} : {:<25} - {:<25}\n", score.score, word.first.repr(wordUIDs),
                    score.data.repr(tokens,wordUIDs));
     }
-};
+}
 
 void test_all(int argc, char** argv){
     assert(argc>2);

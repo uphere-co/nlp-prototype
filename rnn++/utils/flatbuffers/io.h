@@ -34,7 +34,7 @@ std::vector<float> load_binary_file(F32Binary const& file);
 
 inline std::unique_ptr<char[]> load_binary_file(PairsBinary const& file){
     return load_binary_file(file.name);
-};
+}
 
 template<typename T>
 void deserialize_i64vector(std::unique_ptr<char[]> data, T& vec){
