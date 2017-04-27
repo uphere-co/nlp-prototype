@@ -7,6 +7,12 @@
 #include "wordrep/wikientity_base.h"
 #include "wiki/wikidata.h"
 
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward {
+backward::SignalHandling sh;
+} // namespace backward
+
 
 wordrep::wiki::SortedEntities create_entities(wordrep::WordUIDindex const& wordUIDs, std::string const& filename){
     tbb::concurrent_vector<wordrep::wiki::Entity> items;
@@ -48,8 +54,8 @@ wordrep::wiki::UIDSortedEntities create_uid_sorted_entities(wordrep::wiki::Sorte
 int main( int argc, char** argv )
 {
     std::cout << "start token_tagger_app" << std::endl;
-    //util::json_t p = util::load_json("../tests/data/sentence.1.corenlp");
-    //wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/words.uid"};
+//    util::json_t p = util::load_json("../tests/data/sentence.1.corenlp");
+//    wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/words.uid"};
     util::json_t p = util::load_json("../rnn++/tests/data/sentence.1.corenlp");
     wordrep::WordUIDindex wordUIDs{"/data/groups/uphere/engine.rss/all_words"};
     wordrep::wiki::SortedEntities entities = create_entities(wordUIDs, "F7745.all_entities");
