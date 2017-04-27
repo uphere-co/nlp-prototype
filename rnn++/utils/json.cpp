@@ -25,7 +25,8 @@ json_t  load_json(std::string filename){
     if(!util::file::is_exist(filename))
         throw std::runtime_error(filename+" is not found.");
     std::ifstream jsonData(filename, std::ifstream::in);
-    assert(jsonData.is_open());
+    if(!jsonData.is_open())
+        throw std::runtime_error("Failed to open " + filename);
     jsonData >> j;
     return j;
 }
