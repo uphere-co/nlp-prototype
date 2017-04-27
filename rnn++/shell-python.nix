@@ -9,8 +9,9 @@ let toolz     = callPackage (uphere-nix-overlay + "/default-python.nix") {
                   buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
                 };
     toolz_cpp = callPackage (uphere-nix-overlay + "/default-cpp.nix") { };
+    mystdenv = clangStdenv;
 in
-stdenv.mkDerivation {
+mystdenv.mkDerivation {
   name = "python-env";
   buildInputs = (with python27Packages;
                  [ ipython jupyter ipyparallel
@@ -35,7 +36,7 @@ stdenv.mkDerivation {
                    ++ 
                  [
                    wget jdk zip unzip which stress htop
-                   cmake pkgconfig clang clang-analyzer elfutils
+                   cmake pkgconfig clang-analyzer elfutils
                    gcc6
                    #libcxx libcxxabi
                    boost

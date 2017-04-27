@@ -6,8 +6,9 @@ with pkgs;
 
 let toolz_cpp = callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") { };
     config = import ./config.nix { inherit pkgs toolz_cpp; };
+    mystdenv = clangStdenv;
 in
-stdenv.mkDerivation rec {
+mystdenv.mkDerivation rec {
   version = "0.0";
   name = "rnn++-${version}";
   src = ./.;
