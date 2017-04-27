@@ -1,4 +1,5 @@
 #include "utils/json.h"
+#include "utils/filesystem.h"
 
 #include <exception>
 #include <fstream>
@@ -21,10 +22,11 @@ namespace util{
 
 json_t  load_json(std::string filename){
     json_t  j;
+    if(!util::file::is_exist(filename))
+        throw std::runtime_error(filename+" is not found.");
     std::ifstream jsonData(filename, std::ifstream::in);
-    if(jsonData.is_open()) {
-        jsonData >> j;
-    }
+    assert(jsonData.is_open());
+    jsonData >> j;
     return j;
 }
 
