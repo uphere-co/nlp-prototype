@@ -1,7 +1,8 @@
 { pkgs, toolz_cpp }:
 
 with pkgs; 
-[ cmake clang_38 
+[ cmake
+  #clang_38 
   boost
   hdf5 hdf5-cpp liblbfgs 
   tbb openblas  

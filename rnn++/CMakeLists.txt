@@ -1,9 +1,7 @@
 project(rnnpp)
 cmake_minimum_required(VERSION 3.4)
 
-SET(HOME $ENV{HOME})
-SET(CMAKE_C_COMPILER clang)
-SET(CMAKE_CXX_COMPILER clang++)
+#SET(HOME $ENV{HOME})
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
