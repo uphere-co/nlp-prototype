@@ -1,8 +1,10 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, uphere-nix-overlay
+}:
 
 with pkgs;
 
-let toolz_cpp = callPackage ../nix/default-cpp.nix { };
+let toolz_cpp = callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") { };
     config = import ./config.nix { inherit pkgs toolz_cpp; };
 in
 stdenv.mkDerivation rec {

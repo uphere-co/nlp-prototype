@@ -1,12 +1,14 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, uphere-nix-overlay
+}:
 
 with pkgs;
 
-let toolz     = callPackage ./default-python.nix {
+let toolz     = callPackage (uphere-nix-overlay + "/default-python.nix") {
                   inherit pkgs;
                   buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
                 };
-    toolz_cpp = callPackage ./default-cpp.nix { };
+    toolz_cpp = callPackage (uphere-nix-overlay + "/default-cpp.nix") { };
 in
 stdenv.mkDerivation {
   name = "python-env";

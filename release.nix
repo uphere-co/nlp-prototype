@@ -1,13 +1,15 @@
-{ nixpkgs, uphere-nix-overlay }:
+{ nixpkgs
+, uphere-nix-overlay
+}:
 
 let pkgs = import nixpkgs {};
-    toolz_cpp = pkgs.callPackage ../nix/default-cpp.nix {};
+    toolz_cpp = pkgs.callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") {};
 in
 rec {
-  "autoencode"   = import ../autoencode/release.nix { inherit pkgs uphere-nix-overlay; };
-  "symbolic"     = import ../symbolic/release.nix { inherit pkgs uphere-nix-overlay; };
-  "query-common" = import ../query-common/release.nix { inherit pkgs uphere-nix-overlay; }; 
-  "query"        = import ../query/release.nix {
+  "query-common" = import ./query-common/release.nix {
+                     inherit uphere-nix-overlay;
+                   }; 
+  "query"        = import ./query/release.nix {
                      inherit pkgs uphere-nix-overlay;
                      hdf5_cpp    = pkgs.hdf5-cpp;
                      tbb         = pkgs.tbb;
@@ -16,14 +18,14 @@ rec {
 		     fmt         = toolz_cpp.fmt;
 		     msgsl       = toolz_cpp.msgsl;
                      xxhashct    = toolz_cpp.xxhashct;
+                     flatbuffers = toolz_cpp.flatbuffers;
 		     libpqxx     = pkgs.libpqxx;
 		     elfutils    = pkgs.elfutils;
 		     spdlog      = toolz_cpp.spdlog;
 		     backwardcpp = toolz_cpp.backwardcpp;
                      variant     = toolz_cpp.variant;
-                     flatbuffers = toolz_cpp.flatbuffers;
                    };
   
-  "rnnpp"        = import ../rnn++    { inherit pkgs; };
-  "word2vec"     = import ../word2vec { inherit pkgs; };
+  "rnnpp"        = import ./rnn++    { inherit pkgs uphere-nix-overlay; };
+  "word2vec"     = import ./word2vec { inherit pkgs uphere-nix-overlay; };
 }

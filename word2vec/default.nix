@@ -1,8 +1,10 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, uphere-nix-overlay
+}:
 
 with pkgs;
 
-let toolz = callPackage ../nix/default-cpp.nix { };
+let toolz = callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") { };
     rnnppsrc = srcOnly {
       name = "rnn++-src";
       src = ../rnn++;
