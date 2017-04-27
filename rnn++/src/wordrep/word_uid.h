@@ -15,6 +15,13 @@ template<typename TUID>
 class UIDIndex{
 public:
     using uid_t = TUID;
+    UIDIndex(tbb::concurrent_vector<std::pair<uid_t,std::string>>&& v)
+        : uid2word{std::move(v)} {
+        assert(std::is_sorted(std::begin(uid2word), std::end(uid2word), [](auto& x, auto& y){
+            return x.first<y.first;
+        }));
+    }
+    // the following creation of UIDIndex from files should be out-sourced from this class.
     UIDIndex(std::string file);
     UIDIndex(UIDIndexFile file);
     UIDIndex(UIDIndex &&org)

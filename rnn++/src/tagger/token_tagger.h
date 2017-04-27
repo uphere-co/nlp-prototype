@@ -2,10 +2,11 @@
 
 #include "wordrep/sentence.h"
 #include "wordrep/dep_parsed.h"
+#include "wiki/wikidata.h"
 
 namespace tagger {
 
-void test_program( util::json_t const& p );
+wordrep::AnnotatedSentence test_program(wikidata::GreedyAnnotator& ann, util::json_t const& p );
     
 
 }//namespace tagger
