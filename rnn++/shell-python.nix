@@ -15,15 +15,16 @@ in
 mystdenv.mkDerivation {
   name = "python-env";
   buildInputs = (with python27Packages;
-                 [ ipython jupyter ipyparallel
-                   line_profiler
+                 [ 
+                   ###ipython jupyter ipyparallel
+                   ###line_profiler
                    matplotlib seaborn
                    numpy scipy pandas scikitlearn
                    pyzmq
                    redis
                    cython
                    numba
-                   toolz.gensim toolz.untangle
+                   ###toolz.gensim toolz.untangle
                    #Theano Keras
 		   h5py
                    pytest toolz.pytest-mock
