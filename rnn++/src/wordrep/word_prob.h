@@ -8,8 +8,8 @@
 namespace util{
 namespace io{
 struct H5file;//forward declaration
-}; //namespace util::io
-}; //namespace util
+}//namespace util::io
+}//namespace util
 
 
 namespace wordrep{

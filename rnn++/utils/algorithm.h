@@ -53,12 +53,12 @@ auto map(T const &elms, OP const &op){
     vals.reserve(elms.size());
     for(auto const &elm : elms) vals.push_back(op(elm));
     return vals;
-};
+}
 
 template<typename T, typename OP>
 void apply(T &elms, OP const &op){
     for(auto &elm : elms) elm = op(elm);
-};
+}
 
 template<typename FI, typename OP>
 auto concat_mapmap(std::vector<FI> const& xs, OP op){
@@ -164,14 +164,14 @@ TC filter(TC const &vs, TO op){
     TC filtered{};
     std::copy_if(std::begin(vs),std::end(vs), std::back_inserter(filtered), op);
     return filtered;
-};
+}
 template<typename TC, typename TO>
 TC& filter_inplace(TC &vs, TO op){
     auto beg = std::begin(vs);
     auto it = std::partition(beg,std::end(vs), op);
     vs.resize(it-beg);
     return vs;
-};
+}
 
 //template<typename T>
 //auto map_to_vectors(T const &wcs){
@@ -322,7 +322,7 @@ auto get_elm(std::vector<std::pair<TK,TV>> const &pairs, TK key){
 template<typename TK, typename TV>
 TV get_val(std::vector<std::pair<TK,TV>> const &pairs, TK key){
     return get_elm(pairs, key).value()->second;
-};
+}
 
 template<typename TK, typename TV>
 auto get_keys(std::map<TK,TV> const& vs){
@@ -356,7 +356,7 @@ auto get_values(T const& vs){
 template<typename T, typename TO>
 auto max_element(T const& vals, TO op){
     return std::max_element(std::begin(vals),std::end(vals), op);
-};
+}
 
 template<typename TX, typename TY, typename Eq, typename Comp>
 TX intersection(TX const& xs, TY const& ys, Eq const& eq, Comp const& comp){

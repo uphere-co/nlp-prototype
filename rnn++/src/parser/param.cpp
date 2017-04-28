@@ -75,37 +75,37 @@ Param& operator +=(Param& out, const Param& x){
     out.bias.span    += x.bias.span;
     out.u_score.span += x.u_score.span;
     return out;
-};
+}
 Param& operator -=(Param& out, const Param& x){
     out.w_left.span  -= x.w_left.span;
     out.w_right.span -= x.w_right.span;
     out.bias.span    -= x.bias.span;
     out.u_score.span -= x.u_score.span;
     return out;
-};
+}
 Param& operator *=(Param& out, Param::value_type scale){
     out.w_left.span  *= scale;
     out.w_right.span *= scale;
     out.bias.span    *= scale;
     out.u_score.span *= scale;
     return out;
-};
+}
 
 Param operator +(const Param& x, const Param& y){
     Param out{x};
     out += y;
     return out;
-};
+}
 Param operator -(const Param& x, const Param& y){
     Param out{x};
     out -= y;
     return out;
-};
+}
 // Param operator *(Param::value_type x, const Param& y){
 //     Param out{y};
 //     out *= x;
 //     return out;
-// };
+// }
 
 }//namespace rnn::simple_model
 }//namespace rnn
