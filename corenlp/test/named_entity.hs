@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module NamedEntity where
 
 import           System.IO
 import qualified Data.HashMap.Strict as HM
@@ -14,15 +13,9 @@ import qualified Data.Text.IO               as T.IO
 import           Data.Monoid
 import           Data.List                         (foldl', all)
 
-data NamedEntity = Org    { _Org    :: Text}
-                 | Person { _Person :: Text}
-                 | Loc    { _Loc    :: Text}
-                 | Time   { _Time   :: Text}
-                 deriving(Show, Eq)
+import qualified NamedEntity                as N
 
-parseStr :: Text -> Text -> NamedEntity
-parseStr str t | t== "PERSON"   = Person str
-               | t== "ORG"      = Org str
-               | t== "LOCATION" = Loc str
-               | t== "TIME"     = Time str
 
+main = do
+  print (N.parseStr "Oscar" "PERSON")
+  print (N.parseStr "United" "ORG")
