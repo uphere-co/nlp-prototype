@@ -21,3 +21,17 @@ parseStr str t | t== "PERSON"   = NamedEntity str Person
 parseStr _ _  = error "Unknown named entity class"
 
 
+mergeToken :: NamedEntity -> NamedEntity -> NamedEntity
+mergeToken (NamedEntity entity1 tag1) (NamedEntity entity2 tag2) | tag1 == tag2 = NamedEntity (T.unwords [entity1, entity2]) tag1
+mergeToken _ _ = error "Cannot collapse entities with different types"
+
+mergeTokensImpl :: NamedEntity -> [NamedEntity] -> [NamedEntity] -> [NamedEntity]
+mergeTokensImpl entity [] resolvedEntities = entity:resolvedEntities
+mergeTokensImpl (NamedEntity ce ct) (NamedEntity ne nt : unresolvedEntities) resolvedEntities
+    | ct == nt = mergeTokensImpl (mergeToken (NamedEntity ce ct) (NamedEntity ne nt)) unresolvedEntities resolvedEntities
+    | ct /= nt = mergeTokensImpl (NamedEntity ne nt) unresolvedEntities (NamedEntity ce ct : resolvedEntities)
+
+
+mergeTokens :: [NamedEntity] -> [NamedEntity]
+mergeTokens [] = []
+mergeTokens es = mergeTokensImpl (head es) (tail es) []
