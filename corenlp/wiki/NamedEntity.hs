@@ -7,16 +7,17 @@ import qualified Data.Text                  as T
 import           Data.Monoid
 import           Data.List                         (foldl', all)
 
-data NamedEntity = Org    { _Org    :: Text}
-                 | Person { _Person :: Text}
-                 | Loc    { _Loc    :: Text}
-                 | Time   { _Time   :: Text}
+data NamedEntityClass = Org | Person | Loc | Time
+                      deriving(Show, Eq)
+data NamedEntity = NamedEntity { _str  :: Text
+                               , _type :: NamedEntityClass}
                  deriving(Show, Eq)
 
 parseStr :: Text -> Text -> NamedEntity
-parseStr str t | t== "PERSON"   = Person str
-               | t== "ORG"      = Org str
-               | t== "LOCATION" = Loc str
-               | t== "TIME"     = Time str
+parseStr str t | t== "PERSON"   = NamedEntity str Person
+               | t== "ORG"      = NamedEntity str Org
+               | t== "LOCATION" = NamedEntity str Loc
+               | t== "TIME"     = NamedEntity str Time
 parseStr _ _  = error "Unknown named entity class"
+
 
