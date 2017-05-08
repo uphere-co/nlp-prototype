@@ -18,4 +18,5 @@ parseStr str t | t== "PERSON"   = Person str
                | t== "ORG"      = Org str
                | t== "LOCATION" = Loc str
                | t== "TIME"     = Time str
+parseStr _ _  = error "Unknown named entity class"
 

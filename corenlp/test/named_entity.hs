@@ -12,3 +12,4 @@ main = do
   print entity
   print (N.parseStr "Munoz" "PERSON")   
   print (N.parseStr "United" "ORG")
+  
