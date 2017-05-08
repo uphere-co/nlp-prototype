@@ -11,6 +11,7 @@ newtype NETag     = NETag { unNETag :: Text}
 
 data EntityToken = EntityToken { word :: WordToken
                                , tag  :: NETag }
+                 deriving (Show)
 
 
 parseNERToken :: Text -> EntityToken

@@ -14,8 +14,13 @@ import           Data.Monoid
 import           Data.List                         (foldl', all)
 
 import qualified NamedEntity                as N
+import qualified CoreNLP                    as C
 
+parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  N.parseStr word tag
 
 main = do
-  print (N.parseStr "Oscar" "PERSON")
-  print (N.parseStr "United" "ORG")
+  let 
+    entity = parseStanfordNE (C.parseNERToken "Oscar/PERSON")
+  print entity
+  print (N.parseStr "Munoz" "PERSON")   
+  print ((N.parseStr "United" "ORG")==N.Org "United")
