@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+module StanfordNE where
 
 import           System.IO
 import qualified Data.HashMap.Strict as HM
@@ -43,13 +44,10 @@ mergeSNETokens uid [] = toWikidataEntity uid (C.EntityToken (C.WordToken "_ERROR
 mergeSNETokens uid ts = foldl' mergeSNEToken (toWikidataEntity uid x) ys
                    where x:ys = ts
 
-parseNERToken :: Text -> C.EntityToken
-parseNERToken tokenStr = (\(x,y)-> (C.EntityToken (C.WordToken (T.dropEnd 1 x)) (C.NETag y))) $ T.breakOnEnd (T.pack "/") tokenStr
-
 parseEntity :: EntityStr -> W.Entity
 parseEntity (EntityStr entityStr) = mergeSNETokens uid ts
                                   where
-                                    C.EntityToken (C.WordToken uidStr) _ : ts = map parseNERToken (T.words entityStr)
+                                    C.EntityToken (C.WordToken uidStr) _ : ts = map C.parseNERToken (T.words entityStr)
                                     uid = W.UID uidStr
 
 
