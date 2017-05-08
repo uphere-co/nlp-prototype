@@ -27,10 +27,9 @@ mergeToken _ _ = error "Cannot collapse entities with different types"
 
 mergeTokensImpl :: NamedEntity -> [NamedEntity] -> [NamedEntity] -> [NamedEntity]
 mergeTokensImpl entity [] resolvedEntities = entity:resolvedEntities
-mergeTokensImpl (NamedEntity ce ct) (NamedEntity ne nt : unresolvedEntities) resolvedEntities
-    | ct == nt = mergeTokensImpl (mergeToken (NamedEntity ce ct) (NamedEntity ne nt)) unresolvedEntities resolvedEntities
-    | ct /= nt = mergeTokensImpl (NamedEntity ne nt) unresolvedEntities (NamedEntity ce ct : resolvedEntities)
-
+mergeTokensImpl current (next : unresolvedEntities) resolvedEntities
+    | _type current == _type next = mergeTokensImpl (mergeToken current next) unresolvedEntities resolvedEntities
+    | otherwise                   = mergeTokensImpl next unresolvedEntities (current : resolvedEntities)
 
 mergeTokens :: [NamedEntity] -> [NamedEntity]
 mergeTokens [] = []
