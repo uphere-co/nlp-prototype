@@ -32,7 +32,7 @@ main = do
   print munoz
   print united
   print airlines
-  print (N.mergeToken united airlines)
+  print (N.mergeToken [united, airlines])
   let entities = [united, airlines, oscar, munoz, united, munoz]
   print entities
   print (N.mergeTokens entities)
