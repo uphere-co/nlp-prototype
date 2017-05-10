@@ -30,20 +30,17 @@ parseStr str t | t== "PERSON"      = NamedEntityFrag str Person
                | t== "O"           = NamedEntityFrag str Other
 parseStr _ _  = error "Unknown named entity class"
 
+partitionFrags :: [NamedEntityFrag] -> [[NamedEntityFrag]]
+partitionFrags frags = foldr f [] frags
+  where
+    f e [] = [[e]]
+    f e xss'@(es:ess) | isSameTYpe e (head es) = (e:es): ess
+                      | otherwise              = [e] : xss'
+
 mergeToken :: [NamedEntityFrag] -> [NamedEntity]
-mergeToken (NamedEntityFrag str tag : es) | tag /= Other = [NamedEntity ss tag] where ss = T.unwords (str : map _fstr es)
+mergeToken xs'@(NamedEntityFrag str tag : es) | tag /= Other = [NamedEntity ss tag] where ss = T.unwords (map _fstr xs')
 mergeToken _ = []
 
-partitionTokensImpl :: [NamedEntityFrag]-> [NamedEntityFrag] -> [[NamedEntityFrag]] -> [[NamedEntityFrag]]
-partitionTokensImpl entities [] outputs = outputs
-partitionTokensImpl current (next : unresolvedEntities) outputs
-    | isSameTYpe (head current) next = partitionTokensImpl (current ++ [next]) unresolvedEntities outputs
-    | otherwise                      = partitionTokensImpl [next] unresolvedEntities (outputs ++ [current])
-
-partitionTokens :: [NamedEntityFrag] -> [[NamedEntityFrag]]
-partitionTokens [] = [[]]
-partitionTokens (e:es) = partitionTokensImpl [e] es []
-
 mergeTokens :: [NamedEntityFrag] -> [NamedEntity]
-mergeTokens es = concatMap mergeToken (partitionTokens es)
+mergeTokens es = concatMap mergeToken (partitionFrags es)
 
