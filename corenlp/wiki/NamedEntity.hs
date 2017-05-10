@@ -7,7 +7,7 @@ import qualified Data.Text                  as T
 import           Data.Monoid
 import           Data.List                         (foldl', all)
 
-data NamedEntityClass = Org | Person | Loc | Time | Date | Other
+data NamedEntityClass = Org | Person | Loc | Time | Date
                       deriving(Show, Eq)
 data NamedEntity = NamedEntity { _str  :: Text
                                , _type :: NamedEntityClass}
@@ -37,16 +37,20 @@ mergeToken (NamedEntityFrag entity1 tag1) (NamedEntityFrag entity2 tag2)
   | tag1 == tag2 = NamedEntityFrag (T.unwords [entity1, entity2]) tag1
 mergeToken _ _ = error "Cannot collapse entities with different types"
 
-mergeTokensImpl :: NamedEntityFrag -> [NamedEntityFrag]
-                -> ([NamedEntityFrag] -> [NamedEntityFrag])
-                -> ([NamedEntityFrag] -> [NamedEntityFrag])
-mergeTokensImpl None   [] outputBuilder = outputBuilder 
-mergeTokensImpl entity [] outputBuilder = outputBuilder <> (entity:)
-mergeTokensImpl None (next : unresolvedEntities) outputBuilder = mergeTokensImpl next unresolvedEntities outputBuilder
-mergeTokensImpl current (next : unresolvedEntities) outputBuilder
-    | isSameTYpe current next = mergeTokensImpl (mergeToken current next) unresolvedEntities outputBuilder
-    | otherwise               = mergeTokensImpl next unresolvedEntities (outputBuilder <> (current:) )
+unFrag :: NamedEntityFrag -> NamedEntity
+unFrag (NamedEntityFrag str ftype) = NamedEntity str ftype
+unFrag None = error "Conversion from None"
 
-mergeTokens :: [NamedEntityFrag] -> [NamedEntityFrag]
+mergeTokensImpl :: NamedEntityFrag -> [NamedEntityFrag]
+                -> ([NamedEntity] -> [NamedEntity])
+                -> ([NamedEntity] -> [NamedEntity])
+mergeTokensImpl None   [] outputBuilder = outputBuilder 
+mergeTokensImpl entity [] outputBuilder = outputBuilder <> (unFrag entity:)
+mergeTokensImpl current (next : unresolvedEntities) outputBuilder
+    | current == None         = mergeTokensImpl next unresolvedEntities outputBuilder
+    | isSameTYpe current next = mergeTokensImpl (mergeToken current next) unresolvedEntities outputBuilder
+    | otherwise               = mergeTokensImpl next unresolvedEntities (outputBuilder <> (unFrag current:) )
+
+mergeTokens :: [NamedEntityFrag] -> [NamedEntity]
 mergeTokens []     = []
 mergeTokens (e:es) = mergeTokensImpl e es id []

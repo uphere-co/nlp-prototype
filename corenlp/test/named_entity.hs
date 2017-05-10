@@ -28,7 +28,6 @@ main = do
     united   = N.parseStr "United" "ORGANIZATION"
     airlines = N.parseStr "Airlines" "ORGANIZATION"
   T.IO.putStrLn corenlp_output
-  print tokens
   print oscar
   print munoz
   print united
