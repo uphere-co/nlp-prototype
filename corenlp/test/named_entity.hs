@@ -8,8 +8,16 @@ parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  N.parseStr w
 
 main = do
   let 
-    entity = parseStanfordNE (C.parseNERToken "Oscar/PERSON")
-  print entity
-  print (N.parseStr "Munoz" "PERSON")   
-  print (N.parseStr "United" "ORG")
-  
+    oscar    = parseStanfordNE (C.parseNERToken "Oscar/PERSON")
+    munoz    = N.parseStr "Munoz" "PERSON"
+    united   = N.parseStr "United" "ORG"
+    airlines = N.parseStr "Airlines" "ORG"
+  print oscar
+  print munoz
+  print united
+  print airlines
+  print (N.mergeToken united airlines)
+  let entities = [united, airlines, oscar, munoz, united, munoz]
+  print entities
+  print (N.mergeTokens entities)
+  --print (N.collapseToken united munoz)
