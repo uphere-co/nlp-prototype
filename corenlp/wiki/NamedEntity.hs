@@ -25,12 +25,14 @@ mergeToken :: NamedEntity -> NamedEntity -> NamedEntity
 mergeToken (NamedEntity entity1 tag1) (NamedEntity entity2 tag2) | tag1 == tag2 = NamedEntity (T.unwords [entity1, entity2]) tag1
 mergeToken _ _ = error "Cannot collapse entities with different types"
 
-mergeTokensImpl :: NamedEntity -> [NamedEntity] -> [NamedEntity] -> [NamedEntity]
-mergeTokensImpl entity [] resolvedEntities = entity:resolvedEntities
+mergeTokensImpl :: NamedEntity -> [NamedEntity]
+                -> ([NamedEntity] -> [NamedEntity])
+                -> ([NamedEntity] -> [NamedEntity])
+mergeTokensImpl entity [] resolvedEntities = resolvedEntities . (entity:)
 mergeTokensImpl current (next : unresolvedEntities) resolvedEntities
     | _type current == _type next = mergeTokensImpl (mergeToken current next) unresolvedEntities resolvedEntities
-    | otherwise                   = mergeTokensImpl next unresolvedEntities (current : resolvedEntities)
+    | otherwise                   = mergeTokensImpl next unresolvedEntities (resolvedEntities . (current :))
 
 mergeTokens :: [NamedEntity] -> [NamedEntity]
-mergeTokens [] = []
-mergeTokens es = mergeTokensImpl (head es) (tail es) []
+mergeTokens []     = []
+mergeTokens (e:es) = mergeTokensImpl e es id []
