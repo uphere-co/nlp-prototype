@@ -16,3 +16,6 @@ data EntityToken = EntityToken { word :: WordToken
 
 parseNERToken :: Text -> EntityToken
 parseNERToken tokenStr = (\(x,y)-> (EntityToken (WordToken (T.dropEnd 1 x)) (NETag y))) $ T.breakOnEnd (T.pack "/") tokenStr
+
+parseNEROutputStr :: Text -> [EntityToken]
+parseNEROutputStr str = map parseNERToken (T.words str)
