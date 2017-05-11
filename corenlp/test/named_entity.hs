@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 import           Data.Maybe                        (fromJust)
+import           Data.List                         (inits)
 import           NamedEntity                       (NamedEntity)
 import qualified NamedEntity                as N
 import qualified CoreNLP                    as C
@@ -28,9 +29,18 @@ testContextedEntityLinking = do
   let
     oscarMunoz = N.NamedEntity "Oscar Munoz" N.Person
     munoz      = N.NamedEntity "Munoz" N.Person
-    munozOrg   = N.NamedEntity "Munoz" N.Org    
+    munozOrg   = N.NamedEntity "Munoz" N.Org
+
+    e0 = N.OrderedNamedEntity 0 oscarMunoz
+    e1 = N.OrderedNamedEntity 1 munoz
+
+    f0 = N.OrderedNamedEntity 0 munoz
+    f1 = N.OrderedNamedEntity 1 oscarMunoz
+    
   assert (L.mayRefer munoz oscarMunoz)
   assert (not (L.mayRefer munozOrg oscarMunoz))
+  assert (L.canRefer e1 e0)
+  assert (not (L.canRefer f0 f1))
 
 main = do
   let 
