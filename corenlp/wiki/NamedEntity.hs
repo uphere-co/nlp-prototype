@@ -9,6 +9,7 @@ import           Data.Monoid
 
 data NamedEntityClass = Org | Person | Loc | Time | Date | Other
                       deriving(Show, Eq)
+
 data NamedEntity = NamedEntity { _str  :: Text
                                , _type :: NamedEntityClass}
                  deriving(Show, Eq)
@@ -16,7 +17,6 @@ data NamedEntity = NamedEntity { _str  :: Text
 data NamedEntityFrag = NamedEntityFrag { _fstr  :: Text
                                        , _ftype :: NamedEntityClass}
                      deriving(Show, Eq)
-
 
 isSameType :: NamedEntityFrag -> NamedEntityFrag -> Bool
 isSameType frag1 frag2 = _ftype frag1 == _ftype frag2
