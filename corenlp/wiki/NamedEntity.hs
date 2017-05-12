@@ -18,6 +18,10 @@ data NamedEntityFrag = NamedEntityFrag { _fstr  :: Text
                                        , _ftype :: NamedEntityClass}
                      deriving(Show, Eq)
 
+data OrderedNamedEntity = OrderedNamedEntity { _order  :: Int
+                                             , _entity :: NamedEntity }
+                         deriving(Show, Eq)
+
 isSameType :: NamedEntityFrag -> NamedEntityFrag -> Bool
 isSameType frag1 frag2 = _ftype frag1 == _ftype frag2
 
