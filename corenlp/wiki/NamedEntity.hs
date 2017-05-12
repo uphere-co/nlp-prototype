@@ -2,37 +2,44 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module NamedEntity where
 
+import           Data.Maybe                        (catMaybes)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Monoid
-import           Data.List                         (foldl', all)
 
-data NamedEntityClass = Org | Person | Loc | Time
+data NamedEntityClass = Org | Person | Loc | Time | Date | Other
                       deriving(Show, Eq)
 data NamedEntity = NamedEntity { _str  :: Text
                                , _type :: NamedEntityClass}
                  deriving(Show, Eq)
 
-parseStr :: Text -> Text -> NamedEntity
-parseStr str t | t== "PERSON"   = NamedEntity str Person
-               | t== "ORG"      = NamedEntity str Org
-               | t== "LOCATION" = NamedEntity str Loc
-               | t== "TIME"     = NamedEntity str Time
+data NamedEntityFrag = NamedEntityFrag { _fstr  :: Text
+                                       , _ftype :: NamedEntityClass}
+                     deriving(Show, Eq)
+
+
+isSameType :: NamedEntityFrag -> NamedEntityFrag -> Bool
+isSameType frag1 frag2 = _ftype frag1 == _ftype frag2
+
+parseStr :: Text -> Text -> NamedEntityFrag
+parseStr str t | t== "PERSON"      = NamedEntityFrag str Person
+               | t== "ORGANIZATION"= NamedEntityFrag str Org
+               | t== "LOCATION"    = NamedEntityFrag str Loc
+               | t== "TIME"        = NamedEntityFrag str Time
+               | t== "DATE"        = NamedEntityFrag str Date
+               | t== "O"           = NamedEntityFrag str Other
 parseStr _ _  = error "Unknown named entity class"
 
+partitionFrags :: [NamedEntityFrag] -> [[NamedEntityFrag]]
+partitionFrags frags = foldr f [] frags
+  where
+    f e [] = [[e]]
+    f e xss'@(es:ess) | isSameType e (head es) = (e:es): ess
+                      | otherwise              = [e] : xss'
 
-mergeToken :: NamedEntity -> NamedEntity -> NamedEntity
-mergeToken (NamedEntity entity1 tag1) (NamedEntity entity2 tag2) | tag1 == tag2 = NamedEntity (T.unwords [entity1, entity2]) tag1
-mergeToken _ _ = error "Cannot collapse entities with different types"
+mergeToken :: [NamedEntityFrag] -> Maybe NamedEntity
+mergeToken xs'@(NamedEntityFrag str tag : es) | tag /= Other = Just (NamedEntity ss tag) where ss = T.unwords (map _fstr xs')
+mergeToken _ = Nothing
 
-mergeTokensImpl :: NamedEntity -> [NamedEntity]
-                -> ([NamedEntity] -> [NamedEntity])
-                -> ([NamedEntity] -> [NamedEntity])
-mergeTokensImpl entity [] outputBuilder = outputBuilder <> (entity:)
-mergeTokensImpl current (next : unresolvedEntities) outputBuilder
-    | _type current == _type next = mergeTokensImpl (mergeToken current next) unresolvedEntities outputBuilder
-    | otherwise                   = mergeTokensImpl next unresolvedEntities (outputBuilder <> (current:) )
-
-mergeTokens :: [NamedEntity] -> [NamedEntity]
-mergeTokens []     = []
-mergeTokens (e:es) = mergeTokensImpl e es id []
+mergeTokens :: [NamedEntityFrag] -> [NamedEntity]
+mergeTokens es = catMaybes (map mergeToken (partitionFrags es))
