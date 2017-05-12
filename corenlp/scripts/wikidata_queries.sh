@@ -1,7 +1,9 @@
 #List persons work for company
 curl -H "Accept: text/csv" -G https://query.wikidata.org/sparql --data-urlencode query='
-SELECT DISTINCT ?person ?personLabel ?company ?companyLabel WHERE {
+SELECT DISTINCT ?person ?personLabel ?firstName ?firstNameLabel ?lastName ?lastNameLabel ?company ?companyLabel WHERE {
    ?person  wdt:P108 ?company .
+   optional{ ?person wdt:P735 ?firstName.}
+   optional{ ?person wdt:P734 ?lastName.}
    ?company wdt:P31/wdt:P279* wd:Q4830453 .
    SERVICE wikibase:label {
     bd:serviceParam wikibase:language "en" .
@@ -11,11 +13,13 @@ SELECT DISTINCT ?person ?personLabel ?company ?companyLabel WHERE {
 
 #List persons related to public companies (e.g. founder, CEO, board members, and so on)
 curl -H "Accept: text/csv" -G https://query.wikidata.org/sparql --data-urlencode query='
-SELECT DISTINCT ?company ?companyLabel ?person ?personLabel WHERE {
+SELECT DISTINCT ?person ?personLabel ?firstName ?firstNameLabel ?lastName ?lastNameLabel ?company ?companyLabel WHERE {
    ?company wdt:P414 ?excahge .
    ?company p:P1789|p:P3320|p:P1037|p:P169|p:P127|p:P112|p:P488 ?person_statement .
    ?person_statement ?property ?person .
    ?person wdt:P31 wd:Q5 .
+   optional{ ?person wdt:P735 ?firstName.}
+   optional{ ?person wdt:P734 ?lastName.}
    SERVICE wikibase:label {
     bd:serviceParam wikibase:language "en" .
    }
