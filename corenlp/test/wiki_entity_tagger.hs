@@ -14,8 +14,8 @@ import qualified Data.Vector.Unboxed          as V
 -}
 import qualified Data.Vector.Algorithms.Intro as VA
 
-itemTuple :: [a] -> (a,a)
-itemTuple [uid,name] = (uid,name)
+itemTuple :: [Text] -> (Text,[Text])
+itemTuple [uid,name] = (uid, T.words name)
 
 --readEntityNames :: Text -> IO [(Text,Text)]
 readEntityNames filename = do
@@ -24,6 +24,10 @@ readEntityNames filename = do
       --entities = map (itemTuple . T.split (=='\t')) (T.lines content)
       entities = map (T.split (=='\t')) (T.lines content)
     return entities
+
+sortByUid (lhsUid, lhsName) (rhsUid, rhsName) 
+  | lhsUid <  rhsUid = LT
+  | lhsUid >= rhsUid = GT
 
 main = do
   let 
@@ -40,3 +44,15 @@ main = do
   print entities
   print uids
   print names
+
+  mvecEntities <- V.thaw (V.fromList (map itemTuple entities))
+  VA.sortBy sortByUid mvecEntities
+  vecEntities <- V.freeze mvecEntities
+  print "Sorted:"
+  print vecEntities
+  sortedUIDs <- V.thaw (V.fromList uids)
+  sortedNames <- V.thaw (V.fromList names)
+  tmp <- V.freeze sortedUIDs
+  tmp2 <- V.freeze sortedNames
+  print tmp
+  print tmp2
