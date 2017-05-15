@@ -21,7 +21,6 @@ itemTuple [uid,name] = (uid, T.words name)
 readEntityNames filename = do
     content <- T.IO.readFile "../rnn++/tests/data/wikidata.test.entities"
     let
-      --entities = map (itemTuple . T.split (=='\t')) (T.lines content)
       entities = map (T.split (=='\t')) (T.lines content)
     return entities
 
@@ -29,10 +28,24 @@ sortByUid (lhsUid, lhsName) (rhsUid, rhsName)
   | lhsUid <  rhsUid = LT
   | lhsUid >= rhsUid = GT
 
+-- Sort names. Longer names come first for greedy matching.
+sortByName (lhsUid, lhsName) (rhsUid, rhsName) 
+  | lhsName >  rhsName = LT
+  | lhsName <= rhsName = GT
+
 main = do
   let 
     vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
     items = V.fromList (["A", "A"] :: [Text])
+
+    wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["A", "C"], ["C"], ["C", "A"]] :: [[Text]])
+  tt <- V.thaw wordss
+  VA.sort tt
+  ttSorted <- V.freeze tt
+  print ttSorted
+  print "----------"
+
+
   mvec <- V.unsafeThaw vec
   VA.sort mvec
   vec2  <- V.unsafeFreeze mvec
@@ -47,12 +60,11 @@ main = do
 
   mvecEntities <- V.thaw (V.fromList (map itemTuple entities))
   VA.sortBy sortByUid mvecEntities
-  vecEntities <- V.freeze mvecEntities
-  print "Sorted:"
-  print vecEntities
-  sortedUIDs <- V.thaw (V.fromList uids)
-  sortedNames <- V.thaw (V.fromList names)
-  tmp <- V.freeze sortedUIDs
-  tmp2 <- V.freeze sortedNames
-  print tmp
-  print tmp2
+  entitiesByUID <- V.freeze mvecEntities
+  print "Sorted by UID:"  
+  print entitiesByUID
+
+  VA.sortBy sortByName mvecEntities
+  entitiesByName <- V.freeze mvecEntities
+  print "Sorted by name:"  
+  print entitiesByName
