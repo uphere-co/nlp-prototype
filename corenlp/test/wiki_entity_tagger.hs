@@ -43,7 +43,9 @@ nameOrdering (lhsUid, lhsName) (rhsUid, rhsName)
   | lhsName <  rhsName = GT
 
 ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
-ithElementOrdering i lhs rhs = compare (lhs!!i) (rhs!!i)
+ithElementOrdering i lhs rhs | length lhs <= i = LT
+                             | length rhs <= i = GT
+                             | otherwise = compare (lhs!!i) (rhs!!i)
 
 binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Int,Int)
 binarySearchLR vec elm = do
@@ -71,8 +73,8 @@ testNameOrdering = do
   
 testBinarySearch = do
   let
-    wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"]] :: [[Text]])
-    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"]]
+    wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]]
   
   tt <- V.thaw wordss
   VA.sort tt
@@ -90,6 +92,13 @@ testBinarySearch = do
   assert ((bidxBL0, bidxBR0)==(3,9))
   (bidxBL1, bidxBR1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0
   assert ((bidxBL1, bidxBR1)==(7,9))
+  (_, _) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] 3 6
+  
+
+  (tl0, tr0) <- binarySearchLRBy (ithElementOrdering 0) tt ["E", "B"]
+  assert ((tl0, tr0)==(12,14))
+  (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
+  assert ((tl1, tr1)==(14,14))
 
   
 
