@@ -1,18 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-import           Data.Maybe                        (fromJust)
-import           Data.List                         (inits, transpose)
-import           Data.Text                         (Text)
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T.IO
-import qualified Data.Vector.Mutable          as MV
-import qualified Data.Vector                  as V
+import           Data.Maybe                            (fromJust)
+import           Data.List                             (inits, transpose)
+import           Data.Text                             (Text)
+import qualified Data.Text                     as T
+import qualified Data.Text.IO                  as T.IO
+import qualified Data.Vector.Mutable           as MV
+import qualified Data.Vector                   as V
 {-
-import qualified Data.Vector.Unboxed.Mutable  as MV
-import qualified Data.Vector.Unboxed          as V
+import qualified Data.Vector.Unboxed.Mutable   as MV
+import qualified Data.Vector.Unboxed           as V
 -}
-import qualified Data.Vector.Algorithms.Intro as VA
+import qualified Data.Vector.Algorithms.Intro  as VA
+import qualified Data.Vector.Algorithms.Search as VS
+
 
 itemTuple :: [Text] -> (Text,[Text])
 itemTuple [uid,name] = (uid, T.words name)
@@ -42,12 +44,23 @@ main = do
     vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
     items = V.fromList (["A", "A"] :: [Text])
 
-    wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["A", "C"], ["C"], ["C", "A"]] :: [[Text]])
+    wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "A"]] :: [[Text]])
   tt <- V.thaw wordss
   VA.sort tt
+  idxB <- VS.binarySearch tt ["B"]
+  idxBL <- VS.binarySearchL tt ["B"]
+  idxCL <- VS.binarySearchL tt ["C"]
+  idxCR <- VS.binarySearchR tt ["C"]
+  idxD <- VS.binarySearchR tt ["D"]
   ttSorted <- V.freeze tt
   print ttSorted
+  print idxB
+  print idxBL
+  print idxCL
+  print idxCR
+  print idxD
   print "----------"
+  
 
 
   mvec <- V.unsafeThaw vec
