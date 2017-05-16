@@ -24,14 +24,18 @@ readEntityNames filename = do
       entities = map (T.split (=='\t')) (T.lines content)
     return entities
 
-sortByUid (lhsUid, lhsName) (rhsUid, rhsName) 
+uidOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
   | lhsUid <  rhsUid = LT
-  | lhsUid >= rhsUid = GT
+  | lhsUid == rhsUid = EQ
+  | lhsUid >  rhsUid = GT
 
 -- Sort names. Longer names come first for greedy matching.
-sortByName (lhsUid, lhsName) (rhsUid, rhsName) 
+nameOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
   | lhsName >  rhsName = LT
-  | lhsName <= rhsName = GT
+  | lhsName == rhsName = EQ
+  | lhsName <  rhsName = GT
+
+
 
 main = do
   let 
@@ -59,12 +63,12 @@ main = do
   print names
 
   mvecEntities <- V.thaw (V.fromList (map itemTuple entities))
-  VA.sortBy sortByUid mvecEntities
+  VA.sortBy uidOrdering mvecEntities
   entitiesByUID <- V.freeze mvecEntities
   print "Sorted by UID:"  
   print entitiesByUID
 
-  VA.sortBy sortByName mvecEntities
+  VA.sortBy nameOrdering mvecEntities
   entitiesByName <- V.freeze mvecEntities
   print "Sorted by name:"  
   print entitiesByName
