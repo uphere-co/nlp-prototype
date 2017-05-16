@@ -50,8 +50,8 @@ binarySearchLR vec elm = do
   
 testBinarySearch = do
   let
-    wordss = V.fromList ([["B"], ["B", "B"], ["B","A","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "A"]] :: [[Text]])
-    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","A","B"],["C"],["C"],["C","A"]]
+    wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"]] :: [[Text]])
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"]]
   
   tt <- V.thaw wordss
   VA.sort tt
@@ -62,8 +62,8 @@ testBinarySearch = do
   (idxCL, idxCR) <- binarySearchLR tt ["C"]
   idxD <- VS.binarySearchR tt ["D"]
   assert ((idxBL,idxBR) == (3,6))
-  assert ((idxCL,idxCR) == (8,10))
-  assert (idxD == 11)
+  assert ((idxCL,idxCR) == (9,11))
+  assert (idxD == 12)
 
 
 main = do
