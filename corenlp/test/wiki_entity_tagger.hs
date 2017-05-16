@@ -46,34 +46,31 @@ binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e ->
 binarySearchLR vec elm = do
   idxL <- VS.binarySearchL vec elm
   idxR <- VS.binarySearchR vec elm
-  return (idxL, idxR)
-
+  return (idxL, idxR)  
   
+testBinarySearch = do
+  let
+    wordss = V.fromList ([["B"], ["B", "B"], ["B","A","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "A"]] :: [[Text]])
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","A","B"],["C"],["C"],["C","A"]]
+  
+  tt <- V.thaw wordss
+  VA.sort tt
+  ttSorted <- V.freeze tt
+  assert (V.toList ttSorted == wordssSorted)
+  
+  (idxBL, idxBR) <- binarySearchLR tt ["B"]
+  (idxCL, idxCR) <- binarySearchLR tt ["C"]
+  idxD <- VS.binarySearchR tt ["D"]
+  assert ((idxBL,idxBR) == (3,6))
+  assert ((idxCL,idxCR) == (8,10))
+  assert (idxD == 11)
+
 
 main = do
+  testBinarySearch
   let 
     vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
     items = V.fromList (["A", "A"] :: [Text])
-
-    wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "A"]] :: [[Text]])
-    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","B","B"],["C"],["C"],["C","A"]]
-  tt <- V.thaw wordss
-  VA.sort tt
-  idxB <- VS.binarySearch tt ["B"]
-  idxBL <- VS.binarySearchL tt ["B"]
-  (idxCL, idxCR) <- binarySearchLR tt ["C"]
-  idxD <- VS.binarySearchR tt ["D"]
-  ttSorted <- V.freeze tt
-  print (V.toList ttSorted == wordssSorted)
-  print ttSorted
-  print idxB
-  print idxBL
-  print (idxCL,idxCR)
-  print idxD
-  print "----------"
-  
-
-
   mvec <- V.unsafeThaw vec
   VA.sort mvec
   vec2  <- V.unsafeFreeze mvec
