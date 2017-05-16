@@ -9,6 +9,7 @@ let #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inhe
               aeson
 	      haskeline
               text
+              vector-algorithms
             ]);
 in stdenv.mkDerivation {
   name = "corenlp-aeson-dev";
