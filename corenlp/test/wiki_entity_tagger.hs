@@ -4,6 +4,9 @@
 import           Data.Maybe                            (fromJust)
 import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
+import           Control.Monad.Primitive               (PrimMonad, PrimState)
+import           Data.Vector.Generic.Mutable.Base      (MVector)
+import           Data.Ord                              (Ord)
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector.Mutable           as MV
@@ -37,7 +40,13 @@ nameOrdering (lhsUid, lhsName) (rhsUid, rhsName)
   | lhsName == rhsName = EQ
   | lhsName <  rhsName = GT
 
+binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Int,Int)
+binarySearchLR vec elm = do
+  idxL <- VS.binarySearchL vec elm
+  idxR <- VS.binarySearchR vec elm
+  return (idxL, idxR)
 
+  
 
 main = do
   let 
@@ -45,19 +54,19 @@ main = do
     items = V.fromList (["A", "A"] :: [Text])
 
     wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "A"]] :: [[Text]])
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","B","B"],["C"],["C"],["C","A"]]
   tt <- V.thaw wordss
   VA.sort tt
   idxB <- VS.binarySearch tt ["B"]
   idxBL <- VS.binarySearchL tt ["B"]
-  idxCL <- VS.binarySearchL tt ["C"]
-  idxCR <- VS.binarySearchR tt ["C"]
+  (idxCL, idxCR) <- binarySearchLR tt ["C"]
   idxD <- VS.binarySearchR tt ["D"]
   ttSorted <- V.freeze tt
+  print (V.toList ttSorted == wordssSorted)
   print ttSorted
   print idxB
   print idxBL
-  print idxCL
-  print idxCR
+  print (idxCL,idxCR)
   print idxD
   print "----------"
   
