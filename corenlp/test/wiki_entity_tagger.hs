@@ -83,10 +83,13 @@ testBinarySearch = do
   
   (idxBL, idxBR) <- binarySearchLR tt ["B"]
   (idxCL, idxCR) <- binarySearchLR tt ["C"]
-  idxD <- VS.binarySearchR tt ["D"]
   assert ((idxBL,idxBR) == (3,6))
   assert ((idxCL,idxCR) == (9,11))
-  assert (idxD == 12)
+  
+  (idxDL, idxDR) <- binarySearchLR tt ["D"]
+  assert ((idxDL,idxDR) == (12,12))
+  (idxDL0, idxDR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["D"]
+  assert ((idxDL,idxDR) == (12,12))
 
   (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
   assert ((bidxBL0, bidxBR0)==(3,9))
@@ -99,8 +102,6 @@ testBinarySearch = do
   assert ((tl0, tr0)==(12,14))
   (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
   assert ((tl1, tr1)==(14,14))
-
-  
 
 
 main = do
