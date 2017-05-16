@@ -42,11 +42,20 @@ nameOrdering (lhsUid, lhsName) (rhsUid, rhsName)
   | lhsName == rhsName = EQ
   | lhsName <  rhsName = GT
 
+ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
+ithElementOrdering i lhs rhs = compare (lhs!!i) (rhs!!i)
+
 binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Int,Int)
 binarySearchLR vec elm = do
   idxL <- VS.binarySearchL vec elm
   idxR <- VS.binarySearchR vec elm
   return (idxL, idxR)  
+
+
+testNameOrdering = do
+  assert (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
+  assert (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
+  assert (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
   
 testBinarySearch = do
   let
@@ -68,6 +77,7 @@ testBinarySearch = do
 
 main = do
   testBinarySearch
+  testNameOrdering
   let 
     vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
     items = V.fromList (["A", "A"] :: [Text])
