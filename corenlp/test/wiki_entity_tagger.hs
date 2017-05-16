@@ -7,6 +7,7 @@ import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Ord                              (Ord)
+import           Assert                                (assert)
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector.Mutable           as MV
@@ -17,6 +18,7 @@ import qualified Data.Vector.Unboxed           as V
 -}
 import qualified Data.Vector.Algorithms.Intro  as VA
 import qualified Data.Vector.Algorithms.Search as VS
+
 
 
 itemTuple :: [Text] -> (Text,[Text])

@@ -4,6 +4,7 @@
 import           Data.Maybe                        (fromJust)
 import           Data.List                         (inits)
 import           NamedEntity                       (NamedEntity)
+import           Assert                            (assert)
 import qualified NamedEntity                as N
 import qualified CoreNLP                    as C
 import qualified Data.Text                  as T
@@ -12,9 +13,7 @@ import qualified EntityLinking              as L
 
 parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  N.parseStr word tag
 
-assert :: Bool -> IO ()
-assert True = return ()
-assert False = error "Assertion error"
+
 
 
 -- For internal testing. User should not use these functions directly:
