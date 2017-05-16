@@ -51,6 +51,18 @@ binarySearchLR vec elm = do
   idxR <- VS.binarySearchR vec elm
   return (idxL, idxR)  
 
+binarySearchLRBy :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> m (Int,Int)
+binarySearchLRBy comp vec elm = do
+  idxL <- VS.binarySearchLBy comp vec elm
+  idxR <- VS.binarySearchRBy comp vec elm
+  return (idxL, idxR)  
+
+binarySearchLRByBounds :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> Int -> Int -> m (Int,Int)
+binarySearchLRByBounds comp vec elm l u = do
+  idxL <- VS.binarySearchLByBounds comp vec elm l u
+  idxR <- VS.binarySearchRByBounds comp vec elm l u
+  return (idxL, idxR)  
+
 
 testNameOrdering = do
   assert (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
@@ -73,6 +85,13 @@ testBinarySearch = do
   assert ((idxBL,idxBR) == (3,6))
   assert ((idxCL,idxCR) == (9,11))
   assert (idxD == 12)
+
+  (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
+  assert ((bidxBL0, bidxBR0)==(3,9))
+  (bidxBL1, bidxBR1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0
+  assert ((bidxBL1, bidxBR1)==(7,9))
+
+  
 
 
 main = do
