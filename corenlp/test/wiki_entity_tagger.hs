@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
+{-# LANGUAGE FlexibleContexts #-}
 import           Data.Maybe                            (fromJust, isNothing)
 import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
@@ -65,11 +65,13 @@ binarySearchLRByBounds comp vec elm l u = do
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
 
---greedyMatch [] words = Nothing
-greedyMatch :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Maybe [e])
-greedyMatch entities words = do
+greedyMatch :: (PrimMonad m, MVector v [e], Ord [e]) => v (PrimState m) [e] -> [e] -> m (Maybe (Int, Int))
+greedyMatch entities [] = do
+  return Nothing
+greedyMatch entities words@(w:ws) = do
   let
-    f x y | x == y = Nothing
+    f x y | x == y    = Nothing
+          | otherwise = Just (x,y)
   (idxL, idxR) <- binarySearchLR entities words
   return (f idxL idxR)
 
@@ -112,7 +114,7 @@ testBinarySearch = do
 
 testGreedyMatching = do
   let 
-    entities = V.fromList ([["A"], ["A", "B"], ["A","B","C"]] :: [[Text]])
+    entities = V.fromList ([["A"], ["B"], ["B", "C"], ["B","C","D"],["C"],["C","D"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
 
   es <- V.thaw entities
