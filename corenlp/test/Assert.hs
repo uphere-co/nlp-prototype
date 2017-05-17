@@ -2,9 +2,6 @@ module Assert where
 
 import           Control.Monad.Primitive               (PrimMonad)
 
-foo :: IO Bool
-foo  = return True
-    
 assert :: (PrimMonad m) => Bool -> m ()
 assert True = return ()
 assert False = error "Assertion error"
