@@ -78,11 +78,15 @@ greedyMatchImpl entities words i (IndexRange beg end)
     return Nothing
   | otherwise  = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
-    greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
+    if idxL==idxR
+      -- if idxL==idxR; filter entities[beg:end] with length i
+      then return Nothing
+      -- if idxL!=idxR continue recursion    
+      else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
 greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Maybe ())
 greedyMatch entities words = do  
-  es <- V.thaw entities
+  es <- V.unsafeThaw entities
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
 
