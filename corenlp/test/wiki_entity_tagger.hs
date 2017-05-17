@@ -1,18 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-import           Data.Maybe                        (fromJust)
-import           Data.List                         (inits, transpose)
-import           Data.Text                         (Text)
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T.IO
-import qualified Data.Vector.Mutable          as MV
-import qualified Data.Vector                  as V
+import           Data.Maybe                            (fromJust)
+import           Data.List                             (inits, transpose)
+import           Data.Text                             (Text)
+import           Control.Monad.Primitive               (PrimMonad, PrimState)
+import           Data.Vector.Generic.Mutable.Base      (MVector)
+import           Data.Ord                              (Ord)
+import           Assert                                (assert)
+import qualified Data.Text                     as T
+import qualified Data.Text.IO                  as T.IO
+import qualified Data.Vector.Mutable           as MV
+import qualified Data.Vector                   as V
 {-
-import qualified Data.Vector.Unboxed.Mutable  as MV
-import qualified Data.Vector.Unboxed          as V
+import qualified Data.Vector.Unboxed.Mutable   as MV
+import qualified Data.Vector.Unboxed           as V
 -}
-import qualified Data.Vector.Algorithms.Intro as VA
+import qualified Data.Vector.Algorithms.Intro  as VA
+import qualified Data.Vector.Algorithms.Search as VS
+
+
 
 itemTuple :: [Text] -> (Text,[Text])
 itemTuple [uid,name] = (uid, T.words name)
@@ -24,28 +31,85 @@ readEntityNames filename = do
       entities = map (T.split (=='\t')) (T.lines content)
     return entities
 
-sortByUid (lhsUid, lhsName) (rhsUid, rhsName) 
+uidOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
   | lhsUid <  rhsUid = LT
-  | lhsUid >= rhsUid = GT
+  | lhsUid == rhsUid = EQ
+  | lhsUid >  rhsUid = GT
 
 -- Sort names. Longer names come first for greedy matching.
-sortByName (lhsUid, lhsName) (rhsUid, rhsName) 
+nameOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
   | lhsName >  rhsName = LT
-  | lhsName <= rhsName = GT
+  | lhsName == rhsName = EQ
+  | lhsName <  rhsName = GT
 
-main = do
-  let 
-    vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
-    items = V.fromList (["A", "A"] :: [Text])
+ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
+ithElementOrdering i lhs rhs | length lhs <= i = LT
+                             | length rhs <= i = GT
+                             | otherwise = compare (lhs!!i) (rhs!!i)
 
-    wordss = V.fromList ([["B"], ["B", "B"], ["B","B","B"],  ["A","B"], ["A"], ["A", "C"], ["C"], ["C", "A"]] :: [[Text]])
+binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Int,Int)
+binarySearchLR vec elm = do
+  idxL <- VS.binarySearchL vec elm
+  idxR <- VS.binarySearchR vec elm
+  return (idxL, idxR)  
+
+binarySearchLRBy :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> m (Int,Int)
+binarySearchLRBy comp vec elm = do
+  idxL <- VS.binarySearchLBy comp vec elm
+  idxR <- VS.binarySearchRBy comp vec elm
+  return (idxL, idxR)  
+
+binarySearchLRByBounds :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> Int -> Int -> m (Int,Int)
+binarySearchLRByBounds comp vec elm l u = do
+  idxL <- VS.binarySearchLByBounds comp vec elm l u
+  idxR <- VS.binarySearchRByBounds comp vec elm l u
+  return (idxL, idxR)  
+
+
+testNameOrdering = do
+  assert (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
+  assert (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
+  assert (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
+  
+testBinarySearch = do
+  let
+    wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]]
+  
   tt <- V.thaw wordss
   VA.sort tt
   ttSorted <- V.freeze tt
-  print ttSorted
-  print "----------"
+  assert (V.toList ttSorted == wordssSorted)
+  
+  (idxBL, idxBR) <- binarySearchLR tt ["B"]
+  (idxCL, idxCR) <- binarySearchLR tt ["C"]
+  assert ((idxBL,idxBR) == (3,6))
+  assert ((idxCL,idxCR) == (9,11))
+  
+  (idxDL, idxDR) <- binarySearchLR tt ["D"]
+  assert ((idxDL,idxDR) == (12,12))
+  (idxDL0, idxDR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["D"]
+  assert ((idxDL,idxDR) == (12,12))
+
+  (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
+  assert ((bidxBL0, bidxBR0)==(3,9))
+  (bidxBL1, bidxBR1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0
+  assert ((bidxBL1, bidxBR1)==(7,9))
+  (_, _) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] 3 6
+  
+
+  (tl0, tr0) <- binarySearchLRBy (ithElementOrdering 0) tt ["E", "B"]
+  assert ((tl0, tr0)==(12,14))
+  (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
+  assert ((tl1, tr1)==(14,14))
 
 
+main = do
+  testBinarySearch
+  testNameOrdering
+  let 
+    vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
+    items = V.fromList (["A", "A"] :: [Text])
   mvec <- V.unsafeThaw vec
   VA.sort mvec
   vec2  <- V.unsafeFreeze mvec
@@ -59,12 +123,12 @@ main = do
   print names
 
   mvecEntities <- V.thaw (V.fromList (map itemTuple entities))
-  VA.sortBy sortByUid mvecEntities
+  VA.sortBy uidOrdering mvecEntities
   entitiesByUID <- V.freeze mvecEntities
   print "Sorted by UID:"  
   print entitiesByUID
 
-  VA.sortBy sortByName mvecEntities
+  VA.sortBy nameOrdering mvecEntities
   entitiesByName <- V.freeze mvecEntities
   print "Sorted by name:"  
   print entitiesByName
