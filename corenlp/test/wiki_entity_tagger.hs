@@ -6,6 +6,7 @@ import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Data.Vector.Generic.Mutable.Base      (MVector)
+import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
 import           Assert                                (assert)
 import qualified Data.Text                     as T
@@ -65,15 +66,25 @@ binarySearchLRByBounds comp vec elm l u = do
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
 
-greedyMatch :: (PrimMonad m, MVector v [e], Ord [e]) => v (PrimState m) [e] -> [e] -> m (Maybe (Int, Int))
-greedyMatch entities [] = do
+data IndexRange = IndexRange { beg :: Int
+                             , end :: Int}
+                deriving(Show)
+
+greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (Maybe ())
+greedyMatchImpl entities [] _ _ = do
   return Nothing
-greedyMatch entities words@(w:ws) = do
-  let
-    f x y | x == y    = Nothing
-          | otherwise = Just (x,y)
-  (idxL, idxR) <- binarySearchLR entities words
-  return (f idxL idxR)
+greedyMatchImpl entities words i (IndexRange beg end)
+  | beg == end = do
+    return Nothing
+  | otherwise  = do
+    (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
+    greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
+
+greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Maybe ())
+greedyMatch entities words = do  
+  es <- V.thaw entities
+  greedyMatchImpl es words 0 (IndexRange 0 (length entities))
+
 
 testNameOrdering = do
   assert (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
@@ -116,9 +127,7 @@ testGreedyMatching = do
   let 
     entities = V.fromList ([["A"], ["B"], ["B", "C"], ["B","C","D"],["C"],["C","D"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
-
-  es <- V.thaw entities
-  r <- greedyMatch es (["X"] :: [Text])
+  r <- greedyMatch entities (["X"] :: [Text])
   assert (isNothing r)  
 
 main = do
