@@ -70,15 +70,15 @@ data IndexRange = IndexRange { beg :: Int
                              , end :: Int}
                 deriving(Eq, Show)
 
-greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (IndexRange)
+greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (Int, IndexRange)
 greedyMatchImpl entities words i (IndexRange beg end) = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
     if idxL==idxR
       then do
-        return (IndexRange beg end)
+        return (i, IndexRange beg end)
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
-greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (IndexRange)
+greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Int, IndexRange)
 greedyMatch entities words = do  
   es <- V.unsafeThaw entities
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
@@ -134,19 +134,18 @@ testGreedyMatching = do
     entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
   r0 <- greedyMatch entities ([] :: [Text])
-  assert (r0 == (IndexRange 0 7))
+  assert (r0 == (0, IndexRange 0 7))
   r1 <- greedyMatch entities (["X"] :: [Text])
-  assert (r1 == (IndexRange 0 7))
+  assert (r1 == (0, IndexRange 0 7))
   r2 <- greedyMatch entities (["B"] :: [Text])
-  assert (r2 == (IndexRange 1 5))
+  assert (r2 == (1, IndexRange 1 5))
   assert ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities))==[["B", "C"]])
   r3 <- greedyMatch entities (["B","C","X","Y"] :: [Text])
-  assert (r3 == (IndexRange 2 3))
+  assert (r3 == (2, IndexRange 2 3))
   r4 <- greedyMatch entities (["B","D","X","Y"] :: [Text])
-  assert (r4 == (IndexRange 3 5))
+  assert (r4 == (2, IndexRange 3 5))
   r5 <- greedyMatch entities (["C","D","E","F"] :: [Text])
-  assert (r5 == (IndexRange 6 7))
-  
+  assert (r5 == (4, IndexRange 6 7))
 
 main = do
   testBinarySearch
