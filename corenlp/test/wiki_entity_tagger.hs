@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-import           Data.Maybe                            (fromJust)
+import           Data.Maybe                            (fromJust, isNothing)
 import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
@@ -65,6 +65,13 @@ binarySearchLRByBounds comp vec elm l u = do
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
 
+--greedyMatch [] words = Nothing
+greedyMatch :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Maybe [e])
+greedyMatch entities words = do
+  let
+    f x y | x == y = Nothing
+  (idxL, idxR) <- binarySearchLR entities words
+  return (f idxL idxR)
 
 testNameOrdering = do
   assert (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
@@ -103,17 +110,19 @@ testBinarySearch = do
   (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
   assert ((tl1, tr1)==(14,14))
 
+testGreedyMatching = do
+  let 
+    entities = V.fromList ([["A"], ["A", "B"], ["A","B","C"]] :: [[Text]])
+    words    = ["X", "A","B", "Z"] :: [Text]
+
+  es <- V.thaw entities
+  r <- greedyMatch es (["X"] :: [Text])
+  assert (isNothing r)  
 
 main = do
   testBinarySearch
   testNameOrdering
-  let 
-    vec = V.fromList ([5,3,1,2,6,3,9,9,6,4,6] :: [Int])
-    items = V.fromList (["A", "A"] :: [Text])
-  mvec <- V.unsafeThaw vec
-  VA.sort mvec
-  vec2  <- V.unsafeFreeze mvec
-  print vec2
+  testGreedyMatching
 
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 

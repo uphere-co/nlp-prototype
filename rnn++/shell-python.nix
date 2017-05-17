@@ -31,6 +31,7 @@ mystdenv.mkDerivation {
                    toolz.guppy
                    toolz.nltk toolz.bllipparser
                    psycopg2
+                   requests
                    #cgroup-utils
                    toolz.cldoc
                    toolz.feedparser beautifulsoup4
