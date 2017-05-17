@@ -9,10 +9,10 @@ import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
 import           Assert                                (assert)
-import qualified Data.Text                        as T
-import qualified Data.Text.IO                     as T.IO
-import qualified Data.Vector.Generic.Mutable.Base as MV
-import qualified Data.Vector                      as V
+import qualified Data.Text                    as T
+import qualified Data.Text.IO                 as T.IO
+import qualified Data.Vector.Generic.Mutable  as MV
+import qualified Data.Vector                  as V
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
 import qualified Data.Vector.Unboxed           as V
@@ -70,22 +70,15 @@ data IndexRange = IndexRange { beg :: Int
                              , end :: Int}
                 deriving(Show)
 
-greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (Maybe ())
-greedyMatchImpl entities [] _ _ = do
-  return Nothing
-greedyMatchImpl entities words i (IndexRange beg end)
-  | beg == end = do
-    return Nothing
-  | otherwise  = do
+greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (IndexRange)
+greedyMatchImpl entities words i (IndexRange beg end) = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
-    if idxL==idxR
-      -- if idxL==idxR; filter entities[beg:end] with length i
+    if i>0 && idxL==idxR
       then do
-        return Nothing
-      -- if idxL!=idxR continue recursion    
+        return (IndexRange beg end)
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
-greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Maybe ())
+greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (IndexRange)
 greedyMatch entities words = do  
   es <- V.unsafeThaw entities
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
@@ -140,7 +133,7 @@ testGreedyMatching = do
     entities = V.fromList ([["A"], ["B"], ["B", "C"], ["B","C","D"],["C"],["C","D"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
   r <- greedyMatch entities (["X"] :: [Text])
-  assert (isNothing r)  
+  print r
 
 main = do
   testBinarySearch
