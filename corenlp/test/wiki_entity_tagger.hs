@@ -68,12 +68,12 @@ binarySearchLRByBounds comp vec elm l u = do
 
 data IndexRange = IndexRange { beg :: Int
                              , end :: Int}
-                deriving(Show)
+                deriving(Eq, Show)
 
 greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState m) [e] -> [e] -> Int -> IndexRange -> m (IndexRange)
 greedyMatchImpl entities words i (IndexRange beg end) = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
-    if i>0 && idxL==idxR
+    if idxL==idxR
       then do
         return (IndexRange beg end)
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
@@ -125,15 +125,28 @@ testVectorSlicing = do
   let 
     vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
     sub = V.slice 1 3 vec
+  assert (V.toList (V.slice 1 1 vec) == [[2]])
   assert ((V.toList sub) == [[2],[3,4],[5,6]])
   assert (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
   
 testGreedyMatching = do
   let 
-    entities = V.fromList ([["A"], ["B"], ["B", "C"], ["B","C","D"],["C"],["C","D"]] :: [[Text]])
+    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
-  r <- greedyMatch entities (["X"] :: [Text])
-  print r
+  r0 <- greedyMatch entities ([] :: [Text])
+  assert (r0 == (IndexRange 0 7))
+  r1 <- greedyMatch entities (["X"] :: [Text])
+  assert (r1 == (IndexRange 0 7))
+  r2 <- greedyMatch entities (["B"] :: [Text])
+  assert (r2 == (IndexRange 1 5))
+  assert ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities))==[["B", "C"]])
+  r3 <- greedyMatch entities (["B","C","X","Y"] :: [Text])
+  assert (r3 == (IndexRange 2 3))
+  r4 <- greedyMatch entities (["B","D","X","Y"] :: [Text])
+  assert (r4 == (IndexRange 3 5))
+  r5 <- greedyMatch entities (["C","D","E","F"] :: [Text])
+  assert (r5 == (IndexRange 6 7))
+  
 
 main = do
   testBinarySearch
