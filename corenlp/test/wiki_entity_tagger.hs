@@ -9,10 +9,10 @@ import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
 import           Assert                                (assert)
-import qualified Data.Text                     as T
-import qualified Data.Text.IO                  as T.IO
-import qualified Data.Vector.Mutable           as MV
-import qualified Data.Vector                   as V
+import qualified Data.Text                        as T
+import qualified Data.Text.IO                     as T.IO
+import qualified Data.Vector.Generic.Mutable.Base as MV
+import qualified Data.Vector                      as V
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
 import qualified Data.Vector.Unboxed           as V
@@ -80,7 +80,8 @@ greedyMatchImpl entities words i (IndexRange beg end)
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
     if idxL==idxR
       -- if idxL==idxR; filter entities[beg:end] with length i
-      then return Nothing
+      then do
+        return Nothing
       -- if idxL!=idxR continue recursion    
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
@@ -127,6 +128,13 @@ testBinarySearch = do
   (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
   assert ((tl1, tr1)==(14,14))
 
+testVectorSlicing = do
+  let 
+    vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
+    sub = V.slice 1 3 vec
+  assert ((V.toList sub) == [[2],[3,4],[5,6]])
+  assert (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
+  
 testGreedyMatching = do
   let 
     entities = V.fromList ([["A"], ["B"], ["B", "C"], ["B","C","D"],["C"],["C","D"]] :: [[Text]])
@@ -137,6 +145,7 @@ testGreedyMatching = do
 main = do
   testBinarySearch
   testNameOrdering
+  testVectorSlicing
   testGreedyMatching
 
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
