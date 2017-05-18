@@ -1,27 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ExistentialQuantification #-}
+  
 import           Data.Maybe                            (fromJust, isNothing)
 import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
-import           Data.Vector.Generic.Mutable.Base      (MVector)
+import           Control.Monad.ST                      (ST, runST)
+import           Data.Vector.Generic.Mutable           (MVector)
 import           Data.Vector                           (Vector,backpermute, convert,fromList, modify)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
-
+import           Data.Vector.Algorithms.Intro          (sort, sortBy)
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T.IO
-import qualified Data.Vector.Generic.Mutable  as MV
 import qualified Data.Vector                  as V
+import qualified Data.Vector.Algorithms.Search as VS
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
 import qualified Data.Vector.Unboxed           as V
 -}
-import qualified Data.Vector.Algorithms.Intro  as VA
-import qualified Data.Vector.Algorithms.Search as VS
 
 
 itemTuple :: [Text] -> (Text,[Text])
@@ -84,12 +85,11 @@ greedyMatch entities words = do
   es <- V.unsafeThaw entities
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
-
 getMatchedItems :: Vector [e] -> (Int, IndexRange) -> (Int, [[e]])
 getMatchedItems vec (len, IndexRange beg end) = (len, matchedItems)
-                                                where 
-                                                  sub = V.slice beg (end-beg) vec
-                                                  matchedItems = filter (\x-> length x == len) (V.toList sub)
+  where 
+    sub = V.slice beg (end-beg) vec
+    matchedItems = filter (\x-> length x == len) (V.toList sub)
 
 greedyMatchedItems :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Int, [[e]])
 greedyMatchedItems entities words = do
@@ -102,7 +102,7 @@ greedyAnnotationImpl entities text offset results = do
   (len, matched) <- greedyMatchedItems entities text
   let
     r = (offset, offset+len, matched)
-  if len==0 || matched == []
+  if len==0 || null matched
     then greedyAnnotationImpl entities (tail text) (offset+1) results
     else greedyAnnotationImpl entities (drop len text) (offset+len) (r:results)
          
@@ -125,7 +125,7 @@ testBinarySearch = testCaseSteps "API usages for binary searches" $ \step -> do
     wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]] :: [[Text]]
   
   tt <- V.thaw wordss
-  VA.sort tt  
+  sort tt  
   massertEqual (V.freeze tt) (V.fromList wordssSorted)
   
   step "binarySearchLR"
@@ -199,14 +199,14 @@ unitTests =
     "All Unit tests"
     [unitTestsVector, unitTestsGreedyMatching]    
 
-main1 = defaultMain unitTests
+main = defaultMain unitTests
 
-main = do
+main1 = do
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
     [uids, names] =  transpose entities
-    entitiesByUID = modify (VA.sortBy uidOrdering) (fromList (map itemTuple entities))
-    entitiesByName = modify (VA.sortBy nameOrdering) (fromList (map itemTuple entities))
+    entitiesByUID = modify (sortBy uidOrdering) (fromList (map itemTuple entities))
+    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
   print entities
   print uids
   print names  
@@ -214,4 +214,3 @@ main = do
   print entitiesByUID
   print "Sorted by name:"  
   print entitiesByName
-  
