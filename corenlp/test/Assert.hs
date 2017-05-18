@@ -1,6 +1,7 @@
 module Assert where
 
 import           Control.Monad.Primitive               (PrimMonad)
+import           Test.HUnit          (assertBool)
 
 assert :: (PrimMonad m) => Bool -> m ()
 assert True = return ()
