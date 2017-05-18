@@ -76,8 +76,7 @@ greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState 
 greedyMatchImpl entities words i (IndexRange beg end) = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
     if idxL==idxR
-      then do
-        return (i, IndexRange beg end)
+      then return (i, IndexRange beg end)
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
 greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Int, IndexRange)
@@ -145,16 +144,16 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
     entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
   step "Null cases"
-  massertEqual (greedyMatch entities ([]))    (0, IndexRange 0 8)
+  massertEqual (greedyMatch entities [])    (0, IndexRange 0 8)
   step "Single word cases"
-  massertEqual (greedyMatch entities (["X"])) (0, IndexRange 0 8)
-  massertEqual (greedyMatch entities (["B"])) (1, IndexRange 1 5)
+  massertEqual (greedyMatch entities ["X"]) (0, IndexRange 0 8)
+  massertEqual (greedyMatch entities ["B"]) (1, IndexRange 1 5)
   step "Multi words cases"
-  assertBool "" ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities)) == ([["B", "C"]]))
-  massertEqual (greedyMatch entities (["B","C","X","Y"])) (2, IndexRange 2 3)
-  massertEqual (greedyMatch entities (["B","D","X","Y"])) (2, IndexRange 3 5)
-  massertEqual (greedyMatch entities (["B","D","E","F"])) (3, IndexRange 3 4)
-  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 8)
+  assertBool "" (filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities) == [["B", "C"]])
+  massertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IndexRange 2 3)
+  massertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IndexRange 3 5)
+  massertEqual (greedyMatch entities ["B","D","E","F"]) (3, IndexRange 3 4)
+  massertEqual (greedyMatch entities ["C","D","E","F"]) (4, IndexRange 6 8)
 
   massertEqual (greedyMatchedItems entities ["B","C","X","Y"]) [["B","C"]]
   massertEqual (greedyMatchedItems entities ["B","D","X","Y"]) []
