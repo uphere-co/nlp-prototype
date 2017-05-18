@@ -10,7 +10,7 @@ let #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inhe
 	      haskeline
               text
               vector-algorithms
-              HUnit
+              tasty-hunit
             ]);
 in stdenv.mkDerivation {
   name = "corenlp-aeson-dev";
