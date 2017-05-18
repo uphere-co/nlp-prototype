@@ -9,9 +9,8 @@ import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual)
---import           Test.HUnit                            (Test( TestCase ),assertBool)
-import Test.Tasty.HUnit (assertBool, testCase)
-import Test.Tasty (defaultMain, testGroup)
+import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
+import           Test.Tasty                            (defaultMain, testGroup)
 
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T.IO
@@ -87,12 +86,15 @@ greedyMatch entities words = do
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
 
-testNameOrdering = do
-  assertBool "" (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
-  assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
-  assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
+testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
+  let 
+    vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
+    sub = V.slice 1 3 vec
+  assertBool "" (V.toList (V.slice 1 1 vec) == [[2]])
+  assertBool "" (V.toList sub == [[2],[3,4],[5,6]])
+  assertBool "" (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
 
-testBinarySearch = do
+testBinarySearch = testCaseSteps "API usages for binary searches" $ \step -> do
   let
     wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
     wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]] :: [[Text]]
@@ -101,11 +103,13 @@ testBinarySearch = do
   VA.sort tt  
   massertEqual (V.freeze tt) (V.fromList wordssSorted)
   
+  step "binarySearchLR"
   massertEqual (binarySearchLR tt ["B"]) (3,6)
   massertEqual (binarySearchLR tt ["C"]) (9,11)  
   massertEqual (binarySearchLR tt ["D"]) (12,12)
   massertEqual (binarySearchLRBy (ithElementOrdering 0) tt ["D"]) (12,12)
   
+  step "binarySearchLRBy"
   (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
   assertBool "" ((bidxBL0, bidxBR0)==(3,9))
   massertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0) (7,9)
@@ -115,16 +119,18 @@ testBinarySearch = do
   assertBool "" ((tl0, tr0)==(12,14))
   massertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0) (14,14)
 
-testVectorSlicing = do
-  let 
-    vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
-    sub = V.slice 1 3 vec
-  assertBool "" (V.toList (V.slice 1 1 vec) == [[2]])
-  assertBool "" ((V.toList sub) == [[2],[3,4],[5,6]])
-  assertBool "" (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
-  
- 
-testGreedyMatching = do
+unitTestsVector =
+  testGroup
+    "Usages for Data.Vector and Data.Vector.Algorithms"
+    [testVectorSlicing, testBinarySearch]
+
+
+testNameOrdering = testCaseSteps "Ordering of entity names(list of words)" $ \step -> do
+  assertBool "" (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
+  assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
+  assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
+
+tetestGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
   let 
     entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
@@ -137,17 +143,19 @@ testGreedyMatching = do
   massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
   massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
 
-{-
-main = TestCase (do
-  assertBool "" False
-  )
--}
-main = do
-  testBinarySearch
-  testNameOrdering
-  testVectorSlicing
-  testGreedyMatching
+unitTestsGreedyMatching =
+  testGroup
+    "Text based, greedy matching algorithm for list of words"
+    [testNameOrdering, tetestGreedyMatching]
 
+unitTests =
+  testGroup
+    "All Unit tests"
+    [unitTestsVector, unitTestsGreedyMatching]    
+
+main = defaultMain unitTests
+
+main1 = do
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
     [uids, names] =  transpose entities
