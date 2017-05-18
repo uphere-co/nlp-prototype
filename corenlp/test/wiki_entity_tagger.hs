@@ -8,7 +8,7 @@ import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
-import           Assert                                (assert)
+import           Assert                                (assert,assertEqual)
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T.IO
 import qualified Data.Vector.Generic.Mutable  as MV
@@ -92,34 +92,25 @@ testNameOrdering = do
 testBinarySearch = do
   let
     wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
-    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]]
+    wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]] :: [[Text]]
   
   tt <- V.thaw wordss
-  VA.sort tt
-  ttSorted <- V.freeze tt
-  assert (V.toList ttSorted == wordssSorted)
+  VA.sort tt  
+  assertEqual (V.freeze tt) (V.fromList wordssSorted)
   
-  (idxBL, idxBR) <- binarySearchLR tt ["B"]
-  (idxCL, idxCR) <- binarySearchLR tt ["C"]
-  assert ((idxBL,idxBR) == (3,6))
-  assert ((idxCL,idxCR) == (9,11))
+  assertEqual (binarySearchLR tt ["B"]) (3,6)
+  assertEqual (binarySearchLR tt ["C"]) (9,11)  
+  assertEqual (binarySearchLR tt ["D"]) (12,12)
+  assertEqual (binarySearchLRBy (ithElementOrdering 0) tt ["D"]) (12,12)
   
-  (idxDL, idxDR) <- binarySearchLR tt ["D"]
-  assert ((idxDL,idxDR) == (12,12))
-  (idxDL0, idxDR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["D"]
-  assert ((idxDL,idxDR) == (12,12))
-
   (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
   assert ((bidxBL0, bidxBR0)==(3,9))
-  (bidxBL1, bidxBR1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0
-  assert ((bidxBL1, bidxBR1)==(7,9))
-  (_, _) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] 3 6
-  
+  assertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0) (7,9)
+  (_, _) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] 3 6  
 
   (tl0, tr0) <- binarySearchLRBy (ithElementOrdering 0) tt ["E", "B"]
   assert ((tl0, tr0)==(12,14))
-  (tl1, tr1) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0
-  assert ((tl1, tr1)==(14,14))
+  assertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0) (14,14)
 
 testVectorSlicing = do
   let 
@@ -129,23 +120,19 @@ testVectorSlicing = do
   assert ((V.toList sub) == [[2],[3,4],[5,6]])
   assert (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
   
+ 
 testGreedyMatching = do
   let 
     entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
-  r0 <- greedyMatch entities ([] :: [Text])
-  assert (r0 == (0, IndexRange 0 7))
-  r1 <- greedyMatch entities (["X"] :: [Text])
-  assert (r1 == (0, IndexRange 0 7))
-  r2 <- greedyMatch entities (["B"] :: [Text])
-  assert (r2 == (1, IndexRange 1 5))
-  assert ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities))==[["B", "C"]])
-  r3 <- greedyMatch entities (["B","C","X","Y"] :: [Text])
-  assert (r3 == (2, IndexRange 2 3))
-  r4 <- greedyMatch entities (["B","D","X","Y"] :: [Text])
-  assert (r4 == (2, IndexRange 3 5))
-  r5 <- greedyMatch entities (["C","D","E","F"] :: [Text])
-  assert (r5 == (4, IndexRange 6 7))
+  assertEqual (greedyMatch entities ([]))    (0, IndexRange 0 7)
+  assertEqual (greedyMatch entities (["X"])) (0, IndexRange 0 7)
+  assertEqual (greedyMatch entities (["B"])) (1, IndexRange 1 5)
+  assert ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities)) == ([["B", "C"]]))
+  assertEqual (greedyMatch entities (["B","C","X","Y"])) (2, IndexRange 2 3)
+  assertEqual (greedyMatch entities (["B","D","X","Y"])) (2, IndexRange 3 5)
+  assertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
+  assertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
 
 main = do
   testBinarySearch
