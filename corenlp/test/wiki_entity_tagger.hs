@@ -76,8 +76,7 @@ greedyMatchImpl :: (PrimMonad m, MVector v [e], Ord [e], Ord e) => v (PrimState 
 greedyMatchImpl entities words i (IndexRange beg end) = do
     (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) entities words beg end
     if idxL==idxR
-      then do
-        return (i, IndexRange beg end)
+      then return (i, IndexRange beg end)
       else greedyMatchImpl entities words (i+1) (IndexRange idxL idxR)
 
 greedyMatch :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Int, IndexRange)
@@ -86,11 +85,37 @@ greedyMatch entities words = do
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
 
+getMatchedItems :: Vector [e] -> (Int, IndexRange) -> (Int, [[e]])
+getMatchedItems vec (len, IndexRange beg end) = (len, matchedItems)
+                                                where 
+                                                  sub = V.slice beg (end-beg) vec
+                                                  matchedItems = filter (\x-> length x == len) (V.toList sub)
+
+greedyMatchedItems :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m (Int, [[e]])
+greedyMatchedItems entities words = do
+  r <- greedyMatch entities words
+  return (getMatchedItems entities r)
+
+greedyAnnotationImpl :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> Int -> [(Int, Int, [[e]])] -> m [(Int, Int, [[e]])]
+greedyAnnotationImpl entities []   offset results = return results
+greedyAnnotationImpl entities text offset results = do
+  (len, matched) <- greedyMatchedItems entities text
+  let
+    r = (offset, offset+len, matched)
+  if len==0 || matched == []
+    then greedyAnnotationImpl entities (tail text) (offset+1) results
+    else greedyAnnotationImpl entities (drop len text) (offset+len) (r:results)
+         
+
+greedyAnnotation :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m [(Int, Int, [[e]])]
+greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
+
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
   let 
     vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
     sub = V.slice 1 3 vec
   assertBool "" (V.toList (V.slice 1 1 vec) == [[2]])
+  assertBool "" (V.toList (V.slice 2 2 vec) == [[3,4],[5,6]])
   assertBool "" (V.toList sub == [[2],[3,4],[5,6]])
   assertBool "" (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
 
@@ -130,23 +155,44 @@ testNameOrdering = testCaseSteps "Ordering of entity names(list of words)" $ \st
   assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
   assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
 
-tetestGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
+testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
   let 
-    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
+    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
-  massertEqual (greedyMatch entities ([]))    (0, IndexRange 0 7)
-  massertEqual (greedyMatch entities (["X"])) (0, IndexRange 0 7)
-  massertEqual (greedyMatch entities (["B"])) (1, IndexRange 1 5)
-  assertBool "" ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities)) == ([["B", "C"]]))
-  massertEqual (greedyMatch entities (["B","C","X","Y"])) (2, IndexRange 2 3)
-  massertEqual (greedyMatch entities (["B","D","X","Y"])) (2, IndexRange 3 5)
-  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
-  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
+  step "Null cases"
+  massertEqual (greedyMatch entities [])    (0, IndexRange 0 8)
+  step "Single word cases"
+  massertEqual (greedyMatch entities ["X"]) (0, IndexRange 0 8)
+  massertEqual (greedyMatch entities ["B"]) (1, IndexRange 1 5)
+  step "Multi words cases"
+  assertBool "" (filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities) == [["B", "C"]])
+  massertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IndexRange 2 3)
+  massertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IndexRange 3 5)
+  massertEqual (greedyMatch entities ["B","D","E","F"]) (3, IndexRange 3 4)
+  massertEqual (greedyMatch entities ["C","D","E","F"]) (4, IndexRange 6 8)
+
+  step "Single run for entity tagging"
+  massertEqual (greedyMatchedItems entities ["B","C","X","Y","Z"]) (2, [["B","C"]])
+  massertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) (0,[])
+  
+  step "Recursive tagging"
+  let
+    text = ["X", "B","C","X","Y","Z", "A", "B","D","F", "X","C","D","C","D","E","F"]
+    expected = [(13,17,[["C","D","E","F"],["C","D","E","F"]]),(7,10,[["B","D","F"]]),(6,7,[["A"]]),(1,3,[["B","C"]])]
+  massertEqual (greedyAnnotation entities text) expected
+  --massertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) [(1,3, [["B","C"]])]
+  {-
+  massertEqual (greedyMatchedItems entities ["B","D","X","Y","Z"]) []
+  massertEqual (greedyMatchedItems entities ["B","D","E","F","Z"]) [["B","D","E"]]
+  massertEqual (greedyMatchedItems entities ["C","D","E","F","Z"]) [["C","D","E","F"],["C","D","E","F"]]
+  -}
+  
+
 
 unitTestsGreedyMatching =
   testGroup
     "Text based, greedy matching algorithm for list of words"
-    [testNameOrdering, tetestGreedyMatching]
+    [testNameOrdering, testGreedyMatching]
 
 unitTests =
   testGroup
