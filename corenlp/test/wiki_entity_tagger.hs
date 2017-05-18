@@ -9,7 +9,10 @@ import           Data.Vector.Generic.Mutable.Base      (MVector)
 import           Data.Vector                           (Vector)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual)
-import           Test.HUnit                            (assertBool)
+--import           Test.HUnit                            (Test( TestCase ),assertBool)
+import Test.Tasty.HUnit (assertBool, testCase)
+import Test.Tasty (defaultMain, testGroup)
+
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as T.IO
 import qualified Data.Vector.Generic.Mutable  as MV
@@ -88,7 +91,7 @@ testNameOrdering = do
   assertBool "" (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
   assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
   assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
-  
+
 testBinarySearch = do
   let
     wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
@@ -98,7 +101,7 @@ testBinarySearch = do
   VA.sort tt  
   massertEqual (V.freeze tt) (V.fromList wordssSorted)
   
-  massertEqual (binarySearchLR tt ["B"]) (13,6)
+  massertEqual (binarySearchLR tt ["B"]) (3,6)
   massertEqual (binarySearchLR tt ["C"]) (9,11)  
   massertEqual (binarySearchLR tt ["D"]) (12,12)
   massertEqual (binarySearchLRBy (ithElementOrdering 0) tt ["D"]) (12,12)
@@ -134,13 +137,16 @@ testGreedyMatching = do
   massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
   massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
 
+{-
+main = TestCase (do
+  assertBool "" False
+  )
+-}
 main = do
-  --assertBool "HUnit" False
-
   testBinarySearch
   testNameOrdering
   testVectorSlicing
-  testGreedyMatching  
+  testGreedyMatching
 
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
