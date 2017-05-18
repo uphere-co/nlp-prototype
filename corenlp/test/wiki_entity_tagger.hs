@@ -86,11 +86,21 @@ greedyMatch entities words = do
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
 
+getMatchedItems :: Vector [e] -> (Int, IndexRange) -> [[e]]
+getMatchedItems vec (len, IndexRange beg end) = filter (\x-> length x == len) (V.toList sub)
+                                                where 
+                                                  sub = V.slice beg (end-beg) vec
+greedyMatchedItems :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m [[e]]
+greedyMatchedItems entities words = do
+  r <- greedyMatch entities words
+  return (getMatchedItems entities r)
+
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
   let 
     vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
     sub = V.slice 1 3 vec
   assertBool "" (V.toList (V.slice 1 1 vec) == [[2]])
+  assertBool "" (V.toList (V.slice 2 2 vec) == [[3,4],[5,6]])
   assertBool "" (V.toList sub == [[2],[3,4],[5,6]])
   assertBool "" (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
 
@@ -146,7 +156,11 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
   massertEqual (greedyMatch entities (["B","D","E","F"])) (3, IndexRange 3 4)
   massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 8)
 
-
+  massertEqual (greedyMatchedItems entities ["B","C","X","Y"]) [["B","C"]]
+  massertEqual (greedyMatchedItems entities ["B","D","X","Y"]) []
+  massertEqual (greedyMatchedItems entities ["B","D","E","F"]) [["B","D","E"]]
+  massertEqual (greedyMatchedItems entities ["C","D","E","F"]) [["C","D","E","F"],["C","D","E","F"]]
+  
 
 
 unitTestsGreedyMatching =
