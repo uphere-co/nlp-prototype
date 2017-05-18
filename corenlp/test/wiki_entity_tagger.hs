@@ -28,7 +28,7 @@ import qualified Data.Vector.Unboxed           as V
 itemTuple :: [Text] -> (Text,[Text])
 itemTuple [uid,name] = (uid, T.words name)
 
---readEntityNames :: Text -> IO [(Text,Text)]
+readEntityNames :: Text -> IO [[Text]]
 readEntityNames filename = do
     content <- T.IO.readFile "../rnn++/tests/data/wikidata.test.entities"
     let
@@ -107,15 +107,16 @@ greedyAnnotationImpl entities text offset results =
   
 greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(Int, Int, [[e]])]
 greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
-         
+
+
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
   let 
     vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
     sub = V.slice 1 3 vec
-  assertBool "" (V.toList (V.slice 1 1 vec) == [[2]])
-  assertBool "" (V.toList (V.slice 2 2 vec) == [[3,4],[5,6]])
-  assertBool "" (V.toList sub == [[2],[3,4],[5,6]])
-  assertBool "" (filter (\x -> length x == 2) (V.toList sub) == [[3,4],[5,6]])
+  eassertEqual (V.toList (V.slice 1 1 vec)) [[2]]
+  eassertEqual (V.toList (V.slice 2 2 vec)) [[3,4],[5,6]]
+  eassertEqual (V.toList sub) [[2],[3,4],[5,6]]
+  eassertEqual (filter (\x -> length x == 2) (V.toList sub)) [[3,4],[5,6]]
 
 testBinarySearch = testCaseSteps "API usages for binary searches" $ \step -> do
   let
@@ -134,12 +135,12 @@ testBinarySearch = testCaseSteps "API usages for binary searches" $ \step -> do
   
   step "binarySearchLRBy"
   (bidxBL0, bidxBR0) <- binarySearchLRBy (ithElementOrdering 0) tt ["B", "C"]
-  assertBool "" ((bidxBL0, bidxBR0)==(3,9))
+  eassertEqual (bidxBL0, bidxBR0) (3,9)
   massertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] bidxBL0 bidxBR0) (7,9)
   (_, _) <- binarySearchLRByBounds (ithElementOrdering 1) tt ["B", "C"] 3 6  
 
   (tl0, tr0) <- binarySearchLRBy (ithElementOrdering 0) tt ["E", "B"]
-  assertBool "" ((tl0, tr0)==(12,14))
+  eassertEqual (tl0, tr0) (12,14)
   massertEqual (binarySearchLRByBounds (ithElementOrdering 1) tt ["E", "B"] tl0 tr0) (14,14)
 
 unitTestsVector =
@@ -149,9 +150,9 @@ unitTestsVector =
 
 
 testNameOrdering = testCaseSteps "Ordering of entity names(list of words)" $ \step -> do
-  assertBool "" (ithElementOrdering 0 ["A", "B"] ["B", "A"] == LT)
-  assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
-  assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
+  eassertEqual LT (ithElementOrdering 0 ["A", "B"] ["B", "A"])
+  eassertEqual GT (ithElementOrdering 1 ["A", "B"] ["B", "A"])
+  eassertEqual EQ (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"])
 
 testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
   let 
