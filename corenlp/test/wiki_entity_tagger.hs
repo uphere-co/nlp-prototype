@@ -6,7 +6,7 @@ import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Data.Vector.Generic.Mutable.Base      (MVector)
-import           Data.Vector                           (Vector)
+import           Data.Vector                           (Vector,backpermute, convert,fromList, modify)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
@@ -199,23 +199,19 @@ unitTests =
     "All Unit tests"
     [unitTestsVector, unitTestsGreedyMatching]    
 
-main = defaultMain unitTests
+main1 = defaultMain unitTests
 
-main1 = do
+main = do
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
     [uids, names] =  transpose entities
+    entitiesByUID = modify (VA.sortBy uidOrdering) (fromList (map itemTuple entities))
+    entitiesByName = modify (VA.sortBy nameOrdering) (fromList (map itemTuple entities))
   print entities
   print uids
-  print names
-
-  mvecEntities <- V.thaw (V.fromList (map itemTuple entities))
-  VA.sortBy uidOrdering mvecEntities
-  entitiesByUID <- V.freeze mvecEntities
+  print names  
   print "Sorted by UID:"  
   print entitiesByUID
-
-  VA.sortBy nameOrdering mvecEntities
-  entitiesByName <- V.freeze mvecEntities
   print "Sorted by name:"  
   print entitiesByName
+  
