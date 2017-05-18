@@ -85,14 +85,16 @@ greedyMatch entities words = do
   greedyMatchImpl es words 0 (IndexRange 0 (length entities))
 
 
-getMatchedItems :: Vector [e] -> (Int, IndexRange) -> [[e]]
-getMatchedItems vec (len, IndexRange beg end) = filter (\x-> length x == len) (V.toList sub)
+getMatchedItems :: Vector [e] -> (Int, IndexRange) -> (Int, Int, [[e]])
+getMatchedItems vec (len, IndexRange beg end) = (0, len, matchedItems)
                                                 where 
                                                   sub = V.slice beg (end-beg) vec
-greedyMatchedItems :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m [[e]]
+                                                  matchedItems = filter (\x-> length x == len) (V.toList sub)
+
+greedyMatchedItems :: (PrimMonad m, Ord [e], Ord e) => Vector [e] -> [e] -> m [(Int, Int, [[e]])]
 greedyMatchedItems entities words = do
   r <- greedyMatch entities words
-  return (getMatchedItems entities r)
+  return [getMatchedItems entities r]
 
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
   let 
@@ -155,10 +157,14 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
   massertEqual (greedyMatch entities ["B","D","E","F"]) (3, IndexRange 3 4)
   massertEqual (greedyMatch entities ["C","D","E","F"]) (4, IndexRange 6 8)
 
-  massertEqual (greedyMatchedItems entities ["B","C","X","Y"]) [["B","C"]]
-  massertEqual (greedyMatchedItems entities ["B","D","X","Y"]) []
-  massertEqual (greedyMatchedItems entities ["B","D","E","F"]) [["B","D","E"]]
-  massertEqual (greedyMatchedItems entities ["C","D","E","F"]) [["C","D","E","F"],["C","D","E","F"]]
+  step "Single run for entity tagging"
+
+  massertEqual (greedyMatchedItems entities ["B","C","X","Y","Z"]) [(0,2, [["B","C"]])]
+  {-
+  massertEqual (greedyMatchedItems entities ["B","D","X","Y","Z"]) []
+  massertEqual (greedyMatchedItems entities ["B","D","E","F","Z"]) [["B","D","E"]]
+  massertEqual (greedyMatchedItems entities ["C","D","E","F","Z"]) [["C","D","E","F"],["C","D","E","F"]]
+  -}
   
 
 
