@@ -130,23 +130,29 @@ testNameOrdering = testCaseSteps "Ordering of entity names(list of words)" $ \st
   assertBool "" (ithElementOrdering 1 ["A", "B"] ["B", "A"] == GT)
   assertBool "" (ithElementOrdering 1 ["A", "A"] ["A", "A", "A"] == EQ)
 
-tetestGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
+testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
   let 
-    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"]] :: [[Text]])
+    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
-  massertEqual (greedyMatch entities ([]))    (0, IndexRange 0 7)
-  massertEqual (greedyMatch entities (["X"])) (0, IndexRange 0 7)
+  step "Null cases"
+  massertEqual (greedyMatch entities ([]))    (0, IndexRange 0 8)
+  step "Single word cases"
+  massertEqual (greedyMatch entities (["X"])) (0, IndexRange 0 8)
   massertEqual (greedyMatch entities (["B"])) (1, IndexRange 1 5)
+  step "Multi words cases"
   assertBool "" ((filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities)) == ([["B", "C"]]))
   massertEqual (greedyMatch entities (["B","C","X","Y"])) (2, IndexRange 2 3)
   massertEqual (greedyMatch entities (["B","D","X","Y"])) (2, IndexRange 3 5)
-  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
-  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 7)
+  massertEqual (greedyMatch entities (["B","D","E","F"])) (3, IndexRange 3 4)
+  massertEqual (greedyMatch entities (["C","D","E","F"])) (4, IndexRange 6 8)
+
+
+
 
 unitTestsGreedyMatching =
   testGroup
     "Text based, greedy matching algorithm for list of words"
-    [testNameOrdering, tetestGreedyMatching]
+    [testNameOrdering, testGreedyMatching]
 
 unitTests =
   testGroup
