@@ -8,6 +8,7 @@ import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Control.Monad.ST                      (ST, runST)
+import           Control.Arrow                         (second)
 import           Data.Vector.Generic.Mutable           (MVector)
 import           Data.Vector                           (Vector,backpermute,findIndices
                                                        ,slice,fromList,toList,unsafeThaw,modify)
@@ -191,29 +192,42 @@ unitTestsGreedyMatching =
 itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
 itemTuple (uid, name) = (uid, nameWords name)
 
-wikiAnnotator:: [(Wiki.UID, Wiki.Name)] -> [Text] -> [(IRange, Vector Wiki.UID)]
-wikiAnnotator entities words = matchedItems
+
+data EntityTable = EntityTable { _uids :: Vector Wiki.UID
+                               , _names :: Vector [Text]}
+                 deriving (Show)
+
+buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> EntityTable
+buildEntityTable entities = EntityTable uids names
   where
     entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
     uids  = V.map fst entitiesByName
     names = V.map snd entitiesByName
-    matchedIdxs  = greedyAnnotation names words
-    matchedItems = map (\(range, idxs) -> (range, V.map (V.unsafeIndex uids) idxs)) matchedIdxs
+
+wikiAnnotator:: EntityTable -> [Text] -> [(IRange, Vector Wiki.UID)]
+wikiAnnotator entities words = matchedItems
+  where
+    matchedIdxs  = greedyAnnotation (_names entities) words
+    matchedItems = map (second (V.map (V.unsafeIndex (_uids entities)))) matchedIdxs
 
 testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
-  entities <- loadEntityReprs "../rnn++/tests/data/wikidata.test.entities"
-  let 
+  entities <- do
+     reprs <- loadEntityReprs "../rnn++/tests/data/wikidata.test.entities"
+     return (buildEntityTable reprs)
+  let
     text = "Google and Facebook Inc. are famous AI companies . NLP stands for natural language processing ."
     words = T.words text    
     matchedItems  = wikiAnnotator entities words
-    
-    expected = [(IRange 12 15, fromList [Wiki.UID "Q30642"])
-               ,(IRange 9 10,  fromList [Wiki.UID "Q30642"])
-               ,(IRange 6 7,   fromList [Wiki.UID "Q42970", Wiki.UID"Q11660"])
-               ,(IRange 2 4,   fromList [Wiki.UID "Q380"])
-               ,(IRange 0 1,   fromList [Wiki.UID "Q95",Wiki.UID "Q9366"])
+    wuid = Wiki.UID
+    expected = [(IRange 12 15, fromList [wuid "Q30642"])
+               ,(IRange 9 10,  fromList [wuid "Q30642"])
+               ,(IRange 6 7,   fromList [wuid "Q42970", wuid"Q11660"])
+               ,(IRange 2 4,   fromList [wuid "Q380"])
+               ,(IRange 0 1,   fromList [wuid "Q95", wuid "Q9366"])
                ]
   eassertEqual matchedItems expected
+  --print ""
+  --mapM_ print matchedItems
 
 unitTests =
   testGroup
@@ -221,19 +235,3 @@ unitTests =
     [unitTestsVector, unitTestsGreedyMatching, testWikiEntityTagging]    
 
 main = defaultMain unitTests
-
-{-
-main1 = do
-  entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
-  let 
-    [uids, names] =  transpose entities
-    entitiesByUID = modify (sortBy uidOrdering) (fromList (map itemTuple entities))
-    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
-  print entities
-  print uids
-  print names  
-  print "Sorted by UID:"  
-  print entitiesByUID
-  print "Sorted by name:"  
-  print entitiesByName
--}
