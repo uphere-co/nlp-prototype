@@ -10,12 +10,12 @@ import           Assert                                (massertEqual,eassertEqua
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
+
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
+import           WikiEntityTagger
 import qualified Data.Vector                   as V
 import qualified Data.Text                     as T
-
 import qualified WikiEntity                    as Wiki
-import           WikiEntityTagger
 
 
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
