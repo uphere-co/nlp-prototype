@@ -9,15 +9,15 @@ import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Control.Monad.ST                      (ST, runST)
 import           Data.Vector.Generic.Mutable           (MVector)
-import           Data.Vector                           (Vector,backpermute, convert,fromList, modify)
+import           Data.Vector                           (Vector,backpermute, slice,fromList,toList, unsafeThaw,modify)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
-import qualified Data.Text                    as T
-import qualified Data.Text.IO                 as T.IO
-import qualified Data.Vector                  as V
+import qualified Data.Text                     as T
+import qualified Data.Text.IO                  as T.IO
+import qualified Data.Vector                   as V
 import qualified Data.Vector.Algorithms.Search as VS
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
@@ -70,12 +70,12 @@ binarySearchLRByBounds comp vec elm l u = do
   return (idxL, idxR)  
 
 data IRange = IRange { beg :: Int
-                             , end :: Int}
+                     , end :: Int}
                 deriving(Eq, Show)
 
 greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> (Int, IRange) -> (Int, IRange)
 greedyMatchImpl entities words (i, IRange beg end) = runST $ do
-  mvec <- V.unsafeThaw entities
+  mvec <- unsafeThaw entities
   (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) mvec words beg end
   --return (i, IRange beg end)
   if idxL==idxR
@@ -88,8 +88,8 @@ greedyMatch entities words = greedyMatchImpl entities words (0, IRange 0 (length
 getMatchedItems :: Vector [e] -> (Int, IRange) -> (Int, [[e]])
 getMatchedItems vec (len, IRange beg end) = (len, matchedItems)
   where 
-    sub = V.slice beg (end-beg) vec
-    matchedItems = filter (\x-> length x == len) (V.toList sub)
+    sub = slice beg (end-beg) vec
+    matchedItems = filter (\x-> length x == len) (toList sub)
 
 greedyMatchedItems :: (Ord e) => Vector [e] -> [e] -> (Int, [[e]])
 greedyMatchedItems entities words = getMatchedItems entities (greedyMatch entities words)
@@ -111,21 +111,21 @@ greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
 
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
   let 
-    vec = V.fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
-    sub = V.slice 1 3 vec
-  eassertEqual (V.toList (V.slice 1 1 vec)) [[2]]
-  eassertEqual (V.toList (V.slice 2 2 vec)) [[3,4],[5,6]]
-  eassertEqual (V.toList sub) [[2],[3,4],[5,6]]
-  eassertEqual (filter (\x -> length x == 2) (V.toList sub)) [[3,4],[5,6]]
+    vec = fromList ([[1],[2],[3,4],[5,6],[7]] :: [[Int]])
+    sub = slice 1 3 vec
+  eassertEqual (toList (slice 1 1 vec)) [[2]]
+  eassertEqual (toList (slice 2 2 vec)) [[3,4],[5,6]]
+  eassertEqual (toList sub) [[2],[3,4],[5,6]]
+  eassertEqual (filter (\x -> length x == 2) (toList sub)) [[3,4],[5,6]]
 
 testBinarySearch = testCaseSteps "API usages for binary searches" $ \step -> do
   let
-    wordss = V.fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
+    wordss = fromList ([["B"], ["B", "C"], ["B", "B"], ["B","C","B"],  ["A","B"], ["A"], ["B"], ["B"], ["A", "C"], ["C"],["C"], ["C", "B"], ["E","A"], ["E"], ["G"]] :: [[Text]])
     wordssSorted = [["A"],["A","B"],["A","C"],["B"],["B"],["B"],["B","B"],["B","C"],["B","C","B"],["C"],["C"],["C","B"], ["E"], ["E","A"], ["G"]] :: [[Text]]
   
   tt <- V.thaw wordss
   sort tt  
-  massertEqual (V.freeze tt) (V.fromList wordssSorted)
+  massertEqual (V.freeze tt) (fromList wordssSorted)
   
   step "binarySearchLR"
   massertEqual (binarySearchLR tt ["B"]) (3,6)
@@ -156,7 +156,7 @@ testNameOrdering = testCaseSteps "Ordering of entity names(list of words)" $ \st
 
 testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \step -> do
   let 
-    entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
+    entities = fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
   step "Null cases"
   eassertEqual (greedyMatch entities [])    (0, IRange 0 8)
@@ -164,7 +164,7 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
   eassertEqual (greedyMatch entities ["X"]) (0, IRange 0 8)
   eassertEqual (greedyMatch entities ["B"]) (1, IRange 1 5)
   step "Multi words cases"
-  assertBool "" (filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities) == [["B", "C"]])
+  assertBool "" (filter (\x -> length x == 2) (toList $ slice 1 6 entities) == [["B", "C"]])
   eassertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IRange 2 3)
   eassertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IRange 3 5)
   eassertEqual (greedyMatch entities ["B","D","E","F"]) (3, IRange 3 4)
