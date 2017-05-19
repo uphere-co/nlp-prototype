@@ -43,9 +43,9 @@ uidOrdering (lhsUid, lhsName) (rhsUid, rhsName)
 
 -- Sort names. Longer names come first for greedy matching.
 nameOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
-  | lhsName >  rhsName = LT
+  | lhsName <  rhsName = LT
   | lhsName == rhsName = EQ
-  | lhsName <  rhsName = GT
+  | lhsName >  rhsName = GT
 
 ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
 ithElementOrdering i lhs rhs | length lhs <= i = LT
@@ -182,25 +182,38 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
                ,(IRange 7 10,  fromList [4])
                ,(IRange 6 7,   fromList [0])
                ,(IRange 1 3,   fromList [2])]
-  eassertEqual (greedyAnnotation entities text) expected
-  --massertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) [(1,3, [["B","C"]])]
-  {-
-  massertEqual (greedyMatchedItems entities ["B","D","X","Y","Z"]) []
-  massertEqual (greedyMatchedItems entities ["B","D","E","F","Z"]) [["B","D","E"]]
-  massertEqual (greedyMatchedItems entities ["C","D","E","F","Z"]) [["C","D","E","F"],["C","D","E","F"]]
-  -}
-  
-
+  eassertEqual (greedyAnnotation entities text) expected  
 
 unitTestsGreedyMatching =
   testGroup
     "Text based, greedy matching algorithm for list of words"
     [testNameOrdering, testGreedyMatching]
 
+
+testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
+  entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
+  let 
+    entitiesByUID  = modify (sortBy uidOrdering) (fromList (map itemTuple entities))
+    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
+    uids  = V.map fst entitiesByName
+    names = V.map snd entitiesByName
+    text = "Google and Facebook Inc. are famous AI companies . NLP stands for natural language processing ."
+    words = T.words text
+    
+    matchedIdxs  = greedyAnnotation names words
+    matchedItems = map (\(range, idxs) -> (range, V.map (V.unsafeIndex uids) idxs)) matchedIdxs
+    expected = [(IRange 12 15, fromList (["Q30642"]::[Text]))
+               ,(IRange 9 10,  fromList (["Q30642"]::[Text]))
+               ,(IRange 6 7,   fromList (["Q42970","Q11660"]::[Text]))
+               ,(IRange 2 4,   fromList (["Q380"]::[Text]))
+               ,(IRange 0 1,   fromList (["Q95","Q9366"]::[Text]))
+               ]
+  eassertEqual matchedItems expected
+
 unitTests =
   testGroup
     "All Unit tests"
-    [unitTestsVector, unitTestsGreedyMatching]    
+    [unitTestsVector, unitTestsGreedyMatching, testWikiEntityTagging]    
 
 main = defaultMain unitTests
 
