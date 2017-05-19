@@ -73,17 +73,17 @@ data IRange = IRange { beg :: Int
                              , end :: Int}
                 deriving(Eq, Show)
 
-greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> Int -> IRange -> (Int, IRange)
-greedyMatchImpl entities words i (IRange beg end) = runST $ do
+greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> (Int, IRange) -> (Int, IRange)
+greedyMatchImpl entities words (i, IRange beg end) = runST $ do
   mvec <- V.unsafeThaw entities
   (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) mvec words beg end
   --return (i, IRange beg end)
   if idxL==idxR
     then return (i, IRange beg end)
-    else return (greedyMatchImpl entities words (i+1) (IRange idxL idxR))
+    else return (greedyMatchImpl entities words (i+1, IRange idxL idxR))
 
 greedyMatch :: (Ord e) => Vector [e] -> [e] -> (Int, IRange)
-greedyMatch entities words = greedyMatchImpl entities words 0 (IRange 0 (length entities))
+greedyMatch entities words = greedyMatchImpl entities words (0, IRange 0 (length entities))
 
 getMatchedItems :: Vector [e] -> (Int, IRange) -> (Int, [[e]])
 getMatchedItems vec (len, IRange beg end) = (len, matchedItems)
@@ -94,18 +94,18 @@ getMatchedItems vec (len, IRange beg end) = (len, matchedItems)
 greedyMatchedItems :: (Ord e) => Vector [e] -> [e] -> (Int, [[e]])
 greedyMatchedItems entities words = getMatchedItems entities (greedyMatch entities words)
 
-greedyAnnotationImpl :: (Ord e) => Vector [e] -> [e] -> Int -> [(Int, Int, [[e]])] -> [(Int, Int, [[e]])]
+greedyAnnotationImpl :: (Ord e) => Vector [e] -> [e] -> Int -> [(IRange, [[e]])] -> [(IRange, [[e]])]
 greedyAnnotationImpl entities []   offset results = results
 greedyAnnotationImpl entities text offset results = 
   let
     (len, matched) = greedyMatchedItems entities text
-    r = (offset, offset+len, matched)
+    r = (IRange offset (offset+len), matched)
   in
     if len==0 || null matched
       then greedyAnnotationImpl entities (tail text) (offset+1) results
       else greedyAnnotationImpl entities (drop len text) (offset+len) (r:results)
   
-greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(Int, Int, [[e]])]
+greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(IRange, [[e]])]
 greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
 
 
@@ -177,7 +177,10 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
   step "Recursive tagging"
   let
     text = ["X", "B","C","X","Y","Z", "A", "B","D","F", "X","C","D","C","D","E","F"]
-    expected = [(13,17,[["C","D","E","F"],["C","D","E","F"]]),(7,10,[["B","D","F"]]),(6,7,[["A"]]),(1,3,[["B","C"]])]
+    expected = [(IRange 13 17,[["C","D","E","F"],["C","D","E","F"]]),
+                (IRange 7 10, [["B","D","F"]]),
+                (IRange 6 7,  [["A"]]),
+                (IRange 1 3,  [["B","C"]])]
   eassertEqual (greedyAnnotation entities text) expected
   --massertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) [(1,3, [["B","C"]])]
   {-
