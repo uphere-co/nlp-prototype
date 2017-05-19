@@ -69,24 +69,24 @@ binarySearchLRByBounds comp vec elm l u = do
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
 
-data IndexRange = IndexRange { beg :: Int
+data IRange = IRange { beg :: Int
                              , end :: Int}
                 deriving(Eq, Show)
 
-greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> Int -> IndexRange -> (Int, IndexRange)
-greedyMatchImpl entities words i (IndexRange beg end) = runST $ do
+greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> Int -> IRange -> (Int, IRange)
+greedyMatchImpl entities words i (IRange beg end) = runST $ do
   mvec <- V.unsafeThaw entities
   (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) mvec words beg end
-  --return (i, IndexRange beg end)
+  --return (i, IRange beg end)
   if idxL==idxR
-    then return (i, IndexRange beg end)
-    else return (greedyMatchImpl entities words (i+1) (IndexRange idxL idxR))
+    then return (i, IRange beg end)
+    else return (greedyMatchImpl entities words (i+1) (IRange idxL idxR))
 
-greedyMatch :: (Ord e) => Vector [e] -> [e] -> (Int, IndexRange)
-greedyMatch entities words = greedyMatchImpl entities words 0 (IndexRange 0 (length entities))
+greedyMatch :: (Ord e) => Vector [e] -> [e] -> (Int, IRange)
+greedyMatch entities words = greedyMatchImpl entities words 0 (IRange 0 (length entities))
 
-getMatchedItems :: Vector [e] -> (Int, IndexRange) -> (Int, [[e]])
-getMatchedItems vec (len, IndexRange beg end) = (len, matchedItems)
+getMatchedItems :: Vector [e] -> (Int, IRange) -> (Int, [[e]])
+getMatchedItems vec (len, IRange beg end) = (len, matchedItems)
   where 
     sub = V.slice beg (end-beg) vec
     matchedItems = filter (\x-> length x == len) (V.toList sub)
@@ -159,16 +159,16 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
     entities = V.fromList ([["A"], ["B"], ["B","C"], ["B","D","E"],["B","D","F"],["C"],["C","D","E","F"],["C","D","E","F"]] :: [[Text]])
     words    = ["X", "A","B", "Z"] :: [Text]
   step "Null cases"
-  eassertEqual (greedyMatch entities [])    (0, IndexRange 0 8)
+  eassertEqual (greedyMatch entities [])    (0, IRange 0 8)
   step "Single word cases"
-  eassertEqual (greedyMatch entities ["X"]) (0, IndexRange 0 8)
-  eassertEqual (greedyMatch entities ["B"]) (1, IndexRange 1 5)
+  eassertEqual (greedyMatch entities ["X"]) (0, IRange 0 8)
+  eassertEqual (greedyMatch entities ["B"]) (1, IRange 1 5)
   step "Multi words cases"
   assertBool "" (filter (\x -> length x == 2) (V.toList $ V.slice 1 6 entities) == [["B", "C"]])
-  eassertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IndexRange 2 3)
-  eassertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IndexRange 3 5)
-  eassertEqual (greedyMatch entities ["B","D","E","F"]) (3, IndexRange 3 4)
-  eassertEqual (greedyMatch entities ["C","D","E","F"]) (4, IndexRange 6 8)
+  eassertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IRange 2 3)
+  eassertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IRange 3 5)
+  eassertEqual (greedyMatch entities ["B","D","E","F"]) (3, IRange 3 4)
+  eassertEqual (greedyMatch entities ["C","D","E","F"]) (4, IRange 6 8)
 
   step "Single run for entity tagging"
   eassertEqual (greedyMatchedItems entities ["B","C","X","Y","Z"]) (2, [["B","C"]])
