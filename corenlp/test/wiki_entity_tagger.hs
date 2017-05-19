@@ -3,111 +3,19 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ExistentialQuantification #-}
   
-import           Data.Maybe                            (fromJust, isNothing)
-import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
-import           Control.Monad.Primitive               (PrimMonad, PrimState)
-import           Control.Monad.ST                      (ST, runST)
-import           Control.Arrow                         (second)
-import           Data.Vector.Generic.Mutable           (MVector)
 import           Data.Vector                           (Vector,backpermute,findIndices
                                                        ,slice,fromList,toList,unsafeThaw,modify)
-import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
-import qualified Data.Text                     as T
-import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector                   as V
-import qualified Data.Vector.Algorithms.Search as VS
+import qualified Data.Text                     as T
+
 import qualified WikiEntity                    as Wiki
-{-
-import qualified Data.Vector.Unboxed.Mutable   as MV
-import qualified Data.Vector.Unboxed           as V
--}
-
-
-readEntityNames :: Text -> IO [[Text]]
-readEntityNames filename = do
-    content <- T.IO.readFile "../rnn++/tests/data/wikidata.test.entities"
-    let
-      entities = map (T.split (=='\t')) (T.lines content)
-    return entities
-
-uidOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
-  | lhsUid <  rhsUid = LT
-  | lhsUid == rhsUid = EQ
-  | lhsUid >  rhsUid = GT
-
--- Sort names. Longer names come first for greedy matching.
-nameOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
-  | lhsName <  rhsName = LT
-  | lhsName == rhsName = EQ
-  | lhsName >  rhsName = GT
-
-ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
-ithElementOrdering i lhs rhs | length lhs <= i = LT
-                             | length rhs <= i = GT
-                             | otherwise = compare (lhs!!i) (rhs!!i)
-
-binarySearchLR :: (PrimMonad m, MVector v e, Ord e) => v (PrimState m) e -> e -> m (Int,Int)
-binarySearchLR vec elm = do
-  idxL <- VS.binarySearchL vec elm
-  idxR <- VS.binarySearchR vec elm
-  return (idxL, idxR)  
-
-binarySearchLRBy :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> m (Int,Int)
-binarySearchLRBy comp vec elm = do
-  idxL <- VS.binarySearchLBy comp vec elm
-  idxR <- VS.binarySearchRBy comp vec elm
-  return (idxL, idxR)  
-
-binarySearchLRByBounds :: (PrimMonad m, MVector v e) => VS.Comparison e -> v (PrimState m) e -> e -> Int -> Int -> m (Int,Int)
-binarySearchLRByBounds comp vec elm l u = do
-  idxL <- VS.binarySearchLByBounds comp vec elm l u
-  idxR <- VS.binarySearchRByBounds comp vec elm l u
-  return (idxL, idxR)  
-
-data IRange = IRange { beg :: Int
-                     , end :: Int}
-                deriving(Eq, Show)
-
-greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> (Int, IRange) -> (Int, IRange)
-greedyMatchImpl entities words (i, IRange beg end) = runST $ do
-  mvec <- unsafeThaw entities
-  (idxL, idxR) <- binarySearchLRByBounds (ithElementOrdering i) mvec words beg end
-  --return (i, IRange beg end)
-  if idxL==idxR
-    then return (i, IRange beg end)
-    else return (greedyMatchImpl entities words (i+1, IRange idxL idxR))
-
-greedyMatch :: (Ord e) => Vector [e] -> [e] -> (Int, IRange)
-greedyMatch entities words = greedyMatchImpl entities words (0, IRange 0 (length entities))
-
-getMatchedIndexes :: Vector [e] -> (Int, IRange) -> (Int, Vector Int)
-getMatchedIndexes vec (len, IRange beg end) = (len, matchedItems)
-  where 
-    tmp          = findIndices (\x-> length x == len) vec
-    matchedItems = V.filter (\x-> x>=beg && x<end) tmp
-
-greedyMatchedItems :: (Ord e) => Vector [e] -> [e] -> (Int, Vector Int)
-greedyMatchedItems entities words = getMatchedIndexes entities (greedyMatch entities words)
-
-greedyAnnotationImpl :: (Ord e) => Vector [e] -> [e] -> Int -> [(IRange, Vector Int)] -> [(IRange, Vector Int)]
-greedyAnnotationImpl entities []   offset results = results
-greedyAnnotationImpl entities text offset results = 
-  let
-    (len, matched) = greedyMatchedItems entities text
-    r = (IRange offset (offset+len), matched)
-  in
-    if len==0 || null matched
-      then greedyAnnotationImpl entities (tail text) (offset+1) results
-      else greedyAnnotationImpl entities (drop len text) (offset+len) (r:results)
-  
-greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(IRange, Vector Int)]
-greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
+import           WikiEntityTagger
 
 
 testVectorSlicing = testCaseSteps "API usages for vector slicing" $ \step -> do
@@ -189,26 +97,6 @@ unitTestsGreedyMatching =
     "Text based, greedy matching algorithm for list of words"
     [testNameOrdering, testGreedyMatching]
 
-itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
-itemTuple (uid, name) = (uid, nameWords name)
-
-
-data EntityTable = EntityTable { _uids :: Vector Wiki.UID
-                               , _names :: Vector [Text]}
-                 deriving (Show)
-
-buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> EntityTable
-buildEntityTable entities = EntityTable uids names
-  where
-    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
-    uids  = V.map fst entitiesByName
-    names = V.map snd entitiesByName
-
-wikiAnnotator:: EntityTable -> [Text] -> [(IRange, Vector Wiki.UID)]
-wikiAnnotator entities words = matchedItems
-  where
-    matchedIdxs  = greedyAnnotation (_names entities) words
-    matchedItems = map (second (V.map (V.unsafeIndex (_uids entities)))) matchedIdxs
 
 testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
   entities <- do
