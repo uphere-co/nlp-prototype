@@ -16,18 +16,17 @@ import           Assert                                (massertEqual,eassertEqua
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
+import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector                   as V
 import qualified Data.Vector.Algorithms.Search as VS
+import qualified WikiEntity                    as Wiki
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
 import qualified Data.Vector.Unboxed           as V
 -}
 
-
-itemTuple :: [Text] -> (Text,[Text])
-itemTuple [uid,name] = (uid, T.words name)
 
 readEntityNames :: Text -> IO [[Text]]
 readEntityNames filename = do
@@ -189,7 +188,10 @@ unitTestsGreedyMatching =
     "Text based, greedy matching algorithm for list of words"
     [testNameOrdering, testGreedyMatching]
 
-wikiAnnotator:: [[Text]] -> [Text] -> [(IRange, Vector Text)]
+itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
+itemTuple (uid, name) = (uid, nameWords name)
+
+wikiAnnotator:: [(Wiki.UID, Wiki.Name)] -> [Text] -> [(IRange, Vector Wiki.UID)]
 wikiAnnotator entities words = matchedItems
   where
     entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
@@ -199,17 +201,17 @@ wikiAnnotator entities words = matchedItems
     matchedItems = map (\(range, idxs) -> (range, V.map (V.unsafeIndex uids) idxs)) matchedIdxs
 
 testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
-  entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
+  entities <- loadEntityReprs "../rnn++/tests/data/wikidata.test.entities"
   let 
     text = "Google and Facebook Inc. are famous AI companies . NLP stands for natural language processing ."
     words = T.words text    
     matchedItems  = wikiAnnotator entities words
     
-    expected = [(IRange 12 15, fromList (["Q30642"]::[Text]))
-               ,(IRange 9 10,  fromList (["Q30642"]::[Text]))
-               ,(IRange 6 7,   fromList (["Q42970","Q11660"]::[Text]))
-               ,(IRange 2 4,   fromList (["Q380"]::[Text]))
-               ,(IRange 0 1,   fromList (["Q95","Q9366"]::[Text]))
+    expected = [(IRange 12 15, fromList [Wiki.UID "Q30642"])
+               ,(IRange 9 10,  fromList [Wiki.UID "Q30642"])
+               ,(IRange 6 7,   fromList [Wiki.UID "Q42970", Wiki.UID"Q11660"])
+               ,(IRange 2 4,   fromList [Wiki.UID "Q380"])
+               ,(IRange 0 1,   fromList [Wiki.UID "Q95",Wiki.UID "Q9366"])
                ]
   eassertEqual matchedItems expected
 
@@ -220,6 +222,7 @@ unitTests =
 
 main = defaultMain unitTests
 
+{-
 main1 = do
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
@@ -233,3 +236,4 @@ main1 = do
   print entitiesByUID
   print "Sorted by name:"  
   print entitiesByName
+-}
