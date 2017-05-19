@@ -189,19 +189,22 @@ unitTestsGreedyMatching =
     "Text based, greedy matching algorithm for list of words"
     [testNameOrdering, testGreedyMatching]
 
+wikiAnnotator:: [[Text]] -> [Text] -> [(IRange, Vector Text)]
+wikiAnnotator entities words = matchedItems
+  where
+    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
+    uids  = V.map fst entitiesByName
+    names = V.map snd entitiesByName
+    matchedIdxs  = greedyAnnotation names words
+    matchedItems = map (\(range, idxs) -> (range, V.map (V.unsafeIndex uids) idxs)) matchedIdxs
 
 testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
   entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
   let 
-    entitiesByUID  = modify (sortBy uidOrdering) (fromList (map itemTuple entities))
-    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
-    uids  = V.map fst entitiesByName
-    names = V.map snd entitiesByName
     text = "Google and Facebook Inc. are famous AI companies . NLP stands for natural language processing ."
-    words = T.words text
+    words = T.words text    
+    matchedItems  = wikiAnnotator entities words
     
-    matchedIdxs  = greedyAnnotation names words
-    matchedItems = map (\(range, idxs) -> (range, V.map (V.unsafeIndex uids) idxs)) matchedIdxs
     expected = [(IRange 12 15, fromList (["Q30642"]::[Text]))
                ,(IRange 9 10,  fromList (["Q30642"]::[Text]))
                ,(IRange 6 7,   fromList (["Q42970","Q11660"]::[Text]))
