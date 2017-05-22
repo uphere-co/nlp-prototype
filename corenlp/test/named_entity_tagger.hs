@@ -11,7 +11,7 @@ import           Test.Tasty                            (defaultMain, testGroup)
 import qualified Data.Text                     as T 
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
-import           WikiEntityTagger                      (IRange(IRange),buildEntityTable,wikiAnnotator)
+import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
 import           WikiNamedEntityTagger                 (parseStanfordNE,namedEntityAnnotator)
 import           CoreNLP                               (parseNEROutputStr)
 

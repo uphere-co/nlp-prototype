@@ -7,8 +7,9 @@ module WikiNamedEntityTagger where
 import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,fromList)
 
+import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
-import           WikiEntityTagger                      (IRange(IRange),EntityTable,buildEntityTable,wikiAnnotator)
+import           WikiEntityTagger                      (EntityTable,buildEntityTable,wikiAnnotator)
 import           NamedEntity                           (NamedEntity,NamedEntityFrag,NamedEntityClass,parseStr)
 import qualified Data.Vector                   as V
 import qualified Data.Text                     as T

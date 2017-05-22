@@ -14,6 +14,8 @@ import           Data.Vector.Generic.Mutable           (MVector)
 import           Data.Vector                           (Vector,backpermute,findIndices
                                                        ,slice,fromList,toList,unsafeThaw,modify)
 import           Data.Ord                              (Ord)
+
+import           Misc                                  (IRange(..))
 import           Assert                                (massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
@@ -53,10 +55,6 @@ binarySearchLRByBounds comp vec elm l u = do
   idxL <- VS.binarySearchLByBounds comp vec elm l u
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
-
-data IRange = IRange { beg :: Int
-                     , end :: Int}
-                deriving(Eq, Show)
 
 greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> (Int, IRange) -> (Int, IRange)
 greedyMatchImpl entities words (i, IRange beg end) = runST $ do
