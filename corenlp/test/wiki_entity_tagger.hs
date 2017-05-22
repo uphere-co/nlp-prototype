@@ -7,7 +7,7 @@ import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,backpermute,findIndices
                                                        ,slice,fromList,toList,unsafeThaw,modify)
 import           Assert                                (massertEqual,eassertEqual)
-import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
+import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
