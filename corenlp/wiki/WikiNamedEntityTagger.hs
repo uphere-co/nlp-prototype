@@ -44,3 +44,6 @@ dropNonNE = filter (\x-> snd x /= N.Other)
 
 getStanfordNEs :: [NamedEntityFrag] -> [(IRange, NamedEntityClass)]
 getStanfordNEs = dropNonNE . partitonFrags
+
+buildTagUIDTable :: NamedEntityClass -> Vector Wiki.UID -> Vector (Wiki.UID, NamedEntityClass)
+buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
