@@ -8,25 +8,26 @@ import           Data.List                             (inits, transpose)
 import           Data.Text                             (Text)
 import           Control.Monad.Primitive               (PrimMonad, PrimState)
 import           Control.Monad.ST                      (ST, runST)
+import           Control.Arrow                         (second)
 import           Data.Vector.Generic.Mutable           (MVector)
-import           Data.Vector                           (Vector,backpermute, slice,fromList,toList, unsafeThaw,modify)
+import           Data.Vector                           (Vector,backpermute,findIndices
+                                                       ,slice,fromList,toList,unsafeThaw,modify)
 import           Data.Ord                              (Ord)
 import           Assert                                (massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
+import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector                   as V
 import qualified Data.Vector.Algorithms.Search as VS
+import qualified WikiEntity                    as Wiki
 {-
 import qualified Data.Vector.Unboxed.Mutable   as MV
 import qualified Data.Vector.Unboxed           as V
 -}
 
-
-itemTuple :: [Text] -> (Text,[Text])
-itemTuple [uid,name] = (uid, T.words name)
 
 readEntityNames :: Text -> IO [[Text]]
 readEntityNames filename = do
@@ -42,9 +43,9 @@ uidOrdering (lhsUid, lhsName) (rhsUid, rhsName)
 
 -- Sort names. Longer names come first for greedy matching.
 nameOrdering (lhsUid, lhsName) (rhsUid, rhsName) 
-  | lhsName >  rhsName = LT
+  | lhsName <  rhsName = LT
   | lhsName == rhsName = EQ
-  | lhsName <  rhsName = GT
+  | lhsName >  rhsName = GT
 
 ithElementOrdering :: (Ord e) => Int -> [e] -> [e] -> Ordering
 ithElementOrdering i lhs rhs | length lhs <= i = LT
@@ -85,16 +86,16 @@ greedyMatchImpl entities words (i, IRange beg end) = runST $ do
 greedyMatch :: (Ord e) => Vector [e] -> [e] -> (Int, IRange)
 greedyMatch entities words = greedyMatchImpl entities words (0, IRange 0 (length entities))
 
-getMatchedItems :: Vector [e] -> (Int, IRange) -> (Int, [[e]])
-getMatchedItems vec (len, IRange beg end) = (len, matchedItems)
+getMatchedIndexes :: Vector [e] -> (Int, IRange) -> (Int, Vector Int)
+getMatchedIndexes vec (len, IRange beg end) = (len, matchedItems)
   where 
-    sub = slice beg (end-beg) vec
-    matchedItems = filter (\x-> length x == len) (toList sub)
+    tmp          = findIndices (\x-> length x == len) vec
+    matchedItems = V.filter (\x-> x>=beg && x<end) tmp
 
-greedyMatchedItems :: (Ord e) => Vector [e] -> [e] -> (Int, [[e]])
-greedyMatchedItems entities words = getMatchedItems entities (greedyMatch entities words)
+greedyMatchedItems :: (Ord e) => Vector [e] -> [e] -> (Int, Vector Int)
+greedyMatchedItems entities words = getMatchedIndexes entities (greedyMatch entities words)
 
-greedyAnnotationImpl :: (Ord e) => Vector [e] -> [e] -> Int -> [(IRange, [[e]])] -> [(IRange, [[e]])]
+greedyAnnotationImpl :: (Ord e) => Vector [e] -> [e] -> Int -> [(IRange, Vector Int)] -> [(IRange, Vector Int)]
 greedyAnnotationImpl entities []   offset results = results
 greedyAnnotationImpl entities text offset results = 
   let
@@ -105,7 +106,7 @@ greedyAnnotationImpl entities text offset results =
       then greedyAnnotationImpl entities (tail text) (offset+1) results
       else greedyAnnotationImpl entities (drop len text) (offset+len) (r:results)
   
-greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(IRange, [[e]])]
+greedyAnnotation :: (Ord e) => Vector [e] -> [e] -> [(IRange, Vector Int)]
 greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
 
 
@@ -164,55 +165,73 @@ testGreedyMatching = testCaseSteps "Greedy matching of two lists of words" $ \st
   eassertEqual (greedyMatch entities ["X"]) (0, IRange 0 8)
   eassertEqual (greedyMatch entities ["B"]) (1, IRange 1 5)
   step "Multi words cases"
-  assertBool "" (filter (\x -> length x == 2) (toList $ slice 1 6 entities) == [["B", "C"]])
   eassertEqual (greedyMatch entities ["B","C","X","Y"]) (2, IRange 2 3)
   eassertEqual (greedyMatch entities ["B","D","X","Y"]) (2, IRange 3 5)
   eassertEqual (greedyMatch entities ["B","D","E","F"]) (3, IRange 3 4)
   eassertEqual (greedyMatch entities ["C","D","E","F"]) (4, IRange 6 8)
 
   step "Single run for entity tagging"
-  eassertEqual (greedyMatchedItems entities ["B","C","X","Y","Z"]) (2, [["B","C"]])
-  eassertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) (0,[])
+  eassertEqual (greedyMatchedItems entities ["B","C","X","Y","Z"]) (2, fromList [2])
+  eassertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) (0, fromList [])
   
   step "Recursive tagging"
   let
-    text = ["X", "B","C","X","Y","Z", "A", "B","D","F", "X","C","D","C","D","E","F"]
-    expected = [(IRange 13 17,[["C","D","E","F"],["C","D","E","F"]]),
-                (IRange 7 10, [["B","D","F"]]),
-                (IRange 6 7,  [["A"]]),
-                (IRange 1 3,  [["B","C"]])]
-  eassertEqual (greedyAnnotation entities text) expected
-  --massertEqual (greedyMatchedItems entities ["X", "B","C","X","Y","Z"]) [(1,3, [["B","C"]])]
-  {-
-  massertEqual (greedyMatchedItems entities ["B","D","X","Y","Z"]) []
-  massertEqual (greedyMatchedItems entities ["B","D","E","F","Z"]) [["B","D","E"]]
-  massertEqual (greedyMatchedItems entities ["C","D","E","F","Z"]) [["C","D","E","F"],["C","D","E","F"]]
-  -}
-  
-
+    text = ["X", "B","C","X","Y","Z", "A", "B","D","F", "X","C","D","C","D","E","F","B"]
+    expected = [(IRange 17 18, fromList [1])
+               ,(IRange 13 17, fromList [6,7])
+               ,(IRange 7 10,  fromList [4])
+               ,(IRange 6 7,   fromList [0])
+               ,(IRange 1 3,   fromList [2])]
+  eassertEqual (greedyAnnotation entities text) expected  
 
 unitTestsGreedyMatching =
   testGroup
     "Text based, greedy matching algorithm for list of words"
     [testNameOrdering, testGreedyMatching]
 
+itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
+itemTuple (uid, name) = (uid, nameWords name)
+
+
+data EntityTable = EntityTable { _uids :: Vector Wiki.UID
+                               , _names :: Vector [Text]}
+                 deriving (Show)
+
+buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> EntityTable
+buildEntityTable entities = EntityTable uids names
+  where
+    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
+    uids  = V.map fst entitiesByName
+    names = V.map snd entitiesByName
+
+wikiAnnotator:: EntityTable -> [Text] -> [(IRange, Vector Wiki.UID)]
+wikiAnnotator entities words = matchedItems
+  where
+    matchedIdxs  = greedyAnnotation (_names entities) words
+    matchedItems = map (second (V.map (V.unsafeIndex (_uids entities)))) matchedIdxs
+
+testWikiEntityTagging = testCaseSteps "Wiki entity tagger with greedy-matching strategy" $ \step -> do
+  entities <- do
+     reprs <- loadEntityReprs "../rnn++/tests/data/wikidata.test.entities"
+     return (buildEntityTable reprs)
+  let
+    text = "Google and Facebook Inc. are famous AI companies . NLP stands for natural language processing ."
+    words = T.words text    
+    matchedItems  = wikiAnnotator entities words
+    wuid = Wiki.UID
+    expected = [(IRange 12 15, fromList [wuid "Q30642"])
+               ,(IRange 9 10,  fromList [wuid "Q30642"])
+               ,(IRange 6 7,   fromList [wuid "Q42970", wuid"Q11660"])
+               ,(IRange 2 4,   fromList [wuid "Q380"])
+               ,(IRange 0 1,   fromList [wuid "Q95", wuid "Q9366"])
+               ]
+  eassertEqual matchedItems expected
+  --print ""
+  --mapM_ print matchedItems
+
 unitTests =
   testGroup
     "All Unit tests"
-    [unitTestsVector, unitTestsGreedyMatching]    
+    [unitTestsVector, unitTestsGreedyMatching, testWikiEntityTagging]    
 
 main = defaultMain unitTests
-
-main1 = do
-  entities <- readEntityNames "../rnn++/tests/data/wikidata.test.entities"
-  let 
-    [uids, names] =  transpose entities
-    entitiesByUID = modify (sortBy uidOrdering) (fromList (map itemTuple entities))
-    entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
-  print entities
-  print uids
-  print names  
-  print "Sorted by UID:"  
-  print entitiesByUID
-  print "Sorted by name:"  
-  print entitiesByName
