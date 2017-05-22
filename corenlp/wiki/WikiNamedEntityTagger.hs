@@ -5,7 +5,7 @@
 module WikiNamedEntityTagger where
 
 import           Data.Text                             (Text)
-import           Data.Vector                           (Vector,fromList,ifoldl')
+import           Data.Vector                           (Vector,toList,fromList,ifoldl')
 
 import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
@@ -17,10 +17,12 @@ import qualified WikiEntity                    as Wiki
 import qualified NamedEntity                   as N
 import qualified CoreNLP                       as C
 
+type NEClass = NamedEntityClass
+
 parseStanfordNE :: C.EntityToken -> NamedEntityFrag
 parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  parseStr word tag
 
-namedEntityAnnotator:: NameUIDTable -> [NamedEntityFrag] -> [(IRange, Vector Wiki.UID, NamedEntityClass)]
+namedEntityAnnotator:: NameUIDTable -> [NamedEntityFrag] -> [(IRange, Vector Wiki.UID, NEClass)]
 namedEntityAnnotator entities frags = map (\(range,uids)->(range,uids, N.Other)) matchedItems
   where
     words = map N._fstr frags
@@ -28,7 +30,7 @@ namedEntityAnnotator entities frags = map (\(range,uids)->(range,uids, N.Other))
 
 
 
-partitonFrags:: [NamedEntityFrag] -> [(IRange, NamedEntityClass)]
+partitonFrags:: [NamedEntityFrag] -> [(IRange, NEClass)]
 partitonFrags frags = ifoldl' f [] (fromList frags)
   where
     incR (IRange beg end) = IRange beg (end+1)
@@ -39,11 +41,22 @@ partitonFrags frags = ifoldl' f [] (fromList frags)
     f accum@((range, tag):ss) idx frag | tagType frag == tag = (incR range, tag):ss
                                        | otherwise            = g idx frag : accum
 
-dropNonNE:: [(IRange, NamedEntityClass)] -> [(IRange, NamedEntityClass)]
+dropNonNE:: [(IRange, NEClass)] -> [(IRange, NEClass)]
 dropNonNE = filter (\x-> snd x /= N.Other)
 
-getStanfordNEs :: [NamedEntityFrag] -> [(IRange, NamedEntityClass)]
+getStanfordNEs :: [NamedEntityFrag] -> [(IRange, NEClass)]
 getStanfordNEs = dropNonNE . partitonFrags
 
-buildTagUIDTable :: NamedEntityClass -> Vector Wiki.UID -> Vector (Wiki.UID, NamedEntityClass)
+buildTagUIDTable :: NEClass -> Vector Wiki.UID -> Vector (Wiki.UID, NEClass)
 buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
+
+data AmbiguousWikiNE = UnresolvedUID NEClass
+                     | Resolved Wiki.UID
+                     | UnresolvedClass [(Wiki.UID, NEClass)]
+                     deriving(Show, Eq)
+
+resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,AmbiguousWikiNE)] -> [(IRange, AmbiguousWikiNE)]
+resolveNEClassImpl [] lhss@((lrange,ltags):ls) accum = (lrange, UnresolvedClass (toList ltags)):accum
+resolveNEClassImpl rhss@((rrange,rtag):rs) [] accum  = (rrange, UnresolvedUID rtag) : accum
+-- TODO: implement following
+resolveNEClassImpl rhss@((rrange,rtag):rs) lhss@((lrange,ltags):ls) accum = undefined 
