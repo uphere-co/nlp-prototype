@@ -9,7 +9,7 @@ import           Data.Vector                           (Vector,fromList,ifoldl')
 
 import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
-import           WikiEntityTagger                      (EntityTable,buildEntityTable,wikiAnnotator)
+import           WikiEntityTagger                      (NameUIDTable,buildEntityTable,wikiAnnotator)
 import           NamedEntity                           (NamedEntity,NamedEntityFrag,NamedEntityClass,parseStr)
 import qualified Data.Vector                   as V
 import qualified Data.Text                     as T
@@ -20,7 +20,7 @@ import qualified CoreNLP                       as C
 parseStanfordNE :: C.EntityToken -> NamedEntityFrag
 parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  parseStr word tag
 
-namedEntityAnnotator:: EntityTable -> [NamedEntityFrag] -> [(IRange, Vector Wiki.UID, NamedEntityClass)]
+namedEntityAnnotator:: NameUIDTable -> [NamedEntityFrag] -> [(IRange, Vector Wiki.UID, NamedEntityClass)]
 namedEntityAnnotator entities frags = map (\(range,uids)->(range,uids, N.Other)) matchedItems
   where
     words = map N._fstr frags
@@ -33,13 +33,14 @@ partitonFrags frags = ifoldl' f [] (fromList frags)
   where
     incR (IRange beg end) = IRange beg (end+1)
     toRange idx = IRange idx (idx+1)
-    g idx frag = (toRange idx, N._ftype frag)
+    tagType = N._ftype
+    g idx frag = (toRange idx, tagType frag)
     f [] idx frag = [g idx frag]
-    f accum@((range, tag):ss) idx frag | N._ftype frag == tag = (incR range, tag):ss
+    f accum@((range, tag):ss) idx frag | tagType frag == tag = (incR range, tag):ss
                                        | otherwise            = g idx frag : accum
 
 dropNonNE:: [(IRange, NamedEntityClass)] -> [(IRange, NamedEntityClass)]
-dropNonNE = filter (\(_, tag)-> tag /= N.Other)
+dropNonNE = filter (\x-> snd x /= N.Other)
 
 getStanfordNEs :: [NamedEntityFrag] -> [(IRange, NamedEntityClass)]
 getStanfordNEs = dropNonNE . partitonFrags

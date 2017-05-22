@@ -95,19 +95,19 @@ greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
 itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
 itemTuple (uid, name) = (uid, nameWords name)
 
-data EntityTable = EntityTable { _uids :: Vector Wiki.UID
-                               , _names :: Vector [Text]}
-                 deriving (Show)
+data NameUIDTable = NameUIDTable { _uids :: Vector Wiki.UID
+                                 , _names :: Vector [Text]}
+                  deriving (Show)
 
-buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> EntityTable
-buildEntityTable entities = EntityTable uids names
+buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> NameUIDTable
+buildEntityTable entities = NameUIDTable uids names
   where
     nameOrdering (lhsUID, lhsName) (rhsUID, rhsName) = compare lhsName rhsName
     entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
     uids  = V.map fst entitiesByName
     names = V.map snd entitiesByName
 
-wikiAnnotator:: EntityTable -> [Text] -> [(IRange, Vector Wiki.UID)]
+wikiAnnotator:: NameUIDTable -> [Text] -> [(IRange, Vector Wiki.UID)]
 wikiAnnotator entities words = matchedItems
   where
     matchedIdxs  = greedyAnnotation (_names entities) words

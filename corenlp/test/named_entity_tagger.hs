@@ -29,14 +29,15 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
     stanford_nefs =  map parseStanfordNE (parseNEROutputStr ner_text)
     matchedItems  = namedEntityAnnotator entities stanford_nefs
     uids = fromList . map Wiki.UID
-    expected_matches = [(IRange 12 15, uids ["Q30642"], N.Other),
-                        (IRange 9 10,  uids ["Q30642"], N.Other),
-                        (IRange 6 7,   uids ["Q42970", "Q11660"], N.Other),
-                        (IRange 2 4,   uids ["Q380"], N.Other),
-                        (IRange 0 1,   uids ["Q95", "Q9366"], N.Other)]
-
+    expected_matches = [(IRange 12 15, uids ["Q30642"], N.Other), -- NLP
+                        (IRange 9 10,  uids ["Q30642"], N.Other), -- NLP
+                        (IRange 6 7,   uids ["Q42970", "Q11660"], N.Other), -- AI
+                        (IRange 2 4,   uids ["Q380"], N.Other), - Facebook Inc.
+                        (IRange 0 1,   uids ["Q95", "Q9366"], N.Other) -- Google
+                        ]
     tt = getStanfordNEs stanford_nefs
     expected_tt = [(IRange 9 10, N.Org),(IRange 2 4,N.Org),(IRange 0 1, N.Org)]
+    
   print ner_text
   eassertEqual tt expected_tt
   eassertEqual matchedItems expected_matches
