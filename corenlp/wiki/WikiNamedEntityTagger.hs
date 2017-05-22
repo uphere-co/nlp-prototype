@@ -50,6 +50,19 @@ getStanfordNEs = dropNonNE . partitonFrags
 buildTagUIDTable :: NEClass -> Vector Wiki.UID -> Vector (Wiki.UID, NEClass)
 buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
 
+
+data NextIRange = NextLHS | NextRHS | EQ | RinL | LinR | LoverlapR | RoverlapL
+nextIRange :: IRange -> IRange -> NextIRange
+nextIRange (IRange lbeg lend) (IRange rbeg rend)
+  | lend <= rbeg = NextLHS
+  | rend <= lbeg = NextRHS
+  | lbeg == rbeg && rend == lend = EQ
+  | lbeg <= rbeg && rend <= lend = RinL
+  | rbeg <= lbeg && lend <= rend = LinR
+  | rbeg < lend && lend < rend = RoverlapL
+  | lbeg < rend && rend < lend = LoverlapR
+  | otherwise = error "Logical bug in nextIRange"
+
 data AmbiguousWikiNE = UnresolvedUID NEClass
                      | Resolved Wiki.UID
                      | UnresolvedClass [(Wiki.UID, NEClass)]
