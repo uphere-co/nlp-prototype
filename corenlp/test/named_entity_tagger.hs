@@ -7,7 +7,7 @@ import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,fromList)
 import           Assert                                (assert,massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
-import           Test.Tasty                            (defaultMain, testGroup)
+import           Test.Tasty                            (defaultMain, testGroup,TestTree)
 import qualified Data.Text                     as T 
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
@@ -19,6 +19,7 @@ import           Misc                                  (IRange(..))
 import qualified NamedEntity                   as N
 import qualified WikiEntity                    as Wiki
 
+testNamedEntityTagging :: TestTree
 testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER output" $ \step -> do
   entities <- do
      reprs <- loadEntityReprs "../rnn++/tests/data/wikidata.test.entities"
@@ -47,9 +48,11 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
   eassertEqual tt expected_tt
   eassertEqual matchedItems expected_matches
 
+unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
     [testNamedEntityTagging]    
 
+main :: IO ()
 main = defaultMain unitTests

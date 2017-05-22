@@ -51,12 +51,12 @@ buildTagUIDTable :: NEClass -> Vector Wiki.UID -> Vector (Wiki.UID, NEClass)
 buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
 
 
-data NextIRange = NextLHS | NextRHS | EQ | RinL | LinR | LoverlapR | RoverlapL
+data NextIRange = NextLHS | NextRHS | Equal | RinL | LinR | LoverlapR | RoverlapL
 nextIRange :: IRange -> IRange -> NextIRange
 nextIRange (IRange lbeg lend) (IRange rbeg rend)
   | lend <= rbeg = NextLHS
   | rend <= lbeg = NextRHS
-  | lbeg == rbeg && rend == lend = EQ
+  | lbeg == rbeg && rend == lend = Equal
   | lbeg <= rbeg && rend <= lend = RinL
   | rbeg <= lbeg && lend <= rend = LinR
   | rbeg < lend && lend < rend = RoverlapL
