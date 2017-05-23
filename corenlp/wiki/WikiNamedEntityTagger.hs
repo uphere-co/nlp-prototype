@@ -5,7 +5,7 @@
 module WikiNamedEntityTagger where
 
 import           Data.Text                             (Text)
-import           Data.Vector                           (Vector,toList,fromList,ifoldl')
+import           Data.Vector                           (Vector,toList,fromList,ifoldl',foldl')
 
 import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
@@ -63,12 +63,22 @@ nextIRange (IRange lbeg lend) (IRange rbeg rend)
   | lbeg < rend && rend < lend = LoverlapR
   | otherwise = error "Logical bug in nextIRange"
 
-data AmbiguousWikiNE = UnresolvedUID NEClass
-                     | Resolved Wiki.UID
-                     | UnresolvedClass [(Wiki.UID, NEClass)]
-                     deriving(Show, Eq)
+data PreNE = UnresolvedUID NEClass
+           | AmbiguousUID [Wiki.UID]
+           | Resolved Wiki.UID
+           | UnresolvedClass [(Wiki.UID, NEClass)]
+           deriving(Show, Eq)
+             
+resolveNEClass :: NEClass -> Vector (Wiki.UID, NEClass) -> PreNE
+resolveNEClass stag xs = g matchedUIDs
+  where
+    f accum (uid,tag) | tag==stag = uid:accum
+                      | otherwise = accum
+    matchedUIDs = foldl' f [] xs
+    g [uid] = Resolved uid
+    g uids  = AmbiguousUID uids
 
-resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,AmbiguousWikiNE)] -> [(IRange, AmbiguousWikiNE)]
+resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)] -> [(IRange,PreNE)]
 resolveNEClassImpl [] lhss@((lrange,ltags):ls) accum = (lrange, UnresolvedClass (toList ltags)):accum
 resolveNEClassImpl rhss@((rrange,rtag):rs) [] accum  = (rrange, UnresolvedUID rtag) : accum
 -- TODO: implement following
