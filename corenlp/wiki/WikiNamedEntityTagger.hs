@@ -51,12 +51,12 @@ buildTagUIDTable :: NEClass -> Vector Wiki.UID -> Vector (Wiki.UID, NEClass)
 buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
 
 
-data NextIRange = NextLHS | NextRHS | Equal | RinL | LinR | LoverlapR | RoverlapL
-nextIRange :: IRange -> IRange -> NextIRange
-nextIRange (IRange lbeg lend) (IRange rbeg rend)
-  | lend <= rbeg = NextLHS
-  | rend <= lbeg = NextRHS
-  | lbeg == rbeg && rend == lend = Equal
+data RelativePosition = LbeforeR | RbeforeL | Coincide | RinL | LinR | LoverlapR | RoverlapL
+relativePosition :: IRange -> IRange -> RelativePosition
+relativePosition (IRange lbeg lend) (IRange rbeg rend)
+  | lend <= rbeg = LbeforeR
+  | rend <= lbeg = RbeforeL
+  | lbeg == rbeg && rend == lend = Coincide
   | lbeg <= rbeg && rend <= lend = RinL
   | rbeg <= lbeg && lend <= rend = LinR
   | rbeg < lend && lend < rend = RoverlapL
@@ -77,6 +77,7 @@ resolveNEClass stag xs = g matchedUIDs
     matchedUIDs = foldl' f [] xs
     g [uid] = Resolved uid
     g uids  = AmbiguousUID uids
+
 
 resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)] -> [(IRange,PreNE)]
 resolveNEClassImpl [] lhss@((lrange,ltags):ls) accum = (lrange, UnresolvedClass (toList ltags)):accum
