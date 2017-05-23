@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module NamedEntity where
 
-import           Data.Maybe                        (catMaybes)
+import           Data.Maybe                        (mapMaybe,catMaybes)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Monoid
@@ -35,7 +35,7 @@ parseStr str t | t== "PERSON"      = NamedEntityFrag str Person
 parseStr _ _  = error "Unknown named entity class"
 
 partitionFrags :: [NamedEntityFrag] -> [[NamedEntityFrag]]
-partitionFrags frags = foldr f [] frags
+partitionFrags = foldr f []
   where
     f e [] = [[e]]
     f e xss'@(es:ess) | isSameType e (head es) = (e:es): ess
@@ -46,4 +46,4 @@ mergeToken xs'@(NamedEntityFrag str tag : es) | tag /= Other = Just (NamedEntity
 mergeToken _ = Nothing
 
 mergeTokens :: [NamedEntityFrag] -> [NamedEntity]
-mergeTokens es = catMaybes (map mergeToken (partitionFrags es))
+mergeTokens es = mapMaybe mergeToken (partitionFrags es)

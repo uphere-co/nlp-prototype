@@ -14,6 +14,8 @@ import           Data.Vector.Generic.Mutable           (MVector)
 import           Data.Vector                           (Vector,backpermute,findIndices
                                                        ,slice,fromList,toList,unsafeThaw,modify)
 import           Data.Ord                              (Ord)
+
+import           Misc                                  (IRange(..))
 import           Assert                                (massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup)
@@ -54,10 +56,6 @@ binarySearchLRByBounds comp vec elm l u = do
   idxR <- VS.binarySearchRByBounds comp vec elm l u
   return (idxL, idxR)  
 
-data IRange = IRange { beg :: Int
-                     , end :: Int}
-                deriving(Eq, Show)
-
 greedyMatchImpl :: (Ord e) => Vector [e] -> [e] -> (Int, IRange) -> (Int, IRange)
 greedyMatchImpl entities words (i, IRange beg end) = runST $ do
   mvec <- unsafeThaw entities
@@ -97,19 +95,19 @@ greedyAnnotation entities text = greedyAnnotationImpl entities text 0 []
 itemTuple :: (Wiki.UID, Wiki.Name) -> (Wiki.UID, [Text])
 itemTuple (uid, name) = (uid, nameWords name)
 
-data EntityTable = EntityTable { _uids :: Vector Wiki.UID
-                               , _names :: Vector [Text]}
-                 deriving (Show)
+data NameUIDTable = NameUIDTable { _uids :: Vector Wiki.UID
+                                 , _names :: Vector [Text]}
+                  deriving (Show)
 
-buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> EntityTable
-buildEntityTable entities = EntityTable uids names
+buildEntityTable :: [(Wiki.UID, Wiki.Name)] -> NameUIDTable
+buildEntityTable entities = NameUIDTable uids names
   where
     nameOrdering (lhsUID, lhsName) (rhsUID, rhsName) = compare lhsName rhsName
     entitiesByName = modify (sortBy nameOrdering) (fromList (map itemTuple entities))
     uids  = V.map fst entitiesByName
     names = V.map snd entitiesByName
 
-wikiAnnotator:: EntityTable -> [Text] -> [(IRange, Vector Wiki.UID)]
+wikiAnnotator:: NameUIDTable -> [Text] -> [(IRange, Vector Wiki.UID)]
 wikiAnnotator entities words = matchedItems
   where
     matchedIdxs  = greedyAnnotation (_names entities) words
