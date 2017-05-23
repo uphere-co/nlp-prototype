@@ -12,8 +12,8 @@ import qualified Data.Text                     as T
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
-import           WikiNamedEntityTagger                 (buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
-import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNE,resolveNEClass)
+import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
+import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
 import           Misc                                  (IRange(..))
@@ -60,27 +60,26 @@ testIRangeOps = testCaseSteps "Test operations on IRange" $ \step -> do
     ranges1 = [IRange 0 2, IRange 2 4, IRange 5 7, IRange 10 12]
     ranges2 = [IRange 0 2, IRange 2 4, IRange 7 8, IRange 10 12]
     ref = IRange 1 6
-    x = relativePos (IRange 1 6) (IRange 5 7)
-  print x
-  eassertEqual (untilNoOverlap ref ranges1) [IRange 10 12]
-  eassertEqual (untilNoOverlap ref ranges2) [IRange 7 8, IRange 10 12]
-  eassertEqual (untilOverlapOrNo ref ranges1) [IRange 5 7, IRange 10 12]
-  eassertEqual (untilOverlapOrNo ref ranges2) [IRange 7 8, IRange 10 12]
+    dist_ref = relativePos ref
+  eassertEqual (untilNoOverlap   dist_ref ranges1) [IRange 10 12]
+  eassertEqual (untilNoOverlap   dist_ref ranges2) [IRange 7 8, IRange 10 12]
+  eassertEqual (untilOverlapOrNo dist_ref ranges1) [IRange 5 7, IRange 10 12]
+  eassertEqual (untilOverlapOrNo dist_ref ranges2) [IRange 7 8, IRange 10 12]
 
 testNEResolution :: TestTree
 testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \step -> do
   let
     ambiguousUID = fromList [(uid "Q1", N.Org), (uid "Q2", N.Org), (uid "Q3", N.Person)]
-    entity = (IRange 1 4, ambiguousUID)
+    entities = [(IRange 1 4, ambiguousUID)]
   eassertEqual (resolveNEClass N.Org ambiguousUID) (AmbiguousUID [uid "Q2", uid "Q1"])
   eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3"))
 
-  eassertEqual (resolveNE (IRange 1 4, N.Person) entity) (IRange 1 4, resolveNEClass N.Person ambiguousUID)
-  eassertEqual (resolveNE (IRange 1 4, N.Org) entity) (IRange 1 4, resolveNEClass N.Org ambiguousUID)
-  eassertEqual (resolveNE (IRange 1 2, N.Org) entity) (IRange 1 4, UnresolvedClass (toList ambiguousUID))
-  eassertEqual (resolveNE (IRange 0 5, N.Org) entity) (IRange 0 5, UnresolvedUID N.Org)
-  eassertEqual (resolveNE (IRange 0 2, N.Org) entity) (IRange 0 2, UnresolvedUID N.Org)
-  eassertEqual (resolveNE (IRange 3 5, N.Org) entity) (IRange 1 4, UnresolvedClass (toList ambiguousUID))
+  eassertEqual (resolveNEs [(IRange 1 4, N.Person)] entities) [(IRange 1 4, resolveNEClass N.Person ambiguousUID)]
+  eassertEqual (resolveNEs [(IRange 1 4, N.Org)] entities) [(IRange 1 4, resolveNEClass N.Org ambiguousUID)]
+  eassertEqual (resolveNEs [(IRange 1 2, N.Org)] entities) [(IRange 1 4, UnresolvedClass (toList ambiguousUID))]
+  eassertEqual (resolveNEs [(IRange 0 5, N.Org)] entities) [(IRange 0 5, UnresolvedUID N.Org)]
+  eassertEqual (resolveNEs [(IRange 0 2, N.Org)] entities) [(IRange 0 2, UnresolvedUID N.Org)]
+  eassertEqual (resolveNEs [(IRange 3 5, N.Org)] entities) [(IRange 1 4, UnresolvedClass (toList ambiguousUID))]
 
   
   

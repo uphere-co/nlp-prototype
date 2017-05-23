@@ -66,17 +66,17 @@ relativePos (IRange lbeg lend) (IRange rbeg rend)
   | lbeg < rbeg &&  lend < rend = LoverlapR
   | otherwise = error "Logical bug in nextIRange"
 
-untilNoOverlap :: IRange -> [IRange] -> [IRange]
+untilNoOverlap :: (a->RelativePosition) -> [a] -> [a]
 untilNoOverlap _ [] = []
-untilNoOverlap ref ranges@(r:_) | LbeforeR == relativePos ref r = ranges
-untilNoOverlap ref ranges@(_:rs) = untilNoOverlap ref rs
+untilNoOverlap f ranges@(r:_) | LbeforeR == f r = ranges
+untilNoOverlap f ranges@(_:rs) = untilNoOverlap f rs
 
-untilOverlapOrNo :: IRange -> [IRange] -> [IRange]
+untilOverlapOrNo :: (a->RelativePosition) -> [a] -> [a]
 untilOverlapOrNo _ [] = []
-untilOverlapOrNo ref ranges@(r:rs) = case relativePos ref r of
+untilOverlapOrNo f ranges@(r:rs) = case f r of
   LbeforeR  -> ranges
   LoverlapR -> ranges
-  _ -> untilOverlapOrNo ref rs
+  _ -> untilOverlapOrNo f rs
 
 data PreNE = UnresolvedUID NEClass
            | AmbiguousUID [Wiki.UID]
@@ -97,31 +97,27 @@ resolveNEClass stag xs = g matchedUIDs
     g [uid] = Resolved uid
     g uids  = AmbiguousUID uids
 
-data MergeDecision = KeepL | KeepR | MergeLR
-
-mergeDecision :: RelativePosition -> MergeDecision
-mergeDecision pos = case pos of
-  Coincide  -> MergeLR
-  LinR      -> KeepR
-  RinL      -> KeepL
-  LbeforeR  -> KeepL
-  RbeforeL  -> KeepR
-  RoverlapL -> KeepR
-  LoverlapR -> KeepL
-
-resolveNE :: (IRange, NEClass) -> (IRange, Vector (Wiki.UID, NEClass)) -> (IRange,PreNE)
-resolveNE (lrange, ltag) (rrange, rtags) = 
-  case mergeDecision (relativePos lrange rrange) of
-    KeepL   -> (lrange, UnresolvedUID ltag)
-    KeepR   -> (rrange, UnresolvedClass (toList rtags))
-    MergeLR -> (lrange, resolveNEClass ltag rtags)
-
 resolveNEsImpl :: [(IRange,PreNE)] -> [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
 resolveNEsImpl accum [] [] = accum
-resolveNEsImpl accum lhss@((lrange,ltag):ls) []  = resolveNEsImpl ((lrange, UnresolvedUID ltag) : accum) ls []
-resolveNEsImpl accum [] rhss@((rrange,rtags):rs) = resolveNEsImpl ((rrange, UnresolvedClass (toList rtags)) : accum) [] rs
--- TODO: implement following
-resolveNEsImpl lhss@((lrange,ltags):ls) rhss@((rrange,rtag):rs) accum = undefined 
+resolveNEsImpl accum lhss@((lrange,ltag):ls) []  =
+  resolveNEsImpl ((lrange, UnresolvedUID ltag) : accum) ls []
+resolveNEsImpl accum [] rhss@((rrange,rtags):rs) =
+  resolveNEsImpl ((rrange, UnresolvedClass (toList rtags)) : accum) [] rs
+resolveNEsImpl accum lhss@((lrange,ltag):ls) rhss@((rrange,rtags):rs) =
+  --case mergeDecision (relativePos lrange rrange) of
+  case relativePos lrange rrange of
+    Coincide  -> resolveNEsImpl ((lrange, resolveNEClass ltag rtags):accum) ls rs
+    LinR      -> resolveNEsImpl (keepR:accum) lsIter rs
+    RinL      -> resolveNEsImpl (keepL:accum) ls rsIter
+    LbeforeR  -> resolveNEsImpl (keepL:accum) ls rhss
+    RbeforeL  -> resolveNEsImpl (keepR:accum) lhss rs
+    RoverlapL -> resolveNEsImpl (keepR:accum) ls rsIter
+    LoverlapR -> resolveNEsImpl (keepL:accum) lsIter rs
+  where
+    keepL = (lrange, UnresolvedUID ltag)
+    keepR = (rrange, UnresolvedClass (toList rtags))
+    lsIter = untilNoOverlap (relativePos rrange . fst) ls
+    rsIter = untilNoOverlap (relativePos lrange . fst) rs
 
 resolveNEs :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
 resolveNEs = resolveNEsImpl []
