@@ -52,15 +52,18 @@ buildTagUIDTable tag = V.map (\uid -> (uid,tag))
 
 
 data RelativePosition = LbeforeR | RbeforeL | Coincide | RinL | LinR | LoverlapR | RoverlapL
-relativePosition :: IRange -> IRange -> RelativePosition
-relativePosition (IRange lbeg lend) (IRange rbeg rend)
+                      deriving(Show)
+
+relativePos :: IRange -> IRange -> RelativePosition
+relativePos (IRange lbeg lend) (IRange rbeg rend)
+  -- Note ordering is crucial for correct pattern matching; do not change it unless unavoidable.
   | lend <= rbeg = LbeforeR
   | rend <= lbeg = RbeforeL
   | lbeg == rbeg && rend == lend = Coincide
   | lbeg <= rbeg && rend <= lend = RinL
   | rbeg <= lbeg && lend <= rend = LinR
-  | rbeg < lend && lend < rend = RoverlapL
-  | lbeg < rend && rend < lend = LoverlapR
+  | rbeg < lbeg &&  rend < lend = RoverlapL
+  | lbeg < rbeg &&  lend < rend = LoverlapR
   | otherwise = error "Logical bug in nextIRange"
 
 data PreNE = UnresolvedUID NEClass
@@ -68,7 +71,11 @@ data PreNE = UnresolvedUID NEClass
            | Resolved Wiki.UID
            | UnresolvedClass [(Wiki.UID, NEClass)]
            deriving(Show, Eq)
-             
+data NextItem a = Left a
+                | Right a
+                | LeftRight a
+                deriving(Show)
+                
 resolveNEClass :: NEClass -> Vector (Wiki.UID, NEClass) -> PreNE
 resolveNEClass stag xs = g matchedUIDs
   where
@@ -78,6 +85,20 @@ resolveNEClass stag xs = g matchedUIDs
     g [uid] = Resolved uid
     g uids  = AmbiguousUID uids
 
+resolveNE :: (IRange, NEClass) -> (IRange, Vector (Wiki.UID, NEClass)) -> (IRange,PreNE)
+resolveNE (lrange, ltag) (rrange, rtags) = 
+  case relativePos lrange rrange of    
+    Coincide  -> mergeLR
+    LinR      -> keepR
+    RinL      -> keepL
+    LbeforeR  -> keepL
+    RbeforeL  -> keepR
+    RoverlapL -> keepR
+    LoverlapR -> keepL
+  where
+    keepL = (lrange, UnresolvedUID ltag)
+    keepR = (rrange, UnresolvedClass (toList rtags))
+    mergeLR = (lrange, resolveNEClass ltag rtags)
 
 resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)] -> [(IRange,PreNE)]
 resolveNEClassImpl [] lhss@((lrange,ltags):ls) accum = (lrange, UnresolvedClass (toList ltags)):accum

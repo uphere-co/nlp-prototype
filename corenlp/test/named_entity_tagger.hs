@@ -4,7 +4,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
   
 import           Data.Text                             (Text)
-import           Data.Vector                           (Vector,fromList)
+import           Data.Vector                           (Vector,fromList,toList)
 import           Assert                                (assert,massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup,TestTree)
@@ -13,7 +13,7 @@ import qualified Data.Text                     as T
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
 import           WikiNamedEntityTagger                 (buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
-import           WikiNamedEntityTagger                 (PreNE(..),resolveNEClass)
+import           WikiNamedEntityTagger                 (relativePos,PreNE(..),resolveNE,resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
 import           Misc                                  (IRange(..))
@@ -54,18 +54,33 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
   eassertEqual tt expected_tt
   eassertEqual matchedItems expected_matches
 
-testNETagResolution :: TestTree
-testNETagResolution = testCaseSteps "Idenifying Wiki UID with Stanford NE tag" $ \step -> do
+testNEResolution :: TestTree
+testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \step -> do
   let
-    ambiguousEntity = fromList [(uid "Q1", N.Org), (uid "Q2", N.Org), (uid "Q3", N.Person)]
-  eassertEqual (resolveNEClass N.Org ambiguousEntity) (AmbiguousUID [uid "Q2", uid "Q1"])
-  eassertEqual (resolveNEClass N.Person ambiguousEntity) (Resolved (uid "Q3"))
+    ambiguousUID = fromList [(uid "Q1", N.Org), (uid "Q2", N.Org), (uid "Q3", N.Person)]
+    entity = (IRange 1 4, ambiguousUID)
+  eassertEqual (resolveNEClass N.Org ambiguousUID) (AmbiguousUID [uid "Q2", uid "Q1"])
+  eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3"))
 
+  eassertEqual (resolveNE (IRange 1 4, N.Person) entity) (IRange 1 4, resolveNEClass N.Person ambiguousUID)
+  eassertEqual (resolveNE (IRange 1 4, N.Org) entity) (IRange 1 4, resolveNEClass N.Org ambiguousUID)
+  eassertEqual (resolveNE (IRange 1 2, N.Org) entity) (IRange 1 4, UnresolvedClass (toList ambiguousUID))
+  eassertEqual (resolveNE (IRange 0 5, N.Org) entity) (IRange 0 5, UnresolvedUID N.Org)
+  eassertEqual (resolveNE (IRange 0 2, N.Org) entity) (IRange 0 2, UnresolvedUID N.Org)
+  eassertEqual (resolveNE (IRange 3 5, N.Org) entity) (IRange 1 4, UnresolvedClass (toList ambiguousUID))
+  
+
+testWikiNER :: TestTree
+testWikiNER = 
+  testGroup
+    "Unit tests for WikiNER"
+      [testNEResolution]
+      
 unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
-    [testNamedEntityTagging, testNETagResolution]    
+    [testNamedEntityTagging, testWikiNER]    
 
 main :: IO ()
 main = defaultMain unitTests
