@@ -12,7 +12,7 @@ import qualified Data.Text                     as T
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
-import           WikiNamedEntityTagger                 (getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
+import           WikiNamedEntityTagger                 (buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
 import           Misc                                  (IRange(..))
@@ -32,12 +32,18 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
     expected_matches = [(IRange 12 15, uids ["Q30642"], N.Other), -- NLP
                         (IRange 9 10,  uids ["Q30642"], N.Other), -- NLP
                         (IRange 6 7,   uids ["Q42970", "Q11660"], N.Other), -- AI
-                        (IRange 2 4,   uids ["Q380"], N.Other), - Facebook Inc.
+                        (IRange 2 4,   uids ["Q380"], N.Other), -- Facebook Inc.
                         (IRange 0 1,   uids ["Q95", "Q9366"], N.Other) -- Google
                         ]
     tt = getStanfordNEs stanford_nefs
     expected_tt = [(IRange 9 10, N.Org),(IRange 2 4,N.Org),(IRange 0 1, N.Org)]
-    
+
+    others = buildTagUIDTable N.Other (uids ["Q11660","Q9366","Q30642"])
+    orgs   = buildTagUIDTable N.Org   (uids ["Q42970","Q380","Q95"])    
+    --TODO: sort UID
+    uidTags = mconcat [others, orgs]
+
+  print uidTags
   print ner_text
   eassertEqual tt expected_tt
   eassertEqual matchedItems expected_matches
