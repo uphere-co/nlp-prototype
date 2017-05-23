@@ -5,7 +5,7 @@
 module WikiNamedEntityTagger where
 
 import           Data.Text                             (Text)
-import           Data.Vector                           (Vector,toList,fromList,ifoldl',foldl')
+import           Data.Vector                           (Vector,toList,fromList,ifoldr,foldl')
 
 import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
@@ -31,14 +31,14 @@ namedEntityAnnotator entities frags = map (\(range,uids)->(range,uids, N.Other))
 
 
 partitonFrags:: [NamedEntityFrag] -> [(IRange, NEClass)]
-partitonFrags frags = ifoldl' f [] (fromList frags)
+partitonFrags frags = ifoldr f [] (fromList frags)
   where
-    incR (IRange beg end) = IRange beg (end+1)
+    decL (IRange beg end) = IRange (beg-1) end
     toRange idx = IRange idx (idx+1)
     tagType = N._ftype
     g idx frag = (toRange idx, tagType frag)
-    f [] idx frag = [g idx frag]
-    f accum@((range, tag):ss) idx frag | tagType frag == tag = (incR range, tag):ss
+    f idx frag [] = [g idx frag]
+    f idx frag accum@((range, tag):ss) | tagType frag == tag = (decL range, tag):ss
                                        | otherwise            = g idx frag : accum
 
 dropNonNE:: [(IRange, NEClass)] -> [(IRange, NEClass)]
