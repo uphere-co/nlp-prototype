@@ -83,10 +83,6 @@ data PreNE = UnresolvedUID NEClass
            | Resolved Wiki.UID
            | UnresolvedClass [(Wiki.UID, NEClass)]
            deriving(Show, Eq)
-data NextItem a = Left a
-                | Right a
-                | LeftRight a
-                deriving(Show)
                 
 resolveNEClass :: NEClass -> Vector (Wiki.UID, NEClass) -> PreNE
 resolveNEClass stag xs = g matchedUIDs

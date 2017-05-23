@@ -66,6 +66,7 @@ testIRangeOps = testCaseSteps "Test operations on IRange" $ \step -> do
   eassertEqual (untilOverlapOrNo dist_ref ranges1) [IRange 5 7, IRange 10 12]
   eassertEqual (untilOverlapOrNo dist_ref ranges2) [IRange 7 8, IRange 10 12]
 
+
 testNEResolution :: TestTree
 testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \step -> do
   let
@@ -74,6 +75,7 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
   eassertEqual (resolveNEClass N.Org ambiguousUID) (AmbiguousUID [uid "Q2", uid "Q1"])
   eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3"))
 
+  step "Single entity cases"
   eassertEqual (resolveNEs [(IRange 1 4, N.Person)] entities) [(IRange 1 4, resolveNEClass N.Person ambiguousUID)]
   eassertEqual (resolveNEs [(IRange 1 4, N.Org)] entities) [(IRange 1 4, resolveNEClass N.Org ambiguousUID)]
   eassertEqual (resolveNEs [(IRange 1 2, N.Org)] entities) [(IRange 1 4, UnresolvedClass (toList ambiguousUID))]
@@ -81,7 +83,35 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
   eassertEqual (resolveNEs [(IRange 0 2, N.Org)] entities) [(IRange 0 2, UnresolvedUID N.Org)]
   eassertEqual (resolveNEs [(IRange 3 5, N.Org)] entities) [(IRange 1 4, UnresolvedClass (toList ambiguousUID))]
 
-  
+  step "Multiple entities cases"
+  let
+    input = "A1/PERSON A2/PERSON x/O y/O z/O W1/ORGANIZATION W2/ORGANIZATION W3/ORGANIZATION"
+    stanford_nes =  getStanfordNEs (map parseStanfordNE (parseNEROutputStr input))
+    ambiguousUID1 = fromList [(uid "Q11", N.Org), (uid "Q12", N.Org), (uid "Q13", N.Person)]
+    ambiguousUID2 = fromList [(uid "Q21", N.Org), (uid "Q22", N.Org), (uid "Q23", N.Person)]
+    entities1 = [(IRange 0 2, ambiguousUID1),(IRange 5 8, ambiguousUID2)]
+    r1 = resolveNEs (reverse stanford_nes) entities1
+    expected_r1 = [(IRange 5 8, AmbiguousUID [uid "Q22",uid "Q21"]),
+                   (IRange 0 2, Resolved (uid "Q13"))]
+
+    entities2 = [(IRange 0 2, ambiguousUID1),(IRange 5 7, ambiguousUID2)]
+    r2 = resolveNEs (reverse stanford_nes) entities2
+    expected_r2 = [(IRange 5 8, UnresolvedUID N.Org),
+                   (IRange 0 2, Resolved (uid "Q13"))]
+
+    entities3 = [(IRange 0 2, ambiguousUID1),(IRange 4 6, ambiguousUID2)]
+    r3 = resolveNEs (reverse stanford_nes) entities3
+    expected_r3 = [(IRange 4 6, UnresolvedClass (toList ambiguousUID2)),
+                   (IRange 0 2, Resolved (uid "Q13"))]               
+
+    entities4 = [(IRange 0 2, ambiguousUID1),(IRange 7 9, ambiguousUID2)]
+    r4 = resolveNEs (reverse stanford_nes) entities4
+    expected_r4 = expected_r2
+
+  eassertEqual r1 expected_r1
+  eassertEqual r2 expected_r2
+  eassertEqual r3 expected_r3
+  eassertEqual r4 expected_r4  
   
 
 testWikiNER :: TestTree
