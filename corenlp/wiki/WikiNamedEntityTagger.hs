@@ -116,4 +116,4 @@ resolveNEsImpl accum lhss@((lrange,ltag):ls) rhss@((rrange,rtags):rs) =
     rsIter = untilNoOverlap (relativePos lrange . fst) rs
 
 resolveNEs :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
-resolveNEs = resolveNEsImpl []
+resolveNEs lhss rhss = reverse (resolveNEsImpl [] lhss rhss)
