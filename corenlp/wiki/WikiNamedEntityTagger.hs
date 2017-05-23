@@ -97,23 +97,31 @@ resolveNEClass stag xs = g matchedUIDs
     g [uid] = Resolved uid
     g uids  = AmbiguousUID uids
 
+data MergeDecision = KeepL | KeepR | MergeLR
+
+mergeDecision :: RelativePosition -> MergeDecision
+mergeDecision pos = case pos of
+  Coincide  -> MergeLR
+  LinR      -> KeepR
+  RinL      -> KeepL
+  LbeforeR  -> KeepL
+  RbeforeL  -> KeepR
+  RoverlapL -> KeepR
+  LoverlapR -> KeepL
+
 resolveNE :: (IRange, NEClass) -> (IRange, Vector (Wiki.UID, NEClass)) -> (IRange,PreNE)
 resolveNE (lrange, ltag) (rrange, rtags) = 
-  case relativePos lrange rrange of    
-    Coincide  -> mergeLR
-    LinR      -> keepR
-    RinL      -> keepL
-    LbeforeR  -> keepL
-    RbeforeL  -> keepR
-    RoverlapL -> keepR
-    LoverlapR -> keepL
-  where
-    keepL = (lrange, UnresolvedUID ltag)
-    keepR = (rrange, UnresolvedClass (toList rtags))
-    mergeLR = (lrange, resolveNEClass ltag rtags)
+  case mergeDecision (relativePos lrange rrange) of
+    KeepL   -> (lrange, UnresolvedUID ltag)
+    KeepR   -> (rrange, UnresolvedClass (toList rtags))
+    MergeLR -> (lrange, resolveNEClass ltag rtags)
 
-resolveNEClassImpl :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)] -> [(IRange,PreNE)]
-resolveNEClassImpl [] lhss@((lrange,ltags):ls) accum = (lrange, UnresolvedClass (toList ltags)):accum
-resolveNEClassImpl rhss@((rrange,rtag):rs) [] accum  = (rrange, UnresolvedUID rtag) : accum
+resolveNEsImpl :: [(IRange,PreNE)] -> [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
+resolveNEsImpl accum [] [] = accum
+resolveNEsImpl accum lhss@((lrange,ltag):ls) []  = resolveNEsImpl ((lrange, UnresolvedUID ltag) : accum) ls []
+resolveNEsImpl accum [] rhss@((rrange,rtags):rs) = resolveNEsImpl ((rrange, UnresolvedClass (toList rtags)) : accum) [] rs
 -- TODO: implement following
-resolveNEClassImpl rhss@((rrange,rtag):rs) lhss@((lrange,ltags):ls) accum = undefined 
+resolveNEsImpl lhss@((lrange,ltags):ls) rhss@((rrange,rtag):rs) accum = undefined 
+
+resolveNEs :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
+resolveNEs = resolveNEsImpl []
