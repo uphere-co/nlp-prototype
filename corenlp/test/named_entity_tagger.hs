@@ -13,7 +13,7 @@ import qualified Data.Text                     as T
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
 import           WikiNamedEntityTagger                 (buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
-import           WikiNamedEntityTagger                 (relativePos,PreNE(..),resolveNE,resolveNEClass)
+import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNE,resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
 import           Misc                                  (IRange(..))
@@ -54,6 +54,19 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
   eassertEqual tt expected_tt
   eassertEqual matchedItems expected_matches
 
+testIRangeOps :: TestTree
+testIRangeOps = testCaseSteps "Test operations on IRange" $ \step -> do
+  let
+    ranges1 = [IRange 0 2, IRange 2 4, IRange 5 7, IRange 10 12]
+    ranges2 = [IRange 0 2, IRange 2 4, IRange 7 8, IRange 10 12]
+    ref = IRange 1 6
+    x = relativePos (IRange 1 6) (IRange 5 7)
+  print x
+  eassertEqual (untilNoOverlap ref ranges1) [IRange 10 12]
+  eassertEqual (untilNoOverlap ref ranges2) [IRange 7 8, IRange 10 12]
+  eassertEqual (untilOverlapOrNo ref ranges1) [IRange 5 7, IRange 10 12]
+  eassertEqual (untilOverlapOrNo ref ranges2) [IRange 7 8, IRange 10 12]
+
 testNEResolution :: TestTree
 testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \step -> do
   let
@@ -68,19 +81,21 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
   eassertEqual (resolveNE (IRange 0 5, N.Org) entity) (IRange 0 5, UnresolvedUID N.Org)
   eassertEqual (resolveNE (IRange 0 2, N.Org) entity) (IRange 0 2, UnresolvedUID N.Org)
   eassertEqual (resolveNE (IRange 3 5, N.Org) entity) (IRange 1 4, UnresolvedClass (toList ambiguousUID))
+
+  
   
 
 testWikiNER :: TestTree
 testWikiNER = 
   testGroup
     "Unit tests for WikiNER"
-      [testNEResolution]
+      [testNamedEntityTagging, testNEResolution]
       
 unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
-    [testNamedEntityTagging, testWikiNER]    
+    [testIRangeOps, testWikiNER]    
 
 main :: IO ()
 main = defaultMain unitTests

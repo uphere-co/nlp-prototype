@@ -52,7 +52,7 @@ buildTagUIDTable tag = V.map (\uid -> (uid,tag))
 
 
 data RelativePosition = LbeforeR | RbeforeL | Coincide | RinL | LinR | LoverlapR | RoverlapL
-                      deriving(Show)
+                      deriving(Show,Eq)
 
 relativePos :: IRange -> IRange -> RelativePosition
 relativePos (IRange lbeg lend) (IRange rbeg rend)
@@ -65,6 +65,18 @@ relativePos (IRange lbeg lend) (IRange rbeg rend)
   | rbeg < lbeg &&  rend < lend = RoverlapL
   | lbeg < rbeg &&  lend < rend = LoverlapR
   | otherwise = error "Logical bug in nextIRange"
+
+untilNoOverlap :: IRange -> [IRange] -> [IRange]
+untilNoOverlap _ [] = []
+untilNoOverlap ref ranges@(r:_) | LbeforeR == relativePos ref r = ranges
+untilNoOverlap ref ranges@(_:rs) = untilNoOverlap ref rs
+
+untilOverlapOrNo :: IRange -> [IRange] -> [IRange]
+untilOverlapOrNo _ [] = []
+untilOverlapOrNo ref ranges@(r:rs) = case relativePos ref r of
+  LbeforeR  -> ranges
+  LoverlapR -> ranges
+  _ -> untilOverlapOrNo ref rs
 
 data PreNE = UnresolvedUID NEClass
            | AmbiguousUID [Wiki.UID]
