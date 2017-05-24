@@ -9,6 +9,7 @@ let #hsconfig = import ../nix/haskell-modules/configuration-ghc-8.0.x.nix { inhe
               aeson
 	      haskeline
               text
+              #vector_0_12_0_1 # Specify the version explicitly since vector is 0.11.0.0 as of May 2017.
               vector-algorithms
               tasty-hunit
             ]);
