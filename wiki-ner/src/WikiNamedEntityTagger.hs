@@ -6,10 +6,11 @@ module WikiNamedEntityTagger where
 
 import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,toList,fromList,ifoldr,foldl')
-
+import           Control.Arrow                         (second)
 import           Misc                                  (IRange(..))
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (NameUIDTable,buildEntityTable,wikiAnnotator)
+import           WikiEntityClass                       (WikiUID2NETag,getNEClass)
 import           NamedEntity                           (NamedEntity,NamedEntityFrag,NamedEntityClass,parseStr)
 import qualified Data.Vector                   as V
 import qualified Data.Text                     as T
@@ -24,13 +25,13 @@ type NEClass = NamedEntityClass
 parseStanfordNE :: C.EntityToken -> NamedEntityFrag
 parseStanfordNE (C.EntityToken (C.WordToken word) (C.NETag tag)) =  parseStr word tag
 
-namedEntityAnnotator:: NameUIDTable -> [NamedEntityFrag] -> [(IRange, Vector Wiki.UID, NEClass)]
-namedEntityAnnotator entities frags = map (\(range,uids)->(range,uids, N.Other)) matchedItems
+
+namedEntityAnnotator:: NameUIDTable -> WikiUID2NETag -> [NamedEntityFrag] -> [(IRange, Vector (Wiki.UID, NEClass))]
+namedEntityAnnotator entities uidTypes frags = reverse (map (second (V.map f)) matchedItems)
   where
+    f uid= (uid, getNEClass uidTypes uid)
     words = map N._fstr frags
     matchedItems = wikiAnnotator entities words
-
-
 
 partitonFrags:: [NamedEntityFrag] -> [(IRange, NEClass)]
 partitonFrags frags = ifoldr f [] (fromList frags)
