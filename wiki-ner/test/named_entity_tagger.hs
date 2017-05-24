@@ -8,10 +8,11 @@ import           Data.Vector                           (Vector,fromList,toList)
 import           Assert                                (assert,massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup,TestTree)
-import qualified Data.Text                     as T 
+import qualified Data.Text                     as T
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
+import           WikiEntityClass                       (loadWikiUID2NETag,getNEClass)
 import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
 import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
@@ -19,7 +20,6 @@ import           CoreNLP                               (parseNEROutputStr)
 import           Misc                                  (IRange(..))
 import qualified NamedEntity                   as N
 import qualified WikiEntity                    as Wiki
-
 
 
 uid = Wiki.UID
@@ -128,5 +128,11 @@ unitTests =
     "All Unit tests"
     [testIRangeOps, testWikiNER]    
 
-main :: IO ()
-main = defaultMain unitTests
+
+main = do
+  uid2tag <- loadWikiUID2NETag [(N.Org, "data/ne.org"), (N.Person, "data/ne.person")]
+  let
+    flag1 = getNEClass uid2tag (uid "Q95")
+    flag2 = getNEClass uid2tag (uid "Q3503829")
+  print flag1
+  print flag2

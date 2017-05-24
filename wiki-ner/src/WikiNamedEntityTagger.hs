@@ -17,6 +17,8 @@ import qualified WikiEntity                    as Wiki
 import qualified NamedEntity                   as N
 import qualified CoreNLP                       as C
 
+
+
 type NEClass = NamedEntityClass
 
 parseStanfordNE :: C.EntityToken -> NamedEntityFrag
@@ -117,3 +119,4 @@ resolveNEsImpl accum lhss@((lrange,ltag):ls) rhss@((rrange,rtags):rs) =
 
 resolveNEs :: [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]
 resolveNEs lhss rhss = reverse (resolveNEsImpl [] lhss rhss)
+
