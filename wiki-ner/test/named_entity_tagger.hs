@@ -130,11 +130,34 @@ testWikiNER =
   testGroup
     "Unit tests for WikiNER"
       [testNamedEntityTagging, testNEResolution]
-      
+
+
+testRunWikiNER :: TestTree
+testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \step -> do
+  input <- T.IO.readFile "data/dao.ner"
+  uid2tag <- fromFiles [(N.Org, "data/ne.org"), (N.Person, "data/ne.person")]
+  wikiTable <- do
+     reprs <- loadEntityReprs "data/uid"
+     return (buildEntityTable reprs)  
+  
+  let
+    stanford_nefs = map parseStanfordNE (parseNEROutputStr input)
+    named_entities =  getStanfordNEs stanford_nefs
+    flag1 = getNEClass uid2tag (uid "Q95")
+    flag2 = getNEClass uid2tag (uid "Q3503829")
+    wiki_entities = namedEntityAnnotator wikiTable uid2tag stanford_nefs
+    wiki_named_entities = resolveNEs named_entities wiki_entities
+  print "Named entities"
+  mapM_ print named_entities
+  print "Wiki entities"
+  mapM_ print wiki_entities
+  print "Wiki named entities"
+  mapM_ print wiki_named_entities      
+
 unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
-    [testIRangeOps, testWikiNER]    
+    [testIRangeOps, testWikiNER, testRunWikiNER]    
 
 main = defaultMain unitTests
