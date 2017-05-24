@@ -17,8 +17,6 @@ import           Data.Ord                              (Ord)
 
 import           Misc                                  (IRange(..))
 import           Assert                                (massertEqual,eassertEqual)
-import           Test.Tasty.HUnit                      (assertBool,assertEqual, testCase,testCaseSteps)
-import           Test.Tasty                            (defaultMain, testGroup)
 import           Data.Vector.Algorithms.Intro          (sort, sortBy)
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import qualified Data.Text                     as T
