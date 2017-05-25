@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ExistentialQuantification #-}
-  
+
 import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,fromList,toList)
 import           Control.Arrow                         (first,second)
@@ -13,12 +13,14 @@ import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
 import qualified Data.Vector                   as V
 
+import           CoreNLP                               (parseNEROutputStr)
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
 import           WikiEntityClass                       (fromFiles,getNEClass)
 import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
 import           WikiNamedEntityTagger                 (PreNE(..),resolveNEClass)
-import           CoreNLP                               (parseNEROutputStr)
+import           EntityLinking                         (EntityMention(..),unMention,entityLinking,entityLinkings)
+
 -- For testing:
 import           Misc                                  (IRange(..),untilOverlapOrNo,untilNoOverlap,relativePos, isContain,subVector)
 import qualified NamedEntity                   as N
@@ -153,10 +155,16 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
 
     text = fromList (T.words input_raw)
     output = map (\(range,e) -> (range, subVector range text, e)) wiki_named_entities
+    resolved_entities = entityLinkings output
+    
+    t1 = (IRange 0 2, fromList ["United","Airlines"], Resolved (uid "Q174769",N.Org))
+    t1' = (IRange 90 92, fromList ["United","Airlines"], Resolved (uid "Q174769",N.Org))
+    t2 = (IRange 5 7, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
+    t2' = (IRange 95 97, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
+    t3 = (IRange 10 11, fromList ["Munoz"], UnresolvedUID N.Person)
+    t4 = (IRange 13 14, fromList ["United"], UnresolvedUID N.Org)
 
-    t1 = (IRange 1 3, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
-    t2 = (IRange 10 11, fromList ["Munoz"], UnresolvedUID N.Person)
-
+  eassertEqual (entityLinking [] t4) (Self t4)
 
   print "Named entities"
   mapM_ print named_entities
@@ -166,10 +174,9 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
   mapM_ print wiki_named_entities      
   print "End"
   mapM_ print output
-
-  print t1
-  print t2
-
+  print "Entity-linked named entities"
+  mapM_ print resolved_entities
+  
 
 testHelperUtils :: TestTree
 testHelperUtils = testCaseSteps "Test for helper functions on general algorithms" $ \step -> do
