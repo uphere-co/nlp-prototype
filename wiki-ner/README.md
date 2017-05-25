@@ -1,5 +1,16 @@
-# Haskell library on ETL tasks for CoreNLP
-## Run tests in nix-shell
+## Wiki named entity annotator
+```
+cabal configure --enable-tests
+cabal test
+# or run tests in parallel 
+cabal build test
+./dist/build/test/test  +RTS -N -RTS
+#Clean up
+cabal clean
+```
+
+## Haskell library on ETL tasks for CoreNLP
+### Run tests in nix-shell
 ```
 nix-shell shell.nix -I nixpkgs=~/repo/srcc/nixpkgs
 cd tests
