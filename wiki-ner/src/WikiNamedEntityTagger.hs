@@ -83,7 +83,7 @@ untilOverlapOrNo f ranges@(r:rs) = case f r of
 
 data PreNE = UnresolvedUID NEClass
            | AmbiguousUID [Wiki.UID]
-           | Resolved Wiki.UID
+           | Resolved (Wiki.UID, NEClass)
            | UnresolvedClass [(Wiki.UID, NEClass)]
            deriving(Show, Eq)
                 
@@ -93,7 +93,7 @@ resolveNEClass stag xs = g matchedUIDs
     f accum (uid,tag) | tag==stag = uid:accum
                       | otherwise = accum
     matchedUIDs = foldl' f [] xs
-    g [uid] = Resolved uid
+    g [uid] = Resolved (uid, stag)
     g uids  = AmbiguousUID uids
 
 resolveNEsImpl :: [(IRange,PreNE)] -> [(IRange, NEClass)] -> [(IRange, Vector (Wiki.UID, NEClass))] -> [(IRange,PreNE)]

@@ -5,11 +5,13 @@
   
 import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,fromList,toList)
+import           Control.Arrow                         (first,second)
 import           Assert                                (assert,massertEqual,eassertEqual)
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup,TestTree)
 import qualified Data.Text                     as T
 import qualified Data.Text.IO                  as T.IO
+import qualified Data.Vector                   as V
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
@@ -18,7 +20,7 @@ import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTa
 import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
-import           Misc                                  (IRange(..))
+import           Misc                                  (IRange(..), isContain,subVector)
 import qualified NamedEntity                   as N
 import qualified WikiEntity                    as Wiki
 import qualified WikiEntityClass               as WC
@@ -82,7 +84,7 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
     ambiguousUID = fromList [(uid "Q1", N.Org), (uid "Q2", N.Org), (uid "Q3", N.Person)]
     entities = [(IRange 1 4, ambiguousUID)]
   eassertEqual (resolveNEClass N.Org ambiguousUID) (AmbiguousUID [uid "Q2", uid "Q1"])
-  eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3"))
+  eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3", N.Person))
 
   step "Single entity cases"
   eassertEqual (resolveNEs [(IRange 1 4, N.Person)] entities) [(IRange 1 4, resolveNEClass N.Person ambiguousUID)]
@@ -101,17 +103,17 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
     entities1 = [(IRange 0 2, ambiguousUID1),(IRange 5 8, ambiguousUID2)]
     
     r1 = resolveNEs stanford_nes entities1
-    expected_r1 = [(IRange 0 2, Resolved (uid "Q13")),
+    expected_r1 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
                    (IRange 5 8, AmbiguousUID [uid "Q22",uid "Q21"])]
 
     entities2 = [(IRange 0 2, ambiguousUID1),(IRange 5 7, ambiguousUID2)]
     r2 = resolveNEs stanford_nes entities2
-    expected_r2 = [(IRange 0 2, Resolved (uid "Q13")),
+    expected_r2 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
                    (IRange 5 8, UnresolvedUID N.Org)]
 
     entities3 = [(IRange 0 2, ambiguousUID1),(IRange 4 6, ambiguousUID2)]
     r3 = resolveNEs stanford_nes entities3
-    expected_r3 = [(IRange 0 2, Resolved (uid "Q13")),
+    expected_r3 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
                    (IRange 4 6, UnresolvedClass (toList ambiguousUID2))]
 
     entities4 = [(IRange 0 2, ambiguousUID1),(IRange 7 9, ambiguousUID2)]
@@ -134,6 +136,7 @@ testWikiNER =
 
 testRunWikiNER :: TestTree
 testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \step -> do
+  input_raw <- T.IO.readFile "data/dao.ptb"
   input <- T.IO.readFile "data/dao.ner"
   uid2tag <- fromFiles [(N.Org, "data/ne.org"), (N.Person, "data/ne.person")]
   wikiTable <- do
@@ -142,22 +145,42 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
   
   let
     stanford_nefs = map parseStanfordNE (parseNEROutputStr input)
-    named_entities =  getStanfordNEs stanford_nefs
+    named_entities =  filter (\x -> snd x == N.Org || snd x == N.Person) (getStanfordNEs stanford_nefs)
     flag1 = getNEClass uid2tag (uid "Q95")
     flag2 = getNEClass uid2tag (uid "Q3503829")
     wiki_entities = namedEntityAnnotator wikiTable uid2tag stanford_nefs
     wiki_named_entities = resolveNEs named_entities wiki_entities
+
+    text = fromList (T.words input_raw)
+    output = map (\(range,e) -> (range, subVector range text, e)) wiki_named_entities
+
+    t1 = (IRange 1 3, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
+    t2 = (IRange 10 11, fromList ["Munoz"], UnresolvedUID N.Person)
+
+
   print "Named entities"
   mapM_ print named_entities
   print "Wiki entities"
   mapM_ print wiki_entities
   print "Wiki named entities"
   mapM_ print wiki_named_entities      
+  print "End"
+  mapM_ print output
+
+  print t1
+  print t2
+
+
+testHelperUtils :: TestTree
+testHelperUtils = testCaseSteps "Test for helper functions on general algorithms" $ \step -> do
+  assert $ isContain (fromList [1,2]) (fromList [1,2,3])
+  assert $ not $ isContain (fromList [1,2]) (fromList [1])
+  assert $ isContain (fromList [1,2]) (fromList [0,1,2,3])
 
 unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
-    [testIRangeOps, testWikiNER, testRunWikiNER]    
+    [testHelperUtils, testIRangeOps, testWikiNER, testRunWikiNER]    
 
 main = defaultMain unitTests
