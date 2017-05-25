@@ -7,7 +7,7 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Monoid
 
-data NamedEntityClass = Org | Person | Loc | Time | Date | Other
+data NamedEntityClass = Org | Person | Loc | Time | Date | Other -- | Money | Percent | Misc
                       deriving(Show, Eq)
 
 data NamedEntity = NamedEntity { _str  :: Text
@@ -31,8 +31,11 @@ parseStr str t | t== "PERSON"      = NamedEntityFrag str Person
                | t== "LOCATION"    = NamedEntityFrag str Loc
                | t== "TIME"        = NamedEntityFrag str Time
                | t== "DATE"        = NamedEntityFrag str Date
+               | t== "MONEY"       = NamedEntityFrag str Other--Money
+               | t== "PERCENT"     = NamedEntityFrag str Other--Percent
+               | t== "MISC"        = NamedEntityFrag str Other--Misc
                | t== "O"           = NamedEntityFrag str Other
-parseStr _ _  = error "Unknown named entity class"
+parseStr _ t  = error ("Unknown named entity class : " ++ T.unpack t)
 
 partitionFrags :: [NamedEntityFrag] -> [[NamedEntityFrag]]
 partitionFrags = foldr f []

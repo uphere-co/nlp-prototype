@@ -23,12 +23,16 @@ loadTypedUIDs (tag, fileName) = do
 data WikiUID2NETag = WikiUID2NETag { _map :: Map Wiki.UID NEClass}
                    deriving (Show)
 
-loadWikiUID2NETag :: [(NEClass, FilePath)] -> IO WikiUID2NETag
-loadWikiUID2NETag pairs = do
+fromFiles :: [(NEClass, FilePath)] -> IO WikiUID2NETag
+fromFiles pairs = do
   lists <- mapM loadTypedUIDs pairs
   let
     table = WikiUID2NETag (M.fromList (mconcat lists))
   return table
+
+fromList :: [(Wiki.UID, NEClass)] -> WikiUID2NETag
+fromList pairs = WikiUID2NETag (M.fromList pairs)
+
 
 getNEClass :: WikiUID2NETag -> Wiki.UID -> NEClass
 getNEClass table uid = f (M.lookup uid (_map table))

@@ -9,10 +9,11 @@ import           Assert                                (assert,massertEqual,eass
 import           Test.Tasty.HUnit                      (testCase,testCaseSteps)
 import           Test.Tasty                            (defaultMain, testGroup,TestTree)
 import qualified Data.Text                     as T
+import qualified Data.Text.IO                  as T.IO
 
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
-import           WikiEntityClass                       (loadWikiUID2NETag,getNEClass)
+import           WikiEntityClass                       (fromFiles,getNEClass)
 import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
 import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
@@ -20,11 +21,18 @@ import           CoreNLP                               (parseNEROutputStr)
 import           Misc                                  (IRange(..))
 import qualified NamedEntity                   as N
 import qualified WikiEntity                    as Wiki
-
+import qualified WikiEntityClass               as WC
 
 uid = Wiki.UID
 uids = fromList . map uid
-    
+
+
+ai1 = (uid "Q42970", N.Other)
+ai2 = (uid "Q11660", N.Other)
+nlp = (uid "Q30642", N.Other)
+google       = (uid "Q95", N.Org)
+googleSearch = (uid "Q9366", N.Other)
+facebook     = (uid "Q380", N.Org)
 
 testNamedEntityTagging :: TestTree
 testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER output" $ \step -> do
@@ -34,13 +42,14 @@ testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER outp
   let
     ner_text = "Google/ORGANIZATION and/O Facebook/ORGANIZATION Inc./ORGANIZATION are/O famous/O AI/O companies/O ./O NLP/ORGANIZATION stands/O for/O natural/O language/O processing/O ./O"
     stanford_nefs =  map parseStanfordNE (parseNEROutputStr ner_text)
-    matchedItems  = namedEntityAnnotator entities stanford_nefs
-    expected_matches = [(IRange 12 15, uids ["Q30642"], N.Other), -- NLP
-                        (IRange 9 10,  uids ["Q30642"], N.Other), -- NLP
-                        (IRange 6 7,   uids ["Q42970", "Q11660"], N.Other), -- AI
-                        (IRange 2 4,   uids ["Q380"], N.Other), -- Facebook Inc.
-                        (IRange 0 1,   uids ["Q95", "Q9366"], N.Other) -- Google
-                        ]
+    uid2tag = WC.fromList [nlp,ai1,ai2,facebook,google,googleSearch]
+    matchedItems  = namedEntityAnnotator entities uid2tag stanford_nefs
+    expected_matches = [(IRange 0 1,   fromList [google, googleSearch])
+                       ,(IRange 2 4,   fromList [facebook])
+                       ,(IRange 6 7,   fromList [ai1, ai2])
+                       ,(IRange 9 10,  fromList [nlp])
+                       ,(IRange 12 15, fromList [nlp])
+                       ]
     tt = getStanfordNEs stanford_nefs
     expected_tt = [(IRange 0 1, N.Org),(IRange 2 4,N.Org),(IRange 9 10, N.Org)]
 
@@ -121,18 +130,34 @@ testWikiNER =
   testGroup
     "Unit tests for WikiNER"
       [testNamedEntityTagging, testNEResolution]
-      
+
+
+testRunWikiNER :: TestTree
+testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \step -> do
+  input <- T.IO.readFile "data/dao.ner"
+  uid2tag <- fromFiles [(N.Org, "data/ne.org"), (N.Person, "data/ne.person")]
+  wikiTable <- do
+     reprs <- loadEntityReprs "data/uid"
+     return (buildEntityTable reprs)  
+  
+  let
+    stanford_nefs = map parseStanfordNE (parseNEROutputStr input)
+    named_entities =  getStanfordNEs stanford_nefs
+    flag1 = getNEClass uid2tag (uid "Q95")
+    flag2 = getNEClass uid2tag (uid "Q3503829")
+    wiki_entities = namedEntityAnnotator wikiTable uid2tag stanford_nefs
+    wiki_named_entities = resolveNEs named_entities wiki_entities
+  print "Named entities"
+  mapM_ print named_entities
+  print "Wiki entities"
+  mapM_ print wiki_entities
+  print "Wiki named entities"
+  mapM_ print wiki_named_entities      
+
 unitTests :: TestTree
 unitTests =
   testGroup
     "All Unit tests"
-    [testIRangeOps, testWikiNER]    
+    [testIRangeOps, testWikiNER, testRunWikiNER]    
 
-
-main = do
-  uid2tag <- loadWikiUID2NETag [(N.Org, "data/ne.org"), (N.Person, "data/ne.person")]
-  let
-    flag1 = getNEClass uid2tag (uid "Q95")
-    flag2 = getNEClass uid2tag (uid "Q3503829")
-  print flag1
-  print flag2
+main = defaultMain unitTests

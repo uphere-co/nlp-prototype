@@ -17,9 +17,9 @@ parseEntityLine str = (UID uid, Name name)
     [uid, name] = T.split (=='\t') str
 
 
-loadEntityReprs :: Text -> IO [(UID, Name)]
+loadEntityReprs :: FilePath -> IO [(UID, Name)]
 loadEntityReprs filename = do
-    content <- T.IO.readFile "../rnn++/tests/data/wikidata.test.entities"
+    content <- T.IO.readFile filename
     let
       entities = map parseEntityLine (T.lines content)
     return entities

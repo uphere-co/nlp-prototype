@@ -7,4 +7,4 @@ QEDIR=/opt/develset.rss/
 grep -Fwf ne.person /opt/develset.rss/wikidata.all_entities > uid.person
 grep -Fwf ne.org /opt/develset.rss/wikidata.all_entities    > uid.org
 grep -Fwf <(cat ne.*) /opt/develset.rss/wikidata.properties > property
-
+cat uid.* > uid
