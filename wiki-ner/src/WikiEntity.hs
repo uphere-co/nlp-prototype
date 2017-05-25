@@ -9,7 +9,11 @@ import qualified Data.Text.IO                  as T.IO
 newtype Name = Name { _name :: Text}
              deriving (Show, Eq, Ord)
 newtype UID  = UID { _uid :: Text}
-             deriving (Show, Eq, Ord)
+             deriving (Eq, Ord)
+
+instance Show UID where
+  show (UID uid) = "UID " ++ show uid
+
 
 parseEntityLine :: Text -> (UID, Name)
 parseEntityLine str = (UID uid, Name name)
