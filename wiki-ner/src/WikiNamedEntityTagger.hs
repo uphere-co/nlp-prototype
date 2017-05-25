@@ -7,7 +7,7 @@ module WikiNamedEntityTagger where
 import           Data.Text                             (Text)
 import           Data.Vector                           (Vector,toList,fromList,ifoldr,foldl')
 import           Control.Arrow                         (second)
-import           Misc                                  (IRange(..))
+import           Misc                                  (IRange(..),RelativePosition(..), relativePos, untilNoOverlap)
 import           WikiEntity                            (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEntityTagger                      (NameUIDTable,buildEntityTable,wikiAnnotator)
 import           WikiEntityClass                       (WikiUID2NETag,getNEClass)
@@ -17,7 +17,6 @@ import qualified Data.Text                     as T
 import qualified WikiEntity                    as Wiki
 import qualified NamedEntity                   as N
 import qualified CoreNLP                       as C
-
 
 
 type NEClass = NamedEntityClass
@@ -53,33 +52,6 @@ getStanfordNEs = dropNonNE . partitonFrags
 buildTagUIDTable :: NEClass -> Vector Wiki.UID -> Vector (Wiki.UID, NEClass)
 buildTagUIDTable tag = V.map (\uid -> (uid,tag)) 
 
-
-data RelativePosition = LbeforeR | RbeforeL | Coincide | RinL | LinR | LoverlapR | RoverlapL
-                      deriving(Show,Eq)
-
-relativePos :: IRange -> IRange -> RelativePosition
-relativePos (IRange lbeg lend) (IRange rbeg rend)
-  -- Note ordering is crucial for correct pattern matching; do not change it unless unavoidable.
-  | lend <= rbeg = LbeforeR
-  | rend <= lbeg = RbeforeL
-  | lbeg == rbeg && rend == lend = Coincide
-  | lbeg <= rbeg && rend <= lend = RinL
-  | rbeg <= lbeg && lend <= rend = LinR
-  | rbeg < lbeg &&  rend < lend = RoverlapL
-  | lbeg < rbeg &&  lend < rend = LoverlapR
-  | otherwise = error "Logical bug in nextIRange"
-
-untilNoOverlap :: (a->RelativePosition) -> [a] -> [a]
-untilNoOverlap _ [] = []
-untilNoOverlap f ranges@(r:_) | LbeforeR == f r = ranges
-untilNoOverlap f ranges@(_:rs) = untilNoOverlap f rs
-
-untilOverlapOrNo :: (a->RelativePosition) -> [a] -> [a]
-untilOverlapOrNo _ [] = []
-untilOverlapOrNo f ranges@(r:rs) = case f r of
-  LbeforeR  -> ranges
-  LoverlapR -> ranges
-  _ -> untilOverlapOrNo f rs
 
 data PreNE = UnresolvedUID NEClass
            | AmbiguousUID [Wiki.UID]

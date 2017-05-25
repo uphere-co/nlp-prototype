@@ -17,10 +17,10 @@ import           WikiEntity                            (parseEntityLine,loadEnti
 import           WikiEntityTagger                      (buildEntityTable,wikiAnnotator)
 import           WikiEntityClass                       (fromFiles,getNEClass)
 import           WikiNamedEntityTagger                 (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
-import           WikiNamedEntityTagger                 (untilOverlapOrNo,untilNoOverlap,relativePos,PreNE(..),resolveNEClass)
+import           WikiNamedEntityTagger                 (PreNE(..),resolveNEClass)
 import           CoreNLP                               (parseNEROutputStr)
 -- For testing:
-import           Misc                                  (IRange(..), isContain,subVector)
+import           Misc                                  (IRange(..),untilOverlapOrNo,untilNoOverlap,relativePos, isContain,subVector)
 import qualified NamedEntity                   as N
 import qualified WikiEntity                    as Wiki
 import qualified WikiEntityClass               as WC
