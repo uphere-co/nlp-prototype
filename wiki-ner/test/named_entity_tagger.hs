@@ -31,12 +31,16 @@ uid = Wiki.UID
 uids = fromList . map uid
 
 
-ai1 = (uid "Q42970", N.Other)
-ai2 = (uid "Q11660", N.Other)
-nlp = (uid "Q30642", N.Other)
-google       = (uid "Q95", N.Org)
-googleSearch = (uid "Q9366", N.Other)
-facebook     = (uid "Q380", N.Org)
+other wikiUID = (Wiki.UID wikiUID, N.Other)
+org wikiUID = (Wiki.UID wikiUID, N.Org)
+person wikiUID = (Wiki.UID wikiUID, N.Person)
+
+ai1 = other "Q42970"
+ai2 = other "Q11660"
+nlp = other "Q30642"
+google       = org "Q95"
+googleSearch = other "Q9366"
+facebook     = org "Q380"
 
 testNamedEntityTagging :: TestTree
 testNamedEntityTagging = testCaseSteps "Named entity tagging on CoreNLP NER output" $ \step -> do
@@ -83,10 +87,10 @@ testIRangeOps = testCaseSteps "Test operations on IRange" $ \step -> do
 testNEResolution :: TestTree
 testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \step -> do
   let
-    ambiguousUID = fromList [(uid "Q1", N.Org), (uid "Q2", N.Org), (uid "Q3", N.Person)]
+    ambiguousUID = fromList [org"Q1", org "Q2", person "Q3"]
     entities = [(IRange 1 4, ambiguousUID)]
   eassertEqual (resolveNEClass N.Org ambiguousUID) (AmbiguousUID [uid "Q2", uid "Q1"])
-  eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (uid "Q3", N.Person))
+  eassertEqual (resolveNEClass N.Person ambiguousUID) (Resolved (person "Q3"))
 
   step "Single entity cases"
   eassertEqual (resolveNEs [(IRange 1 4, N.Person)] entities) [(IRange 1 4, resolveNEClass N.Person ambiguousUID)]
@@ -100,22 +104,22 @@ testNEResolution = testCaseSteps "Resolving Wiki UID with Stanford NE tag" $ \st
   let
     input = "A1/PERSON A2/PERSON x/O y/O z/O W1/ORGANIZATION W2/ORGANIZATION W3/ORGANIZATION"
     stanford_nes =  getStanfordNEs (map parseStanfordNE (parseNEROutputStr input))
-    ambiguousUID1 = fromList [(uid "Q11", N.Org), (uid "Q12", N.Org), (uid "Q13", N.Person)]
-    ambiguousUID2 = fromList [(uid "Q21", N.Org), (uid "Q22", N.Org), (uid "Q23", N.Person)]
+    ambiguousUID1 = fromList [org "Q11", org "Q12", person "Q13"]
+    ambiguousUID2 = fromList [org "Q21", org "Q22", person "Q23"]
     entities1 = [(IRange 0 2, ambiguousUID1),(IRange 5 8, ambiguousUID2)]
     
     r1 = resolveNEs stanford_nes entities1
-    expected_r1 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
-                   (IRange 5 8, AmbiguousUID [uid "Q22",uid "Q21"])]
+    expected_r1 = [(IRange 0 2, Resolved (person "Q13")),
+                   (IRange 5 8, AmbiguousUID [uid "Q22", uid "Q21"])]
 
     entities2 = [(IRange 0 2, ambiguousUID1),(IRange 5 7, ambiguousUID2)]
     r2 = resolveNEs stanford_nes entities2
-    expected_r2 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
+    expected_r2 = [(IRange 0 2, Resolved (person "Q13")),
                    (IRange 5 8, UnresolvedUID N.Org)]
 
     entities3 = [(IRange 0 2, ambiguousUID1),(IRange 4 6, ambiguousUID2)]
     r3 = resolveNEs stanford_nes entities3
-    expected_r3 = [(IRange 0 2, Resolved (uid "Q13", N.Person)),
+    expected_r3 = [(IRange 0 2, Resolved (person "Q13")),
                    (IRange 4 6, UnresolvedClass (toList ambiguousUID2))]
 
     entities4 = [(IRange 0 2, ambiguousUID1),(IRange 7 9, ambiguousUID2)]
@@ -157,12 +161,14 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
     output = map (\(range,e) -> (range, subVector range text, e)) wiki_named_entities
     resolved_entities = entityLinkings output
     
-    t1 = (IRange 0 2, fromList ["United","Airlines"], Resolved (uid "Q174769",N.Org))
-    t1' = (IRange 90 92, fromList ["United","Airlines"], Resolved (uid "Q174769",N.Org))
-    t2 = (IRange 5 7, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
-    t2' = (IRange 95 97, fromList ["Oscar","Munoz"],Resolved (uid "Q21066734",N.Person))
-    t3 = (IRange 10 11, fromList ["Munoz"], UnresolvedUID N.Person)
-    t4 = (IRange 13 14, fromList ["United"], UnresolvedUID N.Org)
+    united_airlines = fromList ["United","Airlines"]
+    oscar_munoz     = fromList ["Oscar","Munoz"]
+    t1  = (IRange 0 2,   united_airlines, Resolved (org "Q174769"))
+    t1' = (IRange 90 92, united_airlines, Resolved (org "Q174769"))
+    t2  = (IRange 5 7,   oscar_munoz, Resolved (person "Q21066734"))
+    t2' = (IRange 95 97, oscar_munoz, Resolved (person "Q21066734"))
+    t3  = (IRange 10 11, fromList ["Munoz"], UnresolvedUID N.Person)
+    t4  = (IRange 13 14, fromList ["United"], UnresolvedUID N.Org)
 
   eassertEqual (entityLinking [] t4) (Self t4)
 

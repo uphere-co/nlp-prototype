@@ -26,19 +26,17 @@ unMention (Self a) = a
 
 type EMInfo a = (IRange, Vector a, PreNE)
 entityLink :: Eq a => EMInfo a -> EMInfo a -> EntityMention (EMInfo a)
-entityLink target src = x
+entityLink target@(trange, twords, ttag) src@(srange, swords, stag) =
+  f (relativePos trange srange) (isContain swords twords) ttag stag
   where 
-    (trange, twords, ttag) = target
-    (srange, swords, stag) = src
     f pos textMatch (Resolved (uid,ttag)) (UnresolvedUID stag) | pos==LbeforeR && textMatch && ttag==stag =
       Mention (srange,swords,Resolved (uid,ttag))
     f _ _ _ _ = Self src
-    x = f (relativePos trange srange) (isContain swords twords) ttag stag
 
 entityLinking :: Eq a => [EMInfo a] -> EMInfo a -> EntityMention (EMInfo a)
 entityLinking targets src = foldr f (Self src) targets
   where
-    f target (Self src)  = entityLink target src
+    f target (Self src)       = entityLink target src
     f _      (Mention target) = Mention target
 
 entityLinkings :: Eq a => [EMInfo a] -> [EntityMention (EMInfo a)]
