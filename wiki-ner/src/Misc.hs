@@ -6,7 +6,11 @@ import           Data.Vector                           (Vector,toList,fromList,i
 
 data IRange = IRange { beg :: Int
                      , end :: Int}
-                deriving(Eq, Show)
+                deriving(Eq)
+
+instance Show IRange where
+  show (IRange beg end) = "IRange [" ++ show beg ++ "," ++ show end ++ ")"
+
 
 data RelativePosition = LbeforeR | RbeforeL | Coincide | RinL | LinR | LoverlapR | RoverlapL
                       deriving(Show,Eq)
