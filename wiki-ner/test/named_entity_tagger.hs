@@ -152,8 +152,6 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
   let
     stanford_nefs = map parseStanfordNE (parseNEROutputStr input)
     named_entities =  filter (\x -> snd x == N.Org || snd x == N.Person) (getStanfordNEs stanford_nefs)
-    flag1 = getNEClass uid2tag (uid "Q95")
-    flag2 = getNEClass uid2tag (uid "Q3503829")
     wiki_entities = namedEntityAnnotator wikiTable uid2tag stanford_nefs
     wiki_named_entities = resolveNEs named_entities wiki_entities
 
@@ -161,6 +159,9 @@ testRunWikiNER = testCaseSteps "Test run for Wiki named entity annotator" $ \ste
     mentions = buildEntityMentions text wiki_named_entities
     linked_mentions = entityLinkings mentions
     
+    -- constants for testing
+    flag1 = getNEClass uid2tag (uid "Q95")
+    flag2 = getNEClass uid2tag (uid "Q3503829")
     united_airlines = fromList ["United","Airlines"]
     oscar_munoz     = fromList ["Oscar","Munoz"]
     t1  = (IRange 0 2,   united_airlines, Resolved (org "Q174769"))
