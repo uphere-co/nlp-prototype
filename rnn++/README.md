@@ -37,8 +37,9 @@ Other directories :
 # C++ implementation of RecursiveNN
 ## Build
 ```bash
+# rnn++ does not compile with a latest master branch of nixpkgs. I check that it compiles with the commit 8a424e3fbd (Nov 2016) of wavewave's fork of nixpkgs.
 cmake {path of nlp-prototype/rnn++}
-make -j8
+make -j20
 ./app
 ```
 ## Usages
@@ -240,7 +241,8 @@ cat rss.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
 # Get wikidata.nes from corenlp/wiki/wikidata_ner
 cat wikidata.nes | awk -F '\t' '$2=="True"{print $1}' > wikidata.uid.ne
 cat wikidata.items | awk -F '\t' 'NF==5{print $1}' > wikidata.uid
-cat ~/word2vec/wikidata-20170206-all.json | ./wikidata_etl >wikidata.items
+# On the `mark` server, takes ~12min
+lbzcat /scratch/groups/uphere/wikidata/wikidata-20170904-all.json.bz2 | ./wikidata_etl /opt/develset.rss/config.rss.json > wikidata.items
 cat wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 # IMPORTANT: Currently, only the P31 properties are used. It should be extended as the inference logic evolves
 cat wikidata.items | awk -F '\t' 'NF==5{print $1 "\t" $3}' > wikidata.properties
