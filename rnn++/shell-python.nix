@@ -1,16 +1,16 @@
 { pkgs ? import <nixpkgs> {}
-, uphere-nix-overlay
+, uphere-nix-overlay ? <uphere-nix-overlay>
 }:
 
 with pkgs;
 
-let toolz     = callPackage (uphere-nix-overlay + "/default-python.nix") {
+let toolz     = callPackage (uphere-nix-overlay + "/nix/default-python.nix") {
                   inherit pkgs;
                   buildPythonPackage = pkgs.python27Packages.buildPythonPackage;
                 };
-    toolz_cpp = callPackage (uphere-nix-overlay + "/default-cpp.nix") { };
-    # mystdenv = clangStdenv; # clangStdenv has clang 3.9 as of 20170427.
-    mystdenv = llvmPackages_4.stdenv;
+    toolz_cpp = callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") { };
+    mystdenv = clangStdenv; # clangStdenv has clang 3.9 as of 20170427.
+    #mystdenv = llvmPackages_4.stdenv;
 in
 mystdenv.mkDerivation {
   name = "python-env";
@@ -62,6 +62,7 @@ mystdenv.mkDerivation {
                    libpqxx
                    ucspi-tcp
                    jq pigz
+                   lbzip2
                  ];
   shellHook = ''
      PS1="\n\[\033[0;34m\][\u@\h.devel:\w]\$\[\033[0m\] "
