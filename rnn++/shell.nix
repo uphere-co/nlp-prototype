@@ -1,5 +1,5 @@
 { pkgs ? import <nixpkgs> {}
-, uphere-nix-overlay
+, uphere-nix-overlay? <uphere-nix-overlay>
 }:
 
 with pkgs;
@@ -10,39 +10,21 @@ let toolz     = callPackage (uphere-nix-overlay + "/nix/default-python.nix") {
                 };
     toolz_cpp = callPackage (uphere-nix-overlay + "/nix/default-cpp.nix") { };
     config = import ./config.nix { inherit pkgs toolz_cpp; };
-    # mystdenv = clangStdenv;
-    mystdenv = llvmPackages_4.stdenv; # clangStdenv has clang 3.9 as of 20170427.    
+    mystdenv = clangStdenv;
 in
 mystdenv.mkDerivation {
   name = "python-env";
-  buildInputs = (with python27Packages;
-                 [ ipython jupyter ipyparallel
-                   line_profiler
-                   matplotlib seaborn
-                   numpy scipy pandas scikitlearn
-                   pyzmq
-                   cython
-                   numba
-                   toolz.gensim toolz.untangle
-                   #Theano Keras
-		   h5py
-                   pytest toolz.pytest-mock
-                   toolz.guppy
-                   toolz.nltk toolz.bllipparser
-                   psycopg2
-                   #cgroup-utils
-                   toolz.cldoc
-                 ]) 
-                   ++ 
-                 [
+  buildInputs =  [
                    wget jdk zip unzip which stress htop
                    cmake pkgconfig clang-analyzer
                    linuxPackages.perf
                    zeromq
                    doxygen graphviz
                    libcgroup 
+                   lbzip2
                  ] ++ config;
   shellHook = ''
+     PS1="\n\[\033[0;34m\][\u@\h.devel:\w]\$\[\033[0m\] "
      EDITOR=vim
      CC=clang
      CXX=clang++
