@@ -3,10 +3,6 @@
 
 #include <fmt/printf.h>
 
-#include "wordrep/word_uid.h"
-#include "similarity/config.h"
-
-
 #include "utils/parallel.h"
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
