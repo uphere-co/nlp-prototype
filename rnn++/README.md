@@ -242,7 +242,7 @@ cat rss.text.ptb.counts | ./word_count_collect config.rsstest.json unigram.h5
 cat wikidata.nes | awk -F '\t' '$2=="True"{print $1}' > wikidata.uid.ne
 cat wikidata.items | awk -F '\t' 'NF==5{print $1}' > wikidata.uid
 # On the `mark` server, takes ~12min
-lbzcat /scratch/groups/uphere/wikidata/wikidata-20170904-all.json.bz2 | ./wikidata_etl /opt/develset.rss/config.rss.json | grep -v "^P" > wikidata.items
+lbzcat /scratch/groups/uphere/wikidata/wikidata-20170904-all.json.bz2 | ./wikidata_etl | grep -v "^P" > wikidata.items
 cat wikidata.items | awk -F '\t' '{print $1 "\t" $NF}' > wikidata.all_entities
 # IMPORTANT: Currently, only the P31 properties are used. It should be extended as the inference logic evolves
 cat wikidata.items | awk -F '\t' 'NF==5{print $1 "\t" $3}' > wikidata.properties

@@ -3,10 +3,6 @@
 
 #include <fmt/printf.h>
 
-#include "wordrep/word_uid.h"
-#include "similarity/config.h"
-
-
 #include "utils/parallel.h"
 #include "utils/profiling.h"
 #include "utils/algorithm.h"
@@ -74,11 +70,7 @@ void extract_items(std::istream&& is){
     g.wait();
 }
 
-int main(int argc, char** argv){
-    assert(argc>1);
-    auto config = util::load_json(argv[1]);
-    engine::SubmoduleFactory factory{{config}};
-    auto wordUIDs = factory.word_uid_index();
+int main(){
     extract_items(std::move(std::cin));
     return 0;
 }
